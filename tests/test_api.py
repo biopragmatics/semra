@@ -1,0 +1,212 @@
+from __future__ import annotations
+
+import unittest
+
+from semra.api import (
+    BROAD_MATCH,
+    EXACT_MATCH,
+    NARROW_MATCH,
+    Index,
+    _transitive_closure,
+    flip,
+    get_index,
+    infer_chains,
+    infer_reversible,
+    to_graphs,
+)
+from semra.struct import Evidence, Mapping, Reference, line, triple_key
+
+
+def _get_references(n: int, prefix: str = "test") -> list[Reference]:
+    return [Reference(prefix=prefix, identifier=str(i)) for i in range(1, n + 1)]
+
+
+def _exact(s, o, evidence: list[Evidence] | None = None) -> Mapping:
+    return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
+
+
+class TestOperations(unittest.TestCase):
+    def test_path(self):
+        """Test quickly creating mapping lists."""
+        r1, r2, r3 = _get_references(3)
+        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+        m2 = Mapping(s=r2, p=BROAD_MATCH, o=r3)
+        self.assertEqual([m1], line(r1, EXACT_MATCH, r2))
+        self.assertEqual([m1, m2], line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3))
+
+    def test_flip_symmetric(self):
+        """Test flipping a symmetric relation (e.g., exact match)."""
+        chebi_reference = Reference(prefix="chebi", identifier="10001")
+        mesh_reference = Reference(prefix="mesh", identifier="C067604")
+        mapping = Mapping(s=chebi_reference, p=EXACT_MATCH, o=mesh_reference)
+        new_mapping = flip(mapping)
+        self.assertIsNotNone(new_mapping)
+        self.assertEqual(mesh_reference, new_mapping.s)
+        self.assertEqual(EXACT_MATCH, new_mapping.p)
+        self.assertEqual(chebi_reference, new_mapping.o)
+
+    def test_flip_asymmetric(self):
+        """Test flipping asymmetric relations (e.g., narrow and broad match)."""
+        docetaxel_mesh = Reference(prefix="mesh", identifier="D000077143")
+        docetaxel_anhydrous_chebi = Reference(prefix="chebi", identifier="4672")
+        narrow_mapping = Mapping(s=docetaxel_mesh, p=NARROW_MATCH, o=docetaxel_anhydrous_chebi)
+        broad_mapping = Mapping(o=docetaxel_mesh, p=BROAD_MATCH, s=docetaxel_anhydrous_chebi)
+
+        actual = flip(narrow_mapping)
+        self.assertIsNotNone(actual)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual.s)
+        self.assertEqual(BROAD_MATCH, actual.p)
+        self.assertEqual(docetaxel_mesh, actual.o)
+
+        actual = flip(broad_mapping)
+        self.assertIsNotNone(actual)
+        self.assertEqual(docetaxel_mesh, actual.s)
+        self.assertEqual(NARROW_MATCH, actual.p)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual.o)
+
+    def test_index(self):
+        r1, r2 = _get_references(2)
+        e1 = Evidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"))
+        e2 = Evidence(justification=Reference(prefix="semapv", identifier="ManualMappingCuration"))
+        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
+        m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
+        index = get_index([m1, m2])
+        self.assertIn(m1.triple, index)
+        self.assertEqual(1, len(index))
+        self.assertEqual(2, len(index[m1.triple]))
+        self.assertEqual(
+            {"LexicalMatching", "ManualMappingCuration"},
+            {e.justification.identifier for e in index[m1.triple]},
+        )
+
+    def assert_same_triples(
+        self,
+        expected_mappings: list[Mapping],
+        actual_mappings: Index | list[Mapping],
+        msg: str | None = None,
+    ) -> None:
+        """Assert that two sets of mappings are the same."""
+        if not isinstance(expected_mappings, dict):
+            expected_mappings = get_index(expected_mappings)
+        if not isinstance(actual_mappings, dict):
+            actual_mappings = get_index(actual_mappings)
+
+        self.assertEqual(
+            self._clean_index(expected_mappings),
+            self._clean_index(actual_mappings),
+            msg=msg,
+        )
+
+    @staticmethod
+    def _clean_index(index: Index) -> list[str]:
+        triples = sorted(set(index), key=triple_key)
+        return ["<" + ", ".join(element.curie for element in triple) + ">" for triple in triples]
+
+    def test_infer_exact_match(self):
+        """Test inference through the transitivity of SKOS exact matches."""
+        r1, r2, r3, r4 = _get_references(4)
+        m1, m2, m3 = line(r1, EXACT_MATCH, r2, EXACT_MATCH, r3, EXACT_MATCH, r4)
+        m4 = _exact(r1, r3)
+        m5 = _exact(r1, r4)
+        m6 = _exact(r2, r4)
+        m4_inv, m5_inv, m6_inv = (flip(m) for m in (m4, m5, m6))
+
+        backwards_msg = "backwards inference is not supposed to be done here"
+
+        index = get_index(infer_chains([m1, m2]))
+        self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
+
+        index = get_index(infer_chains([m1, m2, m3]))
+        self.assert_same_triples([m1, m2, m3, m4, m4, m5, m6], index)
+        self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
+        self.assertNotIn(m5_inv.triple, index, msg=backwards_msg)
+        self.assertNotIn(m6_inv.triple, index, msg=backwards_msg)
+
+    def test_no_infer(self):
+        """Test no inference happens over mixed chains of broad/narrow."""
+        r1, r2, r3 = _get_references(3)
+
+        m1, m2 = line(r1, NARROW_MATCH, r2, BROAD_MATCH, r3)
+        graphs = to_graphs([m1, m2])
+        self.assertEqual({NARROW_MATCH, BROAD_MATCH}, set(graphs))
+
+        narrow_graph = graphs[NARROW_MATCH]
+        self.assertEqual({r1, r2}, set(narrow_graph.nodes()))
+        self.assertEqual({(r1, r2)}, set(narrow_graph.edges()))
+        broad_graph = graphs[BROAD_MATCH]
+        self.assertEqual({r2, r3}, set(broad_graph.nodes()))
+        self.assertEqual({(r2, r3)}, set(broad_graph.edges()))
+
+        self.assert_same_triples([m1, m2], infer_chains([m1, m2]), msg="No inference between broad and narrow")
+
+        # ------ Same but in reverse ---------
+        m1, m2 = line(r1, BROAD_MATCH, r2, NARROW_MATCH, r3)
+        self.assert_same_triples([m1, m2], infer_chains([m1, m2]), msg="No inference between broad and narrow")
+
+    def test_infer_broad_match_1(self):
+        r1, r2, r3, r4 = _get_references(4)
+        m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
+        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
+        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
+        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
+
+        # Check inference over two steps
+        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2]), msg="inference over two steps is broken")
+
+        # Check inference over multiple steps
+        graphs = to_graphs([m1, m2, m3])
+        self.assertEqual({EXACT_MATCH, BROAD_MATCH}, set(graphs))
+
+        exact_graph = graphs[EXACT_MATCH]
+        self.assertEqual({r1, r2, r3, r4}, set(exact_graph.nodes()))
+        self.assertEqual({(r1, r2), (r3, r4)}, set(exact_graph.edges()))
+
+        broad_graph = graphs[BROAD_MATCH]
+        self.assertEqual({r2, r3}, set(broad_graph.nodes()))
+        self.assertEqual({(r2, r3)}, set(broad_graph.edges()))
+
+        self.assertEqual(exact_graph.edges(), _transitive_closure(exact_graph, EXACT_MATCH).edges())
+        self.assertEqual(broad_graph.edges(), _transitive_closure(broad_graph, BROAD_MATCH).edges())
+
+        self.assert_same_triples(
+            [m1, m2, m3, m4, m5, m6],
+            infer_chains([m1, m2, m3]),
+            msg="inference over multiple steps is broken",
+        )
+
+    def test_infer_broad_match_2(self):
+        r1, r2, r3, r4 = _get_references(4)
+        m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
+        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
+        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
+        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
+
+        # Check inference over two steps
+        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2]))
+
+        # Check inference over multiple steps
+        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3]))
+
+    def test_infer_narrow_match(self):
+        r1, r2, r3 = _get_references(3)
+        m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
+        m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
+        index = get_index(infer_chains([m1, m2]))
+        self.assert_same_triples([m1, m2, m3], index)
+
+    def test_mixed_inference_1(self):
+        r1, r2, r3 = _get_references(3)
+        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+        m2 = Mapping(s=r2, p=NARROW_MATCH, o=r3)
+        m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
+
+        m4 = Mapping(s=r2, p=EXACT_MATCH, o=r1)
+        m5 = Mapping(s=r3, p=BROAD_MATCH, o=r2)
+        m6 = Mapping(s=r3, p=BROAD_MATCH, o=r1)
+
+        mappings = [m1, m2]
+        mappings = infer_reversible(mappings)
+        self.assert_same_triples([m1, m2, m4, m5], mappings)
+
+        mappings = infer_chains(mappings)
+        self.assert_same_triples([m1, m2, m3, m4, m5, m6], mappings)

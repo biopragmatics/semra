@@ -7,22 +7,30 @@ from semra.api import (
     EXACT_MATCH,
     NARROW_MATCH,
     Index,
-    _transitive_closure,
+    filter_negatives,
+    filter_prefixes,
+    filter_self_matches,
     flip,
     get_index,
     infer_chains,
-    infer_reversible,
-    to_graphs,
+    infer_reversible, project,
 )
-from semra.struct import Evidence, Mapping, Reference, line, triple_key
+from semra.rules import MANUAL_MAPPING
+from semra.struct import Mapping, MutatedEvidence, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
 
 
 def _get_references(n: int, prefix: str = "test") -> list[Reference]:
     return [Reference(prefix=prefix, identifier=str(i)) for i in range(1, n + 1)]
 
 
-def _exact(s, o, evidence: list[Evidence] | None = None) -> Mapping:
+def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
     return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
+
+
+EV = SimpleEvidence(
+    justification=MANUAL_MAPPING,
+    mapping_set="test_mapping_set",
+)
 
 
 class TestOperations(unittest.TestCase):
@@ -38,12 +46,16 @@ class TestOperations(unittest.TestCase):
         """Test flipping a symmetric relation (e.g., exact match)."""
         chebi_reference = Reference(prefix="chebi", identifier="10001")
         mesh_reference = Reference(prefix="mesh", identifier="C067604")
-        mapping = Mapping(s=chebi_reference, p=EXACT_MATCH, o=mesh_reference)
+        mapping = Mapping(s=chebi_reference, p=EXACT_MATCH, o=mesh_reference, evidence=[EV])
         new_mapping = flip(mapping)
         self.assertIsNotNone(new_mapping)
         self.assertEqual(mesh_reference, new_mapping.s)
         self.assertEqual(EXACT_MATCH, new_mapping.p)
         self.assertEqual(chebi_reference, new_mapping.o)
+        self.assertEqual(1, len(new_mapping.evidence))
+        self.assertIsInstance(new_mapping.evidence[0], MutatedEvidence)
+        self.assertIsInstance(new_mapping.evidence[0].evidence, SimpleEvidence)
+        self.assertEqual(EV, new_mapping.evidence[0].evidence)
 
     def test_flip_asymmetric(self):
         """Test flipping asymmetric relations (e.g., narrow and broad match)."""
@@ -66,8 +78,8 @@ class TestOperations(unittest.TestCase):
 
     def test_index(self):
         r1, r2 = _get_references(2)
-        e1 = Evidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"))
-        e2 = Evidence(justification=Reference(prefix="semapv", identifier="ManualMappingCuration"))
+        e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"))
+        e2 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="ManualMappingCuration"))
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
         index = get_index([m1, m2])
@@ -113,30 +125,27 @@ class TestOperations(unittest.TestCase):
 
         backwards_msg = "backwards inference is not supposed to be done here"
 
-        index = get_index(infer_chains([m1, m2]))
+        index = get_index(infer_chains([m1, m2], backwards=False))
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
 
-        index = get_index(infer_chains([m1, m2, m3]))
+        index = get_index(infer_chains([m1, m2, m3], backwards=False))
         self.assert_same_triples([m1, m2, m3, m4, m4, m5, m6], index)
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
         self.assertNotIn(m5_inv.triple, index, msg=backwards_msg)
         self.assertNotIn(m6_inv.triple, index, msg=backwards_msg)
+
+        # m4's evidence should comprise a single complex evidence
+        self.assertEqual(1, len(index[m4.triple]))
+        m4_evidence = index[m4.triple][0]
+        self.assertIsInstance(m4_evidence, ReasonedEvidence)
+        self.assertEqual(2, len(m4_evidence.mappings))
+        self.assertEqual([m1, m2], m4_evidence.mappings)
 
     def test_no_infer(self):
         """Test no inference happens over mixed chains of broad/narrow."""
         r1, r2, r3 = _get_references(3)
 
         m1, m2 = line(r1, NARROW_MATCH, r2, BROAD_MATCH, r3)
-        graphs = to_graphs([m1, m2])
-        self.assertEqual({NARROW_MATCH, BROAD_MATCH}, set(graphs))
-
-        narrow_graph = graphs[NARROW_MATCH]
-        self.assertEqual({r1, r2}, set(narrow_graph.nodes()))
-        self.assertEqual({(r1, r2)}, set(narrow_graph.edges()))
-        broad_graph = graphs[BROAD_MATCH]
-        self.assertEqual({r2, r3}, set(broad_graph.nodes()))
-        self.assertEqual({(r2, r3)}, set(broad_graph.edges()))
-
         self.assert_same_triples([m1, m2], infer_chains([m1, m2]), msg="No inference between broad and narrow")
 
         # ------ Same but in reverse ---------
@@ -149,28 +158,26 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
         m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
         m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
+        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3)
+        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4)
+        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
 
         # Check inference over two steps
-        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2]), msg="inference over two steps is broken")
-
-        # Check inference over multiple steps
-        graphs = to_graphs([m1, m2, m3])
-        self.assertEqual({EXACT_MATCH, BROAD_MATCH}, set(graphs))
-
-        exact_graph = graphs[EXACT_MATCH]
-        self.assertEqual({r1, r2, r3, r4}, set(exact_graph.nodes()))
-        self.assertEqual({(r1, r2), (r3, r4)}, set(exact_graph.edges()))
-
-        broad_graph = graphs[BROAD_MATCH]
-        self.assertEqual({r2, r3}, set(broad_graph.nodes()))
-        self.assertEqual({(r2, r3)}, set(broad_graph.edges()))
-
-        self.assertEqual(exact_graph.edges(), _transitive_closure(exact_graph, EXACT_MATCH).edges())
-        self.assertEqual(broad_graph.edges(), _transitive_closure(broad_graph, BROAD_MATCH).edges())
+        self.assert_same_triples(
+            [m1, m2, m4], infer_chains([m1, m2], backwards=False), msg="inference over two steps is broken"
+        )
+        self.assert_same_triples(
+            [m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True), msg="inference over two steps is broken"
+        )
 
         self.assert_same_triples(
             [m1, m2, m3, m4, m5, m6],
-            infer_chains([m1, m2, m3]),
+            infer_chains([m1, m2, m3], backwards=False),
+            msg="inference over multiple steps is broken",
+        )
+        self.assert_same_triples(
+            [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i],
+            infer_chains([m1, m2, m3], backwards=True),
             msg="inference over multiple steps is broken",
         )
 
@@ -180,19 +187,25 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
         m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
         m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
+        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3)
+        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4)
+        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
 
         # Check inference over two steps
-        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2]))
+        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2], backwards=False))
+        self.assert_same_triples([m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True))
 
         # Check inference over multiple steps
-        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3]))
+        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3], backwards=False))
+        self.assert_same_triples([m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i], infer_chains([m1, m2, m3], backwards=True))
 
     def test_infer_narrow_match(self):
         r1, r2, r3 = _get_references(3)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
-        index = get_index(infer_chains([m1, m2]))
-        self.assert_same_triples([m1, m2, m3], index)
+        m3_i = Mapping(o=r1, p=BROAD_MATCH, s=r3)
+        self.assert_same_triples([m1, m2, m3], infer_chains([m1, m2], backwards=False))
+        self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True))
 
     def test_mixed_inference_1(self):
         r1, r2, r3 = _get_references(3)
@@ -210,3 +223,46 @@ class TestOperations(unittest.TestCase):
 
         mappings = infer_chains(mappings)
         self.assert_same_triples([m1, m2, m3, m4, m5, m6], mappings)
+
+    def test_filter_prefixes(self):
+        """Test filtering out unwanted prefixes."""
+        r11, r12 = _get_references(2, prefix="p1")
+        r21, r22 = _get_references(2, prefix="p2")
+        (r31,) = _get_references(1, prefix="p3")
+        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
+        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
+        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
+        mappings = [m1, m2, m3]
+        self.assert_same_triples([m1, m2], filter_prefixes(mappings, {"p1", "p2"}))
+
+    def test_filter_self(self):
+        """Test filtering out mappings within a given prefix."""
+        r11, r12, r13 = _get_references(3, prefix="p1")
+        r21, r22 = _get_references(2, prefix="p2")
+        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
+        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
+        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r13)
+        mappings = [m1, m2, m3]
+        self.assert_same_triples([m1, m2], filter_self_matches(mappings))
+
+    def test_filter_negative(self):
+        """Test filtering out mappings within a given prefix."""
+        r11, r12 = _get_references(2, prefix="p1")
+        r21, r22 = _get_references(2, prefix="p2")
+        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
+        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
+        mappings = [m1, m2]
+        negative = [m2]
+        self.assert_same_triples([m1], filter_negatives(mappings, negative))
+
+    def test_project(self):
+        """Test projecting into a given source/target pair."""
+        r11, r12 = _get_references(2, prefix="p1")
+        r21, r22 = _get_references(2, prefix="p2")
+        r31, = _get_references(1, prefix="p3")
+        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
+        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
+        m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
+        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
+        mappings = [m1, m2, m2_i, m3]
+        self.assert_same_triples([m1, m2], project(mappings, "p1", "p2"))

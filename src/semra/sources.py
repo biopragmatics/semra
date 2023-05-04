@@ -1,45 +1,51 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
+import bioontologies
 import bioregistry
 import pandas as pd
 import pyobo
 from tqdm.auto import tqdm
 
-from semra.rules import DB_XREF
-from semra.struct import Evidence, Mapping, Reference
+from semra.rules import BEN_ORCID, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
+from semra.struct import Mapping, Reference, SimpleEvidence
 
 __all__ = [
     "from_cache_df",
     "from_biomappings",
     "from_pyobo",
+    "from_bioontologies",
+    "from_gilda",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def from_biomappings(xxx) -> list[Mapping]:
+def from_biomappings(mapping_dicts) -> list[Mapping]:
     rv = []
-    for m in tqdm(xxx, unit_scale=True, unit="mapping", desc="Loading biomappings"):
+    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings"):
         # m["type"],
         # m["source"] or "",
         try:
-            p = Reference.from_curie(m["relation"])
+            p = Reference.from_curie(mapping_dict["relation"])
         except ValueError:
             continue  # TODO fix speciesSpecific
-        source_prefix = m["source prefix"]
-        source_identifier = bioregistry.standardize_identifier(source_prefix, m["source identifier"])
-        target_prefix = m["target prefix"]
-        target_identifier = bioregistry.standardize_identifier(target_prefix, m["target identifier"])
+        source_prefix = mapping_dict["source prefix"]
+        source_identifier = bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"])
+        target_prefix = mapping_dict["target prefix"]
+        target_identifier = bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"])
+        author = Reference.from_curie(mapping_dict["source"])
         mm = Mapping(
             s=Reference(prefix=source_prefix, identifier=source_identifier),
             p=p,
             o=Reference(prefix=target_prefix, identifier=target_identifier),
             evidence=[
-                Evidence(
-                    justification=Reference.from_curie("semapv:ManualMappingCuration"),  # FIXME base on m["type"]
+                SimpleEvidence(
+                    justification=Reference.from_curie(mapping_dict["type"]),
                     mapping_set="biomappings",
+                    author=author,
                 )
             ],
         )
@@ -65,7 +71,7 @@ def _from_pyobo_pair(source_prefix: str, target_prefix: str, **kwargs) -> list[M
                 prefix=target_prefix,
                 identifier=bioregistry.standardize_identifier(target_prefix, target_id),
             ),
-            evidence=[Evidence(mapping_set=source_prefix)],
+            evidence=[SimpleEvidence(justification=MANUAL_MAPPING, mapping_set=source_prefix)],
         )
         for source_id, target_id in df.items()
     ]
@@ -96,7 +102,7 @@ def _from_df(df, source_prefix, predicate: Reference | None = None) -> list[Mapp
                     prefix=target_prefix,
                     identifier=bioregistry.standardize_identifier(target_prefix, target_id),
                 ),
-                evidence=[Evidence(mapping_set=source_prefix)],
+                evidence=[SimpleEvidence(mapping_set=source_prefix, justification=MANUAL_MAPPING)],
             )
         )
     return rv
@@ -107,3 +113,50 @@ def from_pyobo(prefix: str, target_prefix: str | None = None, **kwargs) -> list[
     if target_prefix:
         return _from_pyobo_pair(prefix, target_prefix, **kwargs)
     return _from_pyobo_prefix(prefix, **kwargs)
+
+
+GILDA_LOCAL = Path("/Users/cthoyt/dev/gilda/gilda/resources/mesh_mappings.tsv")
+GILDA_MAPPINGS = "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
+
+
+def from_gilda() -> list[Mapping]:
+    """Get MeSH and potentially other mappings from Gilda."""
+    df = pd.read_csv(
+        GILDA_MAPPINGS if not GILDA_LOCAL.is_file() else GILDA_LOCAL,
+        sep="\t",
+        header=None,
+        usecols=[0, 1, 3, 4],
+        names=["source_prefix", "source_id", "target_prefix", "target_id"],
+    )
+    for k in "source_prefix", "target_prefix":
+        df[k] = df[k].map(bioregistry.normalize_prefix)
+    rv = []
+    for sp, si, tp, ti in tqdm(df.values, desc="Loading Gilda", unit="mapping", unit_scale=True):
+        if not sp or not tp:
+            continue
+        m = Mapping(
+            s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
+            p=EXACT_MATCH,
+            o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
+            evidence=[SimpleEvidence(mapping_set="gilda_mesh", author=BEN_ORCID)],
+        )
+        rv.append(m)
+    return rv
+
+
+def from_bioontologies(prefix: str) -> list[Mapping]:
+    """Load xrefs from a given ontology."""
+    o = bioontologies.get_obograph_by_prefix(prefix)
+    g = o.guess(prefix)
+    g = g.standardize()
+    rv = []
+    for sp, si, tp, ti in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True):
+        m = Mapping(
+            s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
+            p=DB_XREF,
+            o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
+            evidence=[SimpleEvidence(mapping_set="gilda_mesh")],
+        )
+        rv.append(m)
+    # TODO there might be actual exact match terms somewhere too
+    return rv

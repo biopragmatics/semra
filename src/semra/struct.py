@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from itertools import islice
+from typing import Annotated, Literal, Union
 
 import bioregistry
 import pydantic
@@ -13,7 +14,7 @@ __all__ = [
     "Reference",
     "Triple",
     "triple_key",
-    "Evidence",
+    "SimpleEvidence",
     "Mapping",
     "line",
 ]
@@ -51,6 +52,11 @@ class Reference(pydantic.BaseModel):
         """
         return f"{self.prefix}:{self.identifier}"
 
+    @property
+    def pair(self) -> tuple[str, str]:
+        """Get the reference as a 2-tuple of prefix and identifier."""
+        return self.prefix, self.identifier
+
     @classmethod
     def from_curie(cls, curie: str, manager: bioregistry.Manager | None = None) -> Reference:
         """Parse a CURIE string and populate a reference.
@@ -78,7 +84,11 @@ def triple_key(triple: Triple) -> tuple[str, str, str]:
     return triple[0].curie, triple[2].curie, triple[1].curie
 
 
-class Evidence(pydantic.BaseModel):
+EvidenceType = Literal["simple", "mutated", "reasoned"]
+JUSTIFICATION_FIELD = Field(description="A SSSOM-compliant justification")
+
+
+class SimpleEvidence(pydantic.BaseModel):
     """Evidence for a mapping.
 
     Ideally, this matches the SSSOM data model.
@@ -89,12 +99,86 @@ class Evidence(pydantic.BaseModel):
 
         frozen = True
 
+    type: Literal["simple"] = Field(default="simple")
     justification: Reference | None = Field(description="A SSSOM-compliant justification")
     mapping_set: str | None = None
+    author: Reference | None = None
+
+    def key(self):
+        """Get a key suitable for hashing the evidence.
+
+        :return: A key for deduplication based on the mapping set.
+
+        Note: this should be extended to include basically _all_ fields
+        """
+        return self.type, self.justification, self.mapping_set
+
+
+class MutatedEvidence(pydantic.BaseModel):
+    """An evidence for a mapping based on a different evidence."""
+
+    class Config:
+        """Pydantic configuration for evidence."""
+
+        frozen = True
+
+    type: Literal["mutated"] = Field(default="mutated")
+    justification: Reference = Field(..., description="A SSSOM-compliant justification")
+    evidence: Evidence = Field(..., description="A wrapped evidence")
+    author: Reference | None = None
+
+    @property
+    def mapping_set(self) -> str | None:
+        return self.evidence.mapping_set
+
+    def key(self):
+        return self.type, self.justification, self.evidence.key()
+
+
+class ReasonedEvidence(pydantic.BaseModel):
+    """A complex evidence based on multiple mappings."""
+
+    class Config:
+        """Pydantic configuration for evidence."""
+
+        frozen = True
+
+    type: Literal["reasoned"] = Field(default="reasoned")
+    justification: Reference | None = Field(description="A SSSOM-compliant justification")
+    mappings: list[Mapping] = Field(
+        ..., description="A list of mappings and their evidences consumed to create this evidence"
+    )
+    author: Reference | None = None
+
+    def key(self):
+        return self.type, self.justification, *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings)
+
+    @property
+    def mapping_set(self) -> str | None:
+        mapping_sets = {
+            evidence.mapping_set
+            for mapping in self.mappings
+            for evidence in mapping.evidence
+            if evidence.mapping_set is not None
+        }
+        if not mapping_sets:
+            return None
+        return ",".join(sorted(mapping_sets))
+
+
+Evidence = Annotated[
+    Union[ReasonedEvidence, MutatedEvidence, SimpleEvidence],
+    Field(discriminator="type"),
+]
 
 
 class Mapping(pydantic.BaseModel):
     """A semantic mapping."""
+
+    class Config:
+        """Pydantic configuration for evidence."""
+
+        frozen = True
 
     s: Reference = Field(..., title="subject")
     p: Reference = Field(..., title="predicate")
@@ -118,3 +202,7 @@ def line(*references: Reference) -> list[Mapping]:
     if not (3 <= len(references) and len(references) % 2):  # noqa:PLR2004
         raise ValueError
     return [Mapping(s=s, p=p, o=o) for s, p, o in islice(triplewise(references), None, None, 2)]
+
+
+ReasonedEvidence.update_forward_refs()
+MutatedEvidence.update_forward_refs()

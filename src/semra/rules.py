@@ -29,3 +29,7 @@ TWO_STEP: dict[tuple[Reference, Reference], Reference] = {
     (NARROW_MATCH, EXACT_MATCH): NARROW_MATCH,
     (EXACT_MATCH, NARROW_MATCH): NARROW_MATCH,
 }
+
+MANUAL_MAPPING = Reference.from_curie("semapv:ManualMappingCuration")
+CHARLIE_ORCID = Reference.from_curie("orcid:0000-0003-4423-4370")
+BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")

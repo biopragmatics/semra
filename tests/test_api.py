@@ -13,7 +13,8 @@ from semra.api import (
     flip,
     get_index,
     infer_chains,
-    infer_reversible, project,
+    infer_reversible,
+    project,
 )
 from semra.rules import MANUAL_MAPPING
 from semra.struct import Mapping, MutatedEvidence, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
@@ -259,7 +260,7 @@ class TestOperations(unittest.TestCase):
         """Test projecting into a given source/target pair."""
         r11, r12 = _get_references(2, prefix="p1")
         r21, r22 = _get_references(2, prefix="p2")
-        r31, = _get_references(1, prefix="p3")
+        (r31,) = _get_references(1, prefix="p3")
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)

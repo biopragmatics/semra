@@ -13,17 +13,18 @@ Reproduce the scenario from the Biomappings paper on cancer cell lines
 7. Output SSSOM
 """
 
+import pickle
+
 import biomappings
 import click
 import pystow
-from tabulate import tabulate
 
 from semra.api import (
-    count_source_target,
     filter_prefixes,
     prioritize,
     process,
     project,
+    str_source_target_counts,
     validate_mappings,
     write_sssom,
 )
@@ -43,7 +44,7 @@ def main():
     # 1. load mappings
     mappings = []
     mappings.extend(from_pyobo("efo"))
-    mappings.extend(from_pyobo("depmap", version="22Q4"))
+    mappings.extend(from_pyobo("depmap", version="22Q4", standardize=True))
     mappings.extend(from_pyobo("ccle"))
     mappings.extend(from_biomappings(biomappings.load_mappings()))
     mappings.extend(from_gilda())
@@ -60,14 +61,7 @@ def main():
     validate_mappings(mappings)
 
     click.echo(f"Loaded {len(mappings):,} positive mappings")
-    so_prefix_counter = count_source_target(mappings)
-    click.echo(
-        tabulate(
-            [(s, o, c) for (s, o), c in so_prefix_counter.most_common()],
-            headers=["source prefix", "target prefix", "count"],
-            tablefmt="github",
-        )
-    )
+    click.echo(str_source_target_counts(mappings))
 
     mappings = process(mappings, upgrade_prefixes=PREFIXES)
 
@@ -88,8 +82,6 @@ def main():
     path = pystow.join("semra", name="reproduction_prioritized.tsv")
     click.echo(f"Output to {path}")
     write_sssom(priority_mapping, path)
-
-    import pickle
 
     pystow.join("semra", name="reproduction_prioritized.pkl").write_bytes(pickle.dumps(priority_mapping))
 

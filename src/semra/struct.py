@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from itertools import islice
-from typing import Annotated, Literal, Union
+from typing import Annotated, Iterable, Literal, Union
 
 import bioregistry
 import pydantic
@@ -103,6 +104,7 @@ class SimpleEvidence(pydantic.BaseModel):
     justification: Reference | None = Field(description="A SSSOM-compliant justification")
     mapping_set: str | None = None
     author: Reference | None = None
+    confidence: float | None = Field(description="Confidence in the transformation of the evidence")
 
     def key(self):
         """Get a key suitable for hashing the evidence.
@@ -112,6 +114,10 @@ class SimpleEvidence(pydantic.BaseModel):
         Note: this should be extended to include basically _all_ fields
         """
         return self.type, self.justification, self.mapping_set
+
+    @property
+    def explanation(self) -> str:
+        return ""
 
 
 class MutatedEvidence(pydantic.BaseModel):
@@ -125,14 +131,28 @@ class MutatedEvidence(pydantic.BaseModel):
     type: Literal["mutated"] = Field(default="mutated")
     justification: Reference = Field(..., description="A SSSOM-compliant justification")
     evidence: Evidence = Field(..., description="A wrapped evidence")
-    author: Reference | None = None
+    confidence_factor: float = Field(1.0, description="Confidence in the transformation of the evidence")
 
     @property
     def mapping_set(self) -> str | None:
         return self.evidence.mapping_set
 
+    @property
+    def author(self) -> Reference | None:
+        return self.evidence.author
+
+    @property
+    def confidence(self) -> float | None:
+        if self.evidence.confidence is None:
+            return None
+        return self.confidence_factor * self.evidence.confidence
+
     def key(self):
         return self.type, self.justification, self.evidence.key()
+
+    @property
+    def explanation(self) -> str:
+        return ""
 
 
 class ReasonedEvidence(pydantic.BaseModel):
@@ -154,6 +174,10 @@ class ReasonedEvidence(pydantic.BaseModel):
         return self.type, self.justification, *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings)
 
     @property
+    def confidence(self) -> float:
+        return _bin(mapping.confidence for mapping in self.mappings)
+
+    @property
     def mapping_set(self) -> str | None:
         mapping_sets = {
             evidence.mapping_set
@@ -164,6 +188,10 @@ class ReasonedEvidence(pydantic.BaseModel):
         if not mapping_sets:
             return None
         return ",".join(sorted(mapping_sets))
+
+    @property
+    def explanation(self) -> str:
+        return " ".join(mapping.s.curie for mapping in self.mappings) + " " + self.mappings[-1].o.curie
 
 
 Evidence = Annotated[
@@ -196,6 +224,12 @@ class Mapping(pydantic.BaseModel):
         s, p, o = triple
         return cls(s=s, p=p, o=o, evidence=evidence or [])
 
+    @property
+    def confidence(self) -> float:
+        if not self.evidence:
+            return 0.0
+        return _bin(1 - (evidence.confidence if evidence.confidence is not None else 0.0) for evidence in self.evidence)
+
 
 def line(*references: Reference) -> list[Mapping]:
     """Create a list of mappings from a simple mappings path."""
@@ -206,3 +240,7 @@ def line(*references: Reference) -> list[Mapping]:
 
 ReasonedEvidence.update_forward_refs()
 MutatedEvidence.update_forward_refs()
+
+
+def _bin(probs: Iterable[float]) -> float:
+    return 1 - math.prod(1 - p for p in probs)

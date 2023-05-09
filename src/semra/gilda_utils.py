@@ -1,25 +1,24 @@
+from __future__ import annotations
+
 import itertools as itt
+import logging
 from collections import defaultdict
-from typing import Iterable, Literal, Optional
+from typing import Iterable
 
 import bioregistry
 import gilda
 from gilda import Term
 from gilda.term import filter_out_duplicates
-from pydantic import BaseModel
 from tabulate import tabulate
 from tqdm.auto import tqdm
+from tqdm.contrib.concurrent import process_map
 
-from semra.sources import (
-    from_biomappings_positive,
-    from_bioontologies,
-    from_gilda,
-    from_pyobo,
-)
 from semra.struct import Mapping
 
+logger = logging.getLogger(__name__)
+
 #: A mapping from gilda prefixes to Bioregistry prefixes
-GILDA_MAP = {
+GILDA_TO_BIOREGISTRY = {
     "EFO": "efo",
     "HP": "hp",
     "CHEBI": "chebi",
@@ -40,15 +39,40 @@ GILDA_MAP = {
     "IP": "interpro",
     "FPLX": "fplx",
 }
-REVERSE_GILDA_MAP = {v: k for k, v in GILDA_MAP.items()}
+REVERSE_GILDA_MAP = {v: k for k, v in GILDA_TO_BIOREGISTRY.items()}
 
 
-def get_terms_index(terms: Iterable[Term]) -> dict[tuple[str, str], list[Term]]:
-    """Index terms by their CURIEs."""
+def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
+    """Use a priority mapping to re-write terms with priority groundings."""
     terms_index = defaultdict(list)
     for term in terms:
         terms_index[term.db, term.id].append(term)
-    return dict(terms_index)
+    terms_index = dict(terms_index)
+
+    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="applying mappings"):
+        source_terms = terms_index.pop(mapping.s.pair, None)
+        if source_terms:
+            terms_index.setdefault(mapping.o.pair, []).extend(
+                make_new_term(term, mapping.o.prefix, mapping.o.identifier) for term in source_terms
+            )
+
+    # Unwind the terms index
+    new_terms = list(itt.chain.from_iterable(terms_index.values()))
+    return filter_out_duplicates(new_terms)
+
+
+def standardize_terms(terms: Iterable[Term], *, multiprocessing: bool = True) -> list[Term]:
+    """Standardize a list of terms."""
+    if not multiprocessing:
+        return [standardize_term(t) for t in terms]
+    return process_map(
+        standardize_term,
+        terms,
+        unit="term",
+        unit_scale=True,
+        desc="standardizing",
+        chunksize=40_000,
+    )
 
 
 def standardize_term(term: Term) -> Term:
@@ -71,7 +95,7 @@ def make_new_term(
     term: Term,
     target_db: str,
     target_id: str,
-    target_name: Optional[str] = None,
+    target_name: str | None = None,
 ) -> Term:
     if target_name is None:
         from indra.ontology.bio import bio_ontology
@@ -89,19 +113,6 @@ def make_new_term(
         source_db=term.db,
         source_id=term.id,
     )
-
-
-def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
-    """Use a priority mapping to re-write terms with priority groundings."""
-    terms_index = get_terms_index(terms)
-    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="applying mappings"):
-        source_terms = terms_index.pop(mapping.s.pair, None)
-        if source_terms:
-            terms_index.setdefault(mapping.o.pair, []).extend(
-                make_new_term(term, mapping.o.prefix, mapping.o.identifier) for term in source_terms
-            )
-    new_terms = list(itt.chain.from_iterable(terms_index.values()))
-    return filter_out_duplicates(new_terms)
 
 
 def print_scored_matches(scored_matches: list[gilda.ScoredMatch]) -> None:
@@ -123,31 +134,3 @@ def print_scored_matches(scored_matches: list[gilda.ScoredMatch]) -> None:
         rows, headers=["name", "prefix", "identifier", "norm_text", "status", "score", "source_prefix", "source_id"]
     )
     print(text)  # noqa:T201
-
-
-class Input(BaseModel):
-    prefix: str
-    source: Literal["pyobo", "bioontologies"]
-    confidence: float = 1.0
-
-
-class Configuration(BaseModel):
-    inputs: list[Input]
-    priority: list[str]
-
-
-def get_mappings_from_config(configuration: Configuration) -> list[Mapping]:
-    mappings = []
-    mappings.extend(from_gilda())
-    mappings.extend(from_biomappings_positive())
-    for inp in tqdm(configuration.inputs, desc="Loading configured mappings", unit="source"):
-        tqdm.write(f"Loading {inp.prefix} with {inp.source}")
-        if inp.source is None:
-            continue
-        elif inp.source == "bioontologies":
-            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence))
-        elif inp.source == "pyobo":
-            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence))
-        else:
-            raise ValueError
-    return mappings

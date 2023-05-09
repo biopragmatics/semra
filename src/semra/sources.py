@@ -145,7 +145,7 @@ GILDA_LOCAL = Path("/Users/cthoyt/dev/gilda/gilda/resources/mesh_mappings.tsv")
 GILDA_MAPPINGS = "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
 
 
-def from_gilda() -> list[Mapping]:
+def from_gilda(confidence: float = 0.95) -> list[Mapping]:
     """Get MeSH and potentially other mappings from Gilda."""
     df = pd.read_csv(
         GILDA_MAPPINGS if not GILDA_LOCAL.is_file() else GILDA_LOCAL,
@@ -164,7 +164,7 @@ def from_gilda() -> list[Mapping]:
             s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
             p=EXACT_MATCH,
             o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
-            evidence=[SimpleEvidence(mapping_set="gilda_mesh", author=BEN_ORCID, confidence=0.95)],
+            evidence=[SimpleEvidence(mapping_set="gilda_mesh", author=BEN_ORCID, confidence=confidence)],
         )
         rv.append(m)
     return rv

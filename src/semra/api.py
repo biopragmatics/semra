@@ -6,16 +6,14 @@ import itertools as itt
 import logging
 import time
 from collections import Counter, defaultdict
-from pathlib import Path
-from typing import Iterable, TextIO
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-import bioregistry
 import networkx as nx
-import pandas as pd
 from tqdm.auto import tqdm
 
+from semra.io import from_biomappings
 from semra.rules import BROAD_MATCH, CLOSE_MATCH, DB_XREF, EXACT_MATCH, FLIP, NARROW_MATCH
-from semra.sources import from_biomappings
 from semra.struct import (
     Evidence,
     Mapping,
@@ -26,6 +24,9 @@ from semra.struct import (
     triple_key,
 )
 
+if TYPE_CHECKING:
+    pass
+
 logger = logging.getLogger(__name__)
 
 PREDICATE_KEY = "predicate"
@@ -35,12 +36,12 @@ EVIDENCE_KEY = "evidence"
 Index = dict[Triple, list[Evidence]]
 
 
-def count_source_target(mappings: list[Mapping]) -> Counter[tuple[str, str]]:
+def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]:
     """Count source prefix-target prefix pairs."""
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
 
 
-def str_source_target_counts(mappings: list[Mapping], minimum: int = 0) -> str:
+def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> str:
     from tabulate import tabulate
 
     so_prefix_counter = count_source_target(mappings)
@@ -51,7 +52,11 @@ def str_source_target_counts(mappings: list[Mapping], minimum: int = 0) -> str:
     )
 
 
-def get_index(mappings: list[Mapping]) -> Index:
+def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> None:
+    print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
+
+
+def get_index(mappings: Iterable[Mapping]) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd = defaultdict(list)
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings"):
@@ -444,7 +449,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     exact_mappings = len(mappings)
 
     graph = to_graph(mappings).to_undirected()
-    rv = []
+    rv: list[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
         o = _get_priority(component, priority)
         if o is None:
@@ -485,41 +490,6 @@ def _get_priority(component: list[Reference], priority: list[str]) -> Reference 
     return None
 
 
-def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
-    rows = [_get_sssom_row(m, e) for m in mappings for e in m.evidence]
-    columns = [
-        "subject_id",
-        "predicate_id",
-        "object_id",
-        "mapping_justification",
-        "mapping_set",
-        "author_id",
-        "confidence",
-        "comments",
-    ]
-    return pd.DataFrame(rows, columns=columns)
-
-
-def _get_sssom_row(mapping: Mapping, e: Evidence):
-    # TODO increase this
-    return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
-        e.justification.curie if e.justification else "",
-        e.mapping_set or "",
-        e.author.curie if e.author else "",
-        round(e.confidence, 4),
-        e.explanation,
-    )
-
-
-def write_sssom(mappings: list[Mapping], file: str | Path | TextIO) -> None:
-    """Export mappings as an SSSOM file (may be lossy)."""
-    df = get_sssom_df(mappings)
-    df.to_csv(file, sep="\t", index=False)
-
-
 def unindex(index: Index) -> list[Mapping]:
     """Convert a mapping index into a list of mapping objects."""
     return [
@@ -536,6 +506,8 @@ def deduplicate_evidence(evidence: list[Evidence]) -> list[Evidence]:
 
 def validate_mappings(mappings: list[Mapping]) -> None:
     """Validate mappings against the Bioregistry and raise an error on the first invalid."""
+    import bioregistry
+
     for mapping in tqdm(mappings, desc="Validating mappings", unit_scale=True, unit="mapping"):
         if bioregistry.normalize_prefix(mapping.s.prefix) != mapping.s.prefix:
             raise ValueError(f"invalid subject prefix: {mapping}.")
@@ -549,3 +521,27 @@ def validate_mappings(mappings: list[Mapping]) -> None:
             raise ValueError(
                 f"invalid mapping object: {mapping}. Use regex {bioregistry.get_pattern(mapping.o.prefix)}"
             )
+
+
+def df_to_mappings(
+    df,
+    *,
+    source_prefix: str,
+    target_prefix: str,
+    evidence: Evidence,
+    source_identifier_column: str | None = None,
+    target_identifier_column: str | None = None,
+) -> list[Mapping]:
+    if source_identifier_column is None:
+        source_identifier_column = source_prefix
+    if target_identifier_column is None:
+        target_identifier_column = target_prefix
+    return [
+        Mapping(
+            s=Reference(prefix=source_prefix, identifier=source_id),
+            p=EXACT_MATCH,
+            o=Reference(prefix=target_prefix, identifier=target_id),
+            evidence=[evidence],
+        )
+        for source_id, target_id in df[[source_identifier_column, target_identifier_column]].values
+    ]

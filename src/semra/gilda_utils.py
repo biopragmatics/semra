@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools as itt
 import logging
 from collections import defaultdict
-from typing import Iterable
+from collections.abc import Iterable
 
 import bioregistry
 import gilda
@@ -47,12 +47,11 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
     terms_index = defaultdict(list)
     for term in terms:
         terms_index[term.db, term.id].append(term)
-    terms_index = dict(terms_index)
 
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="applying mappings"):
         source_terms = terms_index.pop(mapping.s.pair, None)
         if source_terms:
-            terms_index.setdefault(mapping.o.pair, []).extend(
+            terms_index[mapping.o.pair].extend(
                 make_new_term(term, mapping.o.prefix, mapping.o.identifier) for term in source_terms
             )
 

@@ -3,19 +3,26 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from itertools import islice
-from typing import Annotated, Iterable, Literal, Union
+from typing import TYPE_CHECKING, Annotated, Literal
 
-import bioregistry
 import pydantic
 from more_itertools import triplewise
 from pydantic import Field
+
+if TYPE_CHECKING:
+    import bioregistry
+
 
 __all__ = [
     "Reference",
     "Triple",
     "triple_key",
+    "Evidence",
     "SimpleEvidence",
+    "MutatedEvidence",
+    "ReasonedEvidence",
     "Mapping",
     "line",
 ]
@@ -100,9 +107,10 @@ class SimpleEvidence(pydantic.BaseModel):
 
         frozen = True
 
-    type: Literal["simple"] = Field(default="simple")
+    evidence_type: Literal["simple"] = Field(default="simple")
     justification: Reference | None = Field(description="A SSSOM-compliant justification")
     mapping_set: str | None = None
+    mapping_set_version: str | None = None
     author: Reference | None = None
     confidence: float | None = Field(description="Confidence in the transformation of the evidence")
 
@@ -113,7 +121,7 @@ class SimpleEvidence(pydantic.BaseModel):
 
         Note: this should be extended to include basically _all_ fields
         """
-        return self.type, self.justification, self.mapping_set
+        return self.evidence_type, self.justification, self.mapping_set
 
     @property
     def explanation(self) -> str:
@@ -128,7 +136,7 @@ class MutatedEvidence(pydantic.BaseModel):
 
         frozen = True
 
-    type: Literal["mutated"] = Field(default="mutated")
+    evidence_type: Literal["mutated"] = Field(default="mutated")
     justification: Reference = Field(..., description="A SSSOM-compliant justification")
     evidence: Evidence = Field(..., description="A wrapped evidence")
     confidence_factor: float = Field(1.0, description="Confidence in the transformation of the evidence")
@@ -136,6 +144,10 @@ class MutatedEvidence(pydantic.BaseModel):
     @property
     def mapping_set(self) -> str | None:
         return self.evidence.mapping_set
+
+    @property
+    def mapping_set_version(self) -> str | None:
+        return self.evidence.mapping_set_version
 
     @property
     def author(self) -> Reference | None:
@@ -148,7 +160,7 @@ class MutatedEvidence(pydantic.BaseModel):
         return self.confidence_factor * self.evidence.confidence
 
     def key(self):
-        return self.type, self.justification, self.evidence.key()
+        return self.evidence_type, self.justification, self.evidence.key()
 
     @property
     def explanation(self) -> str:
@@ -163,7 +175,7 @@ class ReasonedEvidence(pydantic.BaseModel):
 
         frozen = True
 
-    type: Literal["reasoned"] = Field(default="reasoned")
+    evidence_type: Literal["reasoned"] = Field(default="reasoned")
     justification: Reference | None = Field(description="A SSSOM-compliant justification")
     mappings: list[Mapping] = Field(
         ..., description="A list of mappings and their evidences consumed to create this evidence"
@@ -171,7 +183,11 @@ class ReasonedEvidence(pydantic.BaseModel):
     author: Reference | None = None
 
     def key(self):
-        return self.type, self.justification, *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings)
+        return (
+            self.evidence_type,
+            self.justification,
+            *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings),
+        )
 
     @property
     def confidence(self) -> float:
@@ -190,13 +206,17 @@ class ReasonedEvidence(pydantic.BaseModel):
         return ",".join(sorted(mapping_sets))
 
     @property
+    def mapping_set_version(self):
+        return None
+
+    @property
     def explanation(self) -> str:
         return " ".join(mapping.s.curie for mapping in self.mappings) + " " + self.mappings[-1].o.curie
 
 
 Evidence = Annotated[
-    Union[ReasonedEvidence, MutatedEvidence, SimpleEvidence],
-    Field(discriminator="type"),
+    ReasonedEvidence | MutatedEvidence | SimpleEvidence,
+    Field(discriminator="evidence_type"),
 ]
 
 

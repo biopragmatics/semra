@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TextIO
 
 import bioontologies
 import bioregistry
@@ -9,30 +10,23 @@ import pandas as pd
 import pyobo
 from tqdm.auto import tqdm
 
-from semra.rules import BEN_ORCID, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
-from semra.struct import Mapping, Reference, SimpleEvidence
+from semra.rules import DB_XREF, MANUAL_MAPPING
+from semra.struct import Evidence, Mapping, Reference, SimpleEvidence
 
 __all__ = [
     "from_cache_df",
     "from_biomappings",
-    "from_biomappings_positive",
     "from_pyobo",
     "from_bioontologies",
-    "from_gilda",
     "from_sssom",
+    "get_sssom_df",
+    "write_sssom",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def from_biomappings_positive() -> list[Mapping]:
-    """Get positive mappings from Biomappings."""
-    import biomappings
-
-    return from_biomappings(biomappings.load_mappings())
-
-
-def from_biomappings(mapping_dicts) -> list[Mapping]:
+def from_biomappings(mapping_dicts, confidence: float = 0.99) -> list[Mapping]:
     rv = []
     for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings"):
         try:
@@ -53,7 +47,7 @@ def from_biomappings(mapping_dicts) -> list[Mapping]:
                     justification=Reference.from_curie(mapping_dict["type"]),
                     mapping_set="biomappings",
                     author=author,
-                    confidence=0.95,
+                    confidence=confidence,
                     # TODO configurable confidence globally per author or based on author's self-reported confidence
                 )
             ],
@@ -141,35 +135,6 @@ def from_pyobo(prefix: str, target_prefix: str | None = None, *, standardize: bo
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
 
 
-GILDA_LOCAL = Path("/Users/cthoyt/dev/gilda/gilda/resources/mesh_mappings.tsv")
-GILDA_MAPPINGS = "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
-
-
-def from_gilda(confidence: float = 0.95) -> list[Mapping]:
-    """Get MeSH and potentially other mappings from Gilda."""
-    df = pd.read_csv(
-        GILDA_MAPPINGS if not GILDA_LOCAL.is_file() else GILDA_LOCAL,
-        sep="\t",
-        header=None,
-        usecols=[0, 1, 3, 4],
-        names=["source_prefix", "source_id", "target_prefix", "target_id"],
-    )
-    for k in "source_prefix", "target_prefix":
-        df[k] = df[k].map(bioregistry.normalize_prefix)
-    rv = []
-    for sp, si, tp, ti in tqdm(df.values, desc="Loading Gilda", unit="mapping", unit_scale=True):
-        if not sp or not tp:
-            continue
-        m = Mapping(
-            s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
-            p=EXACT_MATCH,
-            o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
-            evidence=[SimpleEvidence(mapping_set="gilda_mesh", author=BEN_ORCID, confidence=confidence)],
-        )
-        rv.append(m)
-    return rv
-
-
 def from_bioontologies(prefix: str, confidence=None) -> list[Mapping]:
     """Load xrefs from a given ontology."""
     o = bioontologies.get_obograph_by_prefix(prefix)
@@ -209,3 +174,40 @@ def from_sssom(path) -> list[Mapping]:
             )
         )
     return rv
+
+
+def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
+    import pandas as pd
+
+    rows = [_get_sssom_row(m, e) for m in mappings for e in m.evidence]
+    columns = [
+        "subject_id",
+        "predicate_id",
+        "object_id",
+        "mapping_justification",
+        "mapping_set",
+        "author_id",
+        "confidence",
+        "comments",
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _get_sssom_row(mapping: Mapping, e: Evidence):
+    # TODO increase this
+    return (
+        mapping.s.curie,
+        mapping.p.curie,
+        mapping.o.curie,
+        e.justification.curie if e.justification else "",
+        e.mapping_set or "",
+        e.author.curie if e.author else "",
+        round(e.confidence, 4) if e.confidence else "",
+        e.explanation,
+    )
+
+
+def write_sssom(mappings: list[Mapping], file: str | Path | TextIO) -> None:
+    """Export mappings as an SSSOM file (may be lossy)."""
+    df = get_sssom_df(mappings)
+    df.to_csv(file, sep="\t", index=False)

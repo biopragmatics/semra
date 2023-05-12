@@ -26,9 +26,9 @@ from semra.api import (
     project,
     str_source_target_counts,
     validate_mappings,
-    write_sssom,
 )
-from semra.sources import from_biomappings, from_cache_df, from_gilda, from_pyobo
+from semra.io import from_biomappings, from_cache_df, from_pyobo, write_sssom
+from semra.sources.gilda import from_gilda
 
 PREFIXES = {
     "efo",

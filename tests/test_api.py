@@ -94,7 +94,7 @@ class TestOperations(unittest.TestCase):
 
     def assert_same_triples(
         self,
-        expected_mappings: list[Mapping],
+        expected_mappings: Index | list[Mapping],
         actual_mappings: Index | list[Mapping],
         msg: str | None = None,
     ) -> None:

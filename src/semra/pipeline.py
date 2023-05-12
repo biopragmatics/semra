@@ -9,12 +9,12 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, root_validator
-from tqdm.auto import tqdm
+from tqdm.autonotebook import tqdm
 
 from semra.api import prioritize, process
 from semra.io import from_bioontologies, from_pyobo, write_sssom
 from semra.rules import DB_XREF, EXACT_MATCH
-from semra.sources.biopragmatics import from_biomappings_positive
+from semra.sources.biopragmatics import from_biomappings_negative, from_biomappings_positive, from_biomappings_predicted
 from semra.sources.gilda import from_gilda
 from semra.struct import Mapping, Reference
 
@@ -52,6 +52,7 @@ class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
     inputs: list[Input]
+    negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
     priority: list[str] = Field(description="If no priority is given, is inferred from the order of inputs")
     mutations: list[Mutation] = Field(default_factory=list)
     remove_prefixes: list[str] | None = None
@@ -115,7 +116,14 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
                 raise ValueError
             mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence))
         elif inp.source == "biomappings":
-            mappings.extend(from_biomappings_positive())
+            if inp.prefix in {None, "positive"}:
+                mappings.extend(from_biomappings_positive())
+            elif inp.prefix == "negative":
+                mappings.extend(from_biomappings_negative())
+            elif inp.prefix == "predicted":
+                mappings.extend(from_biomappings_predicted())
+            else:
+                raise ValueError
         elif inp.source == "gilda":
             mappings.extend(from_gilda(confidence=inp.confidence))
         else:

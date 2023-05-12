@@ -56,22 +56,22 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
 
-def get_index(mappings: Iterable[Mapping]) -> Index:
+def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd = defaultdict(list)
-    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings"):
+    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings", disable=not progress):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
 
 
-def assemble_evidences(mappings: list[Mapping]) -> list[Mapping]:
-    index = get_index(mappings)
-    return unindex(index)
+def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
+    index = get_index(mappings, progress=progress)
+    return unindex(index, progress=progress)
 
 
-def infer_reversible(mappings: list[Mapping]) -> list[Mapping]:
+def infer_reversible(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     rv = []
-    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Infer reverse"):
+    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Infer reverse", disable=not progress):
         rv.append(mapping)
         if flipped_mapping := flip(mapping):
             rv.append(flipped_mapping)
@@ -144,14 +144,14 @@ def _condense_predicates(predicates: list[Reference]) -> Reference | None:
     return None
 
 
-def infer_chains(mappings: list[Mapping], *, backwards: bool = True) -> list[Mapping]:
+def infer_chains(mappings: list[Mapping], *, backwards: bool = True, progress: bool = True) -> list[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
     :param mappings: A list of input mappings
     :param backwards: Should inference be done in reverse?
     :return: The list of input mappings _plus_ inferred mappings
     """
-    mappings = assemble_evidences(mappings)
+    mappings = assemble_evidences(mappings, progress=progress)
     graph = to_graph(mappings)
     new_mappings = []
 
@@ -160,7 +160,7 @@ def infer_chains(mappings: list[Mapping], *, backwards: bool = True) -> list[Map
         key=len,
         reverse=True,
     )
-    it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True)
+    it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
     for _i, component in enumerate(it):
         sg: nx.DiGraph = graph.subgraph(component).copy()
         it.set_postfix(size=sg.number_of_nodes())
@@ -358,12 +358,18 @@ def mutate_predicate(
     return rv
 
 
-def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str]) -> list[Mapping]:
+def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes."""
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc=f"Keeping from {len(prefixes)} prefixes")
+        for mapping in tqdm(
+            mappings,
+            unit_scale=True,
+            unit="mapping",
+            desc=f"Keeping from {len(prefixes)} prefixes",
+            disable=not progress,
+        )
         if mapping.s.prefix in prefixes and mapping.o.prefix in prefixes
     ]
 
@@ -378,11 +384,13 @@ def remove_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str]) -> lis
     ]
 
 
-def filter_self_matches(mappings: Iterable[Mapping]) -> list[Mapping]:
+def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings within the same resource."""
     return [
         mapping
-        for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Filtering out self-matches")
+        for mapping in tqdm(
+            mappings, unit_scale=True, unit="mapping", desc="Filtering out self-matches", disable=not progress
+        )
         if mapping.s.prefix != mapping.o.prefix
     ]
 
@@ -490,11 +498,13 @@ def _get_priority(component: list[Reference], priority: list[str]) -> Reference 
     return None
 
 
-def unindex(index: Index) -> list[Mapping]:
+def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     """Convert a mapping index into a list of mapping objects."""
     return [
         Mapping.from_triple(triple, evidence=evidence)
-        for triple, evidence in tqdm(index.items(), unit_scale=True, unit="mapping", desc="Unindexing mappings")
+        for triple, evidence in tqdm(
+            index.items(), unit_scale=True, unit="mapping", desc="Unindexing mappings", disable=not progress
+        )
     ]
 
 

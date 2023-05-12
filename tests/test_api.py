@@ -100,9 +100,9 @@ class TestOperations(unittest.TestCase):
     ) -> None:
         """Assert that two sets of mappings are the same."""
         if not isinstance(expected_mappings, dict):
-            expected_mappings = get_index(expected_mappings)
+            expected_mappings = get_index(expected_mappings, progress=False)
         if not isinstance(actual_mappings, dict):
-            actual_mappings = get_index(actual_mappings)
+            actual_mappings = get_index(actual_mappings, progress=False)
 
         self.assertEqual(
             self._clean_index(expected_mappings),
@@ -147,11 +147,15 @@ class TestOperations(unittest.TestCase):
         r1, r2, r3 = _get_references(3)
 
         m1, m2 = line(r1, NARROW_MATCH, r2, BROAD_MATCH, r3)
-        self.assert_same_triples([m1, m2], infer_chains([m1, m2]), msg="No inference between broad and narrow")
+        self.assert_same_triples(
+            [m1, m2], infer_chains([m1, m2], progress=False), msg="No inference between broad and narrow"
+        )
 
         # ------ Same but in reverse ---------
         m1, m2 = line(r1, BROAD_MATCH, r2, NARROW_MATCH, r3)
-        self.assert_same_triples([m1, m2], infer_chains([m1, m2]), msg="No inference between broad and narrow")
+        self.assert_same_triples(
+            [m1, m2], infer_chains([m1, m2], progress=False), msg="No inference between broad and narrow"
+        )
 
     def test_infer_broad_match_1(self):
         r1, r2, r3, r4 = _get_references(4)
@@ -165,20 +169,24 @@ class TestOperations(unittest.TestCase):
 
         # Check inference over two steps
         self.assert_same_triples(
-            [m1, m2, m4], infer_chains([m1, m2], backwards=False), msg="inference over two steps is broken"
+            [m1, m2, m4],
+            infer_chains([m1, m2], backwards=False, progress=False),
+            msg="inference over two steps is broken",
         )
         self.assert_same_triples(
-            [m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True), msg="inference over two steps is broken"
+            [m1, m2, m4, m4_i],
+            infer_chains([m1, m2], backwards=True, progress=False),
+            msg="inference over two steps is broken",
         )
 
         self.assert_same_triples(
             [m1, m2, m3, m4, m5, m6],
-            infer_chains([m1, m2, m3], backwards=False),
+            infer_chains([m1, m2, m3], backwards=False, progress=False),
             msg="inference over multiple steps is broken",
         )
         self.assert_same_triples(
             [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i],
-            infer_chains([m1, m2, m3], backwards=True),
+            infer_chains([m1, m2, m3], backwards=True, progress=False),
             msg="inference over multiple steps is broken",
         )
 
@@ -193,20 +201,22 @@ class TestOperations(unittest.TestCase):
         m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
 
         # Check inference over two steps
-        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2], backwards=False))
-        self.assert_same_triples([m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True))
+        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2], backwards=False, progress=False))
+        self.assert_same_triples([m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True, progress=False))
 
         # Check inference over multiple steps
-        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3], backwards=False))
-        self.assert_same_triples([m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i], infer_chains([m1, m2, m3], backwards=True))
+        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3], backwards=False, progress=False))
+        self.assert_same_triples(
+            [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i], infer_chains([m1, m2, m3], backwards=True, progress=False)
+        )
 
     def test_infer_narrow_match(self):
         r1, r2, r3 = _get_references(3)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
         m3_i = Mapping(o=r1, p=BROAD_MATCH, s=r3)
-        self.assert_same_triples([m1, m2, m3], infer_chains([m1, m2], backwards=False))
-        self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True))
+        self.assert_same_triples([m1, m2, m3], infer_chains([m1, m2], backwards=False, progress=False))
+        self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False))
 
     def test_mixed_inference_1(self):
         r1, r2, r3 = _get_references(3)
@@ -219,10 +229,10 @@ class TestOperations(unittest.TestCase):
         m6 = Mapping(s=r3, p=BROAD_MATCH, o=r1)
 
         mappings = [m1, m2]
-        mappings = infer_reversible(mappings)
+        mappings = infer_reversible(mappings, progress=False)
         self.assert_same_triples([m1, m2, m4, m5], mappings)
 
-        mappings = infer_chains(mappings)
+        mappings = infer_chains(mappings, progress=False)
         self.assert_same_triples([m1, m2, m3, m4, m5, m6], mappings)
 
     def test_filter_prefixes(self):
@@ -234,7 +244,7 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m3]
-        self.assert_same_triples([m1, m2], filter_prefixes(mappings, {"p1", "p2"}))
+        self.assert_same_triples([m1, m2], filter_prefixes(mappings, {"p1", "p2"}, progress=False))
 
     def test_filter_self(self):
         """Test filtering out mappings within a given prefix."""

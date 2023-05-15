@@ -191,7 +191,7 @@ class ReasonedEvidence(pydantic.BaseModel):
 
     @property
     def confidence(self) -> float:
-        return _bin(mapping.confidence for mapping in self.mappings)
+        return _joint_probability(mapping.confidence for mapping in self.mappings)
 
     @property
     def mapping_set(self) -> str | None:
@@ -248,7 +248,9 @@ class Mapping(pydantic.BaseModel):
     def confidence(self) -> float:
         if not self.evidence:
             return 0.0
-        return _bin(1 - (evidence.confidence if evidence.confidence is not None else 0.0) for evidence in self.evidence)
+        return _joint_probability(
+            1.0 if evidence.confidence is None else evidence.confidence for evidence in self.evidence
+        )
 
 
 def line(*references: Reference) -> list[Mapping]:
@@ -262,5 +264,6 @@ ReasonedEvidence.update_forward_refs()
 MutatedEvidence.update_forward_refs()
 
 
-def _bin(probs: Iterable[float]) -> float:
-    return 1 - math.prod(1 - p for p in probs)
+def _joint_probability(probabilities: Iterable[float]) -> float:
+    """Calculate the probability that a list of probabilities are jointly true."""
+    return 1.0 - math.prod(1.0 - probability for probability in probabilities)

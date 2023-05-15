@@ -196,8 +196,8 @@ def infer_chains(mappings: list[Mapping], *, backwards: bool = True, progress: b
                     if backwards:
                         new_mappings.append(
                             Mapping(
-                                o=o,
-                                s=s,
+                                o=s,
+                                s=o,
                                 p=FLIP[p],
                                 evidence=[evidence],
                             )

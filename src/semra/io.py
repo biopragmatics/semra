@@ -305,6 +305,9 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
             neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \
                 --nodes /sw/nodes.tsv --relationships /sw/edges.tsv
 
+        # Python packages
+        RUN python -m pip install git+https://github.com/biopragmatics/semra.git
+
         COPY startup.sh startup.sh
         ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]
     """

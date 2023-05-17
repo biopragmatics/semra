@@ -30,6 +30,7 @@ dependencies = [
   "bioontologies",
   "biomappings",
   "pyobo",
+  "fastapi",
 ]
 
 [project.urls]

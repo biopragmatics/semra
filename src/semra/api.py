@@ -412,7 +412,9 @@ def filter_negatives(mappings: list[Mapping], negatives: list[Mapping]) -> list[
     return unindex(new_positive_index)
 
 
-def project(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> list[Mapping]:
+def project(
+    mappings: list[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False
+) -> list[Mapping]:
     """Ensure that each identifier only appears as the subject of one mapping."""
     subject_index = defaultdict(list)
     object_index = defaultdict(list)
@@ -437,7 +439,10 @@ def project(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> 
     if sus_mappings:
         logger.info("Got %d non-bijective mappings", len(sus_mappings))
         logger.info(index_str(get_index(sus_mappings)))
-    return assemble_evidences(rv)
+    rv = assemble_evidences(rv)
+    if return_sus:
+        return rv, sus_mappings
+    return rv
 
 
 def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:

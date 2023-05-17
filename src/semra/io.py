@@ -236,13 +236,13 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     edges_header = [":START_ID", ":TYPE", ":END_ID"]
     for mapping in mappings:
         nodes.add(mapping.s)
-        nodes.add(mapping.p)
         nodes.add(mapping.o)
         edges.append((mapping.s.curie, mapping.p.curie, mapping.o.curie))
         mapping_ref = mapping.get_reference()
         nodes.add(mapping_ref)
         edges.append((mapping_ref.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-        edges.append((mapping_ref.curie, ANNOTATED_PROPERTY.curie, mapping.p.curie))
+        # TODO make property part of mapping node
+        # edges.append((mapping_ref.curie, ANNOTATED_PROPERTY.curie, mapping.p.curie))
         edges.append((mapping_ref.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
         for evidence in mapping.evidence:
             evidence_ref = evidence.get_reference()
@@ -286,27 +286,21 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         WORKDIR /sw
 
         # Install and configure neo4j and python environment
-        RUN apt-get update && \
-            apt-get install -y apt-transport-https ca-certificates curl wget software-properties-common && \
-            curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | apt-key add - && \
-            add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \
-            apt-get install -y neo4j && \
-            apt-get install -y git zip unzip bzip2 gcc graphviz graphviz-dev \
-                pkg-config python3 python3-pip && \
-            ln -s /usr/bin/python3 /usr/bin/python
+        RUN apt-get update && \\
+            apt-get install -y apt-transport-https ca-certificates curl wget software-properties-common && \\
+            curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | apt-key add - && \\
+            add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \\
+            apt-get install -y neo4j
 
         # Add graph content
         COPY nodes.tsv /sw/nodes.tsv
         COPY edges.tsv /sw/edges.tsv
 
         # Ingest graph content into neo4j
-        RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
-            sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \
-            neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \
+        RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \\
+            sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \\
+            neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \\
                 --nodes /sw/nodes.tsv --relationships /sw/edges.tsv
-
-        # Python packages
-        RUN python -m pip install git+https://github.com/biopragmatics/semra.git
 
         COPY startup.sh startup.sh
         ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]
@@ -320,7 +314,8 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         f"""\
         #!/bin/bash
         docker build --tag {docker_name} .
-        docker run -p 7474:7474 -p 7687:7687 {docker_name}
+        # -t means allocate a pseudo-TTY, necessary to keep it running in the background
+        docker run -t --detach -p 7474:7474 -p 7687:7687 {docker_name}
     """
     )
     run_path.write_text(run_command)

@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import math
+import pickle
 from collections.abc import Iterable
+from hashlib import md5
 from itertools import islice
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 import pydantic
+from curies import Reference
 from more_itertools import triplewise
 from pydantic import Field
-
-if TYPE_CHECKING:
-    import bioregistry
-
 
 __all__ = [
     "Reference",
@@ -26,62 +25,6 @@ __all__ = [
     "Mapping",
     "line",
 ]
-
-
-class Reference(pydantic.BaseModel):
-    """A reference to an entity in a given identifier space."""
-
-    prefix: str = Field(
-        ...,
-        description="The prefix used in a compact URI (CURIE). Should be pre-standardized with the Bioregistry.",
-    )
-    identifier: str = Field(
-        ...,
-        description="The local unique identifier used in a compact URI (CURIE). "
-        "Should be pre-standardized with the Bioregistry.",
-    )
-
-    class Config:
-        """Pydantic configuration for references."""
-
-        frozen = True
-
-    @property
-    def curie(self) -> str:
-        """Get the reference as a CURIE string.
-
-        :return:
-            A string representation of a compact URI (CURIE).
-            This assumes that prefixes and identifiers have been
-            pre-standardized.
-
-        >>> Reference(prefix="chebi", identifier="1234").curie
-        'chebi:1234'
-        """
-        return f"{self.prefix}:{self.identifier}"
-
-    @property
-    def pair(self) -> tuple[str, str]:
-        """Get the reference as a 2-tuple of prefix and identifier."""
-        return self.prefix, self.identifier
-
-    @classmethod
-    def from_curie(cls, curie: str, manager: bioregistry.Manager | None = None) -> Reference:
-        """Parse a CURIE string and populate a reference.
-
-        :param curie: A string representation of a compact URI (CURIE)
-        :param manager: A bioregistry manager to mediate standardization
-        :return: A reference object
-
-        >>> Reference.from_curie("chebi:1234")
-        Reference(prefix='chebi', identifier='1234')
-        """
-        if manager:
-            prefix, identifier = manager.parse_curie(curie)
-        else:
-            prefix, identifier = curie.split(":", 1)
-        return cls(prefix=prefix, identifier=identifier)
-
 
 #: A type annotation for a subject-predicate-object triple
 Triple = tuple[Reference, Reference, Reference]
@@ -96,7 +39,24 @@ EvidenceType = Literal["simple", "mutated", "reasoned"]
 JUSTIFICATION_FIELD = Field(description="A SSSOM-compliant justification")
 
 
-class SimpleEvidence(pydantic.BaseModel):
+def _md5_hexdigest(picklable) -> str:
+    hasher = md5()  # noqa:S324
+    hasher.update(pickle.dumps(picklable))
+    return hasher.hexdigest()
+
+
+class EvidenceMixin:
+    def key(self):
+        raise NotImplementedError
+
+    def hexdigest(self) -> str:
+        return _md5_hexdigest(self.key())
+
+    def get_reference(self):
+        return Reference(prefix="semra.evidence", identifier=self.hexdigest())
+
+
+class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
     """Evidence for a mapping.
 
     Ideally, this matches the SSSOM data model.
@@ -128,7 +88,7 @@ class SimpleEvidence(pydantic.BaseModel):
         return ""
 
 
-class MutatedEvidence(pydantic.BaseModel):
+class MutatedEvidence(pydantic.BaseModel, EvidenceMixin):
     """An evidence for a mapping based on a different evidence."""
 
     class Config:
@@ -167,7 +127,7 @@ class MutatedEvidence(pydantic.BaseModel):
         return ""
 
 
-class ReasonedEvidence(pydantic.BaseModel):
+class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
     """A complex evidence based on multiple mappings."""
 
     class Config:
@@ -251,6 +211,12 @@ class Mapping(pydantic.BaseModel):
         return _joint_probability(
             1.0 if evidence.confidence is None else evidence.confidence for evidence in self.evidence
         )
+
+    def hexdigest(self) -> str:
+        return _md5_hexdigest(self.triple)
+
+    def get_reference(self):
+        return Reference(prefix="semra.mapping", identifier=self.hexdigest())
 
 
 def line(*references: Reference) -> list[Mapping]:

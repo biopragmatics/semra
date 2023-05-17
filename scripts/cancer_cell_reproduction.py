@@ -13,8 +13,6 @@ Reproduce the scenario from the Biomappings paper on cancer cell lines
 7. Output SSSOM
 """
 
-import pickle
-
 import biomappings
 import click
 import pystow
@@ -27,7 +25,7 @@ from semra.api import (
     str_source_target_counts,
     validate_mappings,
 )
-from semra.io import from_biomappings, from_cache_df, from_pyobo, write_sssom
+from semra.io import from_biomappings, from_cache_df, from_pyobo, write_neo4j, write_pickle, write_sssom
 from semra.sources.gilda import from_gilda
 
 PREFIXES = {
@@ -37,6 +35,8 @@ PREFIXES = {
     "ccle",
     # "clo", "cl", "bto",
 }
+
+MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
 
 
 @click.command()
@@ -65,25 +65,35 @@ def main():
 
     mappings = process(mappings, upgrade_prefixes=PREFIXES)
 
+    neo4j_path = MODULE.join("neo4j")
+    click.echo(f"Output all mappings to {neo4j_path}")
+    write_neo4j(mappings, neo4j_path)
+
     # Produce a consolidation mapping
     for s_prefix, t_prefix in [
         ("ccle", "efo"),
         ("ccle", "depmap"),
     ]:
-        consolidation_mappings = project(mappings, s_prefix, t_prefix)
+        consolidation_mappings, sus = project(mappings, s_prefix, t_prefix, return_sus=True)
         click.echo(f"Consolidated to {len(consolidation_mappings):,} mappings between {s_prefix} and {t_prefix}")
 
-        path = pystow.join("semra", name=f"reproduction_{s_prefix}_{t_prefix}.tsv")
+        path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}.tsv")
         click.echo(f"Output to {path}")
         write_sssom(consolidation_mappings, path)
 
+        sus_path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}_suspicious.tsv")
+        write_sssom(sus, sus_path)
+
     priority_mapping = prioritize(mappings, ["efo", "cellosaurus", "ccle", "depmap"])
     click.echo(f"Consolidated to a priority mapping of {len(priority_mapping):,} mappings")
-    path = pystow.join("semra", name="reproduction_prioritized.tsv")
-    click.echo(f"Output to {path}")
-    write_sssom(priority_mapping, path)
 
-    pystow.join("semra", name="reproduction_prioritized.pkl").write_bytes(pickle.dumps(priority_mapping))
+    sssom_path = MODULE.join(name="reproduction_prioritized.tsv")
+    click.echo(f"Output to {sssom_path}")
+    write_sssom(priority_mapping, sssom_path)
+
+    pickle_path = MODULE.join(name="reproduction_prioritized.pkl")
+    click.echo(f"Output to {pickle_path}")
+    write_pickle(priority_mapping, pickle_path)
 
 
 if __name__ == "__main__":

@@ -254,48 +254,90 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     directory = Path(directory).resolve()
     if not directory.is_dir():
         raise NotADirectoryError
-    edges_path = directory.joinpath("edges.tsv")
-    nodes_path = directory.joinpath("nodes.tsv")
+
     startup_path = directory.joinpath("startup.sh")
     run_path = directory.joinpath("run_on_docker.sh")
     docker_path = directory.joinpath("Dockerfile")
-    nodes = set()
-    nodes_header = ["curie:ID", ":LABEL", "prefix"]
+
+    concept_nodes_path = directory.joinpath("concept_nodes.tsv")
+    concepts = set()
+    concept_nodes_header = ["curie:ID", ":LABEL", "prefix"]
+
+    mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
+    mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence"]
+
+    evidence_nodes_path = directory.joinpath("evidence_nodes.tsv")
+    evidences = {}
+    evidence_nodes_header = [
+        "curie:ID",
+        ":LABEL",
+        "prefix",
+        "mapping_justification",
+        "mapping_set",
+        "mapping_set_version",
+        "confidence",
+    ]
+
+    edges_path = directory.joinpath("edges.tsv")
     edges = []
     edges_header = [":START_ID", ":TYPE", ":END_ID"]
+
     for mapping in mappings:
-        nodes.add(mapping.s)
-        nodes.add(mapping.o)
+        concepts.add(mapping.s)
+        concepts.add(mapping.o)
         edges.append((mapping.s.curie, mapping.p.curie, mapping.o.curie))
-        mapping_ref = mapping.get_reference()
-        nodes.add(mapping_ref)
-        edges.append((mapping_ref.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-        # TODO make property part of mapping node
-        # edges.append((mapping_ref.curie, ANNOTATED_PROPERTY.curie, mapping.p.curie))
-        edges.append((mapping_ref.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+        edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
+        edges.append((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
         for evidence in mapping.evidence:
-            evidence_ref = evidence.get_reference()
-            nodes.add(evidence_ref)
-            edges.append((mapping_ref.curie, "hasEvidence", evidence_ref.curie))
+            edges.append((mapping.curie, "hasEvidence", evidence.curie))
+            evidences[evidence.key()] = evidence
             if isinstance(evidence, MutatedEvidence):
-                edges.append((evidence_ref.curie, "derivedFromEvidence", evidence.evidence.get_reference().curie))
+                edges.append((evidence.curie, "derivedFromEvidence", evidence.evidence.get_reference().curie))
             elif isinstance(evidence, ReasonedEvidence):
                 for mmm in evidence.mappings:
-                    edges.append((evidence_ref.curie, "derivedFromMapping", mmm.get_reference().curie))
-
-    with nodes_path.open("w") as file:
-        print(*nodes_header, sep="\t", file=file)
-        for node in sorted(nodes, key=lambda n: n.curie):
-            if node.prefix == "semra.mapping":
-                label = "mapping"
-            elif node.prefix == "semra.evidence":
-                label = "evidence"
+                    edges.append((evidence.curie, "derivedFromMapping", mmm.get_reference().curie))
+            elif isinstance(evidence, SimpleEvidence):
+                pass
             else:
-                label = "concept"
-            print(node.curie, label, node.prefix, sep="\t", file=file)
+                raise TypeError
+
+            # Add authorship information for the evidence, if available
+            if evidence.author:
+                concepts.add(evidence.author)
+                edges.append((evidence.curie, "hasAuthor", evidence.author.curie))
+
+    write_tsv(
+        concept_nodes_path,
+        concept_nodes_header,
+        ((concept.curie, "concept", concept.prefix) for concept in sorted(concepts, key=lambda n: n.curie)),
+    )
+    write_tsv(
+        mapping_nodes_path,
+        mapping_nodes_header,
+        (
+            (mapping.curie, "mapping", "semra.mapping", mapping.p.curie, mapping.confidence)
+            for mapping in sorted(mappings, key=lambda n: n.curie)
+        ),
+    )
+    write_tsv(
+        evidence_nodes_path,
+        evidence_nodes_header,
+        (
+            (
+                evidence.curie,
+                "evidence",
+                "semra.evidence",
+                evidence.justification.curie,
+                evidence.mapping_set or "",
+                evidence.mapping_set_version or "",
+                evidence.confidence or ""
+            )
+            for evidence in sorted(evidences.values(), key=lambda row: row.curie)
+        ),
+    )
     with edges_path.open("w") as file:
         print(*edges_header, sep="\t", file=file)
-        for edge in sorted(edges):
+        for edge in sorted(set(edges)):
             print(*edge, sep="\t", file=file)
 
     startup_commands = dedent(
@@ -328,17 +370,24 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
             apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \\
             curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
-        # Add graph content
-        COPY nodes.tsv /sw/nodes.tsv
-        COPY edges.tsv /sw/edges.tsv
-        
+        ARG twiddle1=dee
         RUN python3.11 -m pip install git+https://github.com/biopragmatics/semra.git
+
+        # Add graph content
+        ARG twiddle2=dee
+        COPY concept_nodes.tsv /sw/concept_nodes.tsv
+        COPY mapping_nodes.tsv /sw/mapping_nodes.tsv
+        COPY evidence_nodes.tsv /sw/evidence_nodes.tsv
+        COPY edges.tsv /sw/edges.tsv
 
         # Ingest graph content into neo4j
         RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \\
             sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \\
             neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \\
-                --nodes /sw/nodes.tsv --relationships /sw/edges.tsv
+                --relationships /sw/edges.tsv \\
+                --nodes /sw/concept_nodes.tsv \\
+                --nodes /sw/mapping_nodes.tsv \\
+                --nodes /sw/evidence_nodes.tsv
 
         COPY startup.sh startup.sh
         ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]
@@ -369,3 +418,10 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     #         neo4j
     # """)
     # command_path.write_text(shell_command)
+
+
+def write_tsv(path, header, rows):
+    with path.open("w") as file:
+        print(*header, sep="\t", file=file)
+        for row in rows:
+            print(*row, sep="\t", file=file)

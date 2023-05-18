@@ -56,6 +56,10 @@ class EvidenceMixin:
     def get_reference(self):
         return Reference(prefix="semra.evidence", identifier=self.hexdigest())
 
+    @property
+    def curie(self):
+        return self.get_reference().curie
+
 
 class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
     """Evidence for a mapping.
@@ -231,6 +235,10 @@ class Mapping(pydantic.BaseModel):
 
     def get_reference(self):
         return Reference(prefix="semra.mapping", identifier=self.hexdigest())
+
+    @property
+    def curie(self):
+        return self.get_reference().curie
 
 
 def line(*references: Reference) -> list[Mapping]:

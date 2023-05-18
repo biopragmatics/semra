@@ -50,7 +50,8 @@ class EvidenceMixin:
         raise NotImplementedError
 
     def hexdigest(self) -> str:
-        return _md5_hexdigest(self.key())
+        key = self.key()
+        return _md5_hexdigest(key)
 
     def get_reference(self):
         return Reference(prefix="semra.evidence", identifier=self.hexdigest())
@@ -68,10 +69,17 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
         frozen = True
 
     evidence_type: Literal["simple"] = Field(default="simple")
-    justification: Reference | None = Field(description="A SSSOM-compliant justification")
-    mapping_set: str | None = None
-    mapping_set_version: str | None = None
-    author: Reference | None = None
+    justification: Reference = Field(
+        default=Reference(prefix="semapv", identifier="UnspecifiedMapping"),
+        description="A SSSOM-compliant justification",
+    )
+    mapping_set: str = Field(description="The name of the dataset from which the mapping comes")
+
+    mapping_set_version: str | None = Field(description="The version of the dataset from which the mapping comes")
+    author: Reference | None = Field(
+        description="A reference to the author of the mapping (e.g. with ORCID)",
+        example=Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
+    )
     confidence: float | None = Field(description="Confidence in the transformation of the evidence")
 
     def key(self):
@@ -81,7 +89,13 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
 
         Note: this should be extended to include basically _all_ fields
         """
-        return self.evidence_type, self.justification, self.mapping_set
+        return (
+            self.evidence_type,
+            self.justification,
+            self.mapping_set,
+            self.mapping_set_version,
+            self.author,
+        )
 
     @property
     def explanation(self) -> str:

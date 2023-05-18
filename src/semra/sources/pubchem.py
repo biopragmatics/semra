@@ -43,7 +43,7 @@ def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
             s=Reference(prefix="pubchem.compound", identifier=pubchem),
             o=Reference(prefix="mesh", identifier=mesh),
             p=EXACT_MATCH,
-            evidence=[SimpleEvidence(mapping_set="pubchem", mapping_set_verson=version)],
+            evidence=[SimpleEvidence(mapping_set="pubchem", mapping_set_version=version, confidence=0.99)],
         )
         for pubchem, mesh in df.values
         if mesh is not None

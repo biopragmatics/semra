@@ -45,7 +45,7 @@ def main():
     mappings = []
     mappings.extend(from_pyobo("efo"))
     mappings.extend(from_pyobo("depmap", version="22Q4", standardize=True))
-    mappings.extend(from_pyobo("ccle"))
+    mappings.extend(from_pyobo("ccle", version="2019"))
     mappings.extend(from_biomappings(biomappings.load_mappings()))
     mappings.extend(from_gilda())
     mappings.extend(
@@ -53,6 +53,7 @@ def main():
             "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
             "cellosaurus",
             prefixes=PREFIXES,
+            version="43",
         )
     )
 

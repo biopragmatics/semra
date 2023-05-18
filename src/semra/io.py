@@ -8,8 +8,10 @@ from typing import TextIO
 
 import bioontologies
 import bioregistry
+import bioversions
 import pandas as pd
 import pyobo
+import pyobo.utils
 from tqdm.auto import tqdm
 
 from semra.rules import DB_XREF, MANUAL_MAPPING
@@ -58,13 +60,23 @@ def from_biomappings(mapping_dicts, confidence: float = 0.99) -> list[Mapping]:
     return rv
 
 
-def _from_pyobo_prefix(source_prefix: str, *, confidence=None, standardize: bool = False, **kwargs) -> list[Mapping]:
-    df = pyobo.get_xrefs_df(source_prefix, **kwargs)
-    return _from_df(df, source_prefix=source_prefix, standardize=standardize, confidence=confidence)
+def _from_pyobo_prefix(
+    source_prefix: str, *, confidence=None, standardize: bool = False, version: str | None = None, **kwargs
+) -> list[Mapping]:
+    if not version:
+        version = bioversions.get_version(source_prefix)
+    logger.info("loading mappings with PyOBO from %s v%s", source_prefix, version)
+    df = pyobo.get_xrefs_df(source_prefix, version=version, **kwargs)
+    return _from_df(df, source_prefix=source_prefix, standardize=standardize, confidence=confidence, version=version)
 
 
-def _from_pyobo_pair(source_prefix: str, target_prefix: str, *, confidence=None, **kwargs) -> list[Mapping]:
-    df = pyobo.get_xrefs(source_prefix, target_prefix, **kwargs)
+def _from_pyobo_pair(
+    source_prefix: str, target_prefix: str, *, confidence=None, version: str | None = None, **kwargs
+) -> list[Mapping]:
+    if not version:
+        version = bioversions.get_version(source_prefix)
+    logger.info("loading mappings with PyOBO from %s v%s", source_prefix, version)
+    df = pyobo.get_xrefs(source_prefix, target_prefix, version=version, **kwargs)
     mappings = [
         Mapping(
             s=Reference(
@@ -76,7 +88,11 @@ def _from_pyobo_pair(source_prefix: str, target_prefix: str, *, confidence=None,
                 prefix=target_prefix,
                 identifier=bioregistry.standardize_identifier(target_prefix, target_id),
             ),
-            evidence=[SimpleEvidence(justification=MANUAL_MAPPING, mapping_set=source_prefix, confidence=confidence)],
+            evidence=[
+                SimpleEvidence(
+                    justification=MANUAL_MAPPING, mapping_set=source_prefix, confidence=confidence, version=version
+                )
+            ],
         )
         for source_id, target_id in df.items()
     ]
@@ -90,16 +106,23 @@ def from_cache_df(
     prefixes=None,
     predicate: Reference | None = None,
     standardize: bool = True,
+    version: str | None = None,
 ) -> list[Mapping]:
     logger.info("loading cached dataframe from PyOBO for %s", source_prefix)
     df = pd.read_csv(path, sep="\t")
     if prefixes:
         df = df[df[df.columns[1]].isin(prefixes)]
-    return _from_df(df, source_prefix=source_prefix, predicate=predicate, standardize=standardize)
+    return _from_df(df, source_prefix=source_prefix, predicate=predicate, standardize=standardize, version=version)
 
 
 def _from_df(
-    df, source_prefix, predicate: Reference | None = None, *, confidence=None, standardize: bool = False
+    df,
+    source_prefix,
+    predicate: Reference | None = None,
+    *,
+    confidence=None,
+    standardize: bool = False,
+    version: str | None = None,
 ) -> list[Mapping]:
     if predicate is None:
         predicate = DB_XREF
@@ -123,7 +146,12 @@ def _from_df(
                     identifier=target_id,
                 ),
                 evidence=[
-                    SimpleEvidence(mapping_set=source_prefix, justification=MANUAL_MAPPING, confidence=confidence)
+                    SimpleEvidence(
+                        mapping_set=source_prefix,
+                        mapping_set_version=version,
+                        justification=MANUAL_MAPPING,
+                        confidence=confidence,
+                    ),
                 ],
             )
         )
@@ -131,7 +159,6 @@ def _from_df(
 
 
 def from_pyobo(prefix: str, target_prefix: str | None = None, *, standardize: bool = False, **kwargs) -> list[Mapping]:
-    logger.info("loading mappings with PyOBO from %s", prefix)
     if target_prefix:
         return _from_pyobo_pair(prefix, target_prefix, standardize=standardize, **kwargs)
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
@@ -144,14 +171,16 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
     # note that we don't extract stuff from edges so just node standardization is good enough
     for node in tqdm(g.nodes, desc=f"[{prefix}] standardizing", unit="node", unit_scale=True, leave=False):
         node.standardize()
-    evidence = SimpleEvidence(mapping_set=prefix, confidence=confidence)
+    evidence = SimpleEvidence(
+        justification=MANUAL_MAPPING, mapping_set=prefix, mapping_set_version=g.version, confidence=confidence
+    )
     return [
         Mapping.from_triple(triple, evidence=[evidence])
         for triple in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False)
     ]
 
 
-def from_sssom(path) -> list[Mapping]:
+def from_sssom(path, mapping_set) -> list[Mapping]:
     df = pd.read_csv(path, sep="\t", dtype=str)
     columns = [
         "subject_id",
@@ -167,7 +196,7 @@ def from_sssom(path) -> list[Mapping]:
                 s=Reference.from_curie(s),
                 p=Reference.from_curie(p),
                 o=Reference.from_curie(o),
-                evidence=[SimpleEvidence(justification=Reference.from_curie(justification))],
+                evidence=[SimpleEvidence(justification=Reference.from_curie(justification), mapping_set=mapping_set)],
             )
         )
     return rv
@@ -275,6 +304,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         neo4j start
         sleep 100
         neo4j status
+        python3.11 -m uvicorn --host 0.0.0.0 --port 8773 semra.wsgi:app
     """
     )
     startup_path.write_text(startup_commands)
@@ -292,9 +322,17 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
             add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \\
             apt-get install -y neo4j
 
+        # Install python
+        RUN apt-get update && \\
+            add-apt-repository ppa:deadsnakes/ppa && \\
+            apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \\
+            curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+
         # Add graph content
         COPY nodes.tsv /sw/nodes.tsv
         COPY edges.tsv /sw/edges.tsv
+        
+        RUN python3.11 -m pip install git+https://github.com/biopragmatics/semra.git
 
         # Ingest graph content into neo4j
         RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \\
@@ -315,7 +353,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         #!/bin/bash
         docker build --tag {docker_name} .
         # -t means allocate a pseudo-TTY, necessary to keep it running in the background
-        docker run -t --detach -p 7474:7474 -p 7687:7687 {docker_name}
+        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 {docker_name}
     """
     )
     run_path.write_text(run_command)

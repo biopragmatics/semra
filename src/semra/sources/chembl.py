@@ -34,7 +34,7 @@ def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
             s=Reference(prefix="uniprot", identifier=uniprot),
             p=EXACT_MATCH,
             o=Reference(prefix="chembl.target", identifier=chembl_id),
-            evidence=[SimpleEvidence(mapping_set="chembl", mapping_set_version=version, confidence=1.0)],
+            evidence=[SimpleEvidence(mapping_set="chembl", mapping_set_version=version, confidence=0.99)],
         )
         for uniprot, chembl_id, _name, _type in df.values
     ]

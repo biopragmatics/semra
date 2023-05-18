@@ -9,7 +9,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from semra import EXACT_MATCH, Mapping, Reference, SimpleEvidence
-from semra.rules import BEN_ORCID
+from semra.rules import BEN_ORCID, LEXICAL_MAPPING
 
 __all__ = [
     "from_gilda",
@@ -38,7 +38,14 @@ def from_gilda(confidence: float = 0.95) -> list[Mapping]:
             s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
             p=EXACT_MATCH,
             o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
-            evidence=[SimpleEvidence(mapping_set="gilda_mesh", author=BEN_ORCID, confidence=confidence)],
+            evidence=[
+                SimpleEvidence(
+                    justification=LEXICAL_MAPPING,
+                    mapping_set="gilda_mesh",
+                    author=BEN_ORCID,
+                    confidence=confidence,
+                )
+            ],
         )
         rv.append(m)
     return rv

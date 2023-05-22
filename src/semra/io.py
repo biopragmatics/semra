@@ -60,12 +60,19 @@ def from_biomappings(mapping_dicts, confidence: float = 0.99) -> list[Mapping]:
     return rv
 
 
+def _safe_get_version(prefix: str) -> str | None:
+    try:
+        return bioversions.get_version(prefix)
+    except (KeyError, TypeError):
+        return None
+
+
 def _from_pyobo_prefix(
     source_prefix: str, *, confidence=None, standardize: bool = False, version: str | None = None, **kwargs
 ) -> list[Mapping]:
     if not version:
-        version = bioversions.get_version(source_prefix)
-    logger.info("loading mappings with PyOBO from %s v%s", source_prefix, version)
+        version = _safe_get_version(source_prefix)
+    logger.debug("loading mappings with PyOBO from %s v%s", source_prefix, version)
     df = pyobo.get_xrefs_df(source_prefix, version=version, **kwargs)
     return _from_df(df, source_prefix=source_prefix, standardize=standardize, confidence=confidence, version=version)
 
@@ -74,8 +81,8 @@ def _from_pyobo_pair(
     source_prefix: str, target_prefix: str, *, confidence=None, version: str | None = None, **kwargs
 ) -> list[Mapping]:
     if not version:
-        version = bioversions.get_version(source_prefix)
-    logger.info("loading mappings with PyOBO from %s v%s", source_prefix, version)
+        version = _safe_get_version(source_prefix)
+    logger.debug("loading mappings with PyOBO from %s v%s", source_prefix, version)
     df = pyobo.get_xrefs(source_prefix, target_prefix, version=version, **kwargs)
     mappings = [
         Mapping(
@@ -330,7 +337,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
                 evidence.justification.curie,
                 evidence.mapping_set or "",
                 evidence.mapping_set_version or "",
-                evidence.confidence or ""
+                evidence.confidence or "",
             )
             for evidence in sorted(evidences.values(), key=lambda row: row.curie)
         ),

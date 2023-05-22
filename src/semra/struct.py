@@ -154,7 +154,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
         frozen = True
 
     evidence_type: Literal["reasoned"] = Field(default="reasoned")
-    justification: Reference | None = Field(description="A SSSOM-compliant justification")
+    justification: Reference = Field(description="A SSSOM-compliant justification")
     mappings: list[Mapping] = Field(
         ..., description="A list of mappings and their evidences consumed to create this evidence"
     )

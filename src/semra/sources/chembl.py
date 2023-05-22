@@ -1,7 +1,5 @@
 """Get mappings from ChEMBL."""
 
-import chembl_downloader
-
 from semra.rules import EXACT_MATCH
 from semra.struct import Mapping, Reference, SimpleEvidence
 
@@ -13,6 +11,8 @@ __all__ = [
 
 def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL chemical equivalences."""
+    import chembl_downloader
+
     if version is None:
         version = chembl_downloader.latest()
     df = chembl_downloader.get_chemreps_df(version=version)
@@ -25,6 +25,8 @@ def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
 
 def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL to protein mappings."""
+    import chembl_downloader
+
     if version is None:
         version = chembl_downloader.latest()
     # columns: "uniprot_id", "chembl_target_id", "name", "type"

@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
   "pystow",
+  "pandas",
   "pydantic",
   "tqdm",
   "more_itertools",

@@ -7,7 +7,7 @@ import logging
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import cast
 
 import networkx as nx
 from tqdm.auto import tqdm
@@ -23,9 +23,6 @@ from semra.struct import (
     Triple,
     triple_key,
 )
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -414,7 +411,7 @@ def filter_negatives(mappings: list[Mapping], negatives: list[Mapping]) -> list[
 
 def project(
     mappings: list[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False
-) -> list[Mapping]:
+) -> list[Mapping] | tuple[list[Mapping], list[Mapping]]:
     """Ensure that each identifier only appears as the subject of one mapping."""
     subject_index = defaultdict(list)
     object_index = defaultdict(list)
@@ -447,7 +444,7 @@ def project(
 
 def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:
     """Get a dictionary from source identifiers to target identifiers."""
-    mappings = project(mappings, source_prefix, target_prefix)
+    mappings = cast(list[Mapping], project(mappings, source_prefix, target_prefix))
     return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
 
 
@@ -558,5 +555,10 @@ def df_to_mappings(
             o=Reference(prefix=target_prefix, identifier=target_id),
             evidence=[evidence],
         )
-        for source_id, target_id in df[[source_identifier_column, target_identifier_column]].values
+        for source_id, target_id in tqdm(
+            df[[source_identifier_column, target_identifier_column]].values,
+            unit="mapping",
+            unit_scale=True,
+            desc=f"Processing {source_prefix}",
+        )
     ]

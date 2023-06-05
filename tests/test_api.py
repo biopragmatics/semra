@@ -8,16 +8,24 @@ from semra.api import (
     NARROW_MATCH,
     Index,
     filter_negatives,
-    filter_prefixes,
     filter_self_matches,
     flip,
     get_index,
     infer_chains,
     infer_reversible,
+    keep_prefixes,
     project,
 )
 from semra.rules import MANUAL_MAPPING
-from semra.struct import Mapping, MutatedEvidence, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
+from semra.struct import (
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    Reference,
+    SimpleEvidence,
+    line,
+    triple_key,
+)
 
 
 def _get_references(n: int, prefix: str = "test") -> list[Reference]:
@@ -30,8 +38,9 @@ def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
 
 EV = SimpleEvidence(
     justification=MANUAL_MAPPING,
-    mapping_set="test_mapping_set",
+    mapping_set=MappingSet(name="test_mapping_set"),
 )
+MS = MappingSet(name="test")
 
 
 class TestOperations(unittest.TestCase):
@@ -54,9 +63,9 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(EXACT_MATCH, new_mapping.p)
         self.assertEqual(chebi_reference, new_mapping.o)
         self.assertEqual(1, len(new_mapping.evidence))
-        self.assertIsInstance(new_mapping.evidence[0], MutatedEvidence)
-        self.assertIsInstance(new_mapping.evidence[0].evidence, SimpleEvidence)
-        self.assertEqual(EV, new_mapping.evidence[0].evidence)
+        self.assertIsInstance(new_mapping.evidence[0], ReasonedEvidence)
+        self.assertIsInstance(new_mapping.evidence[0].mappings[0].evidence[0], SimpleEvidence)
+        self.assertEqual(EV, new_mapping.evidence[0].mappings[0].evidence[0])
 
     def test_flip_asymmetric(self):
         """Test flipping asymmetric relations (e.g., narrow and broad match)."""
@@ -79,8 +88,10 @@ class TestOperations(unittest.TestCase):
 
     def test_index(self):
         r1, r2 = _get_references(2)
-        e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"))
-        e2 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="ManualMappingCuration"))
+        e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"), mapping_set=MS)
+        e2 = SimpleEvidence(
+            justification=Reference(prefix="semapv", identifier="ManualMappingCuration"), mapping_set=MS
+        )
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
         index = get_index([m1, m2])
@@ -244,7 +255,7 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m3]
-        self.assert_same_triples([m1, m2], filter_prefixes(mappings, {"p1", "p2"}, progress=False))
+        self.assert_same_triples([m1, m2], keep_prefixes(mappings, {"p1", "p2"}, progress=False))
 
     def test_filter_self(self):
         """Test filtering out mappings within a given prefix."""

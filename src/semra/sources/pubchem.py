@@ -6,11 +6,12 @@ import bioversions
 import pandas as pd
 import pyobo
 
-from semra import EXACT_MATCH, Mapping, Reference, SimpleEvidence
+from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
 
 __all__ = [
     "get_pubchem_mesh_mappings",
 ]
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,13 @@ def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
             s=Reference(prefix="pubchem.compound", identifier=pubchem),
             o=Reference(prefix="mesh", identifier=mesh),
             p=EXACT_MATCH,
-            evidence=[SimpleEvidence(mapping_set="pubchem", mapping_set_version=version, confidence=0.99)],
+            evidence=[
+                SimpleEvidence(
+                    justification=UNSPECIFIED_MAPPING,
+                    # Data is in public domain: https://www.ncbi.nlm.nih.gov/home/about/policies/
+                    mapping_set=MappingSet(name="pubchem", version=version, confidence=0.99, license="CC0"),
+                )
+            ],
         )
         for pubchem, mesh in df.values
         if mesh is not None

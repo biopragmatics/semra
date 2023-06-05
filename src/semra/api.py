@@ -6,18 +6,27 @@ import itertools as itt
 import logging
 import time
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import cast
 
 import networkx as nx
 from tqdm.auto import tqdm
 
 from semra.io import from_biomappings
-from semra.rules import BROAD_MATCH, CLOSE_MATCH, DB_XREF, EXACT_MATCH, FLIP, NARROW_MATCH
+from semra.rules import (
+    BROAD_MATCH,
+    CHAIN_MAPPING,
+    DB_XREF,
+    EXACT_MATCH,
+    FLIP,
+    IMPRECISE,
+    INVERSION_MAPPING,
+    KNOWLEDGE_MAPPING,
+    NARROW_MATCH,
+)
 from semra.struct import (
     Evidence,
     Mapping,
-    MutatedEvidence,
     ReasonedEvidence,
     Reference,
     Triple,
@@ -97,14 +106,7 @@ def flip(mapping: Mapping) -> Mapping | None:
         s=mapping.o,
         p=p,
         o=mapping.s,
-        evidence=[
-            MutatedEvidence(
-                type="mutated",
-                evidence=evidence,
-                justification=Reference(prefix="semapv", identifier="FlippedMatching"),
-            )
-            for evidence in mapping.evidence
-        ],
+        evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
     )
 
 
@@ -141,11 +143,14 @@ def _condense_predicates(predicates: list[Reference]) -> Reference | None:
     return None
 
 
-def infer_chains(mappings: list[Mapping], *, backwards: bool = True, progress: bool = True) -> list[Mapping]:
+def infer_chains(
+    mappings: list[Mapping], *, backwards: bool = True, progress: bool = True, cutoff: int = 5
+) -> list[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
     :param mappings: A list of input mappings
     :param backwards: Should inference be done in reverse?
+    :param cutoff: What's the maximum length path to infer over?
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
@@ -166,12 +171,12 @@ def infer_chains(mappings: list[Mapping], *, backwards: bool = True, progress: b
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this
             # nx.shortest_path(sg, s, o)
-            for path in nx.all_simple_edge_paths(sg, s, o, cutoff=5):
+            for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
                 predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
                 p = _condense_predicates(predicates)
                 if p:
                     evidence = ReasonedEvidence(
-                        justification=Reference.from_curie("semapv:ComplexMapping"),
+                        justification=CHAIN_MAPPING,
                         mappings=[
                             Mapping(
                                 s=path_s,
@@ -182,23 +187,9 @@ def infer_chains(mappings: list[Mapping], *, backwards: bool = True, progress: b
                             for path_s, path_o in path
                         ],
                     )
-                    new_mappings.append(
-                        Mapping(
-                            s=s,
-                            p=p,
-                            o=o,
-                            evidence=[evidence],
-                        )
-                    )
+                    new_mappings.append(Mapping(s=s, p=p, o=o, evidence=[evidence]))
                     if backwards:
-                        new_mappings.append(
-                            Mapping(
-                                o=s,
-                                s=o,
-                                p=FLIP[p],
-                                evidence=[evidence],
-                            )
-                        )
+                        new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=[evidence]))
     return [*mappings, *new_mappings]
 
 
@@ -209,7 +200,13 @@ def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> No
     )
 
 
-def process(mappings: list[Mapping], upgrade_prefixes=None, remove_prefix_set=None) -> list[Mapping]:
+def process(
+    mappings: list[Mapping],
+    upgrade_prefixes=None,
+    remove_prefix_set=None,
+    *,
+    remove_imprecise: bool = True,
+) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
     import biomappings
 
@@ -235,11 +232,6 @@ def process(mappings: list[Mapping], upgrade_prefixes=None, remove_prefix_set=No
     # mappings = filter_prefixes(mappings, PREFIXES)
     # logger.debug(f"Filtered to {len(mappings):,} mappings")
 
-    if upgrade_prefixes:
-        # 2. using the assumption that primary mappings from each of these
-        # resources to each other are exact matches, rewrite the prefixes
-        mappings = upgrade_mutual_dbxrefs(mappings, upgrade_prefixes, confidence=0.95)
-
     # remove mapping between self, such as EFO-EFO
     logger.info("Removing self mappings (i.e., within a given semantic space)")
     before = len(mappings)
@@ -247,12 +239,22 @@ def process(mappings: list[Mapping], upgrade_prefixes=None, remove_prefix_set=No
     mappings = filter_self_matches(mappings)
     _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
+    if upgrade_prefixes:
+        logger.info("Inferring mapping upgrades")
+        # 2. using the assumption that primary mappings from each of these
+        # resources to each other are exact matches, rewrite the prefixes
+        before = len(mappings)
+        start = time.time()
+        mappings = infer_mutual_dbxref_mutations(mappings, upgrade_prefixes, confidence=0.95)
+        _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
+
     # remove dbxrefs
-    logger.info("Removing unqualified database xrefs")
-    before = len(mappings)
-    start = time.time()
-    mappings = [m for m in mappings if m.p not in {DB_XREF, CLOSE_MATCH}]
-    _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
+    if remove_imprecise:
+        logger.info("Removing unqualified database xrefs")
+        before = len(mappings)
+        start = time.time()
+        mappings = [m for m in mappings if m.p not in IMPRECISE]
+        _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
 
     # 3. Inference based on adding reverse relations then doing multi-chain hopping
     logger.info("Inferring reverse mappings")
@@ -299,8 +301,19 @@ def index_str(index: Index) -> str:
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")
 
 
-def upgrade_dbxrefs(
-    mappings: Iterable[Mapping], pairs: dict[tuple[str, str], float] | Iterable[tuple[str, str]]
+def infer_mutual_dbxref_mutations(
+    mappings: Iterable[Mapping],
+    prefixes: set[str],
+    confidence: float | None = None,
+) -> list[Mapping]:
+    pairs = {(s, t) for s, t in itt.product(prefixes, repeat=2) if s != t}
+    return infer_dbxref_mutations(mappings, pairs=pairs, confidence=confidence)
+
+
+def infer_dbxref_mutations(
+    mappings: Iterable[Mapping],
+    pairs: dict[tuple[str, str], float] | Iterable[tuple[str, str]],
+    confidence: float | None = None,
 ) -> list[Mapping]:
     """Upgrade database cross-references into exact matches for the given pairs.
 
@@ -309,53 +322,55 @@ def upgrade_dbxrefs(
         If giving a collection of pairs, will assume a default confidence of 0.7.
     :return: A new list of mappings containing upgrades
     """
+    if confidence is None:
+        confidence = 0.7
     if not isinstance(pairs, dict):
-        pairs = {pair: 0.7 for pair in pairs}
-    return mutate_predicate(
+        pairs = {pair: confidence for pair in pairs}
+    return infer_mutations(
         mappings,
         pairs=pairs,
         old=DB_XREF,
         new=EXACT_MATCH,
-        justification=Reference(prefix="semapv", identifier="UpgradeDbXrefs"),
     )
 
 
-def upgrade_mutual_dbxrefs(mappings: Iterable[Mapping], prefixes: set[str], confidence: float = 1.0) -> list[Mapping]:
-    pairs = {(s, t): confidence for s, t in itt.product(prefixes, repeat=2) if s != t}
-    return upgrade_dbxrefs(mappings, pairs=pairs)
-
-
-def mutate_predicate(
+def infer_mutations(
     mappings: Iterable[Mapping],
     pairs: dict[tuple[str, str], float],
     old: Reference,
     new: Reference,
-    justification: Reference,
 ) -> list[Mapping]:
+    """Infer mappings with alternate predicates for the given prefix pairs.
+
+    :param mappings: Mappings to infer from
+    :param pairs: A dictionary of pairs of (subject prefix, object prefix) to the confidence
+        of inference
+    :param old: The predicate on which inference should be done
+    :param new: The predicate to get inferred
+    :returns: A list of all old mapping plus inferred ones interspersed.
+    """
     rv = []
-    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Mutating predicates"):
+    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Adding mutated predicates"):
+        rv.append(mapping)
         confidence = pairs.get((mapping.s.prefix, mapping.o.prefix))
         if confidence is not None and mapping.p == old:
-            nm = Mapping(
+            inferred_mapping = Mapping(
                 s=mapping.s,
                 p=new,
                 o=mapping.o,
                 evidence=[
-                    MutatedEvidence(
-                        evidence=evidence,
-                        justification=justification,
+                    ReasonedEvidence(
+                        justification=KNOWLEDGE_MAPPING,
+                        mappings=[mapping],
                         confidence_factor=confidence,
                     )
-                    for evidence in mapping.evidence
                 ],
             )
-            rv.append(nm)
-        else:
-            rv.append(mapping)
+            rv.append(inferred_mapping)
     return rv
 
 
-def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> list[Mapping]:
+def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes."""
     prefixes = set(prefixes)
     return [
@@ -433,9 +448,9 @@ def project(
             rv.extend(object_mappings)
         else:
             sus_mappings.extend(object_mappings)
-    if sus_mappings:
-        logger.info("Got %d non-bijective mappings", len(sus_mappings))
-        logger.info(index_str(get_index(sus_mappings)))
+    # if sus_mappings:
+    #     logger.info("Got %d non-bijective mappings", len(sus_mappings))
+    #     logger.info(index_str(get_index(sus_mappings)))
     rv = assemble_evidences(rv)
     if return_sus:
         return rv, sus_mappings
@@ -479,7 +494,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     rv = sorted(rv, key=lambda m: (pos[m.o.prefix], m.o.identifier, m.s.prefix, m.s.identifier))
 
     end_mappings = len(rv)
-    logger.info("Prioritized from %d original (%d exact) to %d", original_mappings, exact_mappings, end_mappings)
+    logger.info(f"Prioritized from {original_mappings:,} original ({exact_mappings:,} exact) to {end_mappings:,}")
     return rv
 
 
@@ -493,7 +508,7 @@ def _get_priority(component: list[Reference], priority: list[str]) -> Reference 
             continue
         if len(references) == 1:
             return references[0]
-        # TODO multiple... I guess let's just return the first
+        # TODO multiple - I guess let's just return the first
         logger.debug("multiple references for %s", prefix)
         return references[0]
     # nothing found in priority, don't return at all.
@@ -529,10 +544,14 @@ def validate_mappings(mappings: list[Mapping]) -> None:
             raise ValueError(
                 f"invalid mapping subject: {mapping}. Use regex {bioregistry.get_pattern(mapping.s.prefix)}"
             )
+        if ":" in mapping.s.identifier:
+            raise ValueError(f"banana in mapping subject: {mapping}")
         if not bioregistry.is_valid_identifier(mapping.o.prefix, mapping.o.identifier):
             raise ValueError(
                 f"invalid mapping object: {mapping}. Use regex {bioregistry.get_pattern(mapping.o.prefix)}"
             )
+        if ":" in mapping.o.identifier:
+            raise ValueError(f"banana in mapping object: {mapping}")
 
 
 def df_to_mappings(
@@ -540,7 +559,7 @@ def df_to_mappings(
     *,
     source_prefix: str,
     target_prefix: str,
-    evidence: Evidence,
+    evidence: Callable[[], Evidence],
     source_identifier_column: str | None = None,
     target_identifier_column: str | None = None,
 ) -> list[Mapping]:
@@ -553,7 +572,7 @@ def df_to_mappings(
             s=Reference(prefix=source_prefix, identifier=source_id),
             p=EXACT_MATCH,
             o=Reference(prefix=target_prefix, identifier=target_id),
-            evidence=[evidence],
+            evidence=[evidence()],
         )
         for source_id, target_id in tqdm(
             df[[source_identifier_column, target_identifier_column]].values,

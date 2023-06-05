@@ -6,13 +6,13 @@ import logging
 import pickle
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, root_validator
 from tqdm.autonotebook import tqdm
 
 from semra.api import prioritize, process
-from semra.io import from_bioontologies, from_pyobo, write_sssom
+from semra.io import from_bioontologies, from_cache_df, from_pyobo, write_neo4j, write_pickle, write_sssom
 from semra.rules import DB_XREF, EXACT_MATCH
 from semra.sources.biopragmatics import from_biomappings_negative, from_biomappings_positive, from_biomappings_predicted
 from semra.sources.gilda import from_gilda
@@ -34,9 +34,10 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "gilda"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "gilda", "custom"]
     prefix: str | None = None
     confidence: float = 1.0
+    extras: dict[str, Any] | None = None
 
 
 class Mutation(BaseModel):
@@ -56,7 +57,15 @@ class Configuration(BaseModel):
     priority: list[str] = Field(description="If no priority is given, is inferred from the order of inputs")
     mutations: list[Mutation] = Field(default_factory=list)
     remove_prefixes: list[str] | None = None
-    raw_path: Path | None = None
+
+    raw_pickle_path: Path | None = None
+    raw_sssom_path: Path | None = None
+    raw_neo4j_path: Path | None = None
+    raw_neo4j_name: str | None = None
+
+    inferred_neo4j_path: Path | None = None
+    inferred_neo4j_name: str | None = None
+
     processed_path: Path | None = None
     processed_sssom_path: Path | None = None
 
@@ -74,15 +83,21 @@ def get_mappings_from_config(configuration: Configuration) -> list[Mapping]:
     if configuration.processed_path and configuration.processed_path.is_file():
         logger.info("loading cached processed mappings from %s", configuration.processed_path)
         return pickle.loads(configuration.processed_path.read_bytes())
-    if configuration.raw_path and configuration.raw_path.is_file():
+    if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file():
         start = time.time()
-        logger.info("loading cached raw mappings from %s", configuration.raw_path)
-        mappings = pickle.loads(configuration.raw_path.read_bytes())
-        logger.info("loaded cached raw mappings from %s in %.2f seconds", configuration.raw_path, time.time() - start)
+        logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
+        mappings = pickle.loads(configuration.raw_pickle_path.read_bytes())
+        logger.info(
+            "loaded cached raw mappings from %s in %.2f seconds", configuration.raw_pickle_path, time.time() - start
+        )
     else:
         mappings = get_raw_mappings(configuration)
-        if configuration.raw_path:
-            configuration.raw_path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+        if configuration.raw_pickle_path:
+            write_pickle(mappings, configuration.raw_pickle_path)
+        if configuration.raw_sssom_path:
+            write_sssom(mappings, configuration.raw_sssom_path)
+        if configuration.raw_neo4j_path:
+            write_neo4j(mappings, configuration.raw_neo4j_path, configuration.raw_neo4j_name)
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
     mappings = process(
@@ -110,11 +125,11 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
         elif inp.source == "bioontologies":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence))
+            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence, **(inp.extras or {})))
         elif inp.source == "pyobo":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence))
+            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence, **(inp.extras or {})))
         elif inp.source == "biomappings":
             if inp.prefix in {None, "positive"}:
                 mappings.extend(from_biomappings_positive())
@@ -126,6 +141,8 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
                 raise ValueError
         elif inp.source == "gilda":
             mappings.extend(from_gilda(confidence=inp.confidence))
+        elif inp.source == "custom":
+            mappings.extend(from_cache_df(**(inp.extras or {})))
         else:
             raise ValueError
     return mappings

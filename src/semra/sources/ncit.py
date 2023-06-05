@@ -2,9 +2,11 @@
 
 from functools import lru_cache
 
+import bioregistry
 import pandas as pd
+import requests
 
-from semra import Mapping, SimpleEvidence
+from semra import UNSPECIFIED_MAPPING, Mapping, MappingSet, SimpleEvidence
 from semra.api import df_to_mappings
 
 __all__ = [
@@ -13,6 +15,7 @@ __all__ = [
     "get_ncit_go_mappings",
     "get_ncit_uniprot_mappings",
 ]
+
 
 BASE = "https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Mappings"
 
@@ -26,14 +29,22 @@ CHEBI_MAPPINGS_URL = f"{BASE}/NCIt-ChEBI_Mapping.txt"
 SWISSPROT_MAPPINGS_URL = f"{BASE}/NCIt-SwissProt_Mapping.txt"
 #: single line og text
 VERSION_URL = f"{BASE}/NCIt_Mapping_Version.txt"
+CONFIDENCE = 0.99
 
 
 @lru_cache(1)
-def _get_evidence():
-    # version = requests.get(VERSION_URL, timeout=20).text.strip()
-    version = None
-    evidence = SimpleEvidence(mapping_set="ncit", mapping_set_version=version)
-    return evidence
+def _get_version() -> str:
+    """Get the current NCIT version."""
+    return requests.get(VERSION_URL, timeout=20).text.strip()
+
+
+def _get_evidence() -> SimpleEvidence:
+    version = _get_version()
+    license = bioregistry.get_license("ncit")
+    return SimpleEvidence(
+        justification=UNSPECIFIED_MAPPING,
+        mapping_set=MappingSet(name="ncit", version=version, license=license, confidence=CONFIDENCE),
+    )
 
 
 def get_ncit_hgnc_mappings() -> list[Mapping]:
@@ -43,7 +54,7 @@ def get_ncit_hgnc_mappings() -> list[Mapping]:
         df,
         source_prefix="ncit",
         target_prefix="hgnc",
-        evidence=_get_evidence(),
+        evidence=_get_evidence,
     )
 
 
@@ -54,7 +65,7 @@ def get_ncit_go_mappings() -> list[Mapping]:
         df,
         source_prefix="ncit",
         target_prefix="go",
-        evidence=_get_evidence(),
+        evidence=_get_evidence,
     )
 
 
@@ -65,7 +76,7 @@ def get_ncit_chebi_mappings() -> list[Mapping]:
         df,
         source_prefix="ncit",
         target_prefix="chebi",
-        evidence=_get_evidence(),
+        evidence=_get_evidence,
     )
 
 
@@ -75,7 +86,7 @@ def get_ncit_uniprot_mappings() -> list[Mapping]:
         df,
         source_prefix="ncit",
         target_prefix="uniprot",
-        evidence=_get_evidence(),
+        evidence=_get_evidence,
     )
 
 

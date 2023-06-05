@@ -8,7 +8,8 @@ import bioregistry
 import pandas as pd
 from tqdm.auto import tqdm
 
-from semra import EXACT_MATCH, Mapping, Reference, SimpleEvidence
+from semra import EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.api import validate_mappings
 from semra.rules import BEN_ORCID, LEXICAL_MAPPING
 
 __all__ = [
@@ -41,11 +42,15 @@ def from_gilda(confidence: float = 0.95) -> list[Mapping]:
             evidence=[
                 SimpleEvidence(
                     justification=LEXICAL_MAPPING,
-                    mapping_set="gilda_mesh",
+                    mapping_set=MappingSet(name="gilda_mesh", confidence=confidence, license="CC0"),
                     author=BEN_ORCID,
-                    confidence=confidence,
                 )
             ],
         )
         rv.append(m)
+    validate_mappings(rv)
     return rv
+
+
+if __name__ == "__main__":
+    from_gilda()

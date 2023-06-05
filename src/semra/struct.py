@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import pickle
+import uuid
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
@@ -20,8 +21,8 @@ __all__ = [
     "triple_key",
     "Evidence",
     "SimpleEvidence",
-    "MutatedEvidence",
     "ReasonedEvidence",
+    "MappingSet",
     "Mapping",
     "line",
 ]
@@ -53,11 +54,31 @@ class EvidenceMixin:
         key = self.key()
         return _md5_hexdigest(key)
 
-    def get_reference(self):
+    def get_reference(self) -> Reference:
         return Reference(prefix="semra.evidence", identifier=self.hexdigest())
 
     @property
-    def curie(self):
+    def curie(self) -> str:
+        return self.get_reference().curie
+
+
+class MappingSet(pydantic.BaseModel):
+    name: str
+    version: str | None = Field(description="The version of the dataset from which the mapping comes")
+    license: str | None = Field(description="License name or URL for mapping set")
+    confidence: float | None = Field(description="Mapping set level confidence")
+
+    def key(self):
+        return self.name, self.version or "", self.license or "", 1.0 if self.confidence is None else self.confidence
+
+    def hexdigest(self) -> str:
+        return _md5_hexdigest(self.key())
+
+    def get_reference(self) -> Reference:
+        return Reference(prefix="semra.mappingset", identifier=self.hexdigest())
+
+    @property
+    def curie(self) -> str:
         return self.get_reference().curie
 
 
@@ -77,14 +98,12 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
         default=Reference(prefix="semapv", identifier="UnspecifiedMapping"),
         description="A SSSOM-compliant justification",
     )
-    mapping_set: str = Field(description="The name of the dataset from which the mapping comes")
-
-    mapping_set_version: str | None = Field(description="The version of the dataset from which the mapping comes")
+    mapping_set: MappingSet = Field(description="The name of the dataset from which the mapping comes")
     author: Reference | None = Field(
         description="A reference to the author of the mapping (e.g. with ORCID)",
         example=Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
     )
-    confidence: float | None = Field(description="Confidence in the transformation of the evidence")
+    uuid: uuid.UUID = Field(default_factory=uuid.uuid4)
 
     def key(self):
         """Get a key suitable for hashing the evidence.
@@ -93,52 +112,15 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
 
         Note: this should be extended to include basically _all_ fields
         """
-        return (
-            self.evidence_type,
-            self.justification,
-            self.mapping_set,
-            self.mapping_set_version,
-            self.author,
-        )
+        return (self.evidence_type, self.justification, self.author, self.mapping_set.key(), self.uuid)
 
     @property
-    def explanation(self) -> str:
-        return ""
-
-
-class MutatedEvidence(pydantic.BaseModel, EvidenceMixin):
-    """An evidence for a mapping based on a different evidence."""
-
-    class Config:
-        """Pydantic configuration for evidence."""
-
-        frozen = True
-
-    evidence_type: Literal["mutated"] = Field(default="mutated")
-    justification: Reference = Field(..., description="A SSSOM-compliant justification")
-    evidence: Evidence = Field(..., description="A wrapped evidence")
-    confidence_factor: float = Field(1.0, description="Confidence in the transformation of the evidence")
-
-    @property
-    def mapping_set(self) -> str | None:
-        return self.evidence.mapping_set
-
-    @property
-    def mapping_set_version(self) -> str | None:
-        return self.evidence.mapping_set_version
-
-    @property
-    def author(self) -> Reference | None:
-        return self.evidence.author
+    def mapping_set_names(self) -> set[str]:
+        return {self.mapping_set.name}
 
     @property
     def confidence(self) -> float | None:
-        if self.evidence.confidence is None:
-            return None
-        return self.confidence_factor * self.evidence.confidence
-
-    def key(self):
-        return self.evidence_type, self.justification, self.evidence.key()
+        return self.mapping_set.confidence
 
     @property
     def explanation(self) -> str:
@@ -159,6 +141,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
         ..., description="A list of mappings and their evidences consumed to create this evidence"
     )
     author: Reference | None = None
+    confidence_factor: float = 1.0
 
     def key(self):
         return (
@@ -168,24 +151,22 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
         )
 
     @property
-    def confidence(self) -> float:
-        return _joint_probability(mapping.confidence for mapping in self.mappings)
-
-    @property
-    def mapping_set(self) -> str | None:
-        mapping_sets = {
-            evidence.mapping_set
-            for mapping in self.mappings
-            for evidence in mapping.evidence
-            if evidence.mapping_set is not None
-        }
-        if not mapping_sets:
+    def confidence(self) -> float | None:
+        confidences = [mapping.confidence for mapping in self.mappings]
+        nn_confidences = [c for c in confidences if c is not None]
+        if not nn_confidences:
             return None
-        return ",".join(sorted(mapping_sets))
+        return self.confidence_factor * _joint_probability(nn_confidences)
 
     @property
-    def mapping_set_version(self):
+    def mapping_set(self) -> None:
         return None
+
+    @property
+    def mapping_set_names(self) -> set[str]:
+        return {
+            name for mapping in self.mappings for evidence in mapping.evidence for name in evidence.mapping_set_names
+        }
 
     @property
     def explanation(self) -> str:
@@ -193,7 +174,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
 
 
 Evidence = Annotated[
-    ReasonedEvidence | MutatedEvidence | SimpleEvidence,
+    ReasonedEvidence | SimpleEvidence,
     Field(discriminator="evidence_type"),
 ]
 
@@ -223,21 +204,23 @@ class Mapping(pydantic.BaseModel):
         return cls(s=s, p=p, o=o, evidence=evidence or [])
 
     @property
-    def confidence(self) -> float:
+    def confidence(self) -> float | None:
         if not self.evidence:
-            return 0.0
-        return _joint_probability(
-            1.0 if evidence.confidence is None else evidence.confidence for evidence in self.evidence
-        )
+            return None
+        confidences = [e.confidence for e in self.evidence]
+        nn_confidences = [c for c in confidences if c is not None]
+        if not nn_confidences:
+            return None
+        return _joint_probability(nn_confidences)
 
     def hexdigest(self) -> str:
         return _md5_hexdigest(self.triple)
 
-    def get_reference(self):
+    def get_reference(self) -> Reference:
         return Reference(prefix="semra.mapping", identifier=self.hexdigest())
 
     @property
-    def curie(self):
+    def curie(self) -> str:
         return self.get_reference().curie
 
 
@@ -249,7 +232,6 @@ def line(*references: Reference) -> list[Mapping]:
 
 
 ReasonedEvidence.update_forward_refs()
-MutatedEvidence.update_forward_refs()
 
 
 def _joint_probability(probabilities: Iterable[float]) -> float:

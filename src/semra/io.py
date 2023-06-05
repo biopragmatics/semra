@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.metadata
 import logging
 import pickle
 from pathlib import Path
@@ -9,13 +10,14 @@ from typing import TextIO
 import bioontologies
 import bioregistry
 import bioversions
+import click
 import pandas as pd
 import pyobo
 import pyobo.utils
 from tqdm.auto import tqdm
 
 from semra.rules import DB_XREF, MANUAL_MAPPING
-from semra.struct import Evidence, Mapping, MutatedEvidence, ReasonedEvidence, Reference, SimpleEvidence
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "from_cache_df",
@@ -23,16 +25,20 @@ __all__ = [
     "from_pyobo",
     "from_bioontologies",
     "from_sssom",
+    #
     "get_sssom_df",
     "write_sssom",
+    "write_pickle",
+    "write_neo4j",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def from_biomappings(mapping_dicts, confidence: float = 0.99) -> list[Mapping]:
+def from_biomappings(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
+    biomappings_version = importlib.metadata.version("biomappings")
     rv = []
-    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings"):
+    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False):
         try:
             p = Reference.from_curie(mapping_dict["relation"])
         except ValueError:
@@ -49,9 +55,10 @@ def from_biomappings(mapping_dicts, confidence: float = 0.99) -> list[Mapping]:
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),
-                    mapping_set="biomappings",
+                    mapping_set=MappingSet(
+                        name="biomappings", confidence=confidence, license="CC0", version=biomappings_version
+                    ),
                     author=author,
-                    confidence=confidence,
                     # TODO configurable confidence globally per author or based on author's self-reported confidence
                 )
             ],
@@ -68,20 +75,43 @@ def _safe_get_version(prefix: str) -> str | None:
 
 
 def _from_pyobo_prefix(
-    source_prefix: str, *, confidence=None, standardize: bool = False, version: str | None = None, **kwargs
+    source_prefix: str,
+    *,
+    confidence=None,
+    standardize: bool = False,
+    version: str | None = None,
+    license: str | None = None,
+    **kwargs,
 ) -> list[Mapping]:
     if not version:
         version = _safe_get_version(source_prefix)
+    if not license:
+        license = bioregistry.get_license(source_prefix)
     logger.debug("loading mappings with PyOBO from %s v%s", source_prefix, version)
     df = pyobo.get_xrefs_df(source_prefix, version=version, **kwargs)
-    return _from_df(df, source_prefix=source_prefix, standardize=standardize, confidence=confidence, version=version)
+    return _from_df(
+        df,
+        source_prefix=source_prefix,
+        standardize=standardize,
+        confidence=confidence,
+        version=version,
+        license=license,
+    )
 
 
 def _from_pyobo_pair(
-    source_prefix: str, target_prefix: str, *, confidence=None, version: str | None = None, **kwargs
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    confidence=None,
+    version: str | None = None,
+    license: str | None = None,
+    **kwargs,
 ) -> list[Mapping]:
     if not version:
         version = _safe_get_version(source_prefix)
+    if not license:
+        license = bioregistry.get_license(source_prefix)
     logger.debug("loading mappings with PyOBO from %s v%s", source_prefix, version)
     df = pyobo.get_xrefs(source_prefix, target_prefix, version=version, **kwargs)
     mappings = [
@@ -97,7 +127,8 @@ def _from_pyobo_pair(
             ),
             evidence=[
                 SimpleEvidence(
-                    justification=MANUAL_MAPPING, mapping_set=source_prefix, confidence=confidence, version=version
+                    justification=MANUAL_MAPPING,
+                    mapping_set=MappingSet(name=source_prefix, confidence=confidence, version=version, license=license),
                 )
             ],
         )
@@ -114,12 +145,22 @@ def from_cache_df(
     predicate: Reference | None = None,
     standardize: bool = True,
     version: str | None = None,
+    license: str | None = None,
+    confidence: float | None = None,
 ) -> list[Mapping]:
     logger.info("loading cached dataframe from PyOBO for %s", source_prefix)
     df = pd.read_csv(path, sep="\t")
     if prefixes:
         df = df[df[df.columns[1]].isin(prefixes)]
-    return _from_df(df, source_prefix=source_prefix, predicate=predicate, standardize=standardize, version=version)
+    return _from_df(
+        df,
+        source_prefix=source_prefix,
+        predicate=predicate,
+        standardize=standardize,
+        version=version,
+        license=license,
+        confidence=confidence,
+    )
 
 
 def _from_df(
@@ -127,9 +168,11 @@ def _from_df(
     source_prefix,
     predicate: Reference | None = None,
     *,
-    confidence=None,
+    confidence: float | None = None,
     standardize: bool = False,
     version: str | None = None,
+    license: str | None = None,
+    leave_progress: bool = False,
 ) -> list[Mapping]:
     if predicate is None:
         predicate = DB_XREF
@@ -140,7 +183,9 @@ def _from_df(
             bioregistry.standardize_identifier(target_prefix, target_id)
             for target_prefix, target_id in df[df.columns[1:]].values
         ]
-    for source_id, target_prefix, target_id in tqdm(df.values, desc=f"Loading {source_prefix}", unit_scale=True):
+    for source_id, target_prefix, target_id in tqdm(
+        df.values, desc=f"Loading {source_prefix}", unit_scale=True, leave=leave_progress
+    ):
         rv.append(
             Mapping(
                 s=Reference(
@@ -154,10 +199,10 @@ def _from_df(
                 ),
                 evidence=[
                     SimpleEvidence(
-                        mapping_set=source_prefix,
-                        mapping_set_version=version,
+                        mapping_set=MappingSet(
+                            name=source_prefix, version=version, confidence=confidence, license=license
+                        ),
                         justification=MANUAL_MAPPING,
-                        confidence=confidence,
                     ),
                 ],
             )
@@ -178,16 +223,23 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
     # note that we don't extract stuff from edges so just node standardization is good enough
     for node in tqdm(g.nodes, desc=f"[{prefix}] standardizing", unit="node", unit_scale=True, leave=False):
         node.standardize()
-    evidence = SimpleEvidence(
-        justification=MANUAL_MAPPING, mapping_set=prefix, mapping_set_version=g.version, confidence=confidence
-    )
+    br_license = bioregistry.get_license(prefix)
     return [
-        Mapping.from_triple(triple, evidence=[evidence])
+        Mapping.from_triple(
+            triple,
+            evidence=[
+                SimpleEvidence(
+                    justification=MANUAL_MAPPING,
+                    mapping_set=MappingSet(name=prefix, version=g.version, confidence=confidence, license=br_license),
+                )
+            ],
+        )
         for triple in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False)
+        if triple[0].prefix == prefix
     ]
 
 
-def from_sssom(path, mapping_set) -> list[Mapping]:
+def from_sssom(path, mapping_set_name) -> list[Mapping]:
     df = pd.read_csv(path, sep="\t", dtype=str)
     columns = [
         "subject_id",
@@ -203,7 +255,11 @@ def from_sssom(path, mapping_set) -> list[Mapping]:
                 s=Reference.from_curie(s),
                 p=Reference.from_curie(p),
                 o=Reference.from_curie(o),
-                evidence=[SimpleEvidence(justification=Reference.from_curie(justification), mapping_set=mapping_set)],
+                evidence=[
+                    SimpleEvidence(
+                        justification=Reference.from_curie(justification), mapping_set=MappingSet(name=mapping_set_name)
+                    )
+                ],
             )
         )
     return rv
@@ -212,15 +268,21 @@ def from_sssom(path, mapping_set) -> list[Mapping]:
 def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
     import pandas as pd
 
-    rows = [_get_sssom_row(m, e) for m in mappings for e in m.evidence]
+    rows = [
+        _get_sssom_row(m, e)
+        for m in tqdm(mappings, desc="Preparing SSSOM", leave=False, unit="mapping", unit_scale=True)
+        for e in m.evidence
+    ]
     columns = [
         "subject_id",
         "predicate_id",
         "object_id",
         "mapping_justification",
         "mapping_set",
+        "mapping_set_version",
+        "mapping_set_license",
+        "mapping_set_confidence",
         "author_id",
-        "confidence",
         "comments",
     ]
     return pd.DataFrame(rows, columns=columns)
@@ -228,14 +290,24 @@ def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
 
 def _get_sssom_row(mapping: Mapping, e: Evidence):
     # TODO increase this
+    if isinstance(e, SimpleEvidence):
+        mapping_set_version = e.mapping_set.version
+        mapping_set_license = e.mapping_set.license
+    elif isinstance(e, ReasonedEvidence):
+        mapping_set_version = ""
+        mapping_set_license = ""
+    else:
+        raise TypeError
     return (
         mapping.s.curie,
         mapping.p.curie,
         mapping.o.curie,
         e.justification.curie if e.justification else "",
-        e.mapping_set or "",
+        ",".join(sorted(e.mapping_set_names)),
+        mapping_set_version,
+        mapping_set_license,
+        round(confidence, 4) if (confidence := e.confidence) is not None else "",
         e.author.curie if e.author else "",
-        round(e.confidence, 4) if e.confidence else "",
         e.explanation,
     )
 
@@ -257,6 +329,11 @@ ANNOTATED_SOURCE = Reference(prefix="owl", identifier="annotatedSource")
 ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
 
 
+def _edge_key(t):
+    s, p, o, c = t
+    return s, p, o, 1 if isinstance(c, float) else 0, t
+
+
 def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str | None = None) -> None:
     directory = Path(directory).resolve()
     if not directory.is_dir():
@@ -267,7 +344,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     docker_path = directory.joinpath("Dockerfile")
 
     concept_nodes_path = directory.joinpath("concept_nodes.tsv")
-    concepts = set()
+    concepts: set[Reference] = set()
     concept_nodes_header = ["curie:ID", ":LABEL", "prefix"]
 
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
@@ -279,30 +356,41 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         "curie:ID",
         ":LABEL",
         "prefix",
+        "type",
         "mapping_justification",
-        "mapping_set",
-        "mapping_set_version",
-        "confidence",
+        "confidence:float",
     ]
 
-    edges_path = directory.joinpath("edges.tsv")
-    edges = []
-    edges_header = [":START_ID", ":TYPE", ":END_ID"]
+    mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv")
+    mapping_sets = {}
+    mapping_set_nodes_header = ["curie:ID", ":LABEL", "prefix", "name", "license", "version", "confidence:float"]
 
-    for mapping in mappings:
+    edges_path = directory.joinpath("edges.tsv")
+    edges: list[tuple[str, str, str, str | float]] = []
+    edges_header = [":START_ID", ":TYPE", ":END_ID", "confidence:float"]
+
+    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
         concepts.add(mapping.s)
         concepts.add(mapping.o)
-        edges.append((mapping.s.curie, mapping.p.curie, mapping.o.curie))
-        edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-        edges.append((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+        edges.append(
+            (
+                mapping.s.curie,
+                mapping.p.curie,
+                mapping.o.curie,
+                round(c, 4) if (c := mapping.confidence) is not None else "",
+            )
+        )
+        edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie, ""))
+        edges.append((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie, ""))
         for evidence in mapping.evidence:
-            edges.append((mapping.curie, "hasEvidence", evidence.curie))
+            edges.append((mapping.curie, "hasEvidence", evidence.curie, ""))
             evidences[evidence.key()] = evidence
-            if isinstance(evidence, MutatedEvidence):
-                edges.append((evidence.curie, "derivedFromEvidence", evidence.evidence.get_reference().curie))
+            if evidence.mapping_set:
+                mapping_sets[evidence.mapping_set.name] = evidence.mapping_set
+                edges.append((evidence.curie, "fromSet", evidence.mapping_set.curie, ""))
             elif isinstance(evidence, ReasonedEvidence):
                 for mmm in evidence.mappings:
-                    edges.append((evidence.curie, "derivedFromMapping", mmm.get_reference().curie))
+                    edges.append((evidence.curie, "derivedFromMapping", mmm.curie, ""))
             elif isinstance(evidence, SimpleEvidence):
                 pass
             else:
@@ -311,14 +399,14 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
             # Add authorship information for the evidence, if available
             if evidence.author:
                 concepts.add(evidence.author)
-                edges.append((evidence.curie, "hasAuthor", evidence.author.curie))
+                edges.append((evidence.curie, "hasAuthor", evidence.author.curie, ""))
 
-    write_tsv(
+    _write_tsv(
         concept_nodes_path,
         concept_nodes_header,
         ((concept.curie, "concept", concept.prefix) for concept in sorted(concepts, key=lambda n: n.curie)),
     )
-    write_tsv(
+    _write_tsv(
         mapping_nodes_path,
         mapping_nodes_header,
         (
@@ -326,7 +414,23 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
             for mapping in sorted(mappings, key=lambda n: n.curie)
         ),
     )
-    write_tsv(
+    _write_tsv(
+        mapping_set_nodes_path,
+        mapping_set_nodes_header,
+        (
+            (
+                mapping_set.curie,
+                "mappingset",
+                "semra.mappingset",
+                mapping_set.name,
+                mapping_set.license or "",
+                mapping_set.version or "",
+                c if (c := mapping_set.confidence) is not None else "",
+            )
+            for mapping_set in sorted(mapping_sets.values(), key=lambda n: n.curie)
+        ),
+    )
+    _write_tsv(
         evidence_nodes_path,
         evidence_nodes_header,
         (
@@ -334,18 +438,14 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
                 evidence.curie,
                 "evidence",
                 "semra.evidence",
+                evidence.evidence_type,
                 evidence.justification.curie,
-                evidence.mapping_set or "",
-                evidence.mapping_set_version or "",
-                evidence.confidence or "",
+                c if (c := evidence.confidence) is not None else "",
             )
             for evidence in sorted(evidences.values(), key=lambda row: row.curie)
         ),
     )
-    with edges_path.open("w") as file:
-        print(*edges_header, sep="\t", file=file)
-        for edge in sorted(set(edges)):
-            print(*edge, sep="\t", file=file)
+    _write_tsv(edges_path, edges_header, sorted(set(edges), key=_edge_key))
 
     startup_commands = dedent(
         """\
@@ -385,6 +485,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
         COPY concept_nodes.tsv /sw/concept_nodes.tsv
         COPY mapping_nodes.tsv /sw/mapping_nodes.tsv
         COPY evidence_nodes.tsv /sw/evidence_nodes.tsv
+        COPY mapping_set_nodes.tsv /sw/mapping_set_nodes.tsv
         COPY edges.tsv /sw/edges.tsv
 
         # Ingest graph content into neo4j
@@ -394,6 +495,7 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
                 --relationships /sw/edges.tsv \\
                 --nodes /sw/concept_nodes.tsv \\
                 --nodes /sw/mapping_nodes.tsv \\
+                --nodes /sw/mapping_set_nodes.tsv \\
                 --nodes /sw/evidence_nodes.tsv
 
         COPY startup.sh startup.sh
@@ -427,7 +529,8 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     # command_path.write_text(shell_command)
 
 
-def write_tsv(path, header, rows):
+def _write_tsv(path, header, rows) -> None:
+    click.echo(f"writing to {path}")
     with path.open("w") as file:
         print(*header, sep="\t", file=file)
         for row in rows:

@@ -9,7 +9,9 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
 from typing import cast
 
+import bioregistry
 import networkx as nx
+import pandas as pd
 from tqdm.auto import tqdm
 
 from semra.io import from_biomappings
@@ -64,7 +66,7 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
 
 def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
-    dd: DefaultDict[Triple, list[Evidence]] = defaultdict(list)
+    dd: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings", disable=not progress):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
@@ -219,7 +221,7 @@ def process(
 
     before = len(mappings)
     start = time.time()
-    mappings = filter_negatives(mappings, negatives)
+    mappings = filter_mappings(mappings, negatives)
     _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
 
     # deduplicate
@@ -273,7 +275,7 @@ def process(
     logger.info("Filtering out negative mappings")
     before = len(mappings)
     start = time.time()
-    mappings = filter_negatives(mappings, negatives)
+    mappings = filter_mappings(mappings, negatives)
     _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
 
     # filter out self mappings again, just in case
@@ -407,32 +409,34 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     ]
 
 
-def filter_negatives(mappings: list[Mapping], negatives: list[Mapping]) -> list[Mapping]:
-    """Filter out mappings that have been explicitly labeled as negative."""
-    positive_index = get_index(mappings)
-    negative_index = get_index(negatives)
-    new_positive_index = {
-        mapping: evidence
-        for mapping, evidence in tqdm(
-            positive_index.items(),
+def filter_mappings(mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
+    """Filter out mappings in the second set from the first set."""
+    skip_set = {m.triple for m in skip_mappings}
+    return [
+        mapping
+        for mapping in tqdm(
+            mappings,
             unit_scale=True,
             unit="mapping",
-            desc="Filtering negative mappings",
+            desc="Filtering mappings",
+            disable=not progress,
         )
-        if mapping not in negative_index
-    }
-    return unindex(new_positive_index)
+        if mapping.triple not in skip_set
+    ]
+
+
+M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[Mapping]]]]
 
 
 def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     """Get many-to-many mappings, disregarding predicate type."""
-    forward = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    backward = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    forward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    backward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
         forward[mapping.s.prefix, mapping.o.prefix][mapping.s.identifier][mapping.o.identifier].append(mapping)
         backward[mapping.s.prefix, mapping.o.prefix][mapping.o.identifier][mapping.s.identifier].append(mapping)
 
-    index: DefaultDict[Triple, list[Evidence]] = defaultdict(list)
+    index: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for preindex in [forward, backward]:
         for d1 in preindex.values():
             for d2 in d1.values():
@@ -601,3 +605,12 @@ def df_to_mappings(
             desc=f"Processing {source_prefix}",
         )
     ]
+
+
+def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
+    """Get a dataframe summarizing the prefixes appearing in the mappings."""
+    prefixes = set(itt.chain.from_iterable((m.o.prefix, m.s.prefix) for m in mappings))
+    return pd.DataFrame(
+        [(prefix, bioregistry.get_name(prefix), bioregistry.get_description(prefix)) for prefix in sorted(prefixes)],
+        columns=["prefix", "name", "description"],
+    ).set_index("prefix")

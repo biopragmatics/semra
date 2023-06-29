@@ -292,13 +292,31 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
         "comments",
     ]
     df = pd.DataFrame(rows, columns=columns)
+    if add_labels:
+        for label_column, id_column in [("subject_label", "subject_id"), ("object_label", "object_id")]:
+            df[label_column] = df[id_column].map(pyobo.get_name_by_curie)  # type:ignore
+        df = df[
+            [
+                "subject_id",
+                "subject_label",
+                "predicate_id",
+                "object_id",
+                "object_label",
+                "mapping_justification",
+                "mapping_set",
+                "mapping_set_version",
+                "mapping_set_license",
+                "mapping_set_confidence",
+                "author_id",
+                "comments",
+            ]
+        ]
+
     # remove empty columns
     for column in df.columns:
         if not df[column].map(bool).any():
             del df[column]
-    if add_labels:
-        for label_column, id_column in [("subject_label", "subject_id"), ("object_label", "object_id")]:
-            df[label_column] = df[id_column].map(pyobo.get_name_by_curie)
+
     return df
 
 

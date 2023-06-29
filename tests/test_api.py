@@ -7,7 +7,7 @@ from semra.api import (
     EXACT_MATCH,
     NARROW_MATCH,
     Index,
-    filter_negatives,
+    filter_mappings,
     filter_self_matches,
     flip,
     get_index,
@@ -276,7 +276,7 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         mappings = [m1, m2]
         negative = [m2]
-        self.assert_same_triples([m1], filter_negatives(mappings, negative))
+        self.assert_same_triples([m1], filter_mappings(mappings, negative))
 
     def test_project(self):
         """Test projecting into a given source/target pair."""

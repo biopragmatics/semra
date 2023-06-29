@@ -64,7 +64,7 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
 
 def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
-    dd = defaultdict(list)
+    dd: DefaultDict[Triple, list[Evidence]] = defaultdict(list)
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings", disable=not progress):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
@@ -422,6 +422,30 @@ def filter_negatives(mappings: list[Mapping], negatives: list[Mapping]) -> list[
         if mapping not in negative_index
     }
     return unindex(new_positive_index)
+
+
+def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
+    """Get many-to-many mappings, disregarding predicate type."""
+    forward = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+    backward = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+    for mapping in mappings:
+        forward[mapping.s.prefix][mapping.o.prefix][mapping.s.identifier][mapping.o.identifier].append(mapping)
+        backward[mapping.s.prefix][mapping.o.prefix][mapping.o.identifier][mapping.s.identifier].append(mapping)
+
+    index: DefaultDict[Triple, list[Evidence]] = defaultdict(list)
+    for preindex in [forward, backward]:
+        for subject_prefix, d1 in forward.items():
+            for object_prefix, d2 in d1.items():
+                for subject_id, d3 in d2.items():
+                    if len(d3) > 1: # means there are multiple identifiers mapped
+                        for mapping in itt.chain.from_iterable(d3.values()):
+                            index[mapping.triple].extend(mapping.evidence)
+
+    rv = [
+        Mapping.from_triple(triple, deduplicate_evidence(evidence))
+        for triple, evidence in index.items()
+    ]
+    return rv
 
 
 def project(

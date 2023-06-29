@@ -15,6 +15,7 @@ from semra.api import (
     infer_reversible,
     keep_prefixes,
     project,
+    get_many_to_many,
 )
 from semra.rules import MANUAL_MAPPING
 from semra.struct import (
@@ -288,3 +289,17 @@ class TestOperations(unittest.TestCase):
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m2_i, m3]
         self.assert_same_triples([m1, m2], project(mappings, "p1", "p2"))
+
+    def test_get_many_to_many(self):
+        """Test getting many-to-many mappings."""
+        a1, a2, a3 = _get_references(3, prefix="a")
+        b1, b2, b3 = _get_references(3, prefix="b")
+
+        # Subject duplicate
+        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1)
+        m2 = Mapping(s=a1, p=EXACT_MATCH, o=b3)
+        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2)
+        self.assert_same_triples([m1, m2], get_many_to_many([m1, m2, m3]))
+
+        m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
+        self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))

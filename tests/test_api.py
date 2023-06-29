@@ -11,11 +11,11 @@ from semra.api import (
     filter_self_matches,
     flip,
     get_index,
+    get_many_to_many,
     infer_chains,
     infer_reversible,
     keep_prefixes,
     project,
-    get_many_to_many,
 )
 from semra.rules import MANUAL_MAPPING
 from semra.struct import (

@@ -1,5 +1,6 @@
 """Assemble a database."""
 
+import pickle
 import time
 
 import bioregistry
@@ -48,6 +49,7 @@ def main():
     loose = {
         "caloha",
         "foodon",
+        "cellosaurus",
     }
 
     ontology_resources = []
@@ -64,28 +66,10 @@ def main():
 
     mappings = []
 
-    it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
-    for resource in it:
-        it.set_postfix(prefix=resource.prefix)
-        start = time.time()
-        try:
-            with logging_redirect_tqdm():
-                resource_mappings = from_bioontologies(resource.prefix, check=resource.prefix not in loose)
-        except ValueError as e:
-            tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
-            continue
-        _write_source(resource_mappings, resource.prefix)
-        mappings.extend(resource_mappings)
-        # this outputs on each iteration to get faster insight
-        write_warned(WARNINGS_PATH)
-        write_getter_warnings(ERRORS_PATH)
-        summaries.append((resource.prefix, len(resource_mappings), time.time() - start))
-        _write_summary()
-
     it = tqdm(pyobo_resources, unit="prefix", desc="PyOBO sources")
     for resource in it:
         it.set_postfix(prefix=resource.prefix)
-        start = time()
+        start = time.time()
         try:
             with logging_redirect_tqdm():
                 resource_mappings = from_pyobo(resource.prefix)
@@ -108,6 +92,29 @@ def main():
             mappings.extend(resource_mappings)
         summaries.append((resource_name, len(resource_mappings), time.time() - start))
         _write_summary()
+
+    it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
+    for resource in it:
+        it.set_postfix(prefix=resource.prefix)
+        path = SOURCES.join(name=f"{resource.prefix}.pkl")
+        if path.is_file():
+            resource_mappings = pickle.loads(path.read_bytes())
+        else:
+            start = time.time()
+            try:
+                with logging_redirect_tqdm():
+                    resource_mappings = from_bioontologies(resource.prefix, check=resource.prefix not in loose)
+            except ValueError as e:
+                tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
+                continue
+            _write_source(resource_mappings, resource.prefix)
+            # this outputs on each iteration to get faster insight
+            write_warned(WARNINGS_PATH)
+            write_getter_warnings(ERRORS_PATH)
+            summaries.append((resource.prefix, len(resource_mappings), time.time() - start))
+            _write_summary()
+
+        mappings.extend(resource_mappings)
 
     click.echo(f"Writing SSSOM to {DATABASE_PATH}")
     write_sssom(mappings, DATABASE_PATH)

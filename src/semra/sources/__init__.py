@@ -8,6 +8,7 @@ from class_resolver import FunctionResolver
 from semra import Mapping
 from semra.sources.biopragmatics import from_biomappings_negative, from_biomappings_positive, from_biomappings_predicted
 from semra.sources.chembl import get_chembl_compound_mappings, get_chembl_protein_mappings
+from semra.sources.clo import get_clo_mappings
 from semra.sources.famplex import get_famplex_mappings
 from semra.sources.gilda import from_gilda
 from semra.sources.intact import get_intact_complexportal_mappings, get_intact_reactome_mappings
@@ -35,6 +36,7 @@ __all__ = [
     "from_biomappings_predicted",
     "from_biomappings_negative",
     "from_gilda",
+    "get_clo_mappings",
 ]
 
 SOURCE_RESOLVER: FunctionResolver[Callable[[], list[Mapping]]] = FunctionResolver(
@@ -51,6 +53,7 @@ SOURCE_RESOLVER: FunctionResolver[Callable[[], list[Mapping]]] = FunctionResolve
         get_ncit_uniprot_mappings,
         from_biomappings_positive,
         from_gilda,
+        get_clo_mappings,
     ]
 )
 

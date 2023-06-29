@@ -426,25 +426,21 @@ def filter_negatives(mappings: list[Mapping], negatives: list[Mapping]) -> list[
 
 def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     """Get many-to-many mappings, disregarding predicate type."""
-    forward = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
-    backward = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+    forward = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    backward = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
-        forward[mapping.s.prefix][mapping.o.prefix][mapping.s.identifier][mapping.o.identifier].append(mapping)
-        backward[mapping.s.prefix][mapping.o.prefix][mapping.o.identifier][mapping.s.identifier].append(mapping)
+        forward[mapping.s.prefix, mapping.o.prefix][mapping.s.identifier][mapping.o.identifier].append(mapping)
+        backward[mapping.s.prefix, mapping.o.prefix][mapping.o.identifier][mapping.s.identifier].append(mapping)
 
     index: DefaultDict[Triple, list[Evidence]] = defaultdict(list)
     for preindex in [forward, backward]:
-        for subject_prefix, d1 in forward.items():
-            for object_prefix, d2 in d1.items():
-                for subject_id, d3 in d2.items():
-                    if len(d3) > 1: # means there are multiple identifiers mapped
-                        for mapping in itt.chain.from_iterable(d3.values()):
-                            index[mapping.triple].extend(mapping.evidence)
+        for d1 in preindex.values():
+            for d2 in d1.values():
+                if len(d2) > 1:  # means there are multiple identifiers mapped
+                    for mapping in itt.chain.from_iterable(d2.values()):
+                        index[mapping.triple].extend(mapping.evidence)
 
-    rv = [
-        Mapping.from_triple(triple, deduplicate_evidence(evidence))
-        for triple, evidence in index.items()
-    ]
+    rv = [Mapping.from_triple(triple, deduplicate_evidence(evidence)) for triple, evidence in index.items()]
     return rv
 
 

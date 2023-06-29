@@ -3,7 +3,7 @@
 import bioontologies
 import bioregistry
 import click
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from semra import Mapping, MappingSet, Reference, SimpleEvidence
 
@@ -109,7 +109,3 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                     )
                 )
     return mappings
-
-
-if __name__ == "__main__":
-    print(len(get_clo_mappings()))

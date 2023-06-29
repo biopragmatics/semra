@@ -265,9 +265,15 @@ def from_sssom(path, mapping_set_name) -> list[Mapping]:
     return rv
 
 
-def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
-    import pandas as pd
+def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:
+    """Get a SSSOM dataframe.
 
+    Automatically prunes columns that aren't filled out.
+
+    :param mappings: A list of mappings
+    :param add_labels: Should labels be added for source and object via :func:`pyobo.get_name_by_curie`?
+    :return: A SSSOM dataframe in Pandas
+    """
     rows = [
         _get_sssom_row(m, e)
         for m in tqdm(mappings, desc="Preparing SSSOM", leave=False, unit="mapping", unit_scale=True)
@@ -285,7 +291,15 @@ def get_sssom_df(mappings: list[Mapping]) -> pd.DataFrame:
         "author_id",
         "comments",
     ]
-    return pd.DataFrame(rows, columns=columns)
+    df = pd.DataFrame(rows, columns=columns)
+    # remove empty columns
+    for column in df.columns:
+        if not df[column].map(bool).any():
+            del df[column]
+    if add_labels:
+        for label_column, id_column in [("subject_label", "subject_id"), ("object_label", "object_id")]:
+            df[label_column] = df[id_column].map(pyobo.get_name_by_curie)
+    return df
 
 
 def _get_sssom_row(mapping: Mapping, e: Evidence):

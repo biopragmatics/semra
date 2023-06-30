@@ -19,13 +19,12 @@ import pystow
 from semra.api import (
     keep_prefixes,
     prioritize,
-    process,
     project,
     str_source_target_counts,
     validate_mappings,
 )
 from semra.io import write_neo4j, write_pickle, write_sssom
-from semra.pipeline import Configuration, Input, Mutation, get_raw_mappings
+from semra.pipeline import Configuration, Input, Mutation, get_raw_mappings, process
 
 PREFIXES = {
     "efo",

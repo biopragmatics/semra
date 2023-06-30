@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.metadata
 import logging
 import pickle
 from pathlib import Path
@@ -21,7 +20,6 @@ from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Refere
 
 __all__ = [
     "from_cache_df",
-    "from_biomappings",
     "from_pyobo",
     "from_bioontologies",
     "from_sssom",
@@ -33,38 +31,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
-
-def from_biomappings(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
-    biomappings_version = importlib.metadata.version("biomappings")
-    rv = []
-    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False):
-        try:
-            p = Reference.from_curie(mapping_dict["relation"])
-        except ValueError:
-            continue  # TODO fix speciesSpecific
-        source_prefix = mapping_dict["source prefix"]
-        source_identifier = bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"])
-        target_prefix = mapping_dict["target prefix"]
-        target_identifier = bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"])
-        author = Reference.from_curie(mapping_dict["source"])
-        mm = Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_identifier),
-            p=p,
-            o=Reference(prefix=target_prefix, identifier=target_identifier),
-            evidence=[
-                SimpleEvidence(
-                    justification=Reference.from_curie(mapping_dict["type"]),
-                    mapping_set=MappingSet(
-                        name="biomappings", confidence=confidence, license="CC0", version=biomappings_version
-                    ),
-                    author=author,
-                    # TODO configurable confidence globally per author or based on author's self-reported confidence
-                )
-            ],
-        )
-        rv.append(mm)
-    return rv
 
 
 def _safe_get_version(prefix: str) -> str | None:

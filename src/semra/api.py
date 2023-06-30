@@ -4,24 +4,20 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
-import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
 from typing import cast
 
-import bioregistry
 import networkx as nx
 import pandas as pd
 from tqdm.auto import tqdm
 
-from semra.io import from_biomappings
 from semra.rules import (
     BROAD_MATCH,
     CHAIN_MAPPING,
     DB_XREF,
     EXACT_MATCH,
     FLIP,
-    IMPRECISE,
     INVERSION_MAPPING,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
@@ -193,95 +189,6 @@ def infer_chains(
                     if backwards:
                         new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=[evidence]))
     return [*mappings, *new_mappings]
-
-
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> None:
-    logger.info(
-        f"{verb} from {before:,} to {len(mappings):,} mappings (Δ={len(mappings) - before:,}) in %.2f seconds.",
-        elapsed,
-    )
-
-
-def process(
-    mappings: list[Mapping],
-    upgrade_prefixes=None,
-    remove_prefix_set=None,
-    *,
-    remove_imprecise: bool = True,
-) -> list[Mapping]:
-    """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
-    import biomappings
-
-    if remove_prefix_set:
-        mappings = remove_prefixes(mappings, remove_prefix_set)
-
-    start = time.time()
-    negatives = from_biomappings(biomappings.load_false_mappings())
-    logger.info(f"Loaded {len(negatives):,} negative mappings in %.2f seconds", time.time() - start)
-
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
-
-    # deduplicate
-    before = len(mappings)
-    start = time.time()
-    mappings = assemble_evidences(mappings)
-    _log_diff(before, mappings, verb="Assembled", elapsed=time.time() - start)
-
-    # only keep relevant prefixes
-    # mappings = filter_prefixes(mappings, PREFIXES)
-    # logger.debug(f"Filtered to {len(mappings):,} mappings")
-
-    # remove mapping between self, such as EFO-EFO
-    logger.info("Removing self mappings (i.e., within a given semantic space)")
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_self_matches(mappings)
-    _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
-
-    if upgrade_prefixes:
-        logger.info("Inferring mapping upgrades")
-        # 2. using the assumption that primary mappings from each of these
-        # resources to each other are exact matches, rewrite the prefixes
-        before = len(mappings)
-        start = time.time()
-        mappings = infer_mutual_dbxref_mutations(mappings, upgrade_prefixes, confidence=0.95)
-        _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
-
-    # remove dbxrefs
-    if remove_imprecise:
-        logger.info("Removing unqualified database xrefs")
-        before = len(mappings)
-        start = time.time()
-        mappings = [m for m in mappings if m.p not in IMPRECISE]
-        _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
-
-    # 3. Inference based on adding reverse relations then doing multi-chain hopping
-    logger.info("Inferring reverse mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = infer_reversible(mappings)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
-
-    logger.info("Inferring based on chains")
-    before = len(mappings)
-    time.time()
-    mappings = infer_chains(mappings)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
-
-    # 4/5. Filtering negative
-    logger.info("Filtering out negative mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
-
-    # filter out self mappings again, just in case
-    mappings = filter_self_matches(mappings)
-
-    return mappings
 
 
 def index_str(index: Index) -> str:
@@ -609,6 +516,8 @@ def df_to_mappings(
 
 def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
     """Get a dataframe summarizing the prefixes appearing in the mappings."""
+    import bioregistry
+
     prefixes = set(itt.chain.from_iterable((m.o.prefix, m.s.prefix) for m in mappings))
     return pd.DataFrame(
         [(prefix, bioregistry.get_name(prefix), bioregistry.get_description(prefix)) for prefix in sorted(prefixes)],

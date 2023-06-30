@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "semra"
 dynamic = ["version"]
-description = 'Semantic Mapping Reasoning Assembler.'
+description = 'Semantic Mapping Reasoning Assembler'
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -29,7 +29,6 @@ dependencies = [
   "more_itertools",
   "networkx",
   "bioontologies",
-  "biomappings",
   "pyobo",
   "fastapi",
   "uvicorn",

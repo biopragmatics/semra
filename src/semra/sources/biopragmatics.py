@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-import biomappings
+import importlib.metadata
 
-from semra import Mapping
-from semra.io import from_biomappings
+import bioregistry
+import pandas as pd
+from curies import Reference
+from tqdm.asyncio import tqdm
+
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "from_biomappings_positive",
@@ -16,14 +20,78 @@ __all__ = [
 
 def from_biomappings_positive() -> list[Mapping]:
     """Get positive mappings from Biomappings."""
-    return from_biomappings(biomappings.load_mappings())
+    try:
+        import biomappings
+    except ImportError:
+        return read_remote_tsv("mappings.tsv")
+    else:
+        return _process(biomappings.load_mappings())
 
 
 def from_biomappings_negative() -> list[Mapping]:
-    """Get positive mappings from Biomappings."""
-    return from_biomappings(biomappings.load_false_mappings())
+    """Get negative mappings from Biomappings."""
+    try:
+        import biomappings
+    except ImportError:
+        return read_remote_tsv("incorrect.tsv")
+    else:
+        return _process(biomappings.load_false_mappings())
 
 
 def from_biomappings_predicted() -> list[Mapping]:
-    """Get positive mappings from Biomappings."""
-    return from_biomappings(biomappings.load_predictions())
+    """Get predicted mappings from Biomappings."""
+    try:
+        import biomappings
+    except ImportError:
+        return read_remote_tsv("predictions.tsv")
+    else:
+        return _process(biomappings.load_predictions())
+
+
+BASE_URL = "https://github.com/biopragmatics/biomappings/raw/master/src/biomappings/resources"
+
+
+def read_remote_tsv(name: str) -> list[Mapping]:
+    """Load a remote mapping file from the Biomappings github repository."""
+    url = f"{BASE_URL}/{name}"
+    df = pd.read_csv(url, sep="\t")
+    mapping_dicts = df.to_json(orient="record")
+    return _process(mapping_dicts)
+
+
+def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
+    try:
+        biomappings_version = importlib.metadata.version("biomappings")
+    except Exception:
+        biomappings_version = None
+    mapping_set = MappingSet(name="biomappings", confidence=confidence, license="CC0", version=biomappings_version)
+    rv = []
+    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False):
+        try:
+            p = Reference.from_curie(mapping_dict["relation"])
+        except ValueError:
+            continue  # TODO fix speciesSpecific
+        source_prefix = mapping_dict["source prefix"]
+        source_identifier = bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"])
+        target_prefix = mapping_dict["target prefix"]
+        target_identifier = bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"])
+        author = Reference.from_curie(mapping_dict["source"])
+        mm = Mapping(
+            s=Reference(prefix=source_prefix, identifier=source_identifier),
+            p=p,
+            o=Reference(prefix=target_prefix, identifier=target_identifier),
+            evidence=[
+                SimpleEvidence(
+                    justification=Reference.from_curie(mapping_dict["type"]),
+                    mapping_set=mapping_set,
+                    author=author,
+                    # TODO configurable confidence globally per author or based on author's self-reported confidence
+                )
+            ],
+        )
+        rv.append(mm)
+    return rv
+
+
+if __name__ == "__main__":
+    print(read_remote_tsv("unsure.tsv"))

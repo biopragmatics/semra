@@ -72,14 +72,18 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         except ValueError:
             continue  # TODO fix speciesSpecific
         source_prefix = mapping_dict["source prefix"]
-        source_identifier = bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"])
         target_prefix = mapping_dict["target prefix"]
-        target_identifier = bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"])
         author = Reference.from_curie(mapping_dict["source"])
         mm = Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_identifier),
+            s=Reference(
+                prefix=source_prefix,
+                identifier=bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"]),
+            ),
             p=p,
-            o=Reference(prefix=target_prefix, identifier=target_identifier),
+            o=Reference(
+                prefix=target_prefix,
+                identifier=bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"]),
+            ),
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),

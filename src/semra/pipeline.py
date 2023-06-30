@@ -21,10 +21,15 @@ from semra.api import (
     infer_reversible,
     prioritize,
 )
-from semra.io import from_bioontologies, from_cache_df, from_pyobo, write_neo4j, write_pickle, write_sssom
+from semra.io import from_bioontologies, from_cache_df, from_pyobo, from_sssom, write_neo4j, write_pickle, write_sssom
 from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE
-from semra.sources.biopragmatics import from_biomappings_negative, from_biomappings_positive, from_biomappings_predicted
-from semra.sources.gilda import from_gilda
+from semra.sources import SOURCE_RESOLVER
+from semra.sources.biopragmatics import (
+    from_biomappings_negative,
+    from_biomappings_predicted,
+    get_biomappings_positive_mappings,
+)
+from semra.sources.gilda import get_gilda_mappings
 from semra.struct import Mapping, Reference
 
 __all__ = [
@@ -44,10 +49,10 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "gilda", "custom"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "gilda", "custom", "sssom"]
     prefix: str | None = None
     confidence: float = 1.0
-    extras: dict[str, Any] | None = None
+    extras: dict[str, Any] = Field(default_factory=dict)
 
 
 class Mutation(BaseModel):
@@ -135,14 +140,14 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
         elif inp.source == "bioontologies":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence, **(inp.extras or {})))
+            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence, **inp.extras))
         elif inp.source == "pyobo":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence, **(inp.extras or {})))
+            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence, **inp.extras))
         elif inp.source == "biomappings":
             if inp.prefix in {None, "positive"}:
-                mappings.extend(from_biomappings_positive())
+                mappings.extend(get_biomappings_positive_mappings())
             elif inp.prefix == "negative":
                 mappings.extend(from_biomappings_negative())
             elif inp.prefix == "predicted":
@@ -150,9 +155,14 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
             else:
                 raise ValueError
         elif inp.source == "gilda":
-            mappings.extend(from_gilda(confidence=inp.confidence))
+            mappings.extend(get_gilda_mappings(confidence=inp.confidence))
         elif inp.source == "custom":
-            mappings.extend(from_cache_df(**(inp.extras or {})))
+            func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
+            mappings.extend(func())
+        elif inp.source == "sssom":
+            mappings.extend(from_sssom(inp.prefix, **inp.extras))
+        elif inp.source == "cache":
+            mappings.extend(from_cache_df(**inp.extras))
         else:
             raise ValueError
     return mappings

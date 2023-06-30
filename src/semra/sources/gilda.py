@@ -13,14 +13,14 @@ from semra.api import validate_mappings
 from semra.rules import BEN_ORCID, LEXICAL_MAPPING
 
 __all__ = [
-    "from_gilda",
+    "get_gilda_mappings",
 ]
 
 GILDA_LOCAL = Path("/Users/cthoyt/dev/gilda/gilda/resources/mesh_mappings.tsv")
 GILDA_MAPPINGS = "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
 
 
-def from_gilda(confidence: float = 0.95) -> list[Mapping]:
+def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
     """Get MeSH and potentially other mappings from Gilda."""
     df = pd.read_csv(
         GILDA_MAPPINGS if not GILDA_LOCAL.is_file() else GILDA_LOCAL,
@@ -53,4 +53,4 @@ def from_gilda(confidence: float = 0.95) -> list[Mapping]:
 
 
 if __name__ == "__main__":
-    from_gilda()
+    get_gilda_mappings()

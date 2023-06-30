@@ -205,30 +205,45 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
     ]
 
 
-def from_sssom(path, mapping_set_name) -> list[Mapping]:
+def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
+    # FIXME use sssom-py for this
     df = pd.read_csv(path, sep="\t", dtype=str)
-    columns = [
-        "subject_id",
-        "predicate_id",
-        "object_id",
-        "mapping_justification",
-        # TODO add more
-    ]
-    rv = []
-    for s, p, o, justification, *_ in df[columns].values:
-        rv.append(
-            Mapping(
-                s=Reference.from_curie(s),
-                p=Reference.from_curie(p),
-                o=Reference.from_curie(o),
-                evidence=[
-                    SimpleEvidence(
-                        justification=Reference.from_curie(justification), mapping_set=MappingSet(name=mapping_set_name)
-                    )
-                ],
+    return [_parse_sssom_row(row, mapping_set_name) for _, row in df.iterrows()]
+
+
+def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
+    if "author_id" in row:
+        author = Reference.from_curie(row["author_id"])
+    else:
+        author = None
+    if "mapping_set_name" in row:
+        n = row["mapping_set_name"]
+    elif mapping_set_name is None:
+        raise KeyError
+    else:
+        n = mapping_set_name
+    confidence = None
+    if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
+        confidence = row["mapping_set_confidence"]
+
+    mapping_set = MappingSet(
+        name=n,
+        version=row.get("mapping_set_version"),
+        license=row.get("mapping_set_license"),
+        confidence=confidence,
+    )
+    return Mapping(
+        s=Reference.from_curie(row["subject_id"]),
+        p=Reference.from_curie(row["predicate_id"]),
+        o=Reference.from_curie(row["object_id"]),
+        evidence=[
+            SimpleEvidence(
+                justification=Reference.from_curie(row["mapping_justification"]),
+                mapping_set=mapping_set,
+                author=author,
             )
-        )
-    return rv
+        ],
+    )
 
 
 def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:

@@ -12,13 +12,13 @@ from tqdm.asyncio import tqdm
 from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
-    "from_biomappings_positive",
+    "get_biomappings_positive_mappings",
     "from_biomappings_negative",
     "from_biomappings_predicted",
 ]
 
 
-def from_biomappings_positive() -> list[Mapping]:
+def get_biomappings_positive_mappings() -> list[Mapping]:
     """Get positive mappings from Biomappings."""
     try:
         import biomappings

@@ -55,7 +55,7 @@ def read_remote_tsv(name: str) -> list[Mapping]:
     """Load a remote mapping file from the Biomappings github repository."""
     url = f"{BASE_URL}/{name}"
     df = pd.read_csv(url, sep="\t")
-    mapping_dicts = df.to_json(orient="record")
+    mapping_dicts = df.to_json(orient="records")
     return _process(mapping_dicts)
 
 

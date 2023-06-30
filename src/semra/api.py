@@ -373,7 +373,7 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
 
 def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out many to many mappings."""
-    skip_mappings = get_many_to_many(mappings, progress=progress)
+    skip_mappings = get_many_to_many(mappings)
     return filter_mappings(mappings, skip_mappings, progress=progress)
 
 
@@ -383,7 +383,7 @@ def project(
     """Ensure that each identifier only appears as the subject of one mapping."""
     mappings = keep_subject_prefixes(mappings, source_prefix)
     mappings = keep_object_prefixes(mappings, target_prefix)
-    m2m_mappings = get_many_to_many(mappings, progress=progress)
+    m2m_mappings = get_many_to_many(mappings)
     mappings = filter_mappings(mappings, m2m_mappings, progress=progress)
     mappings = assemble_evidences(mappings, progress=progress)
     if return_sus:

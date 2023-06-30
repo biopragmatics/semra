@@ -14,12 +14,12 @@ from tqdm.autonotebook import tqdm
 from semra.api import (
     assemble_evidences,
     filter_mappings,
+    filter_prefixes,
     filter_self_matches,
     infer_chains,
     infer_mutual_dbxref_mutations,
     infer_reversible,
     prioritize,
-    remove_prefixes,
 )
 from semra.io import from_bioontologies, from_cache_df, from_pyobo, write_neo4j, write_pickle, write_sssom
 from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE
@@ -169,7 +169,7 @@ def process(
     from semra.sources.biopragmatics import from_biomappings_negative
 
     if remove_prefix_set:
-        mappings = remove_prefixes(mappings, remove_prefix_set)
+        mappings = filter_prefixes(mappings, remove_prefix_set)
 
     start = time.time()
     negatives = from_biomappings_negative()

@@ -40,6 +40,16 @@ EVIDENCE_KEY = "evidence"
 Index = dict[Triple, list[Evidence]]
 
 
+def _tqdm(mappings: Iterable[Mapping], desc: str | None = None, *, progress: bool = True):
+    return tqdm(
+        mappings,
+        unit_scale=True,
+        unit="mapping",
+        desc=desc,
+        disable=not progress,
+    )
+
+
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]:
     """Count source prefix-target prefix pairs."""
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
@@ -63,7 +73,7 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
 def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd: defaultdict[Triple, list[Evidence]] = defaultdict(list)
-    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Indexing mappings", disable=not progress):
+    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
 
@@ -75,7 +85,7 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
 
 def infer_reversible(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     rv = []
-    for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Infer reverse", disable=not progress):
+    for mapping in _tqdm(mappings, desc="Infer reverse", progress=progress):
         rv.append(mapping)
         if flipped_mapping := flip(mapping):
             rv.append(flipped_mapping)
@@ -248,6 +258,8 @@ def infer_mutations(
     pairs: dict[tuple[str, str], float],
     old: Reference,
     new: Reference,
+    *,
+    progress: bool = False,
 ) -> list[Mapping]:
     """Infer mappings with alternate predicates for the given prefix pairs.
 
@@ -259,7 +271,7 @@ def infer_mutations(
     :returns: A list of all old mapping plus inferred ones interspersed.
     """
     rv = []
-    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Adding mutated predicates"):
+    for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
         confidence = pairs.get((mapping.s.prefix, mapping.o.prefix))
         if confidence is not None and mapping.p == old:
@@ -284,23 +296,35 @@ def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progr
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in tqdm(
-            mappings,
-            unit_scale=True,
-            unit="mapping",
-            desc=f"Keeping from {len(prefixes)} prefixes",
-            disable=not progress,
-        )
+        for mapping in _tqdm(mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress)
         if mapping.s.prefix in prefixes and mapping.o.prefix in prefixes
     ]
 
 
-def remove_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str]) -> list[Mapping]:
+def keep_subject_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True):
+    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    return [
+        mapping
+        for mapping in _tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
+        if mapping.s.prefix in prefixes
+    ]
+
+
+def keep_object_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True):
+    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    return [
+        mapping
+        for mapping in _tqdm(mappings, desc="Filtering object prefixes", progress=progress)
+        if mapping.o.prefix in prefixes
+    ]
+
+
+def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str]) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc=f"Filtering out {len(prefixes)} prefixes")
+        for mapping in _tqdm(mappings, desc=f"Filtering out {len(prefixes)} prefixes")
         if mapping.s.prefix not in prefixes and mapping.o.prefix not in prefixes
     ]
 
@@ -309,26 +333,18 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     """Filter out mappings within the same resource."""
     return [
         mapping
-        for mapping in tqdm(
-            mappings, unit_scale=True, unit="mapping", desc="Filtering out self-matches", disable=not progress
-        )
+        for mapping in _tqdm(mappings, desc="Filtering out self-matches", progress=progress)
         if mapping.s.prefix != mapping.o.prefix
     ]
 
 
 def filter_mappings(mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings in the second set from the first set."""
-    skip_set = {m.triple for m in skip_mappings}
+    skip_triples = {skip_mapping.triple for skip_mapping in skip_mappings}
     return [
         mapping
-        for mapping in tqdm(
-            mappings,
-            unit_scale=True,
-            unit="mapping",
-            desc="Filtering mappings",
-            disable=not progress,
-        )
-        if mapping.triple not in skip_set
+        for mapping in _tqdm(mappings, desc="Filtering mappings", progress=progress)
+        if mapping.triple not in skip_triples
     ]
 
 
@@ -355,37 +371,24 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     return rv
 
 
+def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
+    """Filter out many to many mappings."""
+    skip_mappings = get_many_to_many(mappings, progress=progress)
+    return filter_mappings(mappings, skip_mappings, progress=progress)
+
+
 def project(
-    mappings: list[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False
+    mappings: list[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False, progress: bool = False
 ) -> list[Mapping] | tuple[list[Mapping], list[Mapping]]:
     """Ensure that each identifier only appears as the subject of one mapping."""
-    subject_index = defaultdict(list)
-    object_index = defaultdict(list)
-    for mapping in mappings:
-        if mapping.s.prefix == source_prefix and mapping.o.prefix == target_prefix:
-            subject_index[mapping.s].append(mapping)
-            object_index[mapping.o].append(mapping)
-
-    rv = []
-    sus_mappings = []
-    for entity in {*subject_index, *object_index}:
-        subject_mappings = subject_index.get(entity, [])
-        if len(subject_mappings) <= 1:
-            rv.extend(subject_mappings)
-        else:
-            sus_mappings.extend(subject_mappings)
-        object_mappings = object_index.get(entity, [])
-        if len(object_mappings) <= 1:
-            rv.extend(object_mappings)
-        else:
-            sus_mappings.extend(object_mappings)
-    # if sus_mappings:
-    #     logger.info("Got %d non-bijective mappings", len(sus_mappings))
-    #     logger.info(index_str(get_index(sus_mappings)))
-    rv = assemble_evidences(rv)
+    mappings = keep_subject_prefixes(mappings, source_prefix)
+    mappings = keep_object_prefixes(mappings, target_prefix)
+    m2m_mappings = get_many_to_many(mappings, progress=progress)
+    mappings = filter_mappings(mappings, m2m_mappings, progress=progress)
+    mappings = assemble_evidences(mappings, progress=progress)
     if return_sus:
-        return rv, sus_mappings
-    return rv
+        return mappings, m2m_mappings
+    return mappings
 
 
 def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:

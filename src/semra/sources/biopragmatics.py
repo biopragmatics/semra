@@ -95,7 +95,3 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         )
         rv.append(mm)
     return rv
-
-
-if __name__ == "__main__":
-    print(read_remote_tsv("unsure.tsv"))

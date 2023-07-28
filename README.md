@@ -1,5 +1,7 @@
 # Semantic Mapping Reasoning Assembler (SeMRA)
 
+[![DOI](https://zenodo.org/badge/626870339.svg)](https://zenodo.org/badge/latestdoi/626870339)
+
 This software provides:
 
 1. An object model for semantic mappings (based on SSSOM)

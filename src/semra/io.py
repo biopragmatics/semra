@@ -15,7 +15,7 @@ import pyobo
 import pyobo.utils
 from tqdm.auto import tqdm
 
-from semra.rules import DB_XREF, MANUAL_MAPPING
+from semra.rules import DB_XREF, MANUAL_MAPPING, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
@@ -206,9 +206,24 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
 
 
 def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
+    path = Path(path).resolve()
     # FIXME use sssom-py for this
     df = pd.read_csv(path, sep="\t", dtype=str)
-    return [_parse_sssom_row(row, mapping_set_name) for _, row in df.iterrows()]
+    df = df.rename(
+        columns={
+            "source_id": "subject_id",
+            "source_label": "subject_label",
+            "target_id": "object_id",
+            "target_label": "object_label",
+            "justification": "mapping_justification",
+        }
+    )
+    return [
+        _parse_sssom_row(row, mapping_set_name)
+        for _, row in tqdm(
+            df.iterrows(), total=len(df.index), leave=False, unit_scale=True, unit="row", desc=f"Loading {path.stem}"
+        )
+    ]
 
 
 def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
@@ -232,13 +247,17 @@ def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
         license=row.get("mapping_set_license"),
         confidence=confidence,
     )
+    if "mapping_justification" in row:
+        justification = Reference.from_curie(row["mapping_justification"])
+    else:
+        justification = UNSPECIFIED_MAPPING
     return Mapping(
         s=Reference.from_curie(row["subject_id"]),
         p=Reference.from_curie(row["predicate_id"]),
         o=Reference.from_curie(row["object_id"]),
         evidence=[
             SimpleEvidence(
-                justification=Reference.from_curie(row["mapping_justification"]),
+                justification=justification,
                 mapping_set=mapping_set,
                 author=author,
             )
@@ -275,7 +294,7 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
     df = pd.DataFrame(rows, columns=columns)
     if add_labels:
         for label_column, id_column in [("subject_label", "subject_id"), ("object_label", "object_id")]:
-            df[label_column] = df[id_column].map(pyobo.get_name_by_curie)  # type:ignore
+            df[label_column] = df[id_column].map(_get_name_by_curie)  # type:ignore
         df = df[
             [
                 "subject_id",
@@ -299,6 +318,15 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
             del df[column]
 
     return df
+
+
+SKIP_PREFIXES = {"pubchem", "kegg"}
+
+
+def _get_name_by_curie(curie: str) -> str | None:
+    if any(curie.startswith(p) for p in SKIP_PREFIXES):
+        return None
+    return pyobo.get_name_by_curie(curie)
 
 
 def _get_sssom_row(mapping: Mapping, e: Evidence):
@@ -325,9 +353,9 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
     )
 
 
-def write_sssom(mappings: list[Mapping], file: str | Path | TextIO) -> None:
+def write_sssom(mappings: list[Mapping], file: str | Path | TextIO, *, add_labels: bool = False) -> None:
     """Export mappings as an SSSOM file (may be lossy)."""
-    df = get_sssom_df(mappings)
+    df = get_sssom_df(mappings, add_labels=add_labels)
     df.to_csv(file, sep="\t", index=False)
 
 

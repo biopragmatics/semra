@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "gilda", "custom", "sssom"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom"]
     prefix: str | None = None
     confidence: float = 1.0
     extras: dict[str, Any] = Field(default_factory=dict)
@@ -71,6 +71,11 @@ class Configuration(BaseModel):
     negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
     priority: list[str] = Field(description="If no priority is given, is inferred from the order of inputs")
     mutations: list[Mutation] = Field(default_factory=list)
+    exclude_pairs: list[tuple[str, str]] = Field(
+        default_factory=list,
+        description="A list of pairs of prefixes. Remove all mappings whose source "
+        "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
+    )
     remove_prefixes: list[str] | None = None
 
     raw_pickle_path: Path | None = None
@@ -81,8 +86,10 @@ class Configuration(BaseModel):
     inferred_neo4j_path: Path | None = None
     inferred_neo4j_name: str | None = None
 
-    processed_path: Path | None = None
+    processed_pickle_path: Path | None = None
     processed_sssom_path: Path | None = None
+
+    sssom_add_labels: bool = False
 
     @root_validator
     def infer_priority(cls, values):  # noqa:N805
@@ -93,12 +100,22 @@ class Configuration(BaseModel):
         return values
 
 
-def get_mappings_from_config(configuration: Configuration) -> list[Mapping]:
+def get_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_raw: bool = False,
+    refresh_processed: bool = False,
+) -> list[Mapping]:
     """Run assembly based on a configuration."""
-    if configuration.processed_path and configuration.processed_path.is_file():
-        logger.info("loading cached processed mappings from %s", configuration.processed_path)
-        return pickle.loads(configuration.processed_path.read_bytes())
-    if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file():
+    if (
+        configuration.processed_pickle_path
+        and configuration.processed_pickle_path.is_file()
+        and not refresh_raw
+        and not refresh_processed
+    ):
+        logger.info("loading cached processed mappings from %s", configuration.processed_pickle_path)
+        return pickle.loads(configuration.processed_pickle_path.read_bytes())
+    if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file() and not refresh_raw:
         start = time.time()
         logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
         mappings = pickle.loads(configuration.raw_pickle_path.read_bytes())
@@ -110,7 +127,7 @@ def get_mappings_from_config(configuration: Configuration) -> list[Mapping]:
         if configuration.raw_pickle_path:
             write_pickle(mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(mappings, configuration.raw_sssom_path)
+            write_sssom(mappings, configuration.raw_sssom_path, add_labels=configuration.sssom_add_labels)
         if configuration.raw_neo4j_path:
             write_neo4j(mappings, configuration.raw_neo4j_path, configuration.raw_neo4j_name)
 
@@ -123,10 +140,10 @@ def get_mappings_from_config(configuration: Configuration) -> list[Mapping]:
         remove_prefix_set=configuration.remove_prefixes,
     )
     mappings = prioritize(mappings, configuration.priority)
-    if configuration.processed_path:
-        configuration.processed_path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+    if configuration.processed_pickle_path:
+        configuration.processed_pickle_path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
     if configuration.processed_sssom_path:
-        write_sssom(mappings, configuration.processed_sssom_path)
+        write_sssom(mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
     return mappings
 
 

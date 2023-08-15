@@ -91,7 +91,6 @@ all = [
   "typing",
 ]
 
-
 [tool.black]
 target-version = ["py311"]
 line-length = 120

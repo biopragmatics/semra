@@ -85,6 +85,15 @@ all = [
   "typing",
 ]
 
+[tool.hatch.envs.test]
+dependencies = [
+  "pytest"
+]
+
+[[tool.hatch.envs.test.matrix]]
+pydantic = ["<2.0", ">=2.0"]
+
+
 [tool.black]
 target-version = ["py311"]
 line-length = 120

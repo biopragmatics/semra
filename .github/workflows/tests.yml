@@ -26,4 +26,4 @@ jobs:
           pip install hatch
       - name: Test with pytest
         run:
-          hatch run test +pydantic=${{ matrix.pydantic }}
+          hatch run +pydantic=${{ matrix.pydantic }} test

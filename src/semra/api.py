@@ -22,14 +22,7 @@ from semra.rules import (
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
-from semra.struct import (
-    Evidence,
-    Mapping,
-    ReasonedEvidence,
-    Reference,
-    Triple,
-    triple_key,
-)
+from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference, Triple, triple_key
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +137,9 @@ def _condense_predicates(predicates: list[Reference]) -> Reference | None:
     predicate_set = set(predicates)
     if predicate_set == {EXACT_MATCH}:
         return EXACT_MATCH
-    if predicate_set == {BROAD_MATCH} or predicate_set == {EXACT_MATCH, BROAD_MATCH}:
+    if predicate_set == {BROAD_MATCH} or predicate_set == {EXACT_MATCH, BROAD_MATCH}:  # noqa:PLR1714
         return BROAD_MATCH
-    if predicate_set == {NARROW_MATCH} or predicate_set == {EXACT_MATCH, NARROW_MATCH}:
+    if predicate_set == {NARROW_MATCH} or predicate_set == {EXACT_MATCH, NARROW_MATCH}:  # noqa:PLR1714
         return NARROW_MATCH
     return None
 
@@ -204,7 +197,7 @@ def infer_chains(
 def index_str(index: Index) -> str:
     from tabulate import tabulate
 
-    rows = []
+    rows: list[tuple[str, str, str, str]] = []
 
     def key(pair):
         return triple_key(pair[0])
@@ -214,9 +207,9 @@ def index_str(index: Index) -> str:
             rows.append((s.curie, p.curie, o.curie, ""))
         else:
             first, *rest = evidences
-            rows.append((s.curie, p.curie, o.curie, first))
+            rows.append((s.curie, p.curie, o.curie, str(first)))
             for r in rest:
-                rows.append(("", "", "", r))
+                rows.append(("", "", "", str(r)))
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")
 
 

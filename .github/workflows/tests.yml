@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install tox
+      - name: Test with mypy
+        run:
+          tox -e mypy
       - name: Test with pytest
         run:
           tox -e py-${{ matrix.pydantic }}

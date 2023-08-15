@@ -27,7 +27,7 @@ def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
                 o=Reference(prefix="inchikey", identifier=inchi_key),
                 evidence=[
                     SimpleEvidence(
-                        justfication=UNSPECIFIED_MAPPING,
+                        justification=UNSPECIFIED_MAPPING,
                         mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
                     )
                 ],
@@ -52,7 +52,7 @@ def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
             o=Reference(prefix="chembl.target", identifier=chembl_id),
             evidence=[
                 SimpleEvidence(
-                    justfication=UNSPECIFIED_MAPPING,
+                    justification=UNSPECIFIED_MAPPING,
                     mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
                 )
             ],

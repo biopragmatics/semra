@@ -14,7 +14,7 @@ import pydantic
 from curies import Reference
 from more_itertools import triplewise
 from pydantic import Field
-from pydantic.types import UUID, UUID4
+from pydantic.types import UUID4
 
 __all__ = [
     "Reference",
@@ -66,8 +66,8 @@ class EvidenceMixin:
 class MappingSet(pydantic.BaseModel):
     name: str = Field(..., description="Name of the mapping set")
     version: str | None = Field(default=None, description="The version of the dataset from which the mapping comes")
-    license: str | None = Field(default=None,description="License name or URL for mapping set")
-    confidence: float | None = Field(default=None,description="Mapping set level confidence")
+    license: str | None = Field(default=None, description="License name or URL for mapping set")
+    confidence: float | None = Field(default=None, description="Mapping set level confidence")
 
     def key(self):
         return self.name, self.version or "", self.license or "", 1.0 if self.confidence is None else self.confidence

@@ -16,13 +16,7 @@ Reproduce the scenario from the Biomappings paper on cancer cell lines
 import click
 import pystow
 
-from semra.api import (
-    keep_prefixes,
-    prioritize,
-    project,
-    str_source_target_counts,
-    validate_mappings,
-)
+from semra.api import keep_prefixes, prioritize, project, str_source_target_counts, validate_mappings
 from semra.io import write_neo4j, write_pickle, write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_raw_mappings, process
 

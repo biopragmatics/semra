@@ -5,12 +5,7 @@ from gilda import Grounder
 from gilda.grounder import get_grounding_terms, load_entries_from_terms_file
 from gilda.resources import resource_dir
 
-from semra.gilda_utils import (
-    GILDA_TO_BIOREGISTRY,
-    print_scored_matches,
-    standardize_terms,
-    update_terms,
-)
+from semra.gilda_utils import GILDA_TO_BIOREGISTRY, print_scored_matches, standardize_terms, update_terms
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
 MODULE = pystow.module("semra", "gilda-demo")

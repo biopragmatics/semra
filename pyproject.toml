@@ -34,6 +34,12 @@ dependencies = [
   "uvicorn",
 ]
 
+[project.optional-dependencies]
+tests = [
+    "pytest",
+    "coverage",
+]
+
 [project.urls]
 Documentation = "https://github.com/biopragmatics/semra#readme"
 Issues = "https://github.com/biopragmatics/semra/issues"

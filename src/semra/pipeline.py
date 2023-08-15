@@ -58,7 +58,7 @@ class Input(BaseModel):
 class Mutation(BaseModel):
     """Represents a mutation operation on a mapping set."""
 
-    source: str = Field()
+    source: str = Field(..., description="The source type")
     confidence: float = 1.0
     old: Reference = Field(default=DB_XREF)
     new: Reference = Field(default=EXACT_MATCH)
@@ -69,7 +69,7 @@ class Configuration(BaseModel):
 
     inputs: list[Input]
     negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
-    priority: list[str] = Field(description="If no priority is given, is inferred from the order of inputs")
+    priority: list[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
     mutations: list[Mutation] = Field(default_factory=list)
     exclude_pairs: list[tuple[str, str]] = Field(
         default_factory=list,
@@ -91,7 +91,7 @@ class Configuration(BaseModel):
 
     sssom_add_labels: bool = False
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]

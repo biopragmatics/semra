@@ -91,7 +91,7 @@ class Configuration(BaseModel):
 
     sssom_add_labels: bool = False
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]

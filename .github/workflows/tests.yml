@@ -14,7 +14,7 @@ jobs:
       matrix:
         os: [ ubuntu-latest ]
         python-version: [ "3.11" ]
-        pydantic: ["1", "2"]
+        pydantic: [ "pydantic1", "pydantic2" ]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -26,4 +26,4 @@ jobs:
           pip install hatch
       - name: Test with pytest
         run:
-          hatch run +pydantic=${{ matrix.pydantic }} test
+          tox -e py-${{ matrix.pydantic }}

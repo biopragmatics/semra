@@ -14,6 +14,7 @@ import pydantic
 from curies import Reference
 from more_itertools import triplewise
 from pydantic import Field
+from pydantic.types import UUID, UUID4
 
 __all__ = [
     "Reference",
@@ -63,7 +64,7 @@ class EvidenceMixin:
 
 
 class MappingSet(pydantic.BaseModel):
-    name: str
+    name: str = Field(..., description="Name of the mapping set")
     version: str | None = Field(default=None, description="The version of the dataset from which the mapping comes")
     license: str | None = Field(default=None,description="License name or URL for mapping set")
     confidence: float | None = Field(default=None,description="Mapping set level confidence")
@@ -104,7 +105,7 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
         description="A reference to the author of the mapping (e.g. with ORCID)",
         example=Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
     )
-    uuid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    uuid: UUID4 = Field(default_factory=uuid.uuid4)
 
     def key(self):
         """Get a key suitable for hashing the evidence.

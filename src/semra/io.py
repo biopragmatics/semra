@@ -321,7 +321,9 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
     return df
 
 
-SKIP_PREFIXES = {"pubchem", "kegg"}
+SKIP_PREFIXES = {
+    "pubchem", "kegg", "snomedct", "icd9", "icd10", "icd11", "icd",
+}
 
 
 def _get_name_by_curie(curie: str) -> str | None:

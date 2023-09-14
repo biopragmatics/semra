@@ -141,7 +141,7 @@ def get_mappings_from_config(
     )
     mappings = prioritize(mappings, configuration.priority)
     if configuration.processed_pickle_path:
-        configuration.processed_pickle_path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+        write_pickle(mappings, configuration.processed_pickle_path)
     if configuration.processed_sssom_path:
         write_sssom(mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
     return mappings

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import logging
 import pickle
 from pathlib import Path
@@ -362,7 +363,11 @@ def write_sssom(mappings: list[Mapping], file: str | Path | TextIO, *, add_label
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
     """Write the mappings as a pickle."""
     path = Path(path).resolve()
-    path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+    if path.suffix.endswith(".gz"):
+        with gzip.open(path, "wb") as file:
+            pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")

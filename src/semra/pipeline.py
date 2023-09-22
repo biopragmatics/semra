@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import pickle
 import time
 from pathlib import Path
 from typing import Any, Literal
@@ -21,7 +20,16 @@ from semra.api import (
     infer_reversible,
     prioritize,
 )
-from semra.io import from_bioontologies, from_cache_df, from_pyobo, from_sssom, write_neo4j, write_pickle, write_sssom
+from semra.io import (
+    from_bioontologies,
+    from_cache_df,
+    from_pickle,
+    from_pyobo,
+    from_sssom,
+    write_neo4j,
+    write_pickle,
+    write_sssom,
+)
 from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.biopragmatics import (
@@ -114,11 +122,11 @@ def get_mappings_from_config(
         and not refresh_processed
     ):
         logger.info("loading cached processed mappings from %s", configuration.processed_pickle_path)
-        return pickle.loads(configuration.processed_pickle_path.read_bytes())
+        return from_pickle(configuration.processed_pickle_path)
     if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file() and not refresh_raw:
         start = time.time()
         logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
-        mappings = pickle.loads(configuration.raw_pickle_path.read_bytes())
+        mappings = from_pickle(configuration.raw_pickle_path)
         logger.info(
             "loaded cached raw mappings from %s in %.2f seconds", configuration.raw_pickle_path, time.time() - start
         )

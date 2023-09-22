@@ -24,6 +24,7 @@ __all__ = [
     "from_pyobo",
     "from_bioontologies",
     "from_sssom",
+    "from_pickle",
     #
     "get_sssom_df",
     "write_sssom",
@@ -322,7 +323,13 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
 
 
 SKIP_PREFIXES = {
-    "pubchem", "kegg", "snomedct", "icd9", "icd10", "icd11", "icd",
+    "pubchem",
+    "kegg",
+    "snomedct",
+    "icd9",
+    "icd10",
+    "icd11",
+    "icd",
 }
 
 
@@ -370,6 +377,15 @@ def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
             pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+
+
+def from_pickle(path: str | Path) -> list[Mapping]:
+    """Read the mappings from a pickle."""
+    path = Path(path).resolve()
+    if not path.suffix.endswith(".gz"):
+        with gzip.open(path, "wb") as file:
+            return pickle.load(file)
+    return pickle.loads(path.read_bytes())
 
 
 ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")

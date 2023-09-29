@@ -383,7 +383,7 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     """Read the mappings from a pickle."""
     path = Path(path).resolve()
     if path.suffix.endswith(".gz"):
-        with gzip.open(path, "wb") as file:
+        with gzip.open(path, "rb") as file:
             return pickle.load(file)
     return pickle.loads(path.read_bytes())
 

@@ -301,7 +301,7 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
         "mapping_set_license",
         "mapping_set_confidence",
         "author_id",
-        "comments",
+        "comment",
     ]
     df = pd.DataFrame(rows, columns=columns)
     if add_labels:
@@ -320,7 +320,7 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
                 "mapping_set_license",
                 "mapping_set_confidence",
                 "author_id",
-                "comments",
+                "comment",
             ]
         ]
 

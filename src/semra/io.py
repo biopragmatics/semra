@@ -208,7 +208,7 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
 
 
 def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
-    path = Path(path).resolve()
+    """Get from a SSSOM path."""
     # FIXME use sssom-py for this
     df = pd.read_csv(path, sep="\t", dtype=str)
     df = df.rename(
@@ -220,10 +220,20 @@ def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
             "justification": "mapping_justification",
         }
     )
+    return from_sssom_df(df, mapping_set_name=mapping_set_name)
+
+
+def from_sssom_df(df: pd.DataFrame, mapping_set_name=None) -> list[Mapping]:
+    """Get from a SSSOM dataframe."""
     return [
         _parse_sssom_row(row, mapping_set_name)
         for _, row in tqdm(
-            df.iterrows(), total=len(df.index), leave=False, unit_scale=True, unit="row", desc=f"Loading {path.stem}"
+            df.iterrows(),
+            total=len(df.index),
+            leave=False,
+            unit_scale=True,
+            unit="row",
+            desc="Loading SSSOM dataframe",
         )
     ]
 
@@ -236,7 +246,7 @@ def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
     if "mapping_set_name" in row:
         n = row["mapping_set_name"]
     elif mapping_set_name is None:
-        raise KeyError
+        raise KeyError("need a mapping set name")
     else:
         n = mapping_set_name
     confidence = None

@@ -67,10 +67,6 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
     mapping_set = MappingSet(name="biomappings", confidence=confidence, license="CC0", version=biomappings_version)
     rv = []
     for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False):
-        try:
-            p = Reference.from_curie(mapping_dict["relation"])
-        except ValueError:
-            continue  # TODO fix speciesSpecific
         source_prefix = mapping_dict["source prefix"]
         target_prefix = mapping_dict["target prefix"]
         author = Reference.from_curie(mapping_dict["source"])
@@ -79,7 +75,7 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
                 prefix=source_prefix,
                 identifier=bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"]),
             ),
-            p=p,
+            p=Reference.from_curie(mapping_dict["relation"]),
             o=Reference(
                 prefix=target_prefix,
                 identifier=bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"]),

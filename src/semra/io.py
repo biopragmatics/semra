@@ -363,7 +363,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
         mapping.s.curie,
         mapping.p.curie,
         mapping.o.curie,
-        e.justification.curie if e.justification else "",
+        e.justification.curie,
         ",".join(sorted(e.mapping_set_names)),
         mapping_set_version,
         mapping_set_license,

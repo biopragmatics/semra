@@ -464,18 +464,18 @@ def validate_mappings(mappings: list[Mapping]) -> None:
 
     for mapping in tqdm(mappings, desc="Validating mappings", unit_scale=True, unit="mapping"):
         if bioregistry.normalize_prefix(mapping.s.prefix) != mapping.s.prefix:
-            raise ValueError(f"invalid subject prefix: {mapping}.")
+            raise ValueError(f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.s}.")
         if bioregistry.normalize_prefix(mapping.o.prefix) != mapping.o.prefix:
             raise ValueError(f"invalid object prefix: {mapping}.")
         if not bioregistry.is_valid_identifier(mapping.s.prefix, mapping.s.identifier):
             raise ValueError(
-                f"invalid mapping subject: {mapping}. Use regex {bioregistry.get_pattern(mapping.s.prefix)}"
+                f"Invalid mapping subject.\n\nMapping:{mapping}.\n\nSubject: {mapping.s}\n\nUse regex {bioregistry.get_pattern(mapping.s.prefix)}"
             )
         if ":" in mapping.s.identifier:
             raise ValueError(f"banana in mapping subject: {mapping}")
         if not bioregistry.is_valid_identifier(mapping.o.prefix, mapping.o.identifier):
             raise ValueError(
-                f"invalid mapping object: {mapping}. Use regex {bioregistry.get_pattern(mapping.o.prefix)}"
+                f"Invalid mapping object.\n\nMapping:{mapping}.\n\nObject: {mapping.o}\n\nUse regex {bioregistry.get_pattern(mapping.o.prefix)}"
             )
         if ":" in mapping.o.identifier:
             raise ValueError(f"banana in mapping object: {mapping}")

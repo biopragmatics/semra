@@ -16,9 +16,9 @@ Reproduce the scenario from the Biomappings paper on cancer cell lines
 import click
 import pystow
 
-from semra.api import keep_prefixes, prioritize, project, str_source_target_counts, validate_mappings
-from semra.io import write_neo4j, write_pickle, write_sssom
-from semra.pipeline import Configuration, Input, Mutation, get_raw_mappings, process
+from semra.api import project, str_source_target_counts
+from semra.io import write_sssom
+from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
 PREFIXES = {
     "efo",
@@ -36,16 +36,17 @@ CONFIGURATION = Configuration(
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        Input(
-            source="custom",
-            extras={
-                "path": "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
-                "source_prefix": "cellosaurus",
-                "prefixes": PREFIXES,
-                "version": "43",
-                "license": "CC-BY-4.0",
-            },
-        ),
+        # Cellosaurus removed its xrefs to depmap after v43
+        # Input(
+        #     source="custom",
+        #     extras={
+        #         "path": "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
+        #         "source_prefix": "cellosaurus",
+        #         "prefixes": PREFIXES,
+        #         "version": "43",
+        #         "license": "CC-BY-4.0",
+        #     },
+        # ),
         Input(prefix="efo", source="pyobo", confidence=0.99),
         Input(
             prefix="depmap",
@@ -56,35 +57,34 @@ CONFIGURATION = Configuration(
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
     ],
     priority=PRIORITY,
+    keep_prefixes=PREFIXES,
+    remove_imprecise=False,
     mutations=[
         Mutation(source="efo", confidence=0.7),
         Mutation(source="depmap", confidence=0.7),
         Mutation(source="ccle", confidence=0.7),
         Mutation(source="cellosaurus", confidence=0.7),
     ],
+    raw_pickle_path=MODULE.join(name="raw.pkl"),
+    raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
+    raw_neo4j_path=MODULE.join("neo4j_raw"),
+    processed_pickle_path=MODULE.join(name="processed.pkl"),
+    processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
+    processed_neo4j_path=MODULE.join("neo4j"),
+    priority_pickle_path=MODULE.join(name="priority.pkl"),
+    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
 )
 
 
 @click.command()
 def main():
     # 1. load mappings
-    mappings = get_raw_mappings(CONFIGURATION)
-    mappings = keep_prefixes(mappings, PREFIXES)
+    mappings = get_mappings_from_config(CONFIGURATION)
 
-    validate_mappings(mappings)
-
-    click.echo(f"Loaded {len(mappings):,} positive mappings")
+    click.echo(f"Processing returned {len(mappings):,} mappings")
     click.echo(str_source_target_counts(mappings))
 
-    mappings = process(mappings, upgrade_prefixes=PREFIXES, remove_imprecise=False)
-
-    neo4j_path = MODULE.join("neo4j")
-    click.echo(f"Output all mappings to {neo4j_path}")
-    write_neo4j(mappings, neo4j_path)
-    write_sssom(mappings, MODULE.join(name="full.sssom.tsv"))
-    write_pickle(mappings, MODULE.join(name="full.pkl"))
-
-    # Produce a consolidation mapping
+    # Produce consolidation mappings
     for s_prefix, t_prefix in [
         ("ccle", "efo"),
         ("ccle", "depmap"),
@@ -98,17 +98,6 @@ def main():
 
         sus_path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}_suspicious.tsv")
         write_sssom(sus, sus_path)
-
-    priority_mapping = prioritize(mappings, PRIORITY)
-    click.echo(f"Consolidated to a priority mapping of {len(priority_mapping):,} mappings")
-
-    sssom_path = MODULE.join(name="reproduction_prioritized.tsv")
-    click.echo(f"Output to {sssom_path}")
-    write_sssom(priority_mapping, sssom_path)
-
-    pickle_path = MODULE.join(name="reproduction_prioritized.pkl")
-    click.echo(f"Output to {pickle_path}")
-    write_pickle(priority_mapping, pickle_path)
 
 
 if __name__ == "__main__":

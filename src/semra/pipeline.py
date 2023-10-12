@@ -18,7 +18,9 @@ from semra.api import (
     infer_chains,
     infer_mutual_dbxref_mutations,
     infer_reversible,
+    keep_prefixes,
     prioritize,
+    validate_mappings,
 )
 from semra.io import (
     from_bioontologies,
@@ -57,7 +59,7 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
     prefix: str | None = None
     confidence: float = 1.0
     extras: dict[str, Any] = Field(default_factory=dict)
@@ -79,25 +81,37 @@ class Configuration(BaseModel):
     negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
     priority: list[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
     mutations: list[Mutation] = Field(default_factory=list)
+
     exclude_pairs: list[tuple[str, str]] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
     remove_prefixes: list[str] | None = None
+    keep_prefixes: list[str] | None = None
+    remove_imprecise: bool = True
+    validate_raw: bool = Field(
+        False,
+        description="Should the raw mappings be validated against Bioregistry prefixes and local unique identifier regular expressions (when available)?",
+    )
 
     raw_pickle_path: Path | None = None
     raw_sssom_path: Path | None = None
-    raw_neo4j_path: Path | None = None
-    raw_neo4j_name: str | None = None
-
-    inferred_neo4j_path: Path | None = None
-    inferred_neo4j_name: str | None = None
+    raw_neo4j_path: Path | None = Field(default=None, description="Directory in which Neo4j stuff goes")
+    raw_neo4j_name: str | None = Field(default=None, description="Directory for docker tag for Neo4j")
 
     processed_pickle_path: Path | None = None
     processed_sssom_path: Path | None = None
+    processed_neo4j_path: Path | None = Field(default=None, description="Directory in which Neo4j stuff goes")
+    processed_neo4j_name: str | None = Field(default=None, description="Directory for docker tag for Neo4j")
 
-    sssom_add_labels: bool = False
+    priority_pickle_path: Path | None = None
+    priority_sssom_path: Path | None = None
+    # note that making a priority neo4j doesn't make sense
+
+    sssom_add_labels: bool = Field(
+        default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
+    )
 
     @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
@@ -132,6 +146,8 @@ def get_mappings_from_config(
         )
     else:
         mappings = get_raw_mappings(configuration)
+        if configuration.validate_raw:
+            validate_mappings(mappings)
         if configuration.raw_pickle_path:
             write_pickle(mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
@@ -146,12 +162,22 @@ def get_mappings_from_config(
             m.source for m in configuration.mutations
         ],
         remove_prefix_set=configuration.remove_prefixes,
+        keep_prefix_set=configuration.keep_prefixes,
+        remove_imprecise=configuration.remove_imprecise,
     )
-    mappings = prioritize(mappings, configuration.priority)
     if configuration.processed_pickle_path:
         write_pickle(mappings, configuration.processed_pickle_path)
     if configuration.processed_sssom_path:
         write_sssom(mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
+    if configuration.processed_neo4j_path:
+        write_neo4j(mappings, configuration.processed_neo4j_path, configuration.processed_neo4j_name)
+
+    mappings = prioritize(mappings, configuration.priority)
+    if configuration.priority_pickle_path:
+        write_pickle(mappings, configuration.priority_pickle_path)
+    if configuration.priority_sssom_path:
+        write_sssom(mappings, configuration.priority_sssom_path, add_labels=configuration.sssom_add_labels)
+
     return mappings
 
 
@@ -159,7 +185,7 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
     for inp in tqdm(configuration.inputs, desc="Loading configured mappings", unit="source"):
-        tqdm.write(f"Loading {inp.prefix} with {inp.source}")
+        tqdm.write(f"Loading {inp.source}" + ("({inp.prefix})" if inp.prefix else ""))
         if inp.source is None:
             continue
         elif inp.source == "bioontologies":
@@ -197,11 +223,15 @@ def process(
     mappings: list[Mapping],
     upgrade_prefixes=None,
     remove_prefix_set=None,
+    keep_prefix_set=None,
     *,
     remove_imprecise: bool = True,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
     from semra.sources.biopragmatics import from_biomappings_negative
+
+    if keep_prefix_set:
+        mappings = keep_prefixes(mappings, keep_prefix_set)
 
     if remove_prefix_set:
         mappings = filter_prefixes(mappings, remove_prefix_set)

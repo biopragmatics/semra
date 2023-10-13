@@ -25,12 +25,15 @@ PREFIXES = {
     "cellosaurus",
     "depmap",
     "ccle",
-    # "clo", "cl", "bto",
+    "clo",
+    "cl",
+    "bto",
+    "mesh",
 }
 
 MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
 
-PRIORITY = ["efo", "cellosaurus", "ccle", "depmap"]
+PRIORITY = ["efo", "cellosaurus", "ccle", "depmap", "bto", "clo"]
 
 CONFIGURATION = Configuration(
     inputs=[
@@ -47,6 +50,10 @@ CONFIGURATION = Configuration(
         #         "license": "CC-BY-4.0",
         #     },
         # ),
+        Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
+        Input(prefix="bto", source="bioontologies", confidence=0.99),
+        Input(prefix="cl", source="bioontologies", confidence=0.99),
+        Input(prefix="clo", source="custom", confidence=0.99),
         Input(prefix="efo", source="pyobo", confidence=0.99),
         Input(
             prefix="depmap",
@@ -79,7 +86,7 @@ CONFIGURATION = Configuration(
 @click.command()
 def main():
     # 1. load mappings
-    mappings = get_mappings_from_config(CONFIGURATION)
+    mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
 
     click.echo(f"Processing returned {len(mappings):,} mappings")
     click.echo(str_source_target_counts(mappings))

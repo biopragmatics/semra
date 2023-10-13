@@ -91,7 +91,7 @@ class Configuration(BaseModel):
     keep_prefixes: list[str] | None = None
     remove_imprecise: bool = True
     validate_raw: bool = Field(
-        False,
+        default=False,
         description="Should the raw mappings be validated against Bioregistry prefixes and local unique identifier regular expressions (when available)?",
     )
 

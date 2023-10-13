@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% import "bootstrap5/utils.html" as util %}
+
+{% block title %}SeMRA{% endblock %}
+
+
+{% block content %}
+<div class="container" style="margin-top: 50px; margin-bottom: 50px">
+    {{ util.render_messages(dismissible=True, container=False) }}
+    <div class="row">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    Mapping <code>{{ mapping.curie["semra.mapping:" | length:][:8] }}</code>
+                </h5>
+                <dl>
+                    <dt>Subject</dt>
+                    <dd><a href="https://bioregistry.io/{{ mapping.s.curie }}"><code>{{ mapping.s.curie }}</code></a></dd>
+                    <dt>Predicate</dt>
+                    <dd><a href="https://bioregistry.io/{{ mapping.p.curie }}"><code>{{ mapping.p.curie }}</code></a></dd>
+                    <dt>Object</dt>
+                    <dd><a href="https://bioregistry.io/{{ mapping.o.curie }}"><code>{{ mapping.o.curie }}</code></a></dd>
+                    <dt>Evidence</dt>
+                    {%- for evidence in mapping.evidence -%}
+                    <dd>
+                        <code>{{ evidence.curie["semra.evidence:" | length:][:8] }}</code><br>
+                        Confidence: {{ evidence.confidence}}<br>
+                        Type: {{ evidence.evidence_type }}<br>
+                        {% if evidence.author %}
+                        Author:<a href="https://bioregistry.io/{{ evidence.author.curie }}">{{ evidence.author.curie }}</a><br>
+                        {% endif %}
+                        {% if evidence.mapping_set %}
+                        Mapping Set: <a href="{{ url_for('view_mapping_set', curie=evidence.mapping_set.curie) }}">{{evidence.mapping_set.name}}</a>
+                        ({{ evidence.mapping_set.version }},
+                        {{ evidence.mapping_set.license }})
+                        {% endif %}
+                    </dd>
+                    {%- endfor -%}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

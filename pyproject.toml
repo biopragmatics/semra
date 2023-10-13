@@ -30,8 +30,6 @@ dependencies = [
   "networkx",
   "bioontologies",
   "pyobo",
-  "fastapi",
-  "uvicorn",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +37,13 @@ tests = [
     "pytest",
     "coverage",
 ]
+web = [
+    "fastapi",
+    "uvicorn",
+    "flask",
+    "bootstrap_flask",
+]
+
 
 [project.urls]
 Documentation = "https://github.com/biopragmatics/semra#readme"

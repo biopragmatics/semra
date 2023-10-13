@@ -569,7 +569,7 @@ def write_neo4j(
             curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
         ARG twiddle1=dee
-        RUN python3.11 -m pip install git+https://github.com/biopragmatics/semra.git
+        RUN python3.11 -m pip install git+https://github.com/biopragmatics/semra.git#egg=semra[web]
 
         # Add graph content
         ARG twiddle2=dee

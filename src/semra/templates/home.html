@@ -5,6 +5,35 @@
 {% block title %}SeMRA{% endblock %}
 
 
+{% macro count_column(counter, key, icon) -%}
+<div class="col">
+    {% set count, suffix = format_number(counter[key]) %}
+    <i class="fa fa-{{ icon }}"></i>
+    <h2 style="margin-bottom: 0">{{ count }}{{ suffix }}</h2>
+    <p class="count-text ">{{ key }}</p>
+</div>
+{% endmacro %}
+
+{% macro do_table(counter, label) %}
+<h6>{{ label }} Summary</h6>
+<table class="table">
+    <thead>
+    <tr>
+        <th>{{ label }}</th>
+        <th>Count</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for key, count in counter.most_common() %}
+    <tr>
+        <td><code>{{ key }}</code></td>
+        <td align="right">{{ "{:,}".format(count) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
 {% block content %}
 <div class="container" style="margin-top: 50px; margin-bottom: 50px">
     {{ util.render_messages(dismissible=True, container=False) }}
@@ -15,6 +44,13 @@
                     <h5 class="card-title">
                         Semantic Reasoning Assembler
                     </h5>
+                    <div class="row text-center stats" style="padding-top: 1em; padding-bottom: 1em;">
+                        {{ count_column(node_counter, "References", "dna") }}
+                        {{ count_column(node_counter, "Concepts", "dna") }}
+                        {{ count_column(node_counter, "Mappings", "arrows-alt") }}
+                        {{ count_column(node_counter, "Evidences", "book") }}
+                        {{ count_column(node_counter, "Mapping Sets", "puzzle-piece") }}
+                    </div>
                     <h6>Mapping Sets</h6>
                     <table class="table">
                         <thead>
@@ -23,9 +59,17 @@
                             <th>Version</th>
                             <th>License</th>
                             <th>Confidence</th>
+                            <th>Evidences</th>
                         </tr>
                         </thead>
                         <tbody>
+                        <tr>
+                            <td>Inferred</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td align="right">{{ "{:,}".format(evidence_type_counter["reasoned"]) }}</td>
+                        </tr>
                         {% for mapping_set in mapping_sets %}
                         <tr>
                             <td><a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">{{ mapping_set.name
@@ -33,28 +77,14 @@
                             <td>{{ mapping_set.version }}</td>
                             <td>{% if mapping_set.license %}{{ mapping_set.license }}{% endif %}</td>
                             <td>{{ mapping_set.confidence }}</td>
+                            <td align="right">{{ "{:,}".format(mapping_set_counter[mapping_set.curie]) }}</td>
                         </tr>
                         {% endfor %}
                         </tbody>
                     </table>
-
-                    <h6>Predicate Summary</h6>
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th>Predicate</th>
-                            <th>Count</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for predicate,count in predicate_counter.most_common() %}
-                        <tr>
-                            <td><code>{{predicate}}</code></td>
-                            <td align="right">{{count}}</td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    {{ do_table(evidence_type_counter, "Evidence Type") }}
+                    {{ do_table(predicate_counter, "Predicate") }}
+                    {{ do_table(justification_counter, "Mapping Justification") }}
 
                     <h6>Example Mappings</h6>
                     <ul>

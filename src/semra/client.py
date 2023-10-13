@@ -179,7 +179,33 @@ class Neo4jClient:
         return res[0][0]
 
     def summarize_predicates(self) -> Counter:
+        """Get a counter of predicates."""
         query = "MATCH (m:mapping) RETURN m.predicate, count(m.predicate)"
+        return Counter(dict(self.read_query(query)))
+
+    def summarize_justifications(self) -> Counter:
+        """Get a counter of mapping justifications."""
+        query = "MATCH (e:evidence) RETURN e.mapping_justification, count(e.mapping_justification)"
+        return Counter({k.removeprefix("semapv:"): v for k, v in self.read_query(query)})
+
+    def summarize_evidence_types(self) -> Counter:
+        query = "MATCH (e:evidence) RETURN e.type, count(e.type)"
+        return Counter(dict(self.read_query(query)))
+
+    def summarize_mapping_sets(self) -> Counter:
+        """Get the number of evidences in each mapping set."""
+        query = "MATCH (e:evidence)-[:fromSet]->(s:mappingset) RETURN s.curie, count(e)"
+        return Counter(dict(self.read_query(query)))
+
+    def summarize_nodes(self) -> Counter:
+        # TODO count number of "equivalence classes"
+        query = """\
+        MATCH (n:evidence)   WITH count(n) as count RETURN 'Evidences'    as label, count UNION ALL
+        MATCH (n:concept)    WITH count(n) as count RETURN 'References'     as label, count UNION ALL
+        MATCH (n:concept)    WHERE n.priority WITH count(n) as count RETURN 'Concepts'     as label, count UNION ALL
+        MATCH (n:mapping)    WITH count(n) as count RETURN 'Mappings'     as label, count UNION ALL
+        MATCH (n:mappingset) WITH count(n) as count RETURN 'Mapping Sets' as label, count
+        """
         return Counter(dict(self.read_query(query)))
 
 

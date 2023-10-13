@@ -24,22 +24,49 @@ api_router.mount("/", WSGIMiddleware(flask_app))
 EXAMPLE_MAPPINGS = ["25b67912bc720127a43a06ce4688b672", "5a56bf7ac409d8de84c3382a99e17715"]
 
 
+PREDICATE_COUNTER = client.summarize_predicates()
+MAPPING_SET_COUNTER = client.summarize_mapping_sets()
+NODE_COUNTER = client.summarize_nodes()
+JUSTIFICATION_COUNTER = client.summarize_justifications()
+EVIDENCE_TYPE_COUNTER = client.summarize_evidence_types()
+
+
+def _figure_number(n: int):
+    if n > 1_000_000:
+        lead = n / 1_000_000
+        if lead < 10:
+            return round(lead, 1), "M"
+        else:
+            return round(lead), "M"
+    if n > 1_000:
+        lead = n / 1_000
+        if lead < 10:
+            return round(lead, 1), "K"
+        else:
+            return round(lead), "K"
+    else:
+        return n, ""
+
+
 @flask_app.get("/")
 def home():
-    predicate_counter = client.summarize_predicates()
     # TODO
     #  1. Mapping with most evidences
     #  2. Number of reasoned vs. simple evidences
     #  3. Author contributions (also including mapping sets when no author available)
-    #  4. Number of evidences in each mapping set
     #  5. Number of mappings that don't come from a mapping set (should be equivalent to # reasoned)
     #  6. Nodes with most equivalent entities / nodes with more than 6 equivalent entities
     #  7. Nodes with equivalent entity sharing its prefix
     return render_template(
         "home.html",
         example_mappings=EXAMPLE_MAPPINGS,
-        predicate_counter=predicate_counter,
+        predicate_counter=PREDICATE_COUNTER,
+        mapping_set_counter=MAPPING_SET_COUNTER,
+        node_counter=NODE_COUNTER,
         mapping_sets=client.get_mapping_sets(),
+        format_number=_figure_number,
+        justification_counter=JUSTIFICATION_COUNTER,
+        evidence_type_counter=EVIDENCE_TYPE_COUNTER,
     )
 
 

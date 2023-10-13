@@ -415,7 +415,12 @@ def _edge_key(t):
     return s, p, o, 1 if isinstance(c, float) else 0, t
 
 
-def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str | None = None) -> None:
+def write_neo4j(
+    mappings: list[Mapping],
+    directory: str | Path,
+    docker_name: str | None = None,
+    priority_references: set[Reference] | None = None,
+) -> None:
     directory = Path(directory).resolve()
     if not directory.is_dir():
         raise NotADirectoryError
@@ -426,7 +431,9 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
 
     concept_nodes_path = directory.joinpath("concept_nodes.tsv")
     concepts: set[Reference] = set()
-    concept_nodes_header = ["curie:ID", ":LABEL", "prefix"]
+    if priority_references is None:
+        priority_references = set()
+    concept_nodes_header = ["curie:ID", ":LABEL", "prefix", "priority:boolean"]
 
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
     mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence"]
@@ -485,7 +492,10 @@ def write_neo4j(mappings: list[Mapping], directory: str | Path, docker_name: str
     _write_tsv(
         concept_nodes_path,
         concept_nodes_header,
-        ((concept.curie, "concept", concept.prefix) for concept in sorted(concepts, key=lambda n: n.curie)),
+        (
+            (concept.curie, "concept", concept.prefix, "true" if concept in priority_references else "false")
+            for concept in sorted(concepts, key=lambda n: n.curie)
+        ),
     )
     _write_tsv(
         mapping_nodes_path,

@@ -140,24 +140,24 @@ def get_mappings_from_config(
     if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file() and not refresh_raw:
         start = time.time()
         logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
-        mappings = from_pickle(configuration.raw_pickle_path)
+        raw_mappings = from_pickle(configuration.raw_pickle_path)
         logger.info(
             "loaded cached raw mappings from %s in %.2f seconds", configuration.raw_pickle_path, time.time() - start
         )
     else:
-        mappings = get_raw_mappings(configuration)
+        raw_mappings = get_raw_mappings(configuration)
         if configuration.validate_raw:
-            validate_mappings(mappings)
+            validate_mappings(raw_mappings)
         if configuration.raw_pickle_path:
-            write_pickle(mappings, configuration.raw_pickle_path)
+            write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(mappings, configuration.raw_sssom_path, add_labels=configuration.sssom_add_labels)
+            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.sssom_add_labels)
         if configuration.raw_neo4j_path:
-            write_neo4j(mappings, configuration.raw_neo4j_path, configuration.raw_neo4j_name)
+            write_neo4j(raw_mappings, configuration.raw_neo4j_path, configuration.raw_neo4j_name)
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-    mappings = process(
-        mappings,
+    processed_mappings = process(
+        raw_mappings,
         upgrade_prefixes=[  # TODO more carefully compile a set of mutations together for applying
             m.source for m in configuration.mutations
         ],
@@ -165,20 +165,27 @@ def get_mappings_from_config(
         keep_prefix_set=configuration.keep_prefixes,
         remove_imprecise=configuration.remove_imprecise,
     )
+    prioritized_mappings = prioritize(processed_mappings, configuration.priority)
+
     if configuration.processed_pickle_path:
-        write_pickle(mappings, configuration.processed_pickle_path)
+        write_pickle(processed_mappings, configuration.processed_pickle_path)
     if configuration.processed_sssom_path:
-        write_sssom(mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
+        write_sssom(processed_mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
     if configuration.processed_neo4j_path:
-        write_neo4j(mappings, configuration.processed_neo4j_path, configuration.processed_neo4j_name)
+        priority_references = {mapping.o for mapping in prioritized_mappings}
+        write_neo4j(
+            processed_mappings,
+            configuration.processed_neo4j_path,
+            configuration.processed_neo4j_name,
+            priority_references=priority_references,
+        )
 
-    mappings = prioritize(mappings, configuration.priority)
     if configuration.priority_pickle_path:
-        write_pickle(mappings, configuration.priority_pickle_path)
+        write_pickle(prioritized_mappings, configuration.priority_pickle_path)
     if configuration.priority_sssom_path:
-        write_sssom(mappings, configuration.priority_sssom_path, add_labels=configuration.sssom_add_labels)
+        write_sssom(prioritized_mappings, configuration.priority_sssom_path, add_labels=configuration.sssom_add_labels)
 
-    return mappings
+    return prioritized_mappings
 
 
 def get_raw_mappings(configuration: Configuration) -> list[Mapping]:

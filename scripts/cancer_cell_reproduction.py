@@ -78,6 +78,7 @@ CONFIGURATION = Configuration(
     processed_pickle_path=MODULE.join(name="processed.pkl"),
     processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
     processed_neo4j_path=MODULE.join("neo4j"),
+    processed_neo4j_name="semra-cell",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
 )

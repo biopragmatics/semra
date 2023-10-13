@@ -49,6 +49,7 @@ def _from_pyobo_prefix(
     standardize: bool = False,
     version: str | None = None,
     license: str | None = None,
+    justification: Reference | None = None,
     **kwargs,
 ) -> list[Mapping]:
     if not version:
@@ -64,6 +65,7 @@ def _from_pyobo_prefix(
         confidence=confidence,
         version=version,
         license=license,
+        justification=justification,
     )
 
 
@@ -115,6 +117,7 @@ def from_cache_df(
     version: str | None = None,
     license: str | None = None,
     confidence: float | None = None,
+    justification: Reference | None = None,
 ) -> list[Mapping]:
     logger.info("loading cached dataframe from PyOBO for %s", source_prefix)
     df = pd.read_csv(path, sep="\t")
@@ -128,6 +131,7 @@ def from_cache_df(
         version=version,
         license=license,
         confidence=confidence,
+        justification=justification,
     )
 
 
@@ -141,9 +145,12 @@ def _from_df(
     version: str | None = None,
     license: str | None = None,
     leave_progress: bool = False,
+    justification: Reference | None = None,
 ) -> list[Mapping]:
     if predicate is None:
         predicate = DB_XREF
+    if justification is None:
+        justification = UNSPECIFIED_MAPPING
     rv = []
     if standardize:
         df[df.columns[0]] = df[df.columns[0]].map(lambda s: bioregistry.standardize_identifier(source_prefix, s))
@@ -170,7 +177,7 @@ def _from_df(
                         mapping_set=MappingSet(
                             name=source_prefix, version=version, confidence=confidence, license=license
                         ),
-                        justification=MANUAL_MAPPING,
+                        justification=justification,
                     ),
                 ],
             )
@@ -197,7 +204,7 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
             triple,
             evidence=[
                 SimpleEvidence(
-                    justification=MANUAL_MAPPING,
+                    justification=UNSPECIFIED_MAPPING,
                     mapping_set=MappingSet(name=prefix, version=g.version, confidence=confidence, license=br_license),
                 )
             ],

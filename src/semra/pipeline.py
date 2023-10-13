@@ -192,7 +192,7 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
     for inp in tqdm(configuration.inputs, desc="Loading configured mappings", unit="source"):
-        tqdm.write(f"Loading {inp.source}" + ("({inp.prefix})" if inp.prefix else ""))
+        tqdm.write(f"Loading {inp.source}" + (f" ({inp.prefix})" if inp.prefix else ""))
         if inp.source is None:
             continue
         elif inp.source == "bioontologies":

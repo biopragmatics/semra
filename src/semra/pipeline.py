@@ -77,6 +77,8 @@ class Mutation(BaseModel):
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
+    name: str = Field(description="The name of the mapping set configuration")
+    description: str = Field(description="An explanation of the purpose of the mapping set configuration")
     inputs: list[Input]
     negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
     priority: list[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")

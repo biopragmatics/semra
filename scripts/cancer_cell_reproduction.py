@@ -20,6 +20,9 @@ from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
+MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
+
+
 PREFIXES = {
     "efo",
     "cellosaurus",
@@ -30,12 +33,15 @@ PREFIXES = {
     "bto",
     "mesh",
 }
-
-MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
-
-PRIORITY = ["efo", "cellosaurus", "ccle", "depmap", "bto", "clo"]
+PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo"]
+for prefix in PREFIXES:
+    if prefix not in PRIORITY:
+        raise ValueError(f"Missing prioirty order for {prefix}")
 
 CONFIGURATION = Configuration(
+    name="Cell and Cell Line Mappings",
+    description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, "
+    "this configuration imports several different cell and cell line resources and identifies mappings between them.",
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
@@ -63,6 +69,7 @@ CONFIGURATION = Configuration(
         ),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
     ],
+    # add_labels=True,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
     remove_imprecise=False,

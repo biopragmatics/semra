@@ -5,7 +5,7 @@ import bioregistry
 import click
 from tqdm.auto import tqdm
 
-from semra import Mapping, MappingSet, Reference, SimpleEvidence
+from semra import DB_XREF, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
 
 __all__ = ["get_clo_mappings"]
 
@@ -98,14 +98,9 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 mappings.append(
                     Mapping(
                         s=Reference(prefix="clo", identifier=clo_id),
-                        p=Reference(prefix="oboInOwl", identifier="hasDbXref"),
+                        p=DB_XREF,
                         o=Reference(prefix=prefix, identifier=identifier),
-                        evidence=[
-                            SimpleEvidence(
-                                justification=Reference(prefix="semapv", identifier="UnspecifiedMatching"),
-                                mapping_set=mapping_set,
-                            )
-                        ],
+                        evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
                     )
                 )
     return mappings

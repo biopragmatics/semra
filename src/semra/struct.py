@@ -225,6 +225,11 @@ class Mapping(pydantic.BaseModel):
     def curie(self) -> str:
         return self.get_reference().curie
 
+    @property
+    def has_primary_evidence(self) -> bool:
+        """Get if there is a primary evidence associated with this mapping."""
+        return any(isinstance(evidence, SimpleEvidence) for evidence in self.evidence)
+
 
 def line(*references: Reference) -> list[Mapping]:
     """Create a list of mappings from a simple mappings path."""

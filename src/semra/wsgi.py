@@ -2,8 +2,6 @@
 
 import os
 
-import biomappings.resources
-import biomappings.utils
 import fastapi
 import flask
 from curies import Reference
@@ -14,6 +12,11 @@ from starlette.middleware.wsgi import WSGIMiddleware
 
 from semra import Evidence, Mapping, MappingSet
 from semra.client import Neo4jClient
+
+try:
+    import biomappings.utils as biomappings_utils
+except ImportError:
+    biomappings_utils = None
 
 client = Neo4jClient()
 
@@ -29,7 +32,7 @@ app.include_router(api_router)
 api_router.mount("/", WSGIMiddleware(flask_app))
 
 EXAMPLE_MAPPINGS = ["25b67912bc720127a43a06ce4688b672", "5a56bf7ac409d8de84c3382a99e17715"]
-BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
+BIOMAPPINGS_GIT_HASH = biomappings_utils is not None and biomappings_utils.get_git_hash()
 
 PREDICATE_COUNTER = client.summarize_predicates()
 MAPPING_SET_COUNTER = client.summarize_mapping_sets()
@@ -93,11 +96,17 @@ def view_mapping(curie: str):
 def view_concept(curie: str):
     """View a concept."""
     reference = Reference.from_curie(curie)
+    name = client.get_concept_name(curie)
     exact_matches = client.get_exact_matches(curie)
     # TODO when showing equivalence between two entities from same namespace, suggest curating a replaced by relation
 
     return render_template(
-        "concept.html", reference=reference, curie=curie, exact_matches=exact_matches, has_biomappings=BIOMAPPINGS_GIT_HASH is not None
+        "concept.html",
+        reference=reference,
+        curie=curie,
+        name=name,
+        exact_matches=exact_matches,
+        has_biomappings=BIOMAPPINGS_GIT_HASH is not None,
     )
 
 
@@ -109,6 +118,8 @@ def mark_exact_incorrect(source: str, target: str):
     if not BIOMAPPINGS_GIT_HASH:
         flask.flash("Can't interact with biomappings", category="error")
         return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
+
+    import biomappings.resources
 
     source_reference = Reference.from_curie(source)
     target_reference = Reference.from_curie(target)

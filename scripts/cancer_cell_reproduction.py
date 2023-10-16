@@ -75,6 +75,9 @@ CONFIGURATION = Configuration(
     remove_imprecise=False,
     mutations=[
         Mutation(source="efo", confidence=0.7),
+        Mutation(source="bto", confidence=0.7),
+        Mutation(source="cl", confidence=0.7),
+        Mutation(source="clo", confidence=0.7),
         Mutation(source="depmap", confidence=0.7),
         Mutation(source="ccle", confidence=0.7),
         Mutation(source="cellosaurus", confidence=0.7),

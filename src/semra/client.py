@@ -220,9 +220,9 @@ class Neo4jClient:
         query = "MATCH (a)-[:`skos:exactMatch`]-(b) WHERE a.priority RETURN a.curie, count(distinct b) as c ORDER BY c DESCENDING LIMIT $limit"
         return Counter(dict(self.read_query(query, limit=limit)))
 
-    def get_exact_matches(self, curie: str) -> set[Reference]:
+    def get_exact_matches(self, curie: str) -> dict[Reference, str]:
         query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN b"
-        return {Reference.from_curie(node["curie"]) for node, in self.read_query(query, curie=curie)}
+        return {Reference.from_curie(node["curie"]): node["name"] for node, in self.read_query(query, curie=curie)}
 
     def get_concept_name(self, curie: str) -> str:
         return _get_name_by_curie(curie)

@@ -5,7 +5,7 @@ import logging
 import pickle
 from pathlib import Path
 from textwrap import dedent
-from typing import TextIO, cast
+from typing import Literal, TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -14,9 +14,9 @@ import click
 import pandas as pd
 import pyobo
 import pyobo.utils
+from bioregistry import Collection
 from tqdm.auto import tqdm
 
-from bioregistry import Collection
 from semra.rules import DB_XREF, MANUAL_MAPPING, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
@@ -411,8 +411,12 @@ ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
 
 
 def _edge_key(t):
-    s, p, o, c = t
+    s, p, o, c, *_ = t
     return s, p, o, 1 if isinstance(c, float) else 0, t
+
+
+def _neo4j_bool(b: bool, /) -> Literal["true", "false"]:  # noqa:FBT001
+    return "true" if b else "false"
 
 
 def write_neo4j(
@@ -438,7 +442,7 @@ def write_neo4j(
         equivalence_classes = {}
 
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
-    mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence"]
+    mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence", "hasPrimary:boolean"]
 
     evidence_nodes_path = directory.joinpath("evidence_nodes.tsv")
     evidences = {}
@@ -453,11 +457,25 @@ def write_neo4j(
 
     mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv")
     mapping_sets = {}
-    mapping_set_nodes_header = ["curie:ID", ":LABEL", "prefix", "name", "license", "version", "confidence:float"]
+    mapping_set_nodes_header = [
+        "curie:ID",
+        ":LABEL",
+        "prefix",
+        "name",
+        "license",
+        "version",
+        "confidence:float",
+    ]
 
     edges_path = directory.joinpath("edges.tsv")
     edges: list[tuple[str, str, str, str | float]] = []
-    edges_header = [":START_ID", ":TYPE", ":END_ID", "confidence:float"]
+    edges_header = [
+        ":START_ID",
+        ":TYPE",
+        ":END_ID",
+        "confidence:float",
+        "hasPrimary:boolean",
+    ]
 
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
         concepts.add(mapping.s)
@@ -468,6 +486,7 @@ def write_neo4j(
                 mapping.p.curie,
                 mapping.o.curie,
                 round(c, 4) if (c := mapping.confidence) is not None else "",
+                _neo4j_bool(mapping.has_primary_evidence),
             )
         )
         edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie, ""))
@@ -500,7 +519,7 @@ def write_neo4j(
                 "concept",
                 concept.prefix,
                 pyobo.get_name_by_curie(concept.curie) or "" if add_labels else "",
-                "true" if equivalence_classes.get(concept, False) else "false",
+                _neo4j_bool(equivalence_classes.get(concept, False)),
             )
             for concept in sorted(concepts, key=lambda n: n.curie)
         ),
@@ -509,7 +528,14 @@ def write_neo4j(
         mapping_nodes_path,
         mapping_nodes_header,
         (
-            (mapping.curie, "mapping", "semra.mapping", mapping.p.curie, mapping.confidence)
+            (
+                mapping.curie,
+                "mapping",
+                "semra.mapping",
+                mapping.p.curie,
+                mapping.confidence and round(mapping.confidence, 4),
+                _neo4j_bool(mapping.has_primary_evidence),
+            )
             for mapping in sorted(mappings, key=lambda n: n.curie)
         ),
     )
@@ -577,7 +603,7 @@ def write_neo4j(
             curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
         ARG twiddle1=dee
-        RUN python3.11 -m pip install git+https://github.com/biopragmatics/semra.git#egg=semra[web]
+        RUN python3.11 -m pip install "semra[web] @ git+https://github.com/biopragmatics/semra.git"
 
         # Add graph content
         ARG twiddle2=dee

@@ -12,16 +12,19 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">
-                    <a href="https://bioregistry.io/{{ curie }}">{{ curie }}</a>
+                    {{ name }} <a class="badge badge-info" href="https://bioregistry.io/{{ curie }}">{{ curie }}</a>
                 </h5>
                 <h6>Exact Matches</h6>
             </div>
             <table class="table table-striped table-borderless">
                 <tbody>
-                {% for exact_match in exact_matches | sort(attribute='curie') %}
+                {% for exact_match, name in exact_matches.items() %}
                 <tr>
                     <td>
                         <code>{{ exact_match.curie }}</code>
+                    </td>
+                    <td>
+                        {{ name }}
                     </td>
                     <td>
                         <a href="{{ url_for('view_concept', curie=exact_match.curie) }}">SeMRA</a>

@@ -111,9 +111,7 @@ class Configuration(BaseModel):
     priority_sssom_path: Path | None = None
     # note that making a priority neo4j doesn't make sense
 
-    sssom_add_labels: bool = Field(
-        default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
-    )
+    add_labels: bool = Field(default=False, description="Should PyOBO be used to look up labels for SSSOM output?")
 
     @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
@@ -153,9 +151,14 @@ def get_mappings_from_config(
         if configuration.raw_pickle_path:
             write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.sssom_add_labels)
+            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.add_labels)
         if configuration.raw_neo4j_path:
-            write_neo4j(raw_mappings, configuration.raw_neo4j_path, configuration.raw_neo4j_name)
+            write_neo4j(
+                raw_mappings,
+                configuration.raw_neo4j_path,
+                docker_name=configuration.raw_neo4j_name,
+                add_labels=configuration.add_labels,
+            )
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
     processed_mappings = process(
@@ -172,22 +175,32 @@ def get_mappings_from_config(
     if configuration.processed_pickle_path:
         write_pickle(processed_mappings, configuration.processed_pickle_path)
     if configuration.processed_sssom_path:
-        write_sssom(processed_mappings, configuration.processed_sssom_path, add_labels=configuration.sssom_add_labels)
+        write_sssom(processed_mappings, configuration.processed_sssom_path, add_labels=configuration.add_labels)
     if configuration.processed_neo4j_path:
-        priority_references = {mapping.o for mapping in prioritized_mappings}
+        equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
         write_neo4j(
             processed_mappings,
             configuration.processed_neo4j_path,
-            configuration.processed_neo4j_name,
-            priority_references=priority_references,
+            docker_name=configuration.processed_neo4j_name,
+            equivalence_classes=equivalence_classes,
+            add_labels=configuration.add_labels,
         )
 
     if configuration.priority_pickle_path:
         write_pickle(prioritized_mappings, configuration.priority_pickle_path)
     if configuration.priority_sssom_path:
-        write_sssom(prioritized_mappings, configuration.priority_sssom_path, add_labels=configuration.sssom_add_labels)
+        write_sssom(prioritized_mappings, configuration.priority_sssom_path, add_labels=configuration.add_labels)
 
     return prioritized_mappings
+
+
+def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, bool]:
+    priority_references = {mapping.o for mapping in prioritized_mappings}
+    rv = {}
+    for mapping in mappings:
+        rv[mapping.s] = mapping.s in priority_references
+        rv[mapping.o] = mapping.o in priority_references
+    return rv
 
 
 def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
@@ -265,11 +278,12 @@ def process(
     # logger.debug(f"Filtered to {len(mappings):,} mappings")
 
     # remove mapping between self, such as EFO-EFO
-    logger.info("Removing self mappings (i.e., within a given semantic space)")
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_self_matches(mappings)
-    _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
+    # TODO handle self-mappings better using "replaced by" relations
+    # logger.info("Removing self mappings (i.e., within a given semantic space)")
+    # before = len(mappings)
+    # start = time.time()
+    # mappings = filter_self_matches(mappings)
+    # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
     if upgrade_prefixes:
         logger.info("Inferring mapping upgrades")

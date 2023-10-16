@@ -11,6 +11,7 @@ from neo4j import Transaction, unit_of_work
 
 import semra
 from semra import Evidence, MappingSet, Reference
+from semra.io import _get_name_by_curie
 
 __all__ = [
     "Node",
@@ -198,7 +199,6 @@ class Neo4jClient:
         return Counter(dict(self.read_query(query)))
 
     def summarize_nodes(self) -> Counter:
-        # TODO count number of "equivalence classes"
         query = """\
         MATCH (n:evidence)   WITH count(n) as count RETURN 'Evidences'    as label, count UNION ALL
         MATCH (n:concept)    WITH count(n) as count RETURN 'References'     as label, count UNION ALL
@@ -207,6 +207,25 @@ class Neo4jClient:
         MATCH (n:mappingset) WITH count(n) as count RETURN 'Mapping Sets' as label, count
         """
         return Counter(dict(self.read_query(query)))
+
+    def summarize_concepts(self) -> Counter:
+        query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
+        return Counter(dict(self.read_query(query)))
+
+    def summarize_authors(self) -> Counter:
+        query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, count(e)"
+        return Counter(dict(self.read_query(query)))
+
+    def get_highest_exact_matches(self, limit: int = 10) -> Counter:
+        query = "MATCH (a)-[:`skos:exactMatch`]-(b) WHERE a.priority RETURN a.curie, count(distinct b) as c ORDER BY c DESCENDING LIMIT $limit"
+        return Counter(dict(self.read_query(query, limit=limit)))
+
+    def get_exact_matches(self, curie: str) -> set[Reference]:
+        query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN b"
+        return {Reference.from_curie(node["curie"]) for node, in self.read_query(query, curie=curie)}
+
+    def get_concept_name(self, curie: str) -> str:
+        return _get_name_by_curie(curie)
 
 
 # Follows example here:

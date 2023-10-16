@@ -8,6 +8,7 @@ NARROW_MATCH = Reference(prefix="skos", identifier="narrowMatch")
 CLOSE_MATCH = Reference(prefix="skos", identifier="closeMatch")
 DB_XREF = Reference(prefix="oboinowl", identifier="hasDbXref")
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
+REPLACED_BY = Reference(prefix="iao", identifier="0100001")
 
 IMPRECISE = {DB_XREF, CLOSE_MATCH}
 FLIP = {

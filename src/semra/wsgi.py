@@ -1,6 +1,12 @@
 """Run the app."""
 
+import os
+
+import biomappings.resources
+import biomappings.utils
 import fastapi
+import flask
+from curies import Reference
 from fastapi import Path
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap5
@@ -14,6 +20,7 @@ client = Neo4jClient()
 api_router = fastapi.APIRouter()
 
 flask_app = Flask(__name__)
+flask_app.secret_key = os.urandom(8)
 Bootstrap5(flask_app)
 
 #  Could group this in a function later
@@ -22,13 +29,19 @@ app.include_router(api_router)
 api_router.mount("/", WSGIMiddleware(flask_app))
 
 EXAMPLE_MAPPINGS = ["25b67912bc720127a43a06ce4688b672", "5a56bf7ac409d8de84c3382a99e17715"]
-
+BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
 
 PREDICATE_COUNTER = client.summarize_predicates()
 MAPPING_SET_COUNTER = client.summarize_mapping_sets()
 NODE_COUNTER = client.summarize_nodes()
 JUSTIFICATION_COUNTER = client.summarize_justifications()
 EVIDENCE_TYPE_COUNTER = client.summarize_evidence_types()
+PREFIX_COUNTER = client.summarize_concepts()
+AUTHOR_COUNTER = client.summarize_authors()
+HIGH_MATCHES_COUNTER = client.get_highest_exact_matches()
+
+
+# TODO use replaced by relationship for rewiring
 
 
 def _figure_number(n: int):
@@ -52,10 +65,6 @@ def _figure_number(n: int):
 def home():
     # TODO
     #  1. Mapping with most evidences
-    #  2. Number of reasoned vs. simple evidences
-    #  3. Author contributions (also including mapping sets when no author available)
-    #  5. Number of mappings that don't come from a mapping set (should be equivalent to # reasoned)
-    #  6. Nodes with most equivalent entities / nodes with more than 6 equivalent entities
     #  7. Nodes with equivalent entity sharing its prefix
     return render_template(
         "home.html",
@@ -67,6 +76,9 @@ def home():
         format_number=_figure_number,
         justification_counter=JUSTIFICATION_COUNTER,
         evidence_type_counter=EVIDENCE_TYPE_COUNTER,
+        prefix_counter=PREFIX_COUNTER,
+        author_counter=AUTHOR_COUNTER,
+        high_matches_counter=HIGH_MATCHES_COUNTER,
     )
 
 
@@ -75,6 +87,50 @@ def view_mapping(curie: str):
     """View a mapping."""
     m = client.get_mapping(curie)
     return render_template("mapping.html", mapping=m)
+
+
+@flask_app.get("/concept/<curie>")
+def view_concept(curie: str):
+    """View a concept."""
+    reference = Reference.from_curie(curie)
+    exact_matches = client.get_exact_matches(curie)
+    # TODO when showing equivalence between two entities from same namespace, suggest curating a replaced by relation
+
+    return render_template(
+        "concept.html", reference=reference, curie=curie, exact_matches=exact_matches, has_biomappings=BIOMAPPINGS_GIT_HASH is not None
+    )
+
+
+@flask_app.get("/concept/<source>/invalidate/<target>")
+def mark_exact_incorrect(source: str, target: str):
+    """
+    Add a negative relationship to biomappings.
+    """
+    if not BIOMAPPINGS_GIT_HASH:
+        flask.flash("Can't interact with biomappings", category="error")
+        return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
+
+    source_reference = Reference.from_curie(source)
+    target_reference = Reference.from_curie(target)
+
+    mapping = {
+        "source prefix": source_reference.prefix,
+        "source identifier": source_reference.identifier,
+        "source name": client.get_concept_name(source),
+        "target prefix": target_reference.prefix,
+        "target identifier": target_reference.identifier,
+        "target name": client.get_concept_name(target),
+        "relation": "skos:exactMatch",
+        "type": "semapv:ManualMappingCuration",
+        "source": "semra-web",  # TODO fix way this is retrieved
+        "prediction_type": "",
+        "prediction_source": "semra",
+        "prediction_confidence": "",
+    }
+    biomappings.resources.append_false_mappings([mapping])
+
+    flask.flash("Appended negative mapping")
+    return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
 
 @flask_app.get("/mapping_set/<curie>")

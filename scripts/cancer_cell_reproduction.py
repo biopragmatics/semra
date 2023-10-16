@@ -69,7 +69,7 @@ CONFIGURATION = Configuration(
         ),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
     ],
-    # add_labels=True,
+    add_labels=True,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
     remove_imprecise=False,

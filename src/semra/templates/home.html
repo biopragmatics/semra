@@ -14,8 +14,10 @@
 </div>
 {% endmacro %}
 
-{% macro do_table(counter, label) %}
-<h6>{{ label }} Summary</h6>
+{% macro do_table(counter, label, is_concept=False) %}
+<div class="card-body">
+    <h6>{{ label }} Summary</h6>
+</div>
 <table class="table">
     <thead>
     <tr>
@@ -26,7 +28,13 @@
     <tbody>
     {% for key, count in counter.most_common() %}
     <tr>
-        <td><code>{{ key }}</code></td>
+        <td><code>
+        {%- if is_concept -%}
+            <a href="{{ url_for('view_concept', curie=key) }}">{{ key }}</a>
+            {%- else -%}
+            {{ key }}
+            {%- endif -%}
+        </code></td>
         <td align="right">{{ "{:,}".format(count) }}</td>
     </tr>
     {% endfor %}
@@ -52,53 +60,59 @@
                         {{ count_column(node_counter, "Mapping Sets", "puzzle-piece") }}
                     </div>
                     <h6>Mapping Sets</h6>
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Version</th>
-                            <th>License</th>
-                            <th>Confidence</th>
-                            <th>Evidences</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr>
-                            <td>Inferred</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td align="right">{{ "{:,}".format(evidence_type_counter["reasoned"]) }}</td>
-                        </tr>
-                        {% for mapping_set in mapping_sets %}
-                        <tr>
-                            <td><a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">{{ mapping_set.name
-                                }}</a></td>
-                            <td>{{ mapping_set.version }}</td>
-                            <td>{% if mapping_set.license %}{{ mapping_set.license }}{% endif %}</td>
-                            <td>{{ mapping_set.confidence }}</td>
-                            <td align="right">{{ "{:,}".format(mapping_set_counter[mapping_set.curie]) }}</td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                    {{ do_table(evidence_type_counter, "Evidence Type") }}
-                    {{ do_table(predicate_counter, "Predicate") }}
-                    {{ do_table(justification_counter, "Mapping Justification") }}
-
-                    <h6>Example Mappings</h6>
-                    <ul>
-                        {%- for example_mapping in example_mappings -%}
-                        <li>
-                            <a href="{{ url_for('view_mapping', curie=example_mapping) }}">
-                                <code>{{ example_mapping[:8]}}</code>
-                            </a>
-                        </li>
-                        {%- endfor -%}
-                    </ul>
                 </div>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>License</th>
+                        <th>Confidence</th>
+                        <th>Evidences</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>Inferred</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td align="right">{{ "{:,}".format(evidence_type_counter["reasoned"]) }}</td>
+                    </tr>
+                    {% for mapping_set in mapping_sets %}
+                    <tr>
+                        <td><a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">{{ mapping_set.name
+                            }}</a></td>
+                        <td>{{ mapping_set.version }}</td>
+                        <td>{% if mapping_set.license %}{{ mapping_set.license }}{% endif %}</td>
+                        <td>{{ mapping_set.confidence }}</td>
+                        <td align="right">{{ "{:,}".format(mapping_set_counter[mapping_set.curie]) }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {{ do_table(evidence_type_counter, "Evidence Type") }}
+                {{ do_table(predicate_counter, "Predicate") }}
+                {{ do_table(justification_counter, "Mapping Justification") }}
+                {{ do_table(prefix_counter, "Prefix") }}
+                {{ do_table(author_counter, "Author") }}
+                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True) }}
+
+                <div class="card-body">
+                    <h6>Example Mappings</h6>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {%- for example_mapping in example_mappings -%}
+                    <li class="list-group-item">
+                        <a href="{{ url_for('view_mapping', curie=example_mapping) }}">
+                            <code>{{ example_mapping[:8]}}</code>
+                        </a>
+                    </li>
+                    {%- endfor -%}
+                </ul>
             </div>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}

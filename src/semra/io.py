@@ -5,7 +5,7 @@ import logging
 import pickle
 from pathlib import Path
 from textwrap import dedent
-from typing import TextIO
+from typing import TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -16,6 +16,7 @@ import pyobo
 import pyobo.utils
 from tqdm.auto import tqdm
 
+from bioregistry import Collection
 from semra.rules import DB_XREF, MANUAL_MAPPING, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
@@ -341,13 +342,12 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
 
 SKIP_PREFIXES = {
     "pubchem",
+    "pubchem.compound",
+    "pubchem.substance",
     "kegg",
     "snomedct",
-    "icd9",
-    "icd10",
-    "icd11",
-    "icd",
 }
+SKIP_PREFIXES.update(cast(Collection, bioregistry.get_collection("0000004")).resources)
 
 
 def _get_name_by_curie(curie: str) -> str | None:
@@ -418,8 +418,10 @@ def _edge_key(t):
 def write_neo4j(
     mappings: list[Mapping],
     directory: str | Path,
+    *,
     docker_name: str | None = None,
-    priority_references: set[Reference] | None = None,
+    equivalence_classes: dict[Reference, bool] | None = None,
+    add_labels: bool = False,
 ) -> None:
     directory = Path(directory).resolve()
     if not directory.is_dir():
@@ -431,9 +433,9 @@ def write_neo4j(
 
     concept_nodes_path = directory.joinpath("concept_nodes.tsv")
     concepts: set[Reference] = set()
-    if priority_references is None:
-        priority_references = set()
-    concept_nodes_header = ["curie:ID", ":LABEL", "prefix", "priority:boolean"]
+    concept_nodes_header = ["curie:ID", ":LABEL", "prefix", "name", "priority:boolean"]
+    if equivalence_classes is None:
+        equivalence_classes = {}
 
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
     mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence"]
@@ -493,7 +495,13 @@ def write_neo4j(
         concept_nodes_path,
         concept_nodes_header,
         (
-            (concept.curie, "concept", concept.prefix, "true" if concept in priority_references else "false")
+            (
+                concept.curie,
+                "concept",
+                concept.prefix,
+                pyobo.get_name_by_curie(concept.curie) or "" if add_labels else "",
+                "true" if equivalence_classes.get(concept, False) else "false",
+            )
             for concept in sorted(concepts, key=lambda n: n.curie)
         ),
     )

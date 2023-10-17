@@ -15,7 +15,7 @@ import pandas as pd
 import pyobo
 import pyobo.utils
 from bioregistry import Collection
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from semra.rules import DB_XREF, MANUAL_MAPPING, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
@@ -34,6 +34,12 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+CONFIDENCE_PRECISION = 5
+HAS_EVIDENCE_PREDICATE = "hasEvidence"
+FROM_SET_PREDICATE = "fromSet"
+DERIVED_PREDICATE = "derivedFromMapping"
 
 
 def _safe_get_version(prefix: str) -> str | None:
@@ -353,6 +359,12 @@ SKIP_PREFIXES.update(cast(Collection, bioregistry.get_collection("0000004")).res
 def _get_name_by_curie(curie: str) -> str | None:
     if any(curie.startswith(p) for p in SKIP_PREFIXES):
         return None
+    if curie.startswith("orcid:"):
+        import requests
+
+        orcid = curie.removeprefix("orcid:")
+        res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}).json()
+        return res["person"]["name"]["given-names"]["value"] + " " + res["person"]["name"]["family-name"]["value"]
     return pyobo.get_name_by_curie(curie)
 
 
@@ -374,7 +386,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
         ",".join(sorted(e.mapping_set_names)),
         mapping_set_version,
         mapping_set_license,
-        round(confidence, 4) if (confidence := e.confidence) is not None else "",
+        round(confidence, CONFIDENCE_PRECISION) if (confidence := e.confidence) is not None else "",
         e.author.curie if e.author else "",
         e.explanation,
     )
@@ -416,7 +428,7 @@ def _edge_key(t):
 
 
 def _neo4j_bool(b: bool, /) -> Literal["true", "false"]:  # noqa:FBT001
-    return "true" if b else "false"
+    return "true" if b else "false"  # type:ignore
 
 
 def write_neo4j(
@@ -442,7 +454,16 @@ def write_neo4j(
         equivalence_classes = {}
 
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
-    mapping_nodes_header = ["curie:ID", ":LABEL", "prefix", "predicate", "confidence", "hasPrimary:boolean"]
+    mapping_nodes_header = [
+        "curie:ID",
+        ":LABEL",
+        "prefix",
+        "predicate",
+        "confidence",
+        "primary:boolean",
+        "secondary:boolean",
+        "tertiary:boolean",
+    ]
 
     evidence_nodes_path = directory.joinpath("evidence_nodes.tsv")
     evidences = {}
@@ -468,38 +489,46 @@ def write_neo4j(
     ]
 
     edges_path = directory.joinpath("edges.tsv")
-    edges: list[tuple[str, str, str, str | float]] = []
+    edges: list[tuple[str, str, str, str | float, str, str, str, str]] = []
     edges_header = [
         ":START_ID",
         ":TYPE",
         ":END_ID",
         "confidence:float",
-        "hasPrimary:boolean",
+        "primary:boolean",
+        "secondary:boolean",
+        "tertiary:boolean",
+        "mapping_sets:string[]",
     ]
 
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
+        mapping: Mapping
         concepts.add(mapping.s)
         concepts.add(mapping.o)
+
         edges.append(
             (
                 mapping.s.curie,
                 mapping.p.curie,
                 mapping.o.curie,
-                round(c, 4) if (c := mapping.confidence) is not None else "",
-                _neo4j_bool(mapping.has_primary_evidence),
+                round(c, CONFIDENCE_PRECISION) if (c := mapping.confidence) is not None else "",
+                _neo4j_bool(mapping.has_primary),
+                _neo4j_bool(mapping.has_secondary),
+                _neo4j_bool(mapping.has_tertiary),
+                "|".join(sorted({evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set})),
             )
         )
-        edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie, ""))
-        edges.append((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie, ""))
+        edges.append((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie, "", "", "", "", ""))
+        edges.append((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie, "", "", "", "", ""))
         for evidence in mapping.evidence:
-            edges.append((mapping.curie, "hasEvidence", evidence.curie, ""))
+            edges.append((mapping.curie, HAS_EVIDENCE_PREDICATE, evidence.curie, "", "", "", "", ""))
             evidences[evidence.key()] = evidence
             if evidence.mapping_set:
                 mapping_sets[evidence.mapping_set.name] = evidence.mapping_set
-                edges.append((evidence.curie, "fromSet", evidence.mapping_set.curie, ""))
+                edges.append((evidence.curie, FROM_SET_PREDICATE, evidence.mapping_set.curie, "", "", "", "", ""))
             elif isinstance(evidence, ReasonedEvidence):
                 for mmm in evidence.mappings:
-                    edges.append((evidence.curie, "derivedFromMapping", mmm.curie, ""))
+                    edges.append((evidence.curie, DERIVED_PREDICATE, mmm.curie, "", "", "", "", ""))
             elif isinstance(evidence, SimpleEvidence):
                 pass
             else:
@@ -508,7 +537,7 @@ def write_neo4j(
             # Add authorship information for the evidence, if available
             if evidence.author:
                 concepts.add(evidence.author)
-                edges.append((evidence.curie, "hasAuthor", evidence.author.curie, ""))
+                edges.append((evidence.curie, "hasAuthor", evidence.author.curie, "", "", "", "", ""))
 
     _write_tsv(
         concept_nodes_path,
@@ -518,7 +547,7 @@ def write_neo4j(
                 concept.curie,
                 "concept",
                 concept.prefix,
-                pyobo.get_name_by_curie(concept.curie) or "" if add_labels else "",
+                _get_name_by_curie(concept.curie) or "" if add_labels else "",
                 _neo4j_bool(equivalence_classes.get(concept, False)),
             )
             for concept in sorted(concepts, key=lambda n: n.curie)
@@ -533,8 +562,10 @@ def write_neo4j(
                 "mapping",
                 "semra.mapping",
                 mapping.p.curie,
-                mapping.confidence and round(mapping.confidence, 4),
-                _neo4j_bool(mapping.has_primary_evidence),
+                mapping.confidence and round(mapping.confidence, CONFIDENCE_PRECISION),
+                _neo4j_bool(mapping.has_primary),
+                _neo4j_bool(mapping.has_secondary),
+                _neo4j_bool(mapping.has_tertiary),
             )
             for mapping in sorted(mappings, key=lambda n: n.curie)
         ),

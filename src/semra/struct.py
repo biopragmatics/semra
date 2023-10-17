@@ -226,9 +226,25 @@ class Mapping(pydantic.BaseModel):
         return self.get_reference().curie
 
     @property
-    def has_primary_evidence(self) -> bool:
+    def has_primary(self) -> bool:
         """Get if there is a primary evidence associated with this mapping."""
-        return any(isinstance(evidence, SimpleEvidence) for evidence in self.evidence)
+        return any(
+            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name == self.s.prefix
+            for evidence in self.evidence
+        )
+
+    @property
+    def has_secondary(self) -> bool:
+        """Get if there is a secondary evidence associated with this mapping."""
+        return any(
+            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name != self.s.prefix
+            for evidence in self.evidence
+        )
+
+    @property
+    def has_tertiary(self) -> bool:
+        """Get if there are any tertiary (i.e., reasoned) evidences for this mapping."""
+        return any(not isinstance(evidence, SimpleEvidence) for evidence in self.evidence)
 
 
 def line(*references: Reference) -> list[Mapping]:

@@ -14,7 +14,7 @@
 </div>
 {% endmacro %}
 
-{% macro do_table(counter, label, is_concept=False) %}
+{% macro do_table(counter, label, is_concept=False, has_names=False) %}
 <div class="card-body">
     <h6>{{ label }} Summary</h6>
 </div>
@@ -22,6 +22,7 @@
     <thead>
     <tr>
         <th>{{ label }}</th>
+        {% if has_names %}<th>Name</th>{% endif %}
         <th>Count</th>
     </tr>
     </thead>
@@ -30,11 +31,17 @@
     <tr>
         <td><code>
         {%- if is_concept -%}
+            {% if has_names %}
+            <a href="{{ url_for('view_concept', curie=key[0]) }}">{{ key[0] }}</a>
+            {% else %}
+            FAILURE!
             <a href="{{ url_for('view_concept', curie=key) }}">{{ key }}</a>
+            {% endif %}
             {%- else -%}
-            {{ key }}
+            {% if has_names %}{{ key[0] }}{% else %}{{ key }}{% endif %}
             {%- endif -%}
         </code></td>
+        {% if has_names %}<td>{{ key[1] }}</td>{% endif %}
         <td align="right">{{ "{:,}".format(count) }}</td>
     </tr>
     {% endfor %}
@@ -53,8 +60,8 @@
                         Semantic Reasoning Assembler
                     </h5>
                     <div class="row text-center stats" style="padding-top: 1em; padding-bottom: 1em;">
-                        {{ count_column(node_counter, "References", "dna") }}
                         {{ count_column(node_counter, "Concepts", "dna") }}
+                        {{ count_column(node_counter, "Equivalence Classes", "dna") }}
                         {{ count_column(node_counter, "Mappings", "arrows-alt") }}
                         {{ count_column(node_counter, "Evidences", "book") }}
                         {{ count_column(node_counter, "Mapping Sets", "puzzle-piece") }}
@@ -94,9 +101,9 @@
                 {{ do_table(evidence_type_counter, "Evidence Type") }}
                 {{ do_table(predicate_counter, "Predicate") }}
                 {{ do_table(justification_counter, "Mapping Justification") }}
-                {{ do_table(prefix_counter, "Prefix") }}
-                {{ do_table(author_counter, "Author") }}
-                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True) }}
+                {{ do_table(prefix_counter, "Prefix", has_names=True) }}
+                {{ do_table(author_counter, "Author", has_names=True) }}
+                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True, has_names=True) }}
 
                 <div class="card-body">
                     <h6>Example Mappings</h6>

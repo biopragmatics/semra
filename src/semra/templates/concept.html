@@ -15,6 +15,8 @@
 </style>
 <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+<script src="https://unpkg.com/webcola/WebCola/cola.min.js"></script>
+<script src="https://cytoscape.org/cytoscape.js-cola/cytoscape-cola.js"></script>
 {% endblock %}
 
 {% block scripts %}
@@ -52,7 +54,7 @@
                         "curve-style": "bezier",
                         'text-background-color': 'yellow',
                         'text-background-opacity': 0.4,
-                        'width': '4px',
+                        'width': '2px',
                         'target-arrow-shape': 'triangle',
                         'control-point-step-size': '140px',
                         autorotate: true
@@ -60,16 +62,11 @@
                 }
             ],
             layout: {
-                name: 'cose',
-                animate: true,
-                padding: 100,
+                name: 'cola',
+                nodeSpacing: function( node ){ return 75; },
+                // nodeDimensionsIncludeLabels: true
             }
         });
-
-        var layout = cy.layout({ name: 'cose' });
-        layout.run();
-
-layout.run();
     });
 </script>
 {% endblock %}

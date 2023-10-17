@@ -28,6 +28,7 @@ dependencies = [
   "tqdm",
   "more_itertools",
   "networkx",
+  "bioregistry",
   "bioontologies",
   "pyobo",
 ]

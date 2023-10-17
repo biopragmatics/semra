@@ -11,6 +11,7 @@ import networkx as nx
 import pydantic
 from neo4j import Transaction, unit_of_work
 
+import bioregistry
 import semra
 from semra import Evidence, MappingSet, Reference
 from semra.io import _get_name_by_curie
@@ -181,55 +182,65 @@ class Neo4jClient:
         res = self.read_query(query, curie=curie)
         return res[0][0]
 
-    def summarize_predicates(self) -> Counter:
+    def summarize_predicates(self) -> t.Counter[str]:
         """Get a counter of predicates."""
         query = "MATCH (m:mapping) RETURN m.predicate, count(m.predicate)"
         return Counter(dict(self.read_query(query)))
 
-    def summarize_justifications(self) -> Counter:
+    def summarize_justifications(self) -> t.Counter[str]:
         """Get a counter of mapping justifications."""
         query = "MATCH (e:evidence) RETURN e.mapping_justification, count(e.mapping_justification)"
         return Counter({k.removeprefix("semapv:"): v for k, v in self.read_query(query)})
 
-    def summarize_evidence_types(self) -> Counter:
+    def summarize_evidence_types(self) -> t.Counter[str]:
         query = "MATCH (e:evidence) RETURN e.type, count(e.type)"
         return Counter(dict(self.read_query(query)))
 
-    def summarize_mapping_sets(self) -> Counter:
+    def summarize_mapping_sets(self) -> t.Counter[str]:
         """Get the number of evidences in each mapping set."""
         query = "MATCH (e:evidence)-[:fromSet]->(s:mappingset) RETURN s.curie, count(e)"
         return Counter(dict(self.read_query(query)))
 
-    def summarize_nodes(self) -> Counter:
+    def summarize_nodes(self) -> t.Counter[str]:
         query = """\
         MATCH (n:evidence)   WITH count(n) as count RETURN 'Evidences'    as label, count UNION ALL
-        MATCH (n:concept)    WITH count(n) as count RETURN 'References'     as label, count UNION ALL
-        MATCH (n:concept)    WHERE n.priority WITH count(n) as count RETURN 'Concepts'     as label, count UNION ALL
+        MATCH (n:concept)    WITH count(n) as count RETURN 'Concepts'     as label, count UNION ALL
+        MATCH (n:concept)    WHERE n.priority WITH count(n) as count RETURN 'Equivalence Classes'     as label, count UNION ALL
         MATCH (n:mapping)    WITH count(n) as count RETURN 'Mappings'     as label, count UNION ALL
         MATCH (n:mappingset) WITH count(n) as count RETURN 'Mapping Sets' as label, count
         """
         return Counter(dict(self.read_query(query)))
 
-    def summarize_concepts(self) -> Counter:
+    def summarize_concepts(self) -> t.Counter[tuple[str, str]]:
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
-        return Counter(dict(self.read_query(query)))
+        return Counter({
+            (prefix, bioregistry.get_name(prefix)): count
+            for prefix, count in self.read_query(query)
+        })
 
-    def summarize_authors(self) -> Counter:
-        query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, count(e)"
-        return Counter(dict(self.read_query(query)))
+    def summarize_authors(self) -> t.Counter[tuple[str, str]]:
+        query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, a.name, count(e)"
+        return self._count_with_name(query)
 
-    def get_highest_exact_matches(self, limit: int = 10) -> Counter:
+    def get_highest_exact_matches(self, limit: int = 10) -> t.Counter[tuple[str, str]]:
         query = """\
             MATCH (a)-[:`skos:exactMatch`]-(b)
-            WHERE a.priority RETURN a.curie, count(distinct b) as c
+            WHERE a.priority 
+            RETURN a.curie, a.name, count(distinct b) as c
             ORDER BY c DESCENDING
             LIMIT $limit
         """
-        return Counter(dict(self.read_query(query, limit=limit)))
+        return self._count_with_name(query, limit=limit)
+
+    def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
+        return Counter({
+            (curie, name): count
+            for curie, name, count in self.read_query(query, **kwargs)
+        })
 
     def get_exact_matches(self, curie: str) -> dict[Reference, str]:
-        query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN b"
-        return {Reference.from_curie(node["curie"]): node["name"] for node, in self.read_query(query, curie=curie)}
+        query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN a.curie, a.name"
+        return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
 
     def get_connected_component(self, curie: str) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
         query = """\

@@ -6,6 +6,8 @@ from collections import Counter
 from typing import Any, TypeAlias
 
 import neo4j
+import neo4j.graph
+import networkx as nx
 import pydantic
 from neo4j import Transaction, unit_of_work
 
@@ -217,12 +219,42 @@ class Neo4jClient:
         return Counter(dict(self.read_query(query)))
 
     def get_highest_exact_matches(self, limit: int = 10) -> Counter:
-        query = "MATCH (a)-[:`skos:exactMatch`]-(b) WHERE a.priority RETURN a.curie, count(distinct b) as c ORDER BY c DESCENDING LIMIT $limit"
+        query = """\
+            MATCH (a)-[:`skos:exactMatch`]-(b)
+            WHERE a.priority RETURN a.curie, count(distinct b) as c
+            ORDER BY c DESCENDING
+            LIMIT $limit
+        """
         return Counter(dict(self.read_query(query, limit=limit)))
 
     def get_exact_matches(self, curie: str) -> dict[Reference, str]:
         query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN b"
         return {Reference.from_curie(node["curie"]): node["name"] for node, in self.read_query(query, curie=curie)}
+
+    def get_connected_component(self, curie: str) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
+        query = """\
+        MATCH (:concept {curie: $curie})-[r *..3 {hasPrimary: true}]-(n:concept)
+        RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
+        """
+        res = self.read_query(query, curie=curie)
+        nodes = res[0][0]
+        relations = list({r for relations in res[0][1] for r in relations})
+        return nodes, relations
+
+    def get_connected_component_graph(self, curie: str) -> nx.MultiDiGraph:
+        nodes, relations = self.get_connected_component(curie)
+        g = nx.MultiDiGraph()
+        for node in nodes:
+            g.add_node(node["curie"], **node)
+        for relation in relations:
+            g.add_edge(
+                relation.nodes[0]["curie"],
+                relation.nodes[1]["curie"],
+                key=relation.element_id,
+                type=relation.type,
+                **relation,
+            )
+        return g
 
     def get_concept_name(self, curie: str) -> str:
         return _get_name_by_curie(curie)

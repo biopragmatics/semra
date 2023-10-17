@@ -469,13 +469,19 @@ def validate_mappings(mappings: list[Mapping]) -> None:
             raise ValueError(f"invalid object prefix: {mapping}.")
         if not bioregistry.is_valid_identifier(mapping.s.prefix, mapping.s.identifier):
             raise ValueError(
-                f"Invalid mapping subject.\n\nMapping:{mapping}.\n\nSubject: {mapping.s}\n\nUse regex {bioregistry.get_pattern(mapping.s.prefix)}"
+                f"Invalid mapping subject."
+                f"\n\nMapping:{mapping}."
+                f"\n\nSubject: {mapping.s}"
+                f"\n\nUse regex {bioregistry.get_pattern(mapping.s.prefix)}"
             )
         if ":" in mapping.s.identifier:
             raise ValueError(f"banana in mapping subject: {mapping}")
         if not bioregistry.is_valid_identifier(mapping.o.prefix, mapping.o.identifier):
             raise ValueError(
-                f"Invalid mapping object.\n\nMapping:{mapping}.\n\nObject: {mapping.o}\n\nUse regex {bioregistry.get_pattern(mapping.o.prefix)}"
+                f"Invalid mapping object."
+                f"\n\nMapping:{mapping}."
+                f"\n\nObject: {mapping.o}"
+                f"\n\nUse regex {bioregistry.get_pattern(mapping.o.prefix)}"
             )
         if ":" in mapping.o.identifier:
             raise ValueError(f"banana in mapping object: {mapping}")

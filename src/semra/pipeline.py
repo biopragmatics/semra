@@ -94,7 +94,8 @@ class Configuration(BaseModel):
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
-        description="Should the raw mappings be validated against Bioregistry prefixes and local unique identifier regular expressions (when available)?",
+        description="Should the raw mappings be validated against Bioregistry "
+        "prefixes and local unique identifier regular expressions (when available)?",
     )
 
     raw_pickle_path: Path | None = None

@@ -29,8 +29,10 @@
     </style>
     {% endblock %}
 
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"></script>
     <script src="https://kit.fontawesome.com/4c86883252.js" crossorigin="anonymous"></script>
-
     <title>{% block title %}{% endblock %}</title>
     {% endblock %}
 </head>
@@ -46,5 +48,6 @@
     </p>
 </footer>
 
+{% block scripts %}{% endblock %}
 </body>
 </html>

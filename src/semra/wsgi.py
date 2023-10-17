@@ -4,8 +4,10 @@ import os
 
 import fastapi
 import flask
+import networkx as nx
 from curies import Reference
 from fastapi import Path
+from fastapi.responses import JSONResponse
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap5
 from starlette.middleware.wsgi import WSGIMiddleware
@@ -14,25 +16,24 @@ from semra import Evidence, Mapping, MappingSet
 from semra.client import Neo4jClient
 
 try:
-    import biomappings.utils as biomappings_utils
+    import biomappings.utils
 except ImportError:
-    biomappings_utils = None
+    BIOMAPPINGS_GIT_HASH = None
+else:
+    BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
 
 client = Neo4jClient()
 
-api_router = fastapi.APIRouter()
+api_router = fastapi.APIRouter(prefix="/api")
 
 flask_app = Flask(__name__)
 flask_app.secret_key = os.urandom(8)
 Bootstrap5(flask_app)
 
-#  Could group this in a function later
-app = fastapi.FastAPI()
-app.include_router(api_router)
-api_router.mount("/", WSGIMiddleware(flask_app))
 
+EXAMPLE_CONCEPTS = ["efo:0002142"]
 EXAMPLE_MAPPINGS = ["25b67912bc720127a43a06ce4688b672", "5a56bf7ac409d8de84c3382a99e17715"]
-BIOMAPPINGS_GIT_HASH = biomappings_utils is not None and biomappings_utils.get_git_hash()
+
 
 PREDICATE_COUNTER = client.summarize_predicates()
 MAPPING_SET_COUNTER = client.summarize_mapping_sets()
@@ -48,15 +49,15 @@ HIGH_MATCHES_COUNTER = client.get_highest_exact_matches()
 
 
 def _figure_number(n: int):
-    if n > 1_000_000:
+    if n > 1_000_000:  # noqa:PLR2004
         lead = n / 1_000_000
-        if lead < 10:
+        if lead < 10:  # noqa:PLR2004
             return round(lead, 1), "M"
         else:
             return round(lead), "M"
-    if n > 1_000:
+    if n > 1_000:  # noqa:PLR2004
         lead = n / 1_000
-        if lead < 10:
+        if lead < 10:  # noqa:PLR2004
             return round(lead, 1), "K"
         else:
             return round(lead), "K"
@@ -99,7 +100,6 @@ def view_concept(curie: str):
     name = client.get_concept_name(curie)
     exact_matches = client.get_exact_matches(curie)
     # TODO when showing equivalence between two entities from same namespace, suggest curating a replaced by relation
-
     return render_template(
         "concept.html",
         reference=reference,
@@ -152,12 +152,22 @@ def view_mapping_set(curie: str):
     return render_template("mapping_set.html", mapping_set=m)
 
 
-@api_router.get("/api/evidence/{curie}", response_model=Evidence)
+@api_router.get("/evidence/{curie}", response_model=Evidence)
 def get_evidence(curie: str = Path(description="An evidence's MD5 hex digest.")):  # noqa:B008
     return client.get_evidence(curie)
 
 
-@api_router.get("/api/mapping/{mapping}", response_model=Mapping)
+@api_router.get("/cytoscape/{curie}")
+def get_concept_cytoscape(
+    curie: str = Path(description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS)  # noqa:B008
+):
+    """Get the mapping graph surrounding the concept as a Cytoscape.js JSON object."""
+    graph = client.get_connected_component_graph(curie)
+    cytoscape_json = nx.cytoscape_data(graph)["elements"]
+    return JSONResponse(cytoscape_json)
+
+
+@api_router.get("/mapping/{mapping}", response_model=Mapping)
 def get_mapping(
     mapping: str = Path(  # noqa:B008
         description="A mapping's MD5 hex digest.",
@@ -167,7 +177,7 @@ def get_mapping(
     return client.get_mapping(mapping)
 
 
-@api_router.get("/api/mapping_set/{mapping_set}", response_model=MappingSet)
+@api_router.get("/mapping_set/{mapping_set}", response_model=MappingSet)
 def get_mapping_set(
     mapping_set: str = Path(  # noqa:B008
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
@@ -176,12 +186,22 @@ def get_mapping_set(
     return client.get_mapping_set(mapping_set)
 
 
-@api_router.get("/api/mapping_set/", response_model=list[MappingSet])
+@api_router.get("/mapping_set/", response_model=list[MappingSet])
 def get_mapping_sets():
     return client.get_mapping_sets()
+
+
+def get_app():
+    app = fastapi.FastAPI(
+        title="Semantic Reasoning Assembler",
+        description="A web app to access a SeMRA Neo4j database",
+    )
+    app.include_router(api_router)
+    app.mount("/", WSGIMiddleware(flask_app))
+    return app
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(api_router, port=5000, host="0.0.0.0")  # noqa:S104
+    uvicorn.run(get_app(), port=5000, host="0.0.0.0")  # noqa:S104

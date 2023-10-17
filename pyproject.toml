@@ -43,6 +43,7 @@ web = [
     "flask",
     "bootstrap_flask",
     "neo4j",
+    "biomappings",
 ]
 
 

@@ -253,27 +253,32 @@ def from_sssom_df(df: pd.DataFrame, mapping_set_name=None) -> list[Mapping]:
 
 
 def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
-    if "author_id" in row:
+    if "author_id" in row and pd.notna(row["author_id"]):
         author = Reference.from_curie(row["author_id"])
     else:
         author = None
-    if "mapping_set_name" in row:
+    if "mapping_set_name" in row and pd.notna(row["mapping_set_name"]):
         n = row["mapping_set_name"]
     elif mapping_set_name is None:
         raise KeyError("need a mapping set name")
     else:
         n = mapping_set_name
     confidence = None
+    mapping_set_version = None
+    mapping_set_license = None
     if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
         confidence = row["mapping_set_confidence"]
-
+    if "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
+        mapping_set_version = row["mapping_set_version"]
+    if "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):
+        mapping_set_license = row["mapping_set_license"]
     mapping_set = MappingSet(
         name=n,
-        version=row.get("mapping_set_version"),
-        license=row.get("mapping_set_license"),
+        version=mapping_set_version,
+        license=mapping_set_license,
         confidence=confidence,
     )
-    if "mapping_justification" in row:
+    if "mapping_justification" in row and pd.notna(row["mapping_justification"]):
         justification = Reference.from_curie(row["mapping_justification"])
     else:
         justification = UNSPECIFIED_MAPPING

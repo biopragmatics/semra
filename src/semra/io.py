@@ -264,13 +264,18 @@ def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
     else:
         n = mapping_set_name
     confidence = None
+    mapping_set_version = None
+    mapping_set_license = None
     if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
         confidence = row["mapping_set_confidence"]
-
+    if "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
+        mapping_set_version = row["mapping_set_version"]
+    if "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):
+        mapping_set_license = row["mapping_set_license"]
     mapping_set = MappingSet(
         name=n,
-        version=row.get("mapping_set_version"),
-        license=row.get("mapping_set_license"),
+        version=mapping_set_version,
+        license=mapping_set_license,
         confidence=confidence,
     )
     if "mapping_justification" in row and pd.notna(row["mapping_justification"]):

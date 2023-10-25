@@ -253,11 +253,11 @@ def from_sssom_df(df: pd.DataFrame, mapping_set_name=None) -> list[Mapping]:
 
 
 def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
-    if "author_id" in row:
+    if "author_id" in row and pd.notna(row["author_id"]):
         author = Reference.from_curie(row["author_id"])
     else:
         author = None
-    if "mapping_set_name" in row:
+    if "mapping_set_name" in row and pd.notna(row["mapping_set_name"]):
         n = row["mapping_set_name"]
     elif mapping_set_name is None:
         raise KeyError("need a mapping set name")
@@ -273,7 +273,7 @@ def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
         license=row.get("mapping_set_license"),
         confidence=confidence,
     )
-    if "mapping_justification" in row:
+    if "mapping_justification" in row and pd.notna(row["mapping_justification"]):
         justification = Reference.from_curie(row["mapping_justification"])
     else:
         justification = UNSPECIFIED_MAPPING

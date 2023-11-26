@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional, Union
 
 import pydantic
 from curies import Reference
@@ -65,9 +65,9 @@ class EvidenceMixin:
 
 class MappingSet(pydantic.BaseModel):
     name: str = Field(..., description="Name of the mapping set")
-    version: str | None = Field(default=None, description="The version of the dataset from which the mapping comes")
-    license: str | None = Field(default=None, description="License name or URL for mapping set")
-    confidence: float | None = Field(default=None, description="Mapping set level confidence")
+    version: Optional[str] = Field(default=None, description="The version of the dataset from which the mapping comes")
+    license: Optional[str] = Field(default=None, description="License name or URL for mapping set")
+    confidence: Optional[float] = Field(default=None, description="Mapping set level confidence")
 
     def key(self):
         return self.name, self.version or "", self.license or "", 1.0 if self.confidence is None else self.confidence
@@ -100,7 +100,7 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
         description="A SSSOM-compliant justification",
     )
     mapping_set: MappingSet = Field(..., description="The name of the dataset from which the mapping comes")
-    author: Reference | None = Field(
+    author: Optional[Reference] = Field(
         default=None,
         description="A reference to the author of the mapping (e.g. with ORCID)",
         example=Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
@@ -121,7 +121,7 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
         return {self.mapping_set.name}
 
     @property
-    def confidence(self) -> float | None:
+    def confidence(self) -> Optional[float]:
         return self.mapping_set.confidence
 
     @property
@@ -142,7 +142,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
     mappings: list[Mapping] = Field(
         ..., description="A list of mappings and their evidences consumed to create this evidence"
     )
-    author: Reference | None = None
+    author: Optional[Reference] = None
     confidence_factor: float = 1.0
 
     def key(self):
@@ -153,7 +153,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
         )
 
     @property
-    def confidence(self) -> float | None:
+    def confidence(self) -> Optional[float]:
         confidences = [mapping.confidence for mapping in self.mappings]
         nn_confidences = [c for c in confidences if c is not None]
         if not nn_confidences:
@@ -176,7 +176,7 @@ class ReasonedEvidence(pydantic.BaseModel, EvidenceMixin):
 
 
 Evidence = Annotated[
-    ReasonedEvidence | SimpleEvidence,
+    Union[ReasonedEvidence, SimpleEvidence],
     Field(discriminator="evidence_type"),
 ]
 
@@ -200,13 +200,13 @@ class Mapping(pydantic.BaseModel):
         return self.s, self.p, self.o
 
     @classmethod
-    def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
+    def from_triple(cls, triple: Triple, evidence: Union[list[Evidence], None] = None) -> Mapping:
         """Instantiate a mapping from a triple."""
         s, p, o = triple
         return cls(s=s, p=p, o=o, evidence=evidence or [])
 
     @property
-    def confidence(self) -> float | None:
+    def confidence(self) -> Optional[float]:
         if not self.evidence:
             return None
         confidences = [e.confidence for e in self.evidence]

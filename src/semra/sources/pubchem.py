@@ -1,6 +1,7 @@
 """Get mappings from PubChem."""
 
 import logging
+from typing import Optional
 
 import bioversions
 import pandas as pd
@@ -16,7 +17,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
+def get_pubchem_mesh_mappings(version: Optional[str] = None) -> list[Mapping]:
     """Get a mapping from PubChem compound identifiers to their equivalent MeSH terms."""
     if version is None:
         version = bioversions.get_version("pubchem")

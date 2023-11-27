@@ -28,7 +28,7 @@ Node: TypeAlias = t.Mapping[str, Any]
 
 TxResult: TypeAlias = t.Optional[list[list[Any]]]
 
-ReferenceHint: TypeAlias = str | Reference
+ReferenceHint: TypeAlias = t.Union[str, Reference]
 
 
 class Neo4jClient:

@@ -103,7 +103,9 @@ class SimpleEvidence(pydantic.BaseModel, EvidenceMixin):
     author: Reference | None = Field(
         default=None,
         description="A reference to the author of the mapping (e.g. with ORCID)",
-        example=Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
+        examples=[
+            Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
+        ],
     )
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
 

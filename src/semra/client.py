@@ -1,17 +1,19 @@
 """This file contains the client for the Neo4j database."""
 
+from __future__ import annotations
+
 import os
 import typing as t
 from collections import Counter
 from typing import Any, TypeAlias
 
+import bioregistry
 import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
 from neo4j import Transaction, unit_of_work
 
-import bioregistry
 import semra
 from semra import Evidence, MappingSet, Reference
 from semra.io import _get_name_by_curie
@@ -50,7 +52,6 @@ class Neo4jClient:
         password :
             The password for the Neo4j database.
         """
-        self.driver = None
         uri = uri or os.environ.get("NEO4J_URL") or "bolt://0.0.0.0:7687"
         user = user or os.environ.get("NEO4J_USER")
         password = password or os.environ.get("NEO4J_PASSWORD")
@@ -137,7 +138,7 @@ class Neo4jClient:
         RETURN mapping, source.curie, target.curie, collect([evidence, mset, author.curie])
         """
         mapping, source_curie, target_curie, evidence_pairs = self.read_query(query, curie=curie)[0]
-        evidence = []
+        evidence: list[Evidence] = []
         for evidence_node, mapping_set_node, author_curie in evidence_pairs:
             evidence_dict = dict(evidence_node)
             if mapping_set_node:
@@ -148,7 +149,7 @@ class Neo4jClient:
             if evidence_dict["evidence_type"] == "reasoned":
                 evidence_dict["mappings"] = []  # TODO add in mappings?
             evidence_dict["justification"] = Reference.from_curie(evidence_dict.pop("mapping_justification"))
-            evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))
+            evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
         return semra.Mapping(
             s=Reference.from_curie(source_curie),
             p=Reference.from_curie(mapping["predicate"]),
@@ -158,6 +159,7 @@ class Neo4jClient:
 
     def get_equivalent(self, curie: ReferenceHint) -> list[Reference]:
         """Get equivalent references."""
+        raise NotImplementedError
 
     def get_mapping_sets(self) -> list[MappingSet]:
         """Get all mappings sets."""
@@ -205,7 +207,8 @@ class Neo4jClient:
         query = """\
         MATCH (n:evidence)   WITH count(n) as count RETURN 'Evidences'    as label, count UNION ALL
         MATCH (n:concept)    WITH count(n) as count RETURN 'Concepts'     as label, count UNION ALL
-        MATCH (n:concept)    WHERE n.priority WITH count(n) as count RETURN 'Equivalence Classes'     as label, count UNION ALL
+        MATCH (n:concept)    WHERE n.priority WITH count(n) as count RETURN 'Equivalence Classes' \
+as label, count UNION ALL
         MATCH (n:mapping)    WITH count(n) as count RETURN 'Mappings'     as label, count UNION ALL
         MATCH (n:mappingset) WITH count(n) as count RETURN 'Mapping Sets' as label, count
         """
@@ -213,10 +216,7 @@ class Neo4jClient:
 
     def summarize_concepts(self) -> t.Counter[tuple[str, str]]:
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
-        return Counter({
-            (prefix, bioregistry.get_name(prefix)): count
-            for prefix, count in self.read_query(query)
-        })
+        return Counter({(prefix, bioregistry.get_name(prefix)): count for prefix, count in self.read_query(query)})
 
     def summarize_authors(self) -> t.Counter[tuple[str, str]]:
         query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, a.name, count(e)"
@@ -225,7 +225,7 @@ class Neo4jClient:
     def get_highest_exact_matches(self, limit: int = 10) -> t.Counter[tuple[str, str]]:
         query = """\
             MATCH (a)-[:`skos:exactMatch`]-(b)
-            WHERE a.priority 
+            WHERE a.priority
             RETURN a.curie, a.name, count(distinct b) as c
             ORDER BY c DESCENDING
             LIMIT $limit
@@ -233,10 +233,7 @@ class Neo4jClient:
         return self._count_with_name(query, limit=limit)
 
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
-        return Counter({
-            (curie, name): count
-            for curie, name, count in self.read_query(query, **kwargs)
-        })
+        return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
 
     def get_exact_matches(self, curie: str) -> dict[Reference, str]:
         query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN a.curie, a.name"
@@ -267,7 +264,7 @@ class Neo4jClient:
             )
         return g
 
-    def get_concept_name(self, curie: str) -> str:
+    def get_concept_name(self, curie: str) -> str | None:
         return _get_name_by_curie(curie)
 
 

@@ -368,7 +368,7 @@ def _get_name_by_curie(curie: str) -> str | None:
         import requests
 
         orcid = curie.removeprefix("orcid:")
-        res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}).json()
+        res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
         return res["person"]["name"]["given-names"]["value"] + " " + res["person"]["name"]["family-name"]["value"]
     return pyobo.get_name_by_curie(curie)
 
@@ -507,7 +507,6 @@ def write_neo4j(
     ]
 
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
-        mapping: Mapping
         concepts.add(mapping.s)
         concepts.add(mapping.o)
 

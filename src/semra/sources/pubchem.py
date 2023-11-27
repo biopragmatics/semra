@@ -1,7 +1,8 @@
 """Get mappings from PubChem."""
 
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import bioversions
 import pandas as pd

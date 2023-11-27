@@ -1,5 +1,6 @@
 """Get mappings from ChEMBL."""
-from typing import Optional
+
+from __future__ import annotations
 
 import bioregistry
 

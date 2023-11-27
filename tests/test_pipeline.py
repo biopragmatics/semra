@@ -60,7 +60,9 @@ class TestPipeline(unittest.TestCase):
     def test_custom(self):
         """Test using custom sources in the configuration."""
         inp = Input(source="custom", prefix="get_test_mappings")
-        config = Configuration(inputs=[inp], priority=["a", "b"])
+        config = Configuration(
+            inputs=[inp], priority=["a", "b"], name="Test Configuration", description="Tests using custom sources"
+        )
         mappings = get_raw_mappings(config)
         self.assert_test_mappings(mappings)
 
@@ -71,6 +73,8 @@ class TestPipeline(unittest.TestCase):
             write_sssom(TEST_MAPPINGS, path)
 
             inp = Input(source="sssom", prefix=path.as_posix(), extras={"mapping_set_name": "test"})
-            config = Configuration(inputs=[inp], priority=["a", "b"])
+            config = Configuration(
+                inputs=[inp], priority=["a", "b"], name="Test Configuration", description="Tests using SSSOM sources"
+            )
             mappings = get_raw_mappings(config)
             self.assert_test_mappings(mappings)

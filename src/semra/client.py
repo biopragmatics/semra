@@ -26,7 +26,7 @@ __all__ = [
 
 Node: TypeAlias = t.Mapping[str, Any]
 
-TxResult: TypeAlias = list[list[Any]] | None
+TxResult: TypeAlias = t.Optional[list[list[Any]]]
 
 ReferenceHint: TypeAlias = str | Reference
 

@@ -1,4 +1,6 @@
 """Get mappings from ChEMBL."""
+from typing import Optional
+
 import bioregistry
 
 from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
@@ -9,7 +11,7 @@ __all__ = [
 ]
 
 
-def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
+def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]:
     """Get ChEMBL chemical equivalences."""
     import chembl_downloader
 
@@ -36,7 +38,7 @@ def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
     return rows
 
 
-def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
+def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
     """Get ChEMBL to protein mappings."""
     import chembl_downloader
 

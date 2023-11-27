@@ -60,7 +60,7 @@ class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
     source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
-    prefix: Optional[str] = None
+    prefix: str | None = None
     confidence: float = 1.0
     extras: dict[str, Any] = Field(default_factory=dict)
 
@@ -89,8 +89,8 @@ class Configuration(BaseModel):
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: Optional[list[str]] = None
-    keep_prefixes: Optional[list[str]] = None
+    remove_prefixes: list[str] | None = None
+    keep_prefixes: list[str] | None = None
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
@@ -98,18 +98,18 @@ class Configuration(BaseModel):
         "prefixes and local unique identifier regular expressions (when available)?",
     )
 
-    raw_pickle_path: Optional[Path] = None
-    raw_sssom_path: Optional[Path] = None
-    raw_neo4j_path: Optional[Path] = Field(default=None, description="Directory in which Neo4j stuff goes")
-    raw_neo4j_name: Optional[str] = Field(default=None, description="Directory for docker tag for Neo4j")
+    raw_pickle_path: Path | None = None
+    raw_sssom_path: Path | None = None
+    raw_neo4j_path: Path | None = Field(default=None, description="Directory in which Neo4j stuff goes")
+    raw_neo4j_name: str | None = Field(default=None, description="Directory for docker tag for Neo4j")
 
-    processed_pickle_path: Optional[Path] = None
-    processed_sssom_path: Optional[Path] = None
-    processed_neo4j_path: Optional[Path] = Field(default=None, description="Directory in which Neo4j stuff goes")
-    processed_neo4j_name: Optional[str] = Field(default=None, description="Directory for docker tag for Neo4j")
+    processed_pickle_path: Path | None = None
+    processed_sssom_path: Path | None = None
+    processed_neo4j_path: Path | None = Field(default=None, description="Directory in which Neo4j stuff goes")
+    processed_neo4j_name: str | None = Field(default=None, description="Directory for docker tag for Neo4j")
 
-    priority_pickle_path: Optional[Path] = None
-    priority_sssom_path: Optional[Path] = None
+    priority_pickle_path: Path | None = None
+    priority_sssom_path: Path | None = None
     # note that making a priority neo4j doesn't make sense
 
     add_labels: bool = Field(default=False, description="Should PyOBO be used to look up labels for SSSOM output?")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import typing as t
 from collections import Counter
-from typing import Any, TypeAlias
+from typing import Any
 
 import bioregistry
 import neo4j
@@ -13,6 +13,7 @@ import neo4j.graph
 import networkx as nx
 import pydantic
 from neo4j import Transaction, unit_of_work
+from typing_extensions import TypeAlias
 
 import semra
 from semra import Evidence, MappingSet, Reference
@@ -25,9 +26,9 @@ __all__ = [
 
 Node: TypeAlias = t.Mapping[str, Any]
 
-TxResult: TypeAlias = list[list[Any]] | None
+TxResult: TypeAlias = t.Optional[list[list[Any]]]
 
-ReferenceHint: TypeAlias = str | Reference
+ReferenceHint: TypeAlias = t.Union[str, Reference]
 
 
 class Neo4jClient:

@@ -32,6 +32,7 @@ dependencies = [
   "bioregistry",
   "bioontologies",
   "pyobo",
+  "typing_extensions",
 ]
 
 [project.optional-dependencies]

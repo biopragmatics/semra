@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING, Iterable, Tuple
 from tqdm import tqdm
 
 from .api import assemble_evidences, get_index
-from .rules import EXACT_MATCH, LEXICAL_MAPPING, MANUAL_MAPPING
+from .rules import EXACT_MATCH, LEXICAL_MAPPING
+from .io import from_pyobo
 from .struct import Mapping, MappingSet, Reference, SimpleEvidence
 
 if TYPE_CHECKING:
     import gilda
 
 
-def evaluate_predictions(*, positive: list[Mapping], negative: list[Mapping], predicted: list[Mapping], tag: str):
+def evaluate_predictions(*, positive: Iterable[Mapping], negative: Iterable[Mapping], predicted: Iterable[Mapping], tag: str):
     positive_index = get_index(positive, progress=False)
     negative_index = get_index(negative, progress=False)
     predicted_index = get_index(predicted, progress=False)
@@ -33,11 +34,9 @@ def evaluate_predictions(*, positive: list[Mapping], negative: list[Mapping], pr
     recall = tp / (tp + fn)
     precision = tp / (tp + fp)
     f1 = 2 * tp / (2 * tp + fp + fn)
-    completion = 1 - predicted_only / union_len
+    completion = 1 - predicted_only / len(predicted_set)
 
-    # print(f"[{tag}] {completion=:.1%}")
-    # print(f"[{tag}] {accuracy=:.1%}, {precision=:.1%} {recall=:.1%}, {f1=:.1%}")
-    return (completion, accuracy, precision, recall, f1)
+    return completion, accuracy, precision, recall, f1
 
 
 def _index_text(grounder: "gilda.Grounder"):
@@ -99,38 +98,42 @@ def main():
     click.echo(f"Got {len(negative_mappings):,} negative mappings")
 
     rows = []
-    for p in ["chebi", "maxo", "cl", "doid", "go", "uberon", "vo", "clo"]:
-        path = pystow.join("semra", "evaluation_prediction", name=f"evaluation_prediction_sample_{p}.tsv")
-        prefixes = ["mesh", p]
-        versions = ["2023", None]
+    mesh_grounder = pyobo.gilda_utils.get_grounder("mesh", versions="2023")
+    for prefix in ["chebi", "maxo", "cl", "doid", "go", "uberon", "vo", "clo"]:
+        path = pystow.join("semra", "evaluation_prediction", name=f"evaluation_prediction_sample_{prefix}.tsv")
 
         if path.is_file():
             predicted_mappings = from_sssom(path, mapping_set_name="gilda predictions")
         else:
             grounders = {
-                prefix: pyobo.gilda_utils.get_grounder(prefix, versions=version)
-                for prefix, version in zip(prefixes, versions)
+                "mesh": mesh_grounder,
+                prefix: pyobo.gilda_utils.get_grounder(prefix)
             }
             predicted_mappings = grounder_to_mappings(grounders)
             click.echo(f"Got {len(predicted_mappings):,} predicted mappings")
             predicted_mappings = infer_reversible(predicted_mappings, progress=False)
             write_sssom(predicted_mappings, path)
 
-        positive_mappings_subset = keep_prefixes(positive_mappings, prefixes, progress=False)
-        negative_mappings_subset = keep_prefixes(negative_mappings, prefixes, progress=False)
-        t = evaluate_predictions(
-            positive=positive_mappings_subset,
+        ontology_mappings = from_pyobo(prefix, "mesh")
+        ontology_mappings = infer_reversible(ontology_mappings, progress=False)
+        click.echo(f"[{prefix}] got {len(ontology_mappings):,} mappings from the ontology")
+
+        positive_mappings_subset = keep_prefixes(positive_mappings, [prefix, "mesh"], progress=False)
+        negative_mappings_subset = keep_prefixes(negative_mappings, [prefix, "mesh"], progress=False)
+        evaluation_row = evaluate_predictions(
+            positive=itt.chain(positive_mappings_subset, ontology_mappings),
             negative=negative_mappings_subset,
             predicted=predicted_mappings,
-            tag=p,
+            tag=prefix,
         )
-        rows.append((p, *t))
+        rows.append((prefix, *evaluation_row))
 
     print(
         tabulate(
             rows,
             headers=["prefix", "completion", "accuracy", "precision", "recall", "f1"],
             floatfmt=".1%",
+            tablefmt="github",
         )
     )
 

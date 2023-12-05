@@ -194,7 +194,7 @@ def _from_df(
 
 def from_pyobo(prefix: str, target_prefix: str | None = None, *, standardize: bool = False, **kwargs) -> list[Mapping]:
     if target_prefix:
-        return _from_pyobo_pair(prefix, target_prefix, standardize=standardize, **kwargs)
+        return _from_pyobo_pair(prefix, target_prefix, **kwargs)
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
 
 

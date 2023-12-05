@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/biopragmatics/semra/raw/master/docs/source/logo.png" alt="Logo for SeMRA" height="150">
+  <img src="https://github.com/biopragmatics/semra/raw/master/docs/source/logo.svg" alt="Logo for SeMRA" height="150">
 </p>
 
 # Semantic Mapping Reasoning Assembler (SeMRA)

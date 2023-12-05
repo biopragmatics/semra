@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/biopragmatics/semra/raw/master/docs/source/logo.png" alt="Logo for SeMRA" height="150">
+</p>
+
 # Semantic Mapping Reasoning Assembler (SeMRA)
 
 [![DOI](https://zenodo.org/badge/626870339.svg)](https://zenodo.org/badge/latestdoi/626870339)

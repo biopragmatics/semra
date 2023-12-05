@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools as itt
 import logging
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from typing import cast
 
 import networkx as nx
@@ -194,7 +194,8 @@ def infer_chains(
     return [*mappings, *new_mappings]
 
 
-def index_str(index: Index) -> str:
+def tabulate_index(index: Index) -> str:
+    """Tabulate"""
     from tabulate import tabulate
 
     rows: list[tuple[str, str, str, str]] = []
@@ -485,35 +486,6 @@ def validate_mappings(mappings: list[Mapping]) -> None:
             )
         if ":" in mapping.o.identifier:
             raise ValueError(f"banana in mapping object: {mapping}")
-
-
-def df_to_mappings(
-    df,
-    *,
-    source_prefix: str,
-    target_prefix: str,
-    evidence: Callable[[], Evidence],
-    source_identifier_column: str | None = None,
-    target_identifier_column: str | None = None,
-) -> list[Mapping]:
-    if source_identifier_column is None:
-        source_identifier_column = source_prefix
-    if target_identifier_column is None:
-        target_identifier_column = target_prefix
-    return [
-        Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_id),
-            p=EXACT_MATCH,
-            o=Reference(prefix=target_prefix, identifier=target_id),
-            evidence=[evidence()],
-        )
-        for source_id, target_id in tqdm(
-            df[[source_identifier_column, target_identifier_column]].values,
-            unit="mapping",
-            unit_scale=True,
-            desc=f"Processing {source_prefix}",
-        )
-    ]
 
 
 def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:

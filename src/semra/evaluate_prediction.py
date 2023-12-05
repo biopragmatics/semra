@@ -5,15 +5,25 @@ from typing import TYPE_CHECKING, Iterable, Tuple
 from tqdm import tqdm
 
 from .api import assemble_evidences, get_index
-from .rules import EXACT_MATCH, LEXICAL_MAPPING
 from .io import from_pyobo
+from .rules import EXACT_MATCH, LEXICAL_MAPPING
 from .struct import Mapping, MappingSet, Reference, SimpleEvidence
 
 if TYPE_CHECKING:
     import gilda
 
 
-def evaluate_predictions(*, positive: Iterable[Mapping], negative: Iterable[Mapping], predicted: Iterable[Mapping], tag: str):
+def _get_v1(positive_set, negative_set, predicted_set):
+    tp = len(positive_set.intersection(predicted_set))  # true positives
+    fp = len(negative_set.intersection(predicted_set))  # false positives
+    fn = len(positive_set - predicted_set)  # false negatives
+    tn = len(negative_set - predicted_set)  # true negatives
+    return tp, fp, fn, tn
+
+
+def evaluate_predictions(
+    *, positive: Iterable[Mapping], negative: Iterable[Mapping], predicted: Iterable[Mapping], tag: str
+):
     positive_index = get_index(positive, progress=False)
     negative_index = get_index(negative, progress=False)
     predicted_index = get_index(predicted, progress=False)
@@ -22,12 +32,10 @@ def evaluate_predictions(*, positive: Iterable[Mapping], negative: Iterable[Mapp
     negative_set = set(negative_index)
     predicted_set = set(predicted_index)
 
-    union_len = len(positive_set.union(predicted_set).union(negative_set))
-    tp = len(positive_set.intersection(predicted_set))  # true positives
-    fp = len(negative_set.intersection(predicted_set))  # false positives
-    fn = len(positive_set - predicted_set)  # false negatives
-    tn = len(negative_set - predicted_set)  # true negatives
+    tp, fp, fn, tn = _get_v1(positive_set, negative_set, predicted_set)
+
     predicted_only = len(predicted_set - positive_set - negative_set)
+    union_len = len(positive_set.union(predicted_set).union(negative_set))
     print(f"[{tag}] union={union_len:,}, intersection={tp:,}, curated={fn:,}, predicted={predicted_only:,}")
 
     accuracy = (tp + tn) / (tp + tn + fp + fn)
@@ -36,6 +44,8 @@ def evaluate_predictions(*, positive: Iterable[Mapping], negative: Iterable[Mapp
     f1 = 2 * tp / (2 * tp + fp + fn)
     completion = 1 - predicted_only / len(predicted_set)
 
+    # what is the percentage of curated examples that are positive?
+    # positive_percentage = len(positive_set) / (len(positive_set) + len(negative_set))
     return completion, accuracy, precision, recall, f1
 
 
@@ -87,7 +97,7 @@ def main():
 
     from semra.api import infer_reversible, keep_prefixes
     from semra.io import from_sssom, write_sssom
-    from semra.sources import from_biomappings_negative, get_biomappings_positive_mappings
+    from semra.sources import from_biomappings_negative, get_biomappings_positive_mappings, get_clo_mappings
 
     positive_mappings = get_biomappings_positive_mappings()
     positive_mappings = infer_reversible(positive_mappings, progress=False)
@@ -99,22 +109,23 @@ def main():
 
     rows = []
     mesh_grounder = pyobo.gilda_utils.get_grounder("mesh", versions="2023")
-    for prefix in ["chebi", "maxo", "cl", "doid", "go", "uberon", "vo", "clo"]:
+    for prefix in sorted(["chebi", "maxo", "cl", "doid", "go", "uberon", "vo", "clo"]):
         path = pystow.join("semra", "evaluation_prediction", name=f"evaluation_prediction_sample_{prefix}.tsv")
 
         if path.is_file():
             predicted_mappings = from_sssom(path, mapping_set_name="gilda predictions")
         else:
-            grounders = {
-                "mesh": mesh_grounder,
-                prefix: pyobo.gilda_utils.get_grounder(prefix)
-            }
+            grounders = {"mesh": mesh_grounder, prefix: pyobo.gilda_utils.get_grounder(prefix)}
             predicted_mappings = grounder_to_mappings(grounders)
             click.echo(f"Got {len(predicted_mappings):,} predicted mappings")
             predicted_mappings = infer_reversible(predicted_mappings, progress=False)
             write_sssom(predicted_mappings, path)
 
-        ontology_mappings = from_pyobo(prefix, "mesh")
+        if prefix == "clo":
+            ontology_mappings = get_clo_mappings()
+            ontology_mappings = keep_prefixes(ontology_mappings, [prefix, "mesh"], progress=False)
+        else:
+            ontology_mappings = from_pyobo(prefix, "mesh")
         ontology_mappings = infer_reversible(ontology_mappings, progress=False)
         click.echo(f"[{prefix}] got {len(ontology_mappings):,} mappings from the ontology")
 
@@ -126,7 +137,7 @@ def main():
             predicted=predicted_mappings,
             tag=prefix,
         )
-        rows.append((prefix, *evaluation_row))
+        rows.append((f"[{prefix}](https://bioregistry.io/{prefix})", *evaluation_row))
 
     print(
         tabulate(

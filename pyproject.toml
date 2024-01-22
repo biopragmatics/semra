@@ -7,7 +7,7 @@ name = "semra"
 dynamic = ["version"]
 description = 'Semantic Mapping Reasoning Assembler'
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 license = "MIT"
 keywords = []
 authors = [
@@ -16,6 +16,7 @@ authors = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -33,6 +34,7 @@ dependencies = [
   "bioontologies",
   "pyobo",
   "typing_extensions",
+  "rdflib", # remove after https://github.com/biopragmatics/bioregistry/pull/1030 is released
 ]
 
 [project.optional-dependencies]
@@ -84,6 +86,7 @@ dependencies = [
   "black[jupyter]>=23.1.0",
   "mypy>=1.0.0",
   "ruff>=0.0.243",
+  "pydantic",
 ]
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive --ignore-missing-imports {args:src/semra tests}"
@@ -104,6 +107,9 @@ all = [
 [tool.black]
 target-version = ["py39"]
 line-length = 120
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
 
 [tool.ruff]
 target-version = "py39"
@@ -146,6 +152,10 @@ ignore = [
   "EM102", "EM101",
   # Ignore pickle security warnings
   "S301",
+  # Ignore upgrading type annotations
+  "UP006", "UP007", "UP035",
+  # Ignore shadowing python builtins (because we use 'license')
+  "A001", "A002", "A003",
 ]
 unfixable = [
   # Don't touch unused imports

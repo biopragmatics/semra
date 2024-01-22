@@ -367,7 +367,7 @@ def _get_name_by_curie(curie: str) -> str | None:
     if curie.startswith("orcid:"):
         import requests
 
-        orcid = curie.removeprefix("orcid:")
+        orcid = curie[len("orcid:") :]
         res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
         return res["person"]["name"]["given-names"]["value"] + " " + res["person"]["name"]["family-name"]["value"]
     return pyobo.get_name_by_curie(curie)

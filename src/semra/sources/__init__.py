@@ -1,7 +1,7 @@
 """Sources of xrefs not from OBO."""
 
 import itertools as itt
-from collections.abc import Callable, Iterable
+import typing as t
 
 from class_resolver import FunctionResolver
 
@@ -43,7 +43,7 @@ __all__ = [
     "get_clo_mappings",
 ]
 
-SOURCE_RESOLVER: FunctionResolver[Callable[[], list[Mapping]]] = FunctionResolver(
+SOURCE_RESOLVER: FunctionResolver[t.Callable[[], t.List[Mapping]]] = FunctionResolver(
     [
         get_chembl_compound_mappings,
         get_chembl_protein_mappings,
@@ -74,6 +74,6 @@ for func in SOURCE_RESOLVER:
     SOURCE_RESOLVER.synonyms[norm_key] = func
 
 
-def get_custom() -> Iterable[Mapping]:
+def get_custom() -> t.Iterable[Mapping]:
     """Get all custom mappings."""
     return itt.chain.from_iterable(func() for func in SOURCE_RESOLVER)

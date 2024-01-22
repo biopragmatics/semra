@@ -1,5 +1,7 @@
 """Get mappings from FamPlex."""
 
+from __future__ import annotations
+
 import logging
 
 import bioregistry

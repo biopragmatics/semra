@@ -23,7 +23,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install tox
+          pip install tox hatch
+      - name: Test linting
+        run:
+          hatch run lint:style
       - name: Test with mypy
         run:
           tox -e mypy

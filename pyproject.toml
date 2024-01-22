@@ -34,6 +34,7 @@ dependencies = [
   "bioontologies",
   "pyobo",
   "typing_extensions",
+  "rdflib", # remove after https://github.com/biopragmatics/bioregistry/pull/1030 is released
 ]
 
 [project.optional-dependencies]

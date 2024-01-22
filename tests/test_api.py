@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing as t
 import unittest
 
 from semra import api
@@ -24,11 +25,11 @@ from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
 
 
-def _get_references(n: int, prefix: str = "test") -> list[Reference]:
+def _get_references(n: int, prefix: str = "test") -> t.List[Reference]:
     return [Reference(prefix=prefix, identifier=str(i)) for i in range(1, n + 1)]
 
 
-def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
+def _exact(s, o, evidence: t.Optional[t.List[SimpleEvidence]] = None) -> Mapping:
     return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
 
 
@@ -101,8 +102,8 @@ class TestOperations(unittest.TestCase):
 
     def assert_same_triples(
         self,
-        expected_mappings: Index | list[Mapping],
-        actual_mappings: Index | list[Mapping],
+        expected_mappings: t.Union[Index, t.List[Mapping]],
+        actual_mappings: t.Union[Index, t.List[Mapping]],
         msg: str | None = None,
     ) -> None:
         """Assert that two sets of mappings are the same."""
@@ -118,7 +119,7 @@ class TestOperations(unittest.TestCase):
         )
 
     @staticmethod
-    def _clean_index(index: Index) -> list[str]:
+    def _clean_index(index: Index) -> t.List[str]:
         triples = sorted(set(index), key=triple_key)
         return ["<" + ", ".join(element.curie for element in triple) + ">" for triple in triples]
 

@@ -85,7 +85,7 @@ class Configuration(BaseModel):
     priority: t.List[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
     mutations: t.List[Mutation] = Field(default_factory=list)
 
-    exclude_pairs: t.List[tuple[str, str]] = Field(
+    exclude_pairs: t.List[t.Tuple[str, str]] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",

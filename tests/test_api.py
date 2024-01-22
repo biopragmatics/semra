@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from semra import api
 from semra.api import (
     BROAD_MATCH,
     DB_XREF,
@@ -297,6 +298,15 @@ class TestOperations(unittest.TestCase):
 
         m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
         self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))
+
+    def test_filter_confidence(self):
+        """Test filtering by confidence."""
+        (a1, a2) = _get_references(2, prefix="a")
+        (b1, b2) = _get_references(2, prefix="b")
+        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)])
+        m2 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)])
+        mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
+        self.assertEqual([m1], mmm)
 
 
 class TestUpgrades(unittest.TestCase):

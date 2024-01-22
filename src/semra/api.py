@@ -498,3 +498,14 @@ def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
         [(prefix, bioregistry.get_name(prefix), bioregistry.get_description(prefix)) for prefix in sorted(prefixes)],
         columns=["prefix", "name", "description"],
     ).set_index("prefix")
+
+
+def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) -> Iterable[Mapping]:
+    """Filter mappings below a given confidence."""
+    for mapping in mappings:
+        try:
+            confidence = mapping.get_confidence()
+        except ValueError:
+            continue
+        if confidence >= cutoff:
+            yield mapping

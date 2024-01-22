@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import math
 import pickle
+import typing as t
 import uuid
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, ClassVar, Literal, Optional, Union
+from typing import ClassVar, Literal, Optional, Union
 
 import pydantic
 from curies import Reference
 from more_itertools import triplewise
 from pydantic import Field
 from pydantic.types import UUID4
+from typing_extensions import Annotated
 
 __all__ = [
     "Reference",
@@ -29,10 +31,10 @@ __all__ = [
 ]
 
 #: A type annotation for a subject-predicate-object triple
-Triple = tuple[Reference, Reference, Reference]
+Triple = t.Tuple[Reference, Reference, Reference]
 
 
-def triple_key(triple: Triple) -> tuple[str, str, str]:
+def triple_key(triple: Triple) -> t.Tuple[str, str, str]:
     """Get a sortable key for a triple."""
     return triple[0].curie, triple[2].curie, triple[1].curie
 
@@ -148,7 +150,7 @@ class SimpleEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMi
         return self.evidence_type, self.justification, self.author, self.mapping_set.key(), self.uuid
 
     @property
-    def mapping_set_names(self) -> set[str]:
+    def mapping_set_names(self) -> t.Set[str]:
         return {self.mapping_set.name}
 
     def get_confidence(self) -> float:
@@ -165,7 +167,7 @@ class ReasonedEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, Confidence
 
     evidence_type: Literal["reasoned"] = Field(default="reasoned")
     justification: Reference = Field(..., description="A SSSOM-compliant justification")
-    mappings: list[Mapping] = Field(
+    mappings: t.List[Mapping] = Field(
         ..., description="A list of mappings and their evidences consumed to create this evidence"
     )
     author: Optional[Reference] = None
@@ -187,9 +189,12 @@ class ReasonedEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, Confidence
         return None
 
     @property
-    def mapping_set_names(self) -> set[str]:
+    def mapping_set_names(self) -> t.Set[str]:
         return {
-            name for mapping in self.mappings for evidence in mapping.evidence for name in evidence.mapping_set_names
+            name
+            for mapping in self.mappings
+            for evidence in mapping.evidence
+            for name in evidence.mapping_set_names  # type:ignore
         }
 
     @property
@@ -214,7 +219,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.map
     s: Reference = Field(..., title="subject")
     p: Reference = Field(..., title="predicate")
     o: Reference = Field(..., title="object")
-    evidence: list[Evidence] = Field(default_factory=list)
+    evidence: t.List[Evidence] = Field(default_factory=list)
 
     @property
     def triple(self) -> Triple:
@@ -222,7 +227,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.map
         return self.s, self.p, self.o
 
     @classmethod
-    def from_triple(cls, triple: Triple, evidence: Optional[list[Evidence]] = None) -> Mapping:
+    def from_triple(cls, triple: Triple, evidence: Optional[t.List[Evidence]] = None) -> Mapping:
         """Instantiate a mapping from a triple."""
         s, p, o = triple
         return cls(s=s, p=p, o=o, evidence=evidence or [])
@@ -255,7 +260,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.map
         return any(not isinstance(evidence, SimpleEvidence) for evidence in self.evidence)
 
 
-def line(*references: Reference) -> list[Mapping]:
+def line(*references: Reference) -> t.List[Mapping]:
     """Create a list of mappings from a simple mappings path."""
     if not (3 <= len(references) and len(references) % 2):  # noqa:PLR2004
         raise ValueError

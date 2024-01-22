@@ -341,7 +341,9 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     ]
 
 
-def filter_mappings(mappings: t.List[Mapping], skip_mappings: t.List[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def filter_mappings(
+    mappings: t.List[Mapping], skip_mappings: t.List[Mapping], *, progress: bool = True
+) -> t.List[Mapping]:
     """Filter out mappings in the second set from the first set."""
     skip_triples = {skip_mapping.triple for skip_mapping in skip_mappings}
     return [
@@ -381,7 +383,12 @@ def filter_many_to_many(mappings: t.List[Mapping], *, progress: bool = True) -> 
 
 
 def project(
-    mappings: t.List[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False, progress: bool = False
+    mappings: t.List[Mapping],
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    return_sus: bool = False,
+    progress: bool = False,
 ) -> t.List[Mapping] | t.Tuple[t.List[Mapping], t.List[Mapping]]:
     """Ensure that each identifier only appears as the subject of one mapping."""
     mappings = keep_subject_prefixes(mappings, source_prefix, progress=progress)

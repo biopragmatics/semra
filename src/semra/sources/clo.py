@@ -34,7 +34,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
     for node in tqdm(graph.nodes, unit_scale=True, unit="node"):
         if not node.id.startswith(CLO_URI_PREFIX):
             continue
-        clo_id = node.id.removeprefix(CLO_URI_PREFIX)
+        clo_id = node.id[len(CLO_URI_PREFIX) :]
         for p in node.properties or []:
             if p.predicate_raw != "http://www.w3.org/2000/01/rdf-schema#seeAlso":
                 continue

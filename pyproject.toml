@@ -150,6 +150,8 @@ ignore = [
   "EM102", "EM101",
   # Ignore pickle security warnings
   "S301",
+  # Ignore upgrading type annotations
+  "UP006", "UP007", "UP035",
 ]
 unfixable = [
   # Don't touch unused imports

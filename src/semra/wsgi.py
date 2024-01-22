@@ -155,13 +155,13 @@ def view_mapping_set(curie: str):
 
 
 @api_router.get("/evidence/{curie}", response_model=Evidence)
-def get_evidence(curie: str = Path(description="An evidence's MD5 hex digest.")):  # noqa:B008
+def get_evidence(curie: str = Path(description="An evidence's MD5 hex digest.")):
     return client.get_evidence(curie)
 
 
 @api_router.get("/cytoscape/{curie}")
 def get_concept_cytoscape(
-    curie: str = Path(description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS)  # noqa:B008
+    curie: str = Path(description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS)
 ):
     """Get the mapping graph surrounding the concept as a Cytoscape.js JSON object."""
     graph = client.get_connected_component_graph(curie)
@@ -170,18 +170,13 @@ def get_concept_cytoscape(
 
 
 @api_router.get("/mapping/{mapping}", response_model=Mapping)
-def get_mapping(
-    mapping: str = Path(  # noqa:B008
-        description="A mapping's MD5 hex digest.",
-        examples=EXAMPLE_MAPPINGS,
-    )
-):
+def get_mapping(mapping: str = Path(description="A mapping's MD5 hex digest.", examples=EXAMPLE_MAPPINGS)):
     return client.get_mapping(mapping)
 
 
 @api_router.get("/mapping_set/{mapping_set}", response_model=MappingSet)
 def get_mapping_set(
-    mapping_set: str = Path(  # noqa:B008
+    mapping_set: str = Path(
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
     )
 ):

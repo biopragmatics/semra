@@ -1,5 +1,7 @@
 """Get mappings from IntAct."""
 
+from __future__ import annotations
+
 import bioregistry
 import bioversions
 import pandas as pd

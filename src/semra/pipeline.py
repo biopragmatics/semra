@@ -63,7 +63,7 @@ class Input(BaseModel):
     source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
     prefix: Optional[str] = None
     confidence: float = 1.0
-    extras: dict[str, Any] = Field(default_factory=dict)
+    extras: t.Dict[str, Any] = Field(default_factory=dict)
 
 
 class Mutation(BaseModel):

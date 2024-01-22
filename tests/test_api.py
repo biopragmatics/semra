@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import unittest
 
+from semra import api
 from semra.api import (
     BROAD_MATCH,
+    DB_XREF,
     EXACT_MATCH,
     NARROW_MATCH,
     Index,
@@ -13,11 +15,12 @@ from semra.api import (
     get_index,
     get_many_to_many,
     infer_chains,
+    infer_mutations,
     infer_reversible,
     keep_prefixes,
     project,
 )
-from semra.rules import MANUAL_MAPPING
+from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
 
 
@@ -31,9 +34,9 @@ def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
 
 EV = SimpleEvidence(
     justification=MANUAL_MAPPING,
-    mapping_set=MappingSet(name="test_mapping_set"),
+    mapping_set=MappingSet(name="test_mapping_set", confidence=0.95),
 )
-MS = MappingSet(name="test")
+MS = MappingSet(name="test", confidence=0.95)
 
 
 class TestOperations(unittest.TestCase):
@@ -87,7 +90,7 @@ class TestOperations(unittest.TestCase):
         )
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
-        index = get_index([m1, m2])
+        index = get_index([m1, m2], progress=False)
         self.assertIn(m1.triple, index)
         self.assertEqual(1, len(index))
         self.assertEqual(2, len(index[m1.triple]))
@@ -130,10 +133,10 @@ class TestOperations(unittest.TestCase):
 
         backwards_msg = "backwards inference is not supposed to be done here"
 
-        index = get_index(infer_chains([m1, m2], backwards=False))
+        index = get_index(infer_chains([m1, m2], backwards=False, progress=False), progress=False)
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
 
-        index = get_index(infer_chains([m1, m2, m3], backwards=False))
+        index = get_index(infer_chains([m1, m2, m3], backwards=False, progress=False), progress=False)
         self.assert_same_triples([m1, m2, m3, m4, m4, m5, m6], index)
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
         self.assertNotIn(m5_inv.triple, index, msg=backwards_msg)
@@ -164,12 +167,12 @@ class TestOperations(unittest.TestCase):
     def test_infer_broad_match_1(self):
         r1, r2, r3, r4 = _get_references(4)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
-        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
-        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
-        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
-        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3)
-        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4)
-        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
+        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3, evidence=[EV])
+        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4, evidence=[EV])
+        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4, evidence=[EV])
+        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3, evidence=[EV])
+        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4, evidence=[EV])
+        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4, evidence=[EV])
 
         # Check inference over two steps
         self.assert_same_triples(
@@ -258,7 +261,7 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r13)
         mappings = [m1, m2, m3]
-        self.assert_same_triples([m1, m2], filter_self_matches(mappings))
+        self.assert_same_triples([m1, m2], filter_self_matches(mappings, progress=False))
 
     def test_filter_negative(self):
         """Test filtering out mappings within a given prefix."""
@@ -268,7 +271,7 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         mappings = [m1, m2]
         negative = [m2]
-        self.assert_same_triples([m1], filter_mappings(mappings, negative))
+        self.assert_same_triples([m1], filter_mappings(mappings, negative, progress=False))
 
     def test_project(self):
         """Test projecting into a given source/target pair."""
@@ -280,7 +283,7 @@ class TestOperations(unittest.TestCase):
         m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m2_i, m3]
-        self.assert_same_triples([m1, m2], project(mappings, "p1", "p2"))
+        self.assert_same_triples([m1, m2], project(mappings, "p1", "p2", progress=False))
 
     def test_get_many_to_many(self):
         """Test getting many-to-many mappings."""
@@ -295,3 +298,40 @@ class TestOperations(unittest.TestCase):
 
         m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
         self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))
+
+    def test_filter_confidence(self):
+        """Test filtering by confidence."""
+        (a1, a2) = _get_references(2, prefix="a")
+        (b1, b2) = _get_references(2, prefix="b")
+        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)])
+        m2 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)])
+        mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
+        self.assertEqual([m1], mmm)
+
+
+class TestUpgrades(unittest.TestCase):
+    """Test inferring mutations."""
+
+    def test_infer_mutations(self):
+        """Test inferring mutations."""
+        (a1,) = _get_references(1, prefix="a")
+        (b1,) = _get_references(1, prefix="b")
+        original_confidence = 0.95
+        mutation_confidence = 0.80
+        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)])
+        new_mappings = infer_mutations(
+            [m1], {("a", "b"): mutation_confidence}, old=DB_XREF, new=EXACT_MATCH, progress=False
+        )
+        self.assertEqual(2, len(new_mappings))
+        new_m1, new_m2 = new_mappings
+        self.assertEqual(m1, new_m1)
+        self.assertEqual(a1, new_m2.s)
+        self.assertEqual(EXACT_MATCH, new_m2.p)
+        self.assertEqual(b1, new_m2.o)
+        self.assertEqual(1, len(new_m2.evidence))
+        new_evidence = new_m2.evidence[0]
+        self.assertIsInstance(new_evidence, ReasonedEvidence)
+        new_confidence = new_evidence.get_confidence()
+        self.assertIsNotNone(new_confidence)
+        self.assertEqual(1 - (1 - original_confidence) * (1 - mutation_confidence), new_confidence)
+        self.assertEqual(KNOWLEDGE_MAPPING, new_evidence.justification)

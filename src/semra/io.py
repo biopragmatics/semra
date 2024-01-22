@@ -391,7 +391,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
         ",".join(sorted(e.mapping_set_names)),
         mapping_set_version,
         mapping_set_license,
-        round(confidence, CONFIDENCE_PRECISION) if (confidence := e.confidence) is not None else "",
+        _safe_confidence(e),
         e.author.curie if e.author else "",
         e.explanation,
     )
@@ -434,6 +434,13 @@ def _edge_key(t):
 
 def _neo4j_bool(b: bool, /) -> Literal["true", "false"]:  # noqa:FBT001
     return "true" if b else "false"  # type:ignore
+
+
+def _safe_confidence(x) -> str:
+    confidence = x.get_confidence()
+    if confidence is None:
+        return ""
+    return str(round(confidence, CONFIDENCE_PRECISION))
 
 
 def write_neo4j(
@@ -515,7 +522,7 @@ def write_neo4j(
                 mapping.s.curie,
                 mapping.p.curie,
                 mapping.o.curie,
-                round(c, CONFIDENCE_PRECISION) if (c := mapping.confidence) is not None else "",
+                _safe_confidence(mapping),
                 _neo4j_bool(mapping.has_primary),
                 _neo4j_bool(mapping.has_secondary),
                 _neo4j_bool(mapping.has_tertiary),
@@ -566,7 +573,7 @@ def write_neo4j(
                 "mapping",
                 "semra.mapping",
                 mapping.p.curie,
-                mapping.confidence and round(mapping.confidence, CONFIDENCE_PRECISION),
+                _safe_confidence(mapping),
                 _neo4j_bool(mapping.has_primary),
                 _neo4j_bool(mapping.has_secondary),
                 _neo4j_bool(mapping.has_tertiary),
@@ -585,7 +592,7 @@ def write_neo4j(
                 mapping_set.name,
                 mapping_set.license or "",
                 mapping_set.version or "",
-                c if (c := mapping_set.confidence) is not None else "",
+                _safe_confidence(mapping_set),
             )
             for mapping_set in sorted(mapping_sets.values(), key=lambda n: n.curie)
         ),
@@ -600,7 +607,7 @@ def write_neo4j(
                 "semra.evidence",
                 evidence.evidence_type,
                 evidence.justification.curie,
-                c if (c := evidence.confidence) is not None else "",
+                _safe_confidence(evidence),
             )
             for evidence in sorted(evidences.values(), key=lambda row: row.curie)
         ),

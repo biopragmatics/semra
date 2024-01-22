@@ -268,20 +268,21 @@ def infer_mutations(
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
         confidence = pairs.get((mapping.s.prefix, mapping.o.prefix))
-        if confidence is not None and mapping.p == old:
-            inferred_mapping = Mapping(
-                s=mapping.s,
-                p=new,
-                o=mapping.o,
-                evidence=[
-                    ReasonedEvidence(
-                        justification=KNOWLEDGE_MAPPING,
-                        mappings=[mapping],
-                        confidence_factor=confidence,
-                    )
-                ],
-            )
-            rv.append(inferred_mapping)
+        if confidence is None or mapping.p != old:
+            continue
+        inferred_mapping = Mapping(
+            s=mapping.s,
+            p=new,
+            o=mapping.o,
+            evidence=[
+                ReasonedEvidence(
+                    justification=KNOWLEDGE_MAPPING,
+                    mappings=[mapping],
+                    confidence_factor=confidence,
+                )
+            ],
+        )
+        rv.append(inferred_mapping)
     return rv
 
 
@@ -313,12 +314,12 @@ def keep_object_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[s
     ]
 
 
-def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str]) -> list[Mapping]:
+def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in _tqdm(mappings, desc=f"Filtering out {len(prefixes)} prefixes")
+        for mapping in _tqdm(mappings, desc=f"Filtering out {len(prefixes)} prefixes", progress=progress)
         if mapping.s.prefix not in prefixes and mapping.o.prefix not in prefixes
     ]
 
@@ -375,8 +376,8 @@ def project(
     mappings: list[Mapping], source_prefix: str, target_prefix: str, *, return_sus: bool = False, progress: bool = False
 ) -> list[Mapping] | tuple[list[Mapping], list[Mapping]]:
     """Ensure that each identifier only appears as the subject of one mapping."""
-    mappings = keep_subject_prefixes(mappings, source_prefix)
-    mappings = keep_object_prefixes(mappings, target_prefix)
+    mappings = keep_subject_prefixes(mappings, source_prefix, progress=progress)
+    mappings = keep_object_prefixes(mappings, target_prefix, progress=progress)
     m2m_mappings = get_many_to_many(mappings)
     mappings = filter_mappings(mappings, m2m_mappings, progress=progress)
     mappings = assemble_evidences(mappings, progress=progress)
@@ -459,11 +460,11 @@ def deduplicate_evidence(evidence: list[Evidence]) -> list[Evidence]:
     return list(d.values())
 
 
-def validate_mappings(mappings: list[Mapping]) -> None:
+def validate_mappings(mappings: list[Mapping], *, progress: bool = True) -> None:
     """Validate mappings against the Bioregistry and raise an error on the first invalid."""
     import bioregistry
 
-    for mapping in tqdm(mappings, desc="Validating mappings", unit_scale=True, unit="mapping"):
+    for mapping in tqdm(mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress):
         if bioregistry.normalize_prefix(mapping.s.prefix) != mapping.s.prefix:
             raise ValueError(f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.s}.")
         if bioregistry.normalize_prefix(mapping.o.prefix) != mapping.o.prefix:
@@ -497,3 +498,14 @@ def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
         [(prefix, bioregistry.get_name(prefix), bioregistry.get_description(prefix)) for prefix in sorted(prefixes)],
         columns=["prefix", "name", "description"],
     ).set_index("prefix")
+
+
+def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) -> Iterable[Mapping]:
+    """Filter mappings below a given confidence."""
+    for mapping in mappings:
+        try:
+            confidence = mapping.get_confidence()
+        except ValueError:
+            continue
+        if confidence >= cutoff:
+            yield mapping

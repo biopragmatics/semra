@@ -40,7 +40,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 continue
             for raw_curie in _split(p.value_raw):
                 if raw_curie.lower().startswith("rrid:"):
-                    curie = raw_curie[len("rrid:"): ]
+                    curie = raw_curie[len("rrid:") :]
                 else:
                     curie = raw_curie
                 prefix: Optional[str]

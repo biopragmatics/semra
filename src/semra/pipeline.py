@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+import typing as t
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -79,18 +80,18 @@ class Configuration(BaseModel):
 
     name: str = Field(description="The name of the mapping set configuration")
     description: str = Field(description="An explanation of the purpose of the mapping set configuration")
-    inputs: list[Input]
-    negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
-    priority: list[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
-    mutations: list[Mutation] = Field(default_factory=list)
+    inputs: t.List[Input]
+    negative_inputs: t.List[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
+    priority: t.List[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
+    mutations: t.List[Mutation] = Field(default_factory=list)
 
-    exclude_pairs: list[tuple[str, str]] = Field(
+    exclude_pairs: t.List[tuple[str, str]] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: Optional[list[str]] = None
-    keep_prefixes: Optional[list[str]] = None
+    remove_prefixes: Optional[t.List[str]] = None
+    keep_prefixes: Optional[t.List[str]] = None
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
@@ -128,7 +129,7 @@ def get_mappings_from_config(
     *,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
-) -> list[Mapping]:
+) -> t.List[Mapping]:
     """Run assembly based on a configuration."""
     if (
         configuration.processed_pickle_path
@@ -204,7 +205,7 @@ def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, 
     return rv
 
 
-def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
+def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
     for inp in tqdm(configuration.inputs, desc="Loading configured mappings", unit="source"):
@@ -243,13 +244,13 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
 
 
 def process(
-    mappings: list[Mapping],
+    mappings: t.List[Mapping],
     upgrade_prefixes=None,
     remove_prefix_set=None,
     keep_prefix_set=None,
     *,
     remove_imprecise: bool = True,
-) -> list[Mapping]:
+) -> t.List[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
     from semra.sources.biopragmatics import from_biomappings_negative
 
@@ -329,7 +330,7 @@ def process(
     return mappings
 
 
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> None:
+def _log_diff(before: int, mappings: t.List[Mapping], *, verb: str, elapsed) -> None:
     logger.info(
         f"{verb} from {before:,} to {len(mappings):,} mappings (Δ={len(mappings) - before:,}) in %.2f seconds.",
         elapsed,

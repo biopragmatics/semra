@@ -1,6 +1,7 @@
 """Tests for the automated assembly pipeline."""
 
 import tempfile
+import typing as t
 import unittest
 from pathlib import Path
 
@@ -30,7 +31,7 @@ TEST_MAPPINGS = [
 ]
 
 
-def get_test_mappings() -> list[Mapping]:
+def get_test_mappings() -> t.List[Mapping]:
     """A test function to get mappings."""
     return TEST_MAPPINGS
 

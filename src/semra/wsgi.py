@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import typing as t
 
 import fastapi
 import flask
@@ -183,7 +184,7 @@ def get_mapping_set(
     return client.get_mapping_set(mapping_set)
 
 
-@api_router.get("/mapping_set/", response_model=list[MappingSet])
+@api_router.get("/mapping_set/", response_model=t.List[MappingSet])
 def get_mapping_sets():
     return client.get_mapping_sets()
 

@@ -1,6 +1,7 @@
 """Sources of xrefs not from OBO."""
 
 import itertools as itt
+import typing as t
 from collections.abc import Callable, Iterable
 
 from class_resolver import FunctionResolver
@@ -43,7 +44,7 @@ __all__ = [
     "get_clo_mappings",
 ]
 
-SOURCE_RESOLVER: FunctionResolver[Callable[[], list[Mapping]]] = FunctionResolver(
+SOURCE_RESOLVER: FunctionResolver[Callable[[], t.List[Mapping]]] = FunctionResolver(
     [
         get_chembl_compound_mappings,
         get_chembl_protein_mappings,

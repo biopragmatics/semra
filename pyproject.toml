@@ -84,6 +84,7 @@ dependencies = [
   "black[jupyter]>=23.1.0",
   "mypy>=1.0.0",
   "ruff>=0.0.243",
+  "pydantic",
 ]
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive --ignore-missing-imports {args:src/semra tests}"
@@ -104,6 +105,9 @@ all = [
 [tool.black]
 target-version = ["py39"]
 line-length = 120
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
 
 [tool.ruff]
 target-version = "py39"

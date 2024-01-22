@@ -12,7 +12,7 @@ import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
-from neo4j import Transaction, unit_of_work
+from neo4j import unit_of_work
 from typing_extensions import TypeAlias
 
 import semra
@@ -125,6 +125,8 @@ class Neo4jClient:
 
     def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
         """Get a mapping."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
         if not curie.startswith("semra.mapping:"):
             curie = f"semra.mapping:{curie}"
         query = """\
@@ -175,6 +177,8 @@ class Neo4jClient:
             For example, use ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
         :return: A mapping set
         """
+        if isinstance(curie, Reference):
+            curie = curie.curie
         if not curie.startswith("semra.mappingset:"):
             curie = f"semra.mappingset:{curie}"
         node = self._get_node_by_curie(curie)
@@ -217,7 +221,9 @@ as label, count UNION ALL
 
     def summarize_concepts(self) -> t.Counter[tuple[str, str]]:
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
-        return Counter({(prefix, bioregistry.get_name(prefix)): count for prefix, count in self.read_query(query)})
+        return Counter(
+            {(prefix, t.cast(str, bioregistry.get_name(prefix))): count for prefix, count in self.read_query(query)}
+        )
 
     def summarize_authors(self) -> t.Counter[tuple[str, str]]:
         query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, a.name, count(e)"
@@ -257,8 +263,8 @@ as label, count UNION ALL
             g.add_node(node["curie"], **node)
         for relation in relations:
             g.add_edge(
-                relation.nodes[0]["curie"],
-                relation.nodes[1]["curie"],
+                relation.nodes[0]["curie"],  # type: ignore
+                relation.nodes[1]["curie"],  # type: ignore
                 key=relation.element_id,
                 type=relation.type,
                 **relation,
@@ -273,6 +279,6 @@ as label, count UNION ALL
 # https://neo4j.com/docs/python-manual/current/session-api/#python-driver-simple-transaction-fn
 # and from the docstring of neo4j.Session.read_transaction
 @unit_of_work()
-def do_cypher_tx(tx: Transaction, query: str, **query_params) -> list[list]:
+def do_cypher_tx(tx, query, **query_params) -> list[list]:
     result = tx.run(query, parameters=query_params)
     return [record.values() for record in result]

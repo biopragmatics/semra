@@ -1,5 +1,7 @@
 """Process mappings from CLO."""
 
+from typing import Optional
+
 import bioontologies
 import bioregistry
 import click
@@ -36,6 +38,8 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 continue
             for raw_curie in _split(p.value_raw):
                 curie = raw_curie.removeprefix("rrid:").removeprefix("RRID:")
+                prefix: Optional[str]
+                identifier: Optional[str]
                 if curie.startswith("Sanger:COSMICID:"):
                     prefix, identifier = "cosmic.cell", curie.removeprefix("Sanger:COSMICID:")
                 elif curie.startswith("atcc:COSMICID:"):
@@ -83,7 +87,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 else:
                     prefix, identifier = bioregistry.parse_curie(curie)
 
-                if prefix is None:
+                if prefix is None or identifier is None:
                     tqdm.write(f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} from line:\n  {p.value_raw}")
                     continue
                 if prefix in SKIP_PREFIXES:

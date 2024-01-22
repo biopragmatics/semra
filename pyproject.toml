@@ -152,6 +152,8 @@ ignore = [
   "S301",
   # Ignore upgrading type annotations
   "UP006", "UP007", "UP035",
+  # Ignore shadowing python builtins (because we use 'license')
+  "A001", "A002", "A003",
 ]
 unfixable = [
   # Don't touch unused imports

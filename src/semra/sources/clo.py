@@ -21,7 +21,7 @@ def _split(s: str) -> list[str]:
     return [p2.replace(" ", "").rstrip(")") for p1 in s.strip().split(";") for p2 in p1.strip().split(",")]
 
 
-def _removeprefix(s, prefix):
+def _removeprefix(s: str, prefix: str) -> str:
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s

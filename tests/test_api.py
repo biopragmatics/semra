@@ -4,6 +4,7 @@ import unittest
 
 from semra.api import (
     BROAD_MATCH,
+    DB_XREF,
     EXACT_MATCH,
     NARROW_MATCH,
     Index,
@@ -13,11 +14,12 @@ from semra.api import (
     get_index,
     get_many_to_many,
     infer_chains,
+    infer_mutations,
     infer_reversible,
     keep_prefixes,
     project,
 )
-from semra.rules import MANUAL_MAPPING
+from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
 
 
@@ -295,3 +297,31 @@ class TestOperations(unittest.TestCase):
 
         m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
         self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))
+
+
+class TestUpgrades(unittest.TestCase):
+    """Test inferring mutations."""
+
+    def test_infer_mutations(self):
+        """Test inferring mutations."""
+        (a1,) = _get_references(1, prefix="a")
+        (b1,) = _get_references(1, prefix="b")
+        original_confidence = 0.95
+        mutation_confidence = 0.80
+        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)])
+        new_mappings = infer_mutations(
+            [m1], {("a", "b"): mutation_confidence}, old=DB_XREF, new=EXACT_MATCH, progress=False
+        )
+        self.assertEqual(2, len(new_mappings))
+        new_m1, new_m2 = new_mappings
+        self.assertEqual(m1, new_m1)
+        self.assertEqual(a1, new_m2.s)
+        self.assertEqual(EXACT_MATCH, new_m2.p)
+        self.assertEqual(b1, new_m2.o)
+        self.assertEqual(1, len(new_m2.evidence))
+        new_evidence = new_m2.evidence[0]
+        self.assertIsInstance(new_evidence, ReasonedEvidence)
+        new_confidence = new_evidence.get_confidence()
+        self.assertIsNotNone(new_confidence)
+        self.assertEqual(1 - (1 - original_confidence) * (1 - mutation_confidence), new_confidence)
+        self.assertEqual(KNOWLEDGE_MAPPING, new_evidence.justification)

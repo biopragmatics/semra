@@ -61,7 +61,7 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
 
         from gilda import Grounder
         from gilda.term import filter_out_duplicates
-        from pyobo.gilda_utils import get_grounder
+        from pyobo.gilda_utils import get_gilda_terms
 
         from semra import Configuration, Input
         from semra.gilda_utils import update_terms
@@ -69,8 +69,8 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
         prefixes = ["doid", "mondo", "efo"]
 
         # 1. Get terms
-        terms = chain.from_iterable(get_grounder(p) for p in prefixes)
-        terms = filter_out_duplicates(terms)
+        terms = chain.from_iterable(get_gilda_terms(p) for p in prefixes)
+        terms = filter_out_duplicates(list(terms))
 
         # 2. Get mappings
         configuration = Configuration.from_prefixes(

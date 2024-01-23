@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
+import typing as t
 from collections import defaultdict
-from collections.abc import Iterable
 
 import bioregistry
 import gilda
@@ -13,6 +13,7 @@ from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
+from semra.api import assert_projection
 from semra.struct import Mapping
 
 __all__ = [
@@ -82,6 +83,8 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
         grounder = Grounder(new_terms)
 
     """
+    assert_projection(mappings)
+
     terms_index = defaultdict(list)
     for term in terms:
         terms_index[term.db, term.id].append(term)
@@ -98,7 +101,7 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
     return filter_out_duplicates(new_terms)
 
 
-def standardize_terms(terms: Iterable[Term], *, multiprocessing: bool = True) -> list[Term]:
+def standardize_terms(terms: t.Iterable[Term], *, multiprocessing: bool = True) -> list[Term]:
     """Standardize a list of terms."""
     if not multiprocessing:
         return [standardize_term(t) for t in terms]

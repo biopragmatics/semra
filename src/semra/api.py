@@ -294,9 +294,11 @@ def infer_mutations(
     return rv
 
 
-def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> t.List[Mapping]:
+def keep_prefixes(
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
+) -> t.List[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes."""
-    prefixes = set(prefixes)
+    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress)

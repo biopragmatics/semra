@@ -409,6 +409,17 @@ def project_dict(mappings: t.List[Mapping], source_prefix: str, target_prefix: s
     return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
 
 
+def assert_projection(mappings: t.List[Mapping]) -> None:
+    """Raise an exception if any entities appear as the subject in multiple mappings."""
+    counter = Counter(m.s for m in mappings)
+    counter = Counter({k: v for k, v in counter.items() if v > 1})
+    if not counter:
+        return
+    raise ValueError(
+        f"Some subjects appear in multiple mappings, therefore this is not a valid projection: {list(counter)}"
+    )
+
+
 def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mapping]:
     """Get a priority star graph.
 

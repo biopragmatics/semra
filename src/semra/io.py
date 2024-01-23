@@ -682,6 +682,8 @@ def write_neo4j(
     """
     )
     run_path.write_text(run_command)
+    click.secho(f"Run Neo4j with the following:", fg="green")
+    click.secho(f"  sh {run_path.absolute()}")
 
     # shell_command = dedent(f"""\
     #     neo4j-admin database import full \\

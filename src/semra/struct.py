@@ -226,6 +226,9 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.map
         """Get the mapping's core triple as a tuple."""
         return self.s, self.p, self.o
 
+    def key(self):
+        return self.triple
+
     @classmethod
     def from_triple(cls, triple: Triple, evidence: Optional[t.List[Evidence]] = None) -> Mapping:
         """Instantiate a mapping from a triple."""

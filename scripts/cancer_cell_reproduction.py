@@ -21,7 +21,7 @@ from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
 MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
-
+PRIORITY_SSSOM_PATH = MODULE.join(name="priority.sssom.tsv")
 
 PREFIXES = {
     "efo",
@@ -46,6 +46,7 @@ CONFIGURATION = Configuration(
         Input(source="biomappings"),
         Input(source="gilda"),
         # Cellosaurus removed its xrefs to depmap after v43
+        # FIXME need to upgrade these mappings to SSSOM and trash this old source file
         # Input(
         #     source="custom",
         #     extras={
@@ -69,7 +70,7 @@ CONFIGURATION = Configuration(
         ),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
     ],
-    add_labels=True,
+    add_labels=False,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
     remove_imprecise=False,
@@ -90,7 +91,7 @@ CONFIGURATION = Configuration(
     processed_neo4j_path=MODULE.join("neo4j"),
     processed_neo4j_name="semra-cell",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
-    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    priority_sssom_path=PRIORITY_SSSOM_PATH,
 )
 
 

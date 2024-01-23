@@ -52,6 +52,10 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 identifier: Optional[str]
                 if curie.startswith("Sanger:COSMICID:"):
                     prefix, identifier = "cosmic.cell", _removeprefix(curie, "Sanger:COSMICID:")
+                elif curie.startswith("RRID:CVCL_"):
+                    prefix, identifier = "cellosaurus", _removeprefix(curie, "RRID:CVCL_")
+                elif curie.startswith("RRID: CVCL_"):
+                    prefix, identifier = "cellosaurus", _removeprefix(curie, "RRID: CVCL_")
                 elif curie.startswith("atcc:COSMICID:"):
                     prefix, identifier = "cosmic.cell", _removeprefix(curie, "atcc:COSMICID:")
                 elif curie.startswith("DSMZ:COSMICID:"):
@@ -64,6 +68,8 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                     prefix, identifier = "cosmic.cell", _removeprefix(curie, "COSMICID:")
                 elif curie.startswith("LINCS_HMS:"):
                     prefix, identifier = "hms.lincs.cell", _removeprefix(curie, "LINCS_HMS:")
+                elif curie.startswith("HMSL: HMSL"):
+                    prefix, identifier = "hms.lincs.cell", _removeprefix(curie, "HMSL: HMSL")
                 elif curie.startswith("CHEMBL:"):
                     prefix, identifier = "chembl.cell", _removeprefix(curie, "CHEMBL:")
                 elif curie.startswith("ChEMBL:"):

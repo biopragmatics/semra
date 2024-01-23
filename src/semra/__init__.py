@@ -1,3 +1,4 @@
+from semra.pipeline import Configuration, Input
 from semra.rules import DB_XREF, EXACT_MATCH, LEXICAL_MAPPING, MANUAL_MAPPING, REPLACED_BY, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
@@ -16,4 +17,7 @@ __all__ = [
     "LEXICAL_MAPPING",
     "MANUAL_MAPPING",
     "UNSPECIFIED_MAPPING",
+    # Pipeline
+    "Configuration",
+    "Input",
 ]

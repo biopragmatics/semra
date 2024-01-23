@@ -6,10 +6,11 @@ import logging
 
 import bioregistry
 import pandas as pd
+from curies import Reference
 
-from semra import EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.api import validate_mappings
-from semra.rules import BEN_ORCID, MANUAL_MAPPING
+from semra.rules import BEN_ORCID, EXACT_MATCH, MANUAL_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_famplex_mappings",

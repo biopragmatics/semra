@@ -15,7 +15,7 @@ import pandas as pd
 import pyobo
 import pyobo.utils
 from bioregistry import Collection
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 from semra.rules import DB_XREF, MANUAL_MAPPING, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
@@ -682,6 +682,8 @@ def write_neo4j(
     """
     )
     run_path.write_text(run_command)
+    click.secho("Run Neo4j with the following:", fg="green")
+    click.secho(f"  sh {run_path.absolute()}")
 
     # shell_command = dedent(f"""\
     #     neo4j-admin database import full \\

@@ -8,8 +8,10 @@ from typing import Optional
 import bioversions
 import pandas as pd
 import pyobo
+from curies import Reference
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_pubchem_mesh_mappings",

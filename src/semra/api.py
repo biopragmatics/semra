@@ -294,9 +294,11 @@ def infer_mutations(
     return rv
 
 
-def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> t.List[Mapping]:
+def keep_prefixes(
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
+) -> t.List[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes."""
-    prefixes = set(prefixes)
+    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress)
@@ -405,6 +407,17 @@ def project_dict(mappings: t.List[Mapping], source_prefix: str, target_prefix: s
     """Get a dictionary from source identifiers to target identifiers."""
     mappings = cast(t.List[Mapping], project(mappings, source_prefix, target_prefix))
     return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
+
+
+def assert_projection(mappings: t.List[Mapping]) -> None:
+    """Raise an exception if any entities appear as the subject in multiple mappings."""
+    counter = Counter(m.s for m in mappings)
+    counter = Counter({k: v for k, v in counter.items() if v > 1})
+    if not counter:
+        return
+    raise ValueError(
+        f"Some subjects appear in multiple mappings, therefore this is not a valid projection: {list(counter)}"
+    )
 
 
 def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mapping]:

@@ -5,8 +5,10 @@ from __future__ import annotations
 import bioregistry
 import bioversions
 import pandas as pd
+from curies import Reference
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_intact_complexportal_mappings",

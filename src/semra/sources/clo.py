@@ -7,9 +7,11 @@ from typing import Optional
 import bioontologies
 import bioregistry
 import click
+from curies import Reference
 from tqdm.auto import tqdm
 
-from semra import DB_XREF, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.rules import DB_XREF, UNSPECIFIED_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = ["get_clo_mappings"]
 

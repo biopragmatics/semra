@@ -11,7 +11,8 @@ import requests
 from curies import Reference
 from tqdm.asyncio import tqdm
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Evidence, Mapping, MappingSet, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Evidence, Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_ncit_hgnc_mappings",

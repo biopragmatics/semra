@@ -5,7 +5,6 @@ import typing as t
 
 from class_resolver import FunctionResolver
 
-from semra import Mapping
 from semra.sources.biopragmatics import (
     from_biomappings_negative,
     from_biomappings_predicted,
@@ -23,6 +22,7 @@ from semra.sources.ncit import (
     get_ncit_uniprot_mappings,
 )
 from semra.sources.pubchem import get_pubchem_mesh_mappings
+from semra.struct import Mapping
 
 __all__ = [
     "get_chembl_compound_mappings",

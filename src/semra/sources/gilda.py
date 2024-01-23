@@ -6,11 +6,12 @@ from pathlib import Path
 
 import bioregistry
 import pandas as pd
+from curies import Reference
 from tqdm.auto import tqdm
 
-from semra import EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.api import validate_mappings
-from semra.rules import BEN_ORCID, LEXICAL_MAPPING
+from semra.rules import BEN_ORCID, EXACT_MATCH, LEXICAL_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_gilda_mappings",

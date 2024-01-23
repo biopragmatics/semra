@@ -160,6 +160,8 @@ ignore = [
 unfixable = [
   # Don't touch unused imports
   "F401",
+  # Don't upgrade type annoations
+  "UP006", "UP007", "UP035",
 ]
 
 [tool.ruff.isort]

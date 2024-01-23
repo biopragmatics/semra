@@ -79,8 +79,10 @@ class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
     name: str = Field(description="The name of the mapping set configuration")
-    description: str = Field(description="An explanation of the purpose of the mapping set configuration")
-    inputs: t.List[Input]
+    description: Optional[str] = Field(
+        None, description="An explanation of the purpose of the mapping set configuration"
+    )
+    inputs: t.List[Input] = Field(..., description="A list of sources of mappings", min_items=1)
     negative_inputs: t.List[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
     priority: t.List[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
     mutations: t.List[Mutation] = Field(default_factory=list)
@@ -122,6 +124,27 @@ class Configuration(BaseModel):
         if priority is None:
             values["priority"] = [inp.prefix for inp in values["inputs"].inputs if inp.prefix is not None]
         return values
+
+    @classmethod
+    def from_prefixes(
+        cls, *, name: str, prefixes: t.Iterable[str], include_biomappings: bool = True, include_gilda: bool = True
+    ):
+        """Get a configuration from ontology prefixes."""
+        inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
+        if include_biomappings:
+            inputs.append(Input(source="biomappings"))
+        if include_gilda:
+            inputs.append(Input(source="gilda"))
+        return cls(name=name, inputs=inputs)
+
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+    ) -> t.List[Mapping]:
+        """Run assembly based on this configuration."""
+        return get_mappings_from_config(self, refresh_raw=refresh_raw, refresh_processed=refresh_processed)
 
 
 def get_mappings_from_config(

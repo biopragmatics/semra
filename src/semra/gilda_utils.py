@@ -15,6 +15,10 @@ from tqdm.contrib.concurrent import process_map
 
 from semra.struct import Mapping
 
+__all__ = [
+    "update_terms",
+]
+
 logger = logging.getLogger(__name__)
 
 #: A mapping from gilda prefixes to Bioregistry prefixes
@@ -43,7 +47,41 @@ REVERSE_GILDA_MAP = {v: k for k, v in GILDA_TO_BIOREGISTRY.items()}
 
 
 def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
-    """Use a priority mapping to re-write terms with priority groundings."""
+    """Use a priority mapping to re-write terms with priority groundings.
+
+    :param terms: A list of Gilda term objects
+    :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
+        This means that each mapping has a unique subject.
+    :return: A new list of Gilda term objects that have been remapped
+
+    .. code-block:: python
+
+        from itertools import chain
+
+        from gilda import Grounder
+        from gilda.term import filter_out_duplicates
+        from pyobo.gilda_utils import get_grounder
+
+        from semra import Configuration, Input
+        from semra.gilda_utils import update_terms
+
+        prefixes = ["doid", "mondo", "efo"]
+
+        # 1. Get terms
+        terms = chain.from_iterable(get_grounder(p) for p in prefixes)
+        terms = filter_out_duplicates(terms)
+
+        # 2. Get mappings
+        configuration = Configuration.from_prefixes(
+            name="Diseases", prefixes=prefixes
+        )
+        mappings = configuration.get_mappings()
+
+        # 3. Update terms and use them (i.e., to construct a grounder)
+        new_terms = update_terms(terms, mappings)
+        grounder = Grounder(new_terms)
+
+    """
     terms_index = defaultdict(list)
     for term in terms:
         terms_index[term.db, term.id].append(term)

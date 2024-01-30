@@ -416,7 +416,8 @@ def assert_projection(mappings: t.List[Mapping]) -> None:
     if not counter:
         return
     raise ValueError(
-        f"Some subjects appear in multiple mappings, therefore this is not a valid projection: {list(counter)}"
+        f"Some subjects appear in multiple mappings, therefore this is not a "
+        f"valid projection. Showing top 5: {counter.most_common(20)}"
     )
 
 
@@ -523,8 +524,16 @@ def summarize_prefixes(mappings: t.List[Mapping]) -> pd.DataFrame:
 
     prefixes = set(itt.chain.from_iterable((m.o.prefix, m.s.prefix) for m in mappings))
     return pd.DataFrame(
-        [(prefix, bioregistry.get_name(prefix), bioregistry.get_description(prefix)) for prefix in sorted(prefixes)],
-        columns=["prefix", "name", "description"],
+        [
+            (
+                prefix,
+                bioregistry.get_name(prefix),
+                bioregistry.get_homepage(prefix),
+                bioregistry.get_description(prefix),
+            )
+            for prefix in sorted(prefixes)
+        ],
+        columns=["prefix", "name", "homepage", "description"],
     ).set_index("prefix")
 
 

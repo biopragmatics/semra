@@ -157,13 +157,14 @@ def get_mappings_from_config(
 ) -> t.List[Mapping]:
     """Run assembly based on a configuration."""
     if (
-        configuration.processed_pickle_path
-        and configuration.processed_pickle_path.is_file()
+        configuration.priority_pickle_path
+        and configuration.priority_pickle_path.is_file()
         and not refresh_raw
         and not refresh_processed
     ):
-        logger.info("loading cached processed mappings from %s", configuration.processed_pickle_path)
-        return from_pickle(configuration.processed_pickle_path)
+        logger.info("loading cached priority mappings from %s", configuration.priority_pickle_path)
+        return from_pickle(configuration.priority_pickle_path)
+
     if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file() and not refresh_raw:
         start = time.time()
         logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)

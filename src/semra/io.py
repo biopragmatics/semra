@@ -5,7 +5,7 @@ import logging
 import pickle
 from pathlib import Path
 from textwrap import dedent
-from typing import Literal, TextIO, cast
+from typing import Literal, Optional, TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -221,7 +221,9 @@ def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
     ]
 
 
-def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
+def from_sssom(
+    path, mapping_set_name: Optional[str] = None, mapping_set_confidence: Optional[float] = None
+) -> list[Mapping]:
     """Get from a SSSOM path."""
     # FIXME use sssom-py for this
     df = pd.read_csv(path, sep="\t", dtype=str)
@@ -234,13 +236,15 @@ def from_sssom(path, mapping_set_name=None) -> list[Mapping]:
             "justification": "mapping_justification",
         }
     )
-    return from_sssom_df(df, mapping_set_name=mapping_set_name)
+    return from_sssom_df(df, mapping_set_name=mapping_set_name, mapping_set_confidence=mapping_set_confidence)
 
 
-def from_sssom_df(df: pd.DataFrame, mapping_set_name=None) -> list[Mapping]:
+def from_sssom_df(
+    df: pd.DataFrame, mapping_set_name: Optional[str] = None, mapping_set_confidence: Optional[float] = None
+) -> list[Mapping]:
     """Get from a SSSOM dataframe."""
     return [
-        _parse_sssom_row(row, mapping_set_name)
+        _parse_sssom_row(row, mapping_set_name=mapping_set_name, mapping_set_confidence=mapping_set_confidence)
         for _, row in tqdm(
             df.iterrows(),
             total=len(df.index),
@@ -252,7 +256,9 @@ def from_sssom_df(df: pd.DataFrame, mapping_set_name=None) -> list[Mapping]:
     ]
 
 
-def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
+def _parse_sssom_row(
+    row, mapping_set_name: Optional[str] = None, mapping_set_confidence: Optional[float] = None
+) -> Mapping:
     if "author_id" in row and pd.notna(row["author_id"]):
         author = Reference.from_curie(row["author_id"])
     else:
@@ -268,6 +274,8 @@ def _parse_sssom_row(row, mapping_set_name=None) -> Mapping:
     mapping_set_license = None
     if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
         confidence = row["mapping_set_confidence"]
+    if confidence is None:
+        confidence = mapping_set_confidence
     if "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
         mapping_set_version = row["mapping_set_version"]
     if "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):

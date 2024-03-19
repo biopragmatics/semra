@@ -415,6 +415,8 @@ def assert_projection(mappings: t.List[Mapping], top: int = 20) -> None:
     counter = Counter({subject: count for subject, count in counter.items() if count > 1})
     if not counter:
         return
+
+    rows = "\n".join(f"{k}: {v}" for k, v in counter.most_common(top))
     raise ValueError(
         f"Some subjects appear in multiple mappings, therefore this is not a "
         f"valid projection. Showing top {top}:\n{rows}"

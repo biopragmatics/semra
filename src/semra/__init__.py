@@ -1,3 +1,5 @@
+"""Semantic Mapping Reasoner and Assembler."""
+
 from semra.pipeline import Configuration, Input, Mutation
 from semra.rules import (
     DB_XREF,

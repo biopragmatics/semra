@@ -45,7 +45,20 @@ def _tqdm(mappings: Iterable[Mapping], desc: str | None = None, *, progress: boo
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str]]:
-    """Count source prefix-target prefix pairs."""
+    """Count source prefix-target prefix pairs.
+
+    :param mappings: An iterable of mappings
+    :return:
+        A counter whose keys are pairs of source prefixes and target prefixes
+        appearing in the mappings
+
+    >>> from semra import Mapping, Reference, EXACT_MATCH
+    >>> r1 = Reference(prefix="p1", identifier="1")
+    >>> r2 = Reference(prefix="p2", identifier="a")
+    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+    >>> count_source_target(mappings)
+    Counter({('p1', 'p2'): 1})
+    """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
 
 

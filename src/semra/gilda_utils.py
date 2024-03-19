@@ -13,7 +13,7 @@ from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
 
-from semra.api import assert_projection
+from semra.api import assert_projection, clean_projection
 from semra.struct import Mapping
 
 __all__ = [
@@ -47,12 +47,14 @@ GILDA_TO_BIOREGISTRY = {
 REVERSE_GILDA_MAP = {v: k for k, v in GILDA_TO_BIOREGISTRY.items()}
 
 
-def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
+def update_terms(terms: list[Term], mappings: list[Mapping], *, strict_projection: bool = False) -> list[Term]:
     """Use a priority mapping to re-write terms with priority groundings.
 
     :param terms: A list of Gilda term objects
     :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
         This means that each mapping has a unique subject.
+    :param strict_projection: If true, raises an exception on an invalid projection. If false,
+        drops any mappings contributing to an invalid projection.
     :return: A new list of Gilda term objects that have been remapped
 
     .. code-block:: python
@@ -83,7 +85,10 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
         grounder = Grounder(new_terms)
 
     """
-    assert_projection(mappings)
+    if strict_projection:
+        assert_projection(mappings)
+    else:
+        mappings = clean_projection(mappings)
 
     terms_index = defaultdict(list)
     for term in terms:

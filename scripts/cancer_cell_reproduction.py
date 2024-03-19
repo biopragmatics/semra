@@ -39,24 +39,9 @@ for prefix in PREFIXES:
         raise ValueError(f"Missing prioirty order for {prefix}")
 
 CONFIGURATION = Configuration(
-    name="Cell and Cell Line Mappings",
-    description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, "
-    "this configuration imports several different cell and cell line resources and identifies mappings between them.",
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        # Cellosaurus removed its xrefs to depmap after v43
-        # FIXME need to upgrade these mappings to SSSOM and trash this old source file
-        # Input(
-        #     source="custom",
-        #     extras={
-        #         "path": "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
-        #         "source_prefix": "cellosaurus",
-        #         "prefixes": PREFIXES,
-        #         "version": "43",
-        #         "license": "CC-BY-4.0",
-        #     },
-        # ),
         Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
         Input(prefix="bto", source="bioontologies", confidence=0.99),
         Input(prefix="cl", source="bioontologies", confidence=0.99),

@@ -23,14 +23,7 @@ from semra.rules import (
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
-from semra.struct import (
-    Evidence,
-    Mapping,
-    ReasonedEvidence,
-    Reference,
-    Triple,
-    triple_key,
-)
+from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference, Triple, triple_key
 
 logger = logging.getLogger(__name__)
 

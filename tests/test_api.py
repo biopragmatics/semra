@@ -22,7 +22,15 @@ from semra.api import (
     project,
 )
 from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
-from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
+from semra.struct import (
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    Reference,
+    SimpleEvidence,
+    line,
+    triple_key,
+)
 
 
 def _get_references(n: int, prefix: str = "test") -> t.List[Reference]:

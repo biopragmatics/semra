@@ -1,5 +1,12 @@
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import DB_XREF, EXACT_MATCH, LEXICAL_MAPPING, MANUAL_MAPPING, REPLACED_BY, UNSPECIFIED_MAPPING
+from semra.rules import (
+    DB_XREF,
+    EXACT_MATCH,
+    LEXICAL_MAPPING,
+    MANUAL_MAPPING,
+    REPLACED_BY,
+    UNSPECIFIED_MAPPING,
+)
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [

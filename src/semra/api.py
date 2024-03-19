@@ -45,7 +45,7 @@ def _tqdm(mappings: Iterable[Mapping], desc: str | None = None, *, progress: boo
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str]]:
-    """Count source prefix-target prefix pairs.
+    """Count pairs of source/target prefixes.
 
     :param mappings: An iterable of mappings
     :return:
@@ -63,6 +63,16 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str
 
 
 def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> str:
+    """Create a table of counts of source/target prefix via :mod:`tabulate`.
+
+    :param mappings: An iterable of mappings
+    :param minimum: The minimum count to display in the table. Defaults to zero,
+        which displays all source/target prefix pairs.
+    :return:
+        A table representing the counts for each source/target prefix pair.
+
+    .. seealso:: This table is generated with :func:`count_source_target`
+    """
     from tabulate import tabulate
 
     so_prefix_counter = count_source_target(mappings)
@@ -74,6 +84,14 @@ def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> s
 
 
 def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> None:
+    """Prints the counts of source/target prefixes.
+
+    :param mappings: An iterable of mappings
+    :param minimum: The minimum count to display in the table. Defaults to zero,
+        which displays all source/target prefix pairs.
+
+    .. seealso:: This table is generated with :func:`str_source_target_counts`
+    """
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
 
@@ -86,6 +104,28 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
 
 
 def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+    """Assemble evidences.
+
+    More specifically, this aggregates evidences for all subject-predicate-object triples
+    into a single :class:`semra.Mapping` instance.
+
+    :param mappings: An iterable of mappings
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :returns: A processed list of mappings, that is guaranteed to have
+        exactly 1 Mapping object for each subject-predicate-object triple.
+        Note that if the predicate is different, evidences are not assembled
+        into the same Mapping object.
+
+    >>> from semra import Mapping, Reference, EXACT_MATCH
+    >>> r1 = Reference(prefix="p1", identifier="1")
+    >>> r2 = Reference(prefix="p2", identifier="a")
+    >>> e1 = ...
+    >>> e2 = ...
+    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
+    >>> m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
+    >>> m = assemble_evidences([m1, m2])
+    >>> assert m == [Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1, e2])]
+    """
     index = get_index(mappings, progress=progress)
     return unindex(index, progress=progress)
 

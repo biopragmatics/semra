@@ -23,7 +23,16 @@ from semra.rules import (
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
-from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference, Triple, triple_key
+from semra.struct import (
+    Evidence,
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    Reference,
+    SimpleEvidence,
+    Triple,
+    triple_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +43,7 @@ EVIDENCE_KEY = "evidence"
 Index = t.Dict[Triple, t.List[Evidence]]
 
 
-def _tqdm(mappings: Iterable[Mapping], desc: str | None = None, *, progress: bool = True):
+def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
     return tqdm(
         mappings,
         unit_scale=True,
@@ -42,6 +51,23 @@ def _tqdm(mappings: Iterable[Mapping], desc: str | None = None, *, progress: boo
         desc=desc,
         disable=not progress,
     )
+
+
+TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
+
+
+def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.List[SimpleEvidence]]:
+    """Get test evidence."""
+    if n is None:
+        return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
+    return [SimpleEvidence(mapping_set=TEST_MAPPING_SET) for _ in range(n)]
+
+
+def get_test_reference(n: t.Optional[int] = None, prefix: str = "test") -> t.List[Reference]:
+    """Get test reference(s)."""
+    if n is None:
+        Reference(prefix=prefix, identifier="1")
+    return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str]]:
@@ -84,7 +110,7 @@ def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> s
 
 
 def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> None:
-    """Prints the counts of source/target prefixes.
+    """Print the counts of source/target prefixes.
 
     :param mappings: An iterable of mappings
     :param minimum: The minimum count to display in the table. Defaults to zero,
@@ -117,10 +143,10 @@ def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t
         into the same Mapping object.
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
-    >>> r1 = Reference(prefix="p1", identifier="1")
-    >>> r2 = Reference(prefix="p2", identifier="a")
-    >>> e1 = ...
-    >>> e2 = ...
+    >>> from semra.api import get_test_evidence, get_test_reference
+    >>> r1 = get_test_reference(prefix="p1")
+    >>> r2 = get_test_reference(prefix="p2")
+    >>> e1, e2 = get_test_evidence(2)
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
     >>> m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
     >>> m = assemble_evidences([m1, m2])
@@ -130,7 +156,51 @@ def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t
     return unindex(index, progress=progress)
 
 
-def infer_reversible(mappings: t.List[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+    """Extend the mapping list with flipped mappings
+
+    :param mappings: An iterable of mappings
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :returns:
+        A list where if a mapping can be flipped (i.e., :func:`flip`), a flipped
+        mapping is added. Flipped mappings contain reasoned evidence
+        :class:`ReasonedEvidence` objects that point to the mapping from which
+        the evidence was derived.
+
+    >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
+    >>> from semra.api import get_test_evidence, get_test_reference
+    >>> r1 = get_test_reference(prefix="p1")
+    >>> r2 = get_test_reference(prefix="p2")
+    >>> e1 = get_test_evidence()
+    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
+    >>> mappings = infer_reversible([m1])
+    >>> len(mappings)
+    2
+    >>> mappings[0] == m1
+    >>> mappings[1] ==
+
+    .. warning::
+
+        This operation does not "assemble", meaning if you had existing evidence
+        for an inverse mapping, they will be seperate. Therefore, you can chain
+        it with the :func:`assemble_evidences` operation:
+
+        >>> from semra import Mapping, Reference, EXACT_MATCH
+        >>> from semra.api import get_test_evidence
+        >>> from semra.api import get_test_evidence, get_test_reference
+        >>> r1 = get_test_reference(prefix="p1")
+        >>> r2 = get_test_reference(prefix="p2")
+        >>> e1, e2 = get_test_evidence(2)
+        >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
+        >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
+        >>> mappings = infer_reversible([m1, m2])
+        >>> len(mappings)
+        3
+        >>> mappings = assemble_evidences(mappings)
+        >>> len(mappings)
+        2
+
+    """
     rv = []
     for mapping in _tqdm(mappings, desc="Infer reverse", progress=progress):
         rv.append(mapping)
@@ -165,8 +235,27 @@ def flip(mapping: Mapping) -> Mapping | None:
     )
 
 
-def to_graph(mappings: t.List[Mapping]) -> nx.DiGraph:
-    """Convert mappings into a directed graph data model."""
+def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
+    """Convert mappings into a simple directed graph data model.
+
+    :param mappings: An iterable of mappings
+    :returns: A directed graph in which the nodes are
+        :class:`curies.Reference` objects. The predicate
+        is put under the :data:`PREDICATE_KEY` key in the
+        edge data and the evidences are put under the
+        :data:`EVIDENCE_KEY` key in the edge data.
+
+    .. warning::
+
+        This function makes two assumptions:
+
+        1. The graph has already been assembled using :func:`assemble_evidences`
+        2. That only one predicate is used in the graph.
+
+        In order to support multiple predicate types, this would have to be
+        a :class:`networkx.MultiDiGraph` and use
+        ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
+    """
     graph = nx.DiGraph()
     for mapping in mappings:
         graph.add_edge(
@@ -177,17 +266,27 @@ def to_graph(mappings: t.List[Mapping]) -> nx.DiGraph:
     return graph
 
 
-def from_graph(graph: nx.DiGraph) -> t.List[Mapping]:
-    """Extract mappings from a directed graph data model."""
-    return [_from_edge(graph, s, o) for s, o in graph.edges()]
+def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
+    """Extract mappings from a simple directed graph data model."""
+    return [_from_digraph_edge(graph, s, o) for s, o in graph.edges()]
 
 
-def _from_edge(graph: nx.DiGraph, s: Reference, o: Reference) -> Mapping:
+def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> Mapping:
     data = graph[s][o]
     return Mapping(s=s, p=data[PREDICATE_KEY], o=o, evidence=data[EVIDENCE_KEY])
 
 
-def _condense_predicates(predicates: t.List[Reference]) -> Reference | None:
+def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference | None:
+    """Return a single reasoned predicate based on a set, if possible.
+
+    :param predicates: A collection of predicates
+    :return:
+        A single predicate that represents the set, if possible
+
+        For example, if a predicate set with exact + broad are given, then
+        the most specific possible is exact. If a predicate contains
+        exact, broad, and narrow, then no reasoning can be done and None is returned.
+    """
     predicate_set = set(predicates)
     if predicate_set == {EXACT_MATCH}:
         return EXACT_MATCH
@@ -205,11 +304,15 @@ def infer_chains(
 
     :param mappings: A list of input mappings
     :param backwards: Should inference be done in reverse?
+    :param progress: Should a progress bar be shown? Defaults to true.
     :param cutoff: What's the maximum length path to infer over?
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    graph = to_graph(mappings)
+    # FIXME to_digraph requires a single predicate for each s/o pair,
+    #  which isn't necessarily true, so there should be some kind of reasoning
+    #  step that picks which is "best"
+    graph = to_digraph(mappings)
     new_mappings = []
 
     components = sorted(
@@ -228,7 +331,7 @@ def infer_chains(
             # nx.shortest_path(sg, s, o)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
                 predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
-                p = _condense_predicates(predicates)
+                p = _reason_multiple_predicates(predicates)
                 if p:
                     evidence = ReasonedEvidence(
                         justification=CHAIN_MAPPING,
@@ -249,7 +352,19 @@ def infer_chains(
 
 
 def tabulate_index(index: Index) -> str:
-    """Tabulate"""
+    """Create a table of all mappings contained in an index.
+
+    :param index: An index of mappings - a dictionary
+        whose keys are subject-predicate-object tuples
+        and values are lists of associated evidence (pre-deduplicated)
+    :return:
+        A table with four columns:
+
+        1. Source
+        2. Predicate
+        3. Object
+        4. Evidences
+    """
     from tabulate import tabulate
 
     rows: t.List[t.Tuple[str, str, str, str]] = []
@@ -470,21 +585,35 @@ def assert_projection(mappings: t.List[Mapping]) -> None:
 def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mapping]:
     """Get a priority star graph.
 
-    :param mappings:
-    :param priority: A list of prefixes to prioritize. The first prefix in the list gets highest.
+    :param mappings: An iterable of mappings
+    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
+    :return:
+        A list of mappings representing a "prioritization", meaning that each element only
+        appears as subject once. This condition means that the prioritization mapping can be applied
+        to upgrade any reference to a "canonical" reference.
+
+    This algorithm works in the following way:
+
+    1. Get the subset of exact matches from the input mapping list
+    2. Convert the exact matches to an undirected mapping graph
+    3. Extract connected components
+    4. For each component:
+       1. Get the "priority" reference using :func:`get_priority_reference`
+       2. Construct new mappings where all references in the component are the subject
+          and the priority reference is the object (skip the self mapping)
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.p == EXACT_MATCH]
     exact_mappings = len(mappings)
 
-    graph = to_graph(mappings).to_undirected()
+    graph = to_digraph(mappings).to_undirected()
     rv: t.List[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
-        o = _get_priority(component, priority)
+        o = get_priority_reference(component, priority)
         if o is None:
             continue
         rv.extend(
-            _from_edge(graph, s, o)
+            _from_digraph_edge(graph, s, o)
             # TODO should this work even if s-o edge not exists?
             #  can also do "inference" here, but also might be
             #  because of negative edge filtering
@@ -502,10 +631,29 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
     return rv
 
 
-def _get_priority(component: t.List[Reference], priority: t.List[str]) -> t.Optional[Reference]:
+def get_priority_reference(component: t.Iterable[Reference], priority: t.List[str]) -> t.Optional[Reference]:
+    """Get the priority reference from a component.
+
+    :param component: A set of references with the pre-condition that they're all "equivalent"
+    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
+    :returns:
+        Returns the reference with the prefix that has the highest priority.
+        If multiple references have the highest priority prefix, returns the first one encountered.
+        If none have a priority prefix, return None.
+
+    >>> from curies import Reference
+    >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
+    >>> references = [Reference.from_curie(curie) for curie in curies]
+    >>> get_priority_reference(references, ["mesh", "umls"])
+    'mesh:C562966'
+    >>> get_priority_reference(references, ["doid", "mesh", "umls"])
+    'DOID:0050577'
+    >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
+
+    """
     prefix_to_references = defaultdict(list)
-    for c in component:
-        prefix_to_references[c.prefix].append(c)
+    for reference in component:
+        prefix_to_references[reference.prefix].append(reference)
     for prefix in priority:
         references = prefix_to_references.get(prefix, [])
         if not references:
@@ -520,12 +668,24 @@ def _get_priority(component: t.List[Reference], priority: t.List[str]) -> t.Opti
 
 
 def unindex(index: Index, *, progress: bool = True) -> t.List[Mapping]:
-    """Convert a mapping index into a list of mapping objects."""
+    """Convert a mapping index into a list of mapping objects.
+
+    :param index: A mapping from subject-predicate-object triples to lists of evidence objects
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :returns: A list of mapping objects
+
+    In the following example, a very simple index for a single mapping
+    is used to reconstruct a mapping list.
+
+    >>> from semra.api import get_test_reference, get_test_evidence, unindex
+    >>> s, p, o = get_test_reference(3)
+    >>> e1 = get_test_evidence()
+    >>> index = {(s, p, o): [e1]}
+    >>> assert unindex(index) == [Mapping(s=s, p=p, o=o, evidence=[e1])]
+    """
     return [
         Mapping.from_triple(triple, evidence=evidence)
-        for triple, evidence in tqdm(
-            index.items(), unit_scale=True, unit="mapping", desc="Unindexing mappings", disable=not progress
-        )
+        for triple, evidence in _tqdm(index.items(), desc="Unindexing mappings", progress=progress)
     ]
 
 

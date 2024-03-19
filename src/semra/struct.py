@@ -39,11 +39,6 @@ def triple_key(triple: Triple) -> t.Tuple[str, str, str]:
     return triple[0].curie, triple[2].curie, triple[1].curie
 
 
-EPSILON = 1e-6
-EvidenceType = Literal["simple", "mutated", "reasoned"]
-JUSTIFICATION_FIELD = Field(description="A SSSOM-compliant justification")
-
-
 def _md5_hexdigest(picklable) -> str:
     hasher = md5()  # noqa:S324
     hasher.update(pickle.dumps(picklable))
@@ -79,14 +74,34 @@ class KeyedMixin:
 
 
 class ConfidenceMixin:
+    """A mixin for classes that have confidence information."""
+
     def get_confidence(self) -> float:
+        """Get the confidence.
+
+        :returns:
+            The confidence, which can either be a direct annotation
+            or computed based on other related objects. For example,
+            a :class:`MappingSet` has an explicitly annotated confidence,
+            whereas a :class:`ReasonedEvidence` calculates its confidence
+            based on all of its prior probability *and* the confidences
+            of the mappings on which it depends.
+        """
         raise NotImplementedError
 
 
 class EvidenceMixin:
+    """A mixin for evidence classes."""
+
     @property
     def explanation(self) -> str:
+        """Get a textual explanation for this evidence."""
         return ""
+
+    @property
+    def mapping_set_names(self) -> t.Set[str]:
+        """Get set of mapping set names that contribute to this evidence."""
+        ...
 
 
 class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.mappingset"):
@@ -109,7 +124,7 @@ class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.
         return self.name, self.version or "", self.license or "", self.confidence
 
     def get_confidence(self) -> float:
-        """Get the confidence for the mapping set."""
+        """Get the explicit confidence for the mapping set."""
         return self.confidence
 
 
@@ -150,10 +165,11 @@ class SimpleEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMi
         return self.evidence_type, self.justification, self.author, self.mapping_set.key(), self.uuid
 
     @property
-    def mapping_set_names(self) -> t.Set[str]:
+    def mapping_set_names(self) -> t.Set[str]:  # noqa:D102
         return {self.mapping_set.name}
 
     def get_confidence(self) -> float:
+        """Get the confidence from the mapping set."""
         return self.confidence if self.confidence is not None else self.mapping_set.confidence
 
 
@@ -174,6 +190,7 @@ class ReasonedEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, Confidence
     confidence_factor: float = Field(1.0, description="The probability that the reasoning method is correct")
 
     def key(self):
+        """Get a key for reasoned evidence."""
         return (
             self.evidence_type,
             self.justification,
@@ -181,24 +198,40 @@ class ReasonedEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, Confidence
         )
 
     def get_confidence(self) -> float:
+        r"""Calculate confidence for the reasoned evidence.
+
+        :returns:
+            The joint binomial probability that all reasoned evidences
+            are correct. This is calculated with the following:
+
+            $\alpha \times (1 - \sum_{e \in E} 1 - \text{confidence}_e)$
+
+            where $E$ is the set of all evidences in this object and
+            $\alpha$ is the confidence factor for the reasoning approach.
+        """
         confidences = [mapping.get_confidence() for mapping in self.mappings]
         return _joint_probability([self.confidence_factor, *confidences])
 
     @property
     def mapping_set(self) -> None:
+        """Return an empty mapping set, since this is a reasoned evidence."""
         return None
 
     @property
-    def mapping_set_names(self) -> t.Set[str]:
+    def mapping_set_names(self) -> t.Set[str]:  # noqa:D102
         return {
-            name
-            for mapping in self.mappings
-            for evidence in mapping.evidence
-            for name in evidence.mapping_set_names  # type:ignore
+            name for mapping in self.mappings for evidence in mapping.evidence for name in evidence.mapping_set_names
         }
 
     @property
     def explanation(self) -> str:
+        """Get a textual explanation for this reasoned evidence.
+
+        :returns:
+            Assuming this reasoned evidence represents a pathway where each mapping
+            in the chain's subject shares the object from the previous mapping, returns
+            a space-delmited list of the CURIEs for these entities.
+        """
         return " ".join(mapping.s.curie for mapping in self.mappings) + " " + self.mappings[-1].o.curie
 
 

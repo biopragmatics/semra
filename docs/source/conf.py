@@ -65,7 +65,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
-    # 'texext',
+    "texext",
 ]
 
 
@@ -233,6 +233,8 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "curies": ("https://curies.readthedocs.io/en/latest/", None),
+    "bioregistry": ("https://bioregistry.readthedocs.io/en/latest/", None),
 }
 
 autoclass_content = "both"

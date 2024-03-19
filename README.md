@@ -1,8 +1,6 @@
-<!--
 <p align="center">
   <img src="https://github.com/biopragmatics/semra/raw/main/docs/source/logo.png" height="150">
 </p>
--->
 
 <h1 align="center">
   SeMRA

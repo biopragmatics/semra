@@ -1,3 +1,5 @@
+"""Tests for the core SeMRA API."""
+
 from __future__ import annotations
 
 import typing as t
@@ -22,7 +24,15 @@ from semra.api import (
     project,
 )
 from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
-from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, line, triple_key
+from semra.struct import (
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    Reference,
+    SimpleEvidence,
+    line,
+    triple_key,
+)
 
 
 def _get_references(n: int, prefix: str = "test") -> t.List[Reference]:
@@ -41,6 +51,8 @@ MS = MappingSet(name="test", confidence=0.95)
 
 
 class TestOperations(unittest.TestCase):
+    """Test mapping operations."""
+
     def test_path(self):
         """Test quickly creating mapping lists."""
         r1, r2, r3 = _get_references(3)
@@ -84,6 +96,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(docetaxel_anhydrous_chebi, actual.o)
 
     def test_index(self):
+        """Test indexing semantic mappings."""
         r1, r2 = _get_references(2)
         e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"), mapping_set=MS)
         e2 = SimpleEvidence(
@@ -166,6 +179,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_broad_match_1(self):
+        """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3, evidence=[EV])
@@ -199,6 +213,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_broad_match_2(self):
+        """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4)
         m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
@@ -219,6 +234,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_narrow_match(self):
+        """Test inferring narrow matches."""
         r1, r2, r3 = _get_references(3)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
@@ -227,6 +243,7 @@ class TestOperations(unittest.TestCase):
         self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False))
 
     def test_mixed_inference_1(self):
+        """Test inferring over a mix of narrow, broad, and exact matches."""
         r1, r2, r3 = _get_references(3)
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
         m2 = Mapping(s=r2, p=NARROW_MATCH, o=r3)
@@ -321,7 +338,7 @@ class TestUpgrades(unittest.TestCase):
         mutation_confidence = 0.80
         m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)])
         new_mappings = infer_mutations(
-            [m1], {("a", "b"): mutation_confidence}, old=DB_XREF, new=EXACT_MATCH, progress=False
+            [m1], {("a", "b"): mutation_confidence}, old_predicate=DB_XREF, new_predicate=EXACT_MATCH, progress=False
         )
         self.assertEqual(2, len(new_mappings))
         new_m1, new_m2 = new_mappings

@@ -44,14 +44,9 @@ class Neo4jClient:
     ):
         """Initialize the client.
 
-        Parameters
-        ----------
-        uri :
-            The URI of the Neo4j database.
-        user :
-            The username for the Neo4j database.
-        password :
-            The password for the Neo4j database.
+        :param uri: The URI of the Neo4j database.
+        :param user: The username for the Neo4j database.
+        :param password: The password for the Neo4j database.
         """
         uri = uri or os.environ.get("NEO4J_URL") or "bolt://0.0.0.0:7687"
         user = user or os.environ.get("NEO4J_USER")
@@ -60,42 +55,31 @@ class Neo4jClient:
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=(user, password), max_connection_lifetime=180)
 
     def __del__(self):
-        # Ensure driver is shut down when client is destroyed
+        """Ensure driver is shut down when client is destroyed."""
         if self.driver is not None:
             self.driver.close()
 
     def read_query(self, query: str, **query_params) -> list[list]:
-        """Run a read-only query
+        """Run a read-only query.
 
-        Parameters
-        ----------
-        query :
-            The cypher query to run
-        query_params :
-            The parameters to pass to the query
-
-        Returns
-        -------
-        :
-            The result of the query
+        :param query: The cypher query to run
+        :param query_params: The parameters to pass to the query
+        :return: The result of the query
         """
         with self.driver.session() as session:
-            values = session.execute_read(do_cypher_tx, query, **query_params)
+            values = session.execute_read(_do_cypher_tx, query, **query_params)
 
         return values
 
     def write_query(self, query: str, **query_params):
         """Run a write query.
 
-        Parameters
-        ----------
-        query :
-            The cypher query to run
-        query_params :
-            The parameters to pass to the query
+        :param query: The cypher query to run
+        :param query_params: The parameters to pass to the query
+        :return: The result of the write query
         """
         with self.driver.session() as session:
-            return session.write_transaction(do_cypher_tx, query, **query_params)
+            return session.write_transaction(_do_cypher_tx, query, **query_params)
 
     def create_single_property_node_index(
         self, index_name: str, label: str, property_name: str, *, exist_ok: bool = False
@@ -124,7 +108,13 @@ class Neo4jClient:
         return res[0][0]
 
     def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
-        """Get a mapping."""
+        """Get a mapping.
+
+        :param curie: Either a Reference object, a string representing
+            a curie with ``semra.mapping`` as the prefix, or a local
+            unique identifier representing a SeMRA mapping.
+        :return: A semantic mapping object
+        """
         if isinstance(curie, Reference):
             curie = curie.curie
         if not curie.startswith("semra.mapping:"):
@@ -175,7 +165,7 @@ class Neo4jClient:
 
         :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a prefix.
             For example, use ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
-        :return: A mapping set
+        :return: A mapping set object
         """
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -184,7 +174,14 @@ class Neo4jClient:
         node = self._get_node_by_curie(curie)
         return MappingSet.parse_obj(node)
 
-    def get_evidence(self, curie: str) -> Evidence:
+    def get_evidence(self, curie: ReferenceHint) -> Evidence:
+        """Get an evidence.
+
+        :param curie: The CURIE for a mapping set, using ``semra.evidence`` as a prefix.
+        :return: An evidence object
+        """
+        if isinstance(curie, Reference):
+            curie = curie.curie
         query = "MATCH (n {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
         return res[0][0]
@@ -200,6 +197,7 @@ class Neo4jClient:
         return Counter({k.removeprefix("semapv:"): v for k, v in self.read_query(query)})
 
     def summarize_evidence_types(self) -> t.Counter[str]:
+        """Get a counter of evidence types."""
         query = "MATCH (e:evidence) RETURN e.type, count(e.type)"
         return Counter(dict(self.read_query(query)))
 
@@ -209,6 +207,7 @@ class Neo4jClient:
         return Counter(dict(self.read_query(query)))
 
     def summarize_nodes(self) -> t.Counter[str]:
+        """Get a counter of node types (concepts, evidences, mappings, mapping sets)."""
         query = """\
         MATCH (n:evidence)   WITH count(n) as count RETURN 'Evidences'    as label, count UNION ALL
         MATCH (n:concept)    WITH count(n) as count RETURN 'Concepts'     as label, count UNION ALL
@@ -220,16 +219,23 @@ as label, count UNION ALL
         return Counter(dict(self.read_query(query)))
 
     def summarize_concepts(self) -> t.Counter[tuple[str, str]]:
+        """Get a counter of prefixes in concept nodes."""
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
         return Counter(
             {(prefix, t.cast(str, bioregistry.get_name(prefix))): count for prefix, count in self.read_query(query)}
         )
 
     def summarize_authors(self) -> t.Counter[tuple[str, str]]:
+        """Get a counter of the number of evidences each author has contributed to."""
         query = "MATCH (e:evidence)-[:hasAuthor]->(a:concept) RETURN a.curie, a.name, count(e)"
         return self._count_with_name(query)
 
     def get_highest_exact_matches(self, limit: int = 10) -> t.Counter[tuple[str, str]]:
+        """Get a counter of concepts with the highest exact matches.
+
+        :param limit: The number of top concepts to return
+        :return: A counter with keys that are CURIE/name pairs
+        """
         query = """\
             MATCH (a)-[:`skos:exactMatch`]-(b)
             WHERE a.priority
@@ -242,21 +248,41 @@ as label, count UNION ALL
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
         return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
 
-    def get_exact_matches(self, curie: str) -> dict[Reference, str]:
+    def get_exact_matches(self, curie: ReferenceHint) -> dict[Reference, str]:
+        """Get a mapping of references->name for all concepts equivalent to the given concept."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
         query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN a.curie, a.name"
         return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
 
-    def get_connected_component(self, curie: str) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
+    def get_connected_component(
+        self, curie: ReferenceHint
+    ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
+        """Get the nodes and relations in the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+        :return: A pair of:
+
+            1. The nodes in the connected component, as Neo4j node objects
+            2. The relationships in the connected component, as Neo4j relationship objects
+        """
+        if isinstance(curie, Reference):
+            curie = curie.curie
         query = """\
-        MATCH (:concept {curie: $curie})-[r *..3 {hasPrimary: true}]-(n:concept)
-        RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
+            MATCH (:concept {curie: $curie})-[r *..3 {hasPrimary: true}]-(n:concept)
+            RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
         """
         res = self.read_query(query, curie=curie)
         nodes = res[0][0]
-        relations = list({r for relations in res[0][1] for r in relations})
+        relations = sorted({r for relations in res[0][1] for r in relations})
         return nodes, relations
 
-    def get_connected_component_graph(self, curie: str) -> nx.MultiDiGraph:
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
+        """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        """
         nodes, relations = self.get_connected_component(curie)
         g = nx.MultiDiGraph()
         for node in nodes:
@@ -271,7 +297,10 @@ as label, count UNION ALL
             )
         return g
 
-    def get_concept_name(self, curie: str) -> str | None:
+    def get_concept_name(self, curie: ReferenceHint) -> str | None:
+        """Get the name for a CURIE or reference."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
         return _get_name_by_curie(curie)
 
 
@@ -279,6 +308,6 @@ as label, count UNION ALL
 # https://neo4j.com/docs/python-manual/current/session-api/#python-driver-simple-transaction-fn
 # and from the docstring of neo4j.Session.read_transaction
 @unit_of_work()
-def do_cypher_tx(tx, query, **query_params) -> list[list]:
+def _do_cypher_tx(tx, query, **query_params) -> list[list]:
     result = tx.run(query, parameters=query_params)
     return [record.values() for record in result]

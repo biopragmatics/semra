@@ -29,7 +29,19 @@ def _removeprefix(s: str, prefix: str) -> str:
     return s
 
 
-def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
+def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
+    """Get Cell Line Ontology mappings.
+
+    :param confidence: How confidence are you in the quality of these mappings being exact? By default, is 0.8.
+    :return: Semantic mappings extracted from the CLO
+    :raises ValueError:
+        if a prefix is encountered that doesn't have a regular expression defined in the
+        Bioregistry. If you get this error, please report it on the Bioregistry's issue
+        tracker https://github.com/biopragmatics/bioregistry/issues/new?&labels=Update&template=update-misc.yml
+
+    Note that this function exists because CLO doesn't use standard curation for xrefs
+    and instead uses a combination of messy references inside rdfs:seeAlso annotations
+    """
     graph = bioontologies.get_obograph_by_prefix("clo", check=False).guess("clo")
     mapping_set = MappingSet(
         name="clo",

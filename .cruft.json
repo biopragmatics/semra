@@ -1,0 +1,20 @@
+{
+  "template": "https://github.com/cthoyt/cookiecutter-snekpack",
+  "commit": "7e31538ca9cde244299090ddbd644b8183542abb",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "package_name": "semra",
+      "package_name_stylized": "SeMRA",
+      "short_description": "Semantic mapping reasoner and assembler",
+      "author_name": "Charles Tapley Hoyt",
+      "author_email": "cthoyt@gmail.com",
+      "github_organization_name": "biopragmatics",
+      "github_repository_name": "semra",
+      "command_line_interface": true,
+      "gitlab": false,
+      "_template": "https://github.com/cthoyt/cookiecutter-snekpack"
+    }
+  },
+  "directory": null
+}

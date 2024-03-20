@@ -70,6 +70,7 @@ def _figure_number(n: int):
 
 @flask_app.get("/")
 def home():
+    """View the homepage, with a dashboard for several statistics over the database."""
     # TODO
     #  1. Mapping with most evidences
     #  7. Nodes with equivalent entity sharing its prefix
@@ -115,9 +116,7 @@ def view_concept(curie: str):
 
 @flask_app.get("/concept/<source>/invalidate/<target>")
 def mark_exact_incorrect(source: str, target: str):
-    """
-    Add a negative relationship to biomappings.
-    """
+    """Add a negative relationship to biomappings."""
     if not BIOMAPPINGS_GIT_HASH:
         flask.flash("Can't interact with biomappings", category="error")
         return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
@@ -149,14 +148,15 @@ def mark_exact_incorrect(source: str, target: str):
 
 @flask_app.get("/mapping_set/<curie>")
 def view_mapping_set(curie: str):
-    """View a mapping."""
-    m = client.get_mapping_set(curie)
+    """View a mapping set by its CURIE."""
+    mapping_set = client.get_mapping_set(curie)
     # TODO sample 10 mappings
-    return render_template("mapping_set.html", mapping_set=m)
+    return render_template("mapping_set.html", mapping_set=mapping_set)
 
 
 @api_router.get("/evidence/{curie}", response_model=Evidence)
 def get_evidence(curie: str = Path(description="An evidence's MD5 hex digest.")):
+    """Get an evidence by its MD5 hex digest."""
     return client.get_evidence(curie)
 
 
@@ -172,6 +172,7 @@ def get_concept_cytoscape(
 
 @api_router.get("/mapping/{mapping}", response_model=Mapping)
 def get_mapping(mapping: str = Path(description="A mapping's MD5 hex digest.", examples=EXAMPLE_MAPPINGS)):
+    """Get the mapping by its MD5 hex digest."""
     return client.get_mapping(mapping)
 
 
@@ -181,15 +182,18 @@ def get_mapping_set(
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
     )
 ):
+    """Get a mapping set by its MD5 hex digest."""
     return client.get_mapping_set(mapping_set)
 
 
 @api_router.get("/mapping_set/", response_model=t.List[MappingSet])
 def get_mapping_sets():
+    """Get all mapping sets."""
     return client.get_mapping_sets()
 
 
 def get_app():
+    """Get the SeMRA FastAPI app."""
     app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",
         description="A web app to access a SeMRA Neo4j database",

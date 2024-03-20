@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
+import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -56,18 +57,34 @@ def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
 TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
 
 
+@typing.overload
+def get_test_evidence(n: int) -> t.List[SimpleEvidence]: ...
+
+
+@typing.overload
+def get_test_evidence(n: None) -> SimpleEvidence: ...
+
+
 def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.List[SimpleEvidence]]:
     """Get test evidence."""
-    if n is None:
-        return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
-    return [SimpleEvidence(mapping_set=TEST_MAPPING_SET) for _ in range(n)]
+    if isinstance(n, int):
+        return [SimpleEvidence(mapping_set=TEST_MAPPING_SET) for _ in range(n)]
+    return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
 
 
-def get_test_reference(n: t.Optional[int] = None, prefix: str = "test") -> t.List[Reference]:
+@typing.overload
+def get_test_reference(n: int, prefix: str) -> t.List[Reference]: ...
+
+
+@typing.overload
+def get_test_reference(n: None, prefix: str) -> Reference: ...
+
+
+def get_test_reference(n: t.Optional[int] = None, prefix: str = "test") -> t.Union[Reference, t.List[Reference]]:
     """Get test reference(s)."""
-    if n is None:
-        Reference(prefix=prefix, identifier="1")
-    return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
+    if isinstance(n, int):
+        return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
+    return Reference(prefix=prefix, identifier="1")
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str]]:
@@ -157,7 +174,7 @@ def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t
 
 
 def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) -> t.List[Mapping]:
-    """Extend the mapping list with flipped mappings
+    """Extend the mapping list with flipped mappings.
 
     :param mappings: An iterable of mappings
     :param progress: Should a progress bar be shown? Defaults to true.
@@ -166,6 +183,15 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         mapping is added. Flipped mappings contain reasoned evidence
         :class:`ReasonedEvidence` objects that point to the mapping from which
         the evidence was derived.
+
+    Flipping a mapping means switching the subject and object, then modifying the
+    predicate as follows:
+
+    1. Broad becomes narrow
+    2. Narrow becomes broad
+    3. Exact and close mappings remain the same, since they're reflexive
+
+    This is configured in the :data:`semra.rules.FLIP` dictionary.
 
     >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
     >>> from semra.api import get_test_evidence, get_test_reference
@@ -387,22 +413,82 @@ def infer_mutual_dbxref_mutations(
     mappings: Iterable[Mapping],
     prefixes: set[str],
     confidence: float | None = None,
+    *,
+    progress: bool = False,
 ) -> t.List[Mapping]:
-    pairs = {(s, t) for s, t in itt.product(prefixes, repeat=2) if s != t}
-    return infer_dbxref_mutations(mappings, pairs=pairs, confidence=confidence)
+    """Upgrade database cross-references into exact matches for the given pairs.
+
+    :param mappings: A list of mappings
+    :param prefixes: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
+        If giving a collection of pairs, will use the ``confidence`` value as given.
+    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
+        Defaults to 0.7
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :return: A new list of mappings containing upgrades
+
+    In the following example, we use four different terms for
+    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
+    and Unified Medical Language System (UMLS). We use the prior knowledge
+    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
+    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
+    so the example mapping ``m2`` comes along for the ride.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> mappings = [m1, m2, m3]
+    >>> pairs = {("DOID", "mesh"): 0.99}
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
+    >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
+
+    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
+    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
+    """
+    pairs = {
+        (subject_prefix, object_prefix)
+        for subject_prefix, object_prefix in itt.product(prefixes, repeat=2)
+        if subject_prefix != object_prefix
+    }
+    return infer_dbxref_mutations(mappings, pairs=pairs, confidence=confidence, progress=progress)
 
 
 def infer_dbxref_mutations(
     mappings: Iterable[Mapping],
     pairs: t.Dict[t.Tuple[str, str], float] | Iterable[t.Tuple[str, str]],
     confidence: float | None = None,
+    progress: bool = False,
 ) -> t.List[Mapping]:
     """Upgrade database cross-references into exact matches for the given pairs.
 
     :param mappings: A list of mappings
     :param pairs: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
-        If giving a collection of pairs, will assume a default confidence of 0.7.
+        If giving a collection of pairs, will use the ``confidence`` value as given.
+    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
+        Defaults to 0.7
+    :param progress: Should a progress bar be shown? Defaults to true.
     :return: A new list of mappings containing upgrades
+
+    In the following example, we use four different terms for
+    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
+    and Unified Medical Language System (UMLS). We use the prior knowledge
+    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
+    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
+    so the example mapping ``m2`` comes along for the ride.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> mappings = [m1, m2, m3]
+    >>> pairs = {("DOID", "mesh"): 0.99}
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
+    >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
+
+    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
+    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
     """
     if confidence is None:
         confidence = 0.7
@@ -411,16 +497,17 @@ def infer_dbxref_mutations(
     return infer_mutations(
         mappings,
         pairs=pairs,
-        old=DB_XREF,
-        new=EXACT_MATCH,
+        old_predicate=DB_XREF,
+        new_predicate=EXACT_MATCH,
+        progress=progress,
     )
 
 
 def infer_mutations(
     mappings: Iterable[Mapping],
     pairs: t.Dict[t.Tuple[str, str], float],
-    old: Reference,
-    new: Reference,
+    old_predicate: Reference,
+    new_predicate: Reference,
     *,
     progress: bool = False,
 ) -> t.List[Mapping]:
@@ -429,25 +516,47 @@ def infer_mutations(
     :param mappings: Mappings to infer from
     :param pairs: A dictionary of pairs of (subject prefix, object prefix) to the confidence
         of inference
-    :param old: The predicate on which inference should be done
-    :param new: The predicate to get inferred
+    :param old_predicate: The predicate on which inference should be done
+    :param new_predicate: The predicate to get inferred
+    :param progress: Should a progress bar be shown? Defaults to true.
     :returns: A list of all old mapping plus inferred ones interspersed.
+
+    In the following example, we use three different terms for
+    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
+    and Unified Medical Language System (UMLS). We use the prior knowledge that there's a high
+    confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
+    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
+    so the example mapping ``m2`` comes along for the ride.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> mappings = [m1, m2]
+    >>> pairs = {("DOID", "mesh"): 0.99}
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
+    >>> assert infer_mutations(mappings, pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
     """
     rv = []
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
-        confidence = pairs.get((mapping.s.prefix, mapping.o.prefix))
-        if confidence is None or mapping.p != old:
+        if mapping.p != old_predicate:
+            continue
+        confidence_factor = pairs.get((mapping.s.prefix, mapping.o.prefix))
+        if confidence_factor is None:
+            # This means that there was no explicit confidence set for the
+            # subject/object prefix pair, meaning it wasn't asked to be inferred
             continue
         inferred_mapping = Mapping(
             s=mapping.s,
-            p=new,
+            p=new_predicate,
             o=mapping.o,
             evidence=[
                 ReasonedEvidence(
                     justification=KNOWLEDGE_MAPPING,
                     mappings=[mapping],
-                    confidence_factor=confidence,
+                    confidence_factor=confidence_factor,
                 )
             ],
         )
@@ -455,11 +564,23 @@ def infer_mutations(
     return rv
 
 
-def keep_prefixes(
-    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
-) -> t.List[Mapping]:
-    """Filter out mappings whose subject or object are not in the given list of prefixes."""
-    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> t.List[Mapping]:
+    """Filter out mappings whose subject or object are not in the given list of prefixes.
+
+    :param mappings: A list of mappings
+    :param prefixes: A set of prefixes to use for filtering the mappings
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :return: A subset of the original mappings whose subject and object are both in the given prefix list
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
+    >>> assert keep_prefixes([m1, m2, m3], {"DOID", "mesh"}) == [m1]
+    """
+    prefixes = set(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress)
@@ -467,7 +588,24 @@ def keep_prefixes(
     ]
 
 
-def keep_subject_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True):
+def keep_subject_prefixes(
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
+) -> t.List[Mapping]:
+    """Filter out mappings whose subjects are not in the given list of prefixes.
+
+    :param mappings: A list of mappings
+    :param prefixes: A set of prefixes to use for filtering the mappings' subjects
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :return: A subset of the original mappings whose subjects are in the given prefix list
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
+    >>> assert keep_prefixes([m1, m2, m3], {"DOID"}) == [m1, m3]
+    """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
         mapping
@@ -476,7 +614,24 @@ def keep_subject_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[
     ]
 
 
-def keep_object_prefixes(mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True):
+def keep_object_prefixes(
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
+) -> t.List[Mapping]:
+    """Filter out mappings whose objects are not in the given list of prefixes.
+
+    :param mappings: A list of mappings
+    :param prefixes: A set of prefixes to use for filtering the mappings' objects
+    :param progress: Should a progress bar be shown? Defaults to true.
+    :return: A subset of the original mappings whose objects are in the given prefix list
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
+    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
+    >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
+    >>> assert keep_prefixes([m1, m2, m3], {"mesh"}) == [m1]
+    """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
         mapping
@@ -516,6 +671,12 @@ def filter_mappings(
     ]
 
 
+#: A multi-leveled nested dictionary that represents many-to-many mappings.
+#: The first key is subject/object pairs, the second key is either a subject identifier or object identifier,
+#: the last key is the opposite object or subject identifier, and the values are a list of mappings.
+#:
+#: This data structure can be used to index either forward or backwards mappings,
+#: as done inside :func:`get_many_to_many`
 M2MIndex = t.DefaultDict[t.Tuple[str, str], t.DefaultDict[str, t.DefaultDict[str, t.List[Mapping]]]]
 
 
@@ -535,6 +696,8 @@ def get_many_to_many(mappings: t.List[Mapping]) -> t.List[Mapping]:
                     for mapping in itt.chain.from_iterable(d2.values()):
                         index[mapping.triple].extend(mapping.evidence)
 
+    # this is effectively the same as :func:`unindex` except the deduplicate_evidence is called
+    # explicitly
     rv = [Mapping.from_triple(triple, deduplicate_evidence(evidence)) for triple, evidence in index.items()]
     return rv
 

@@ -329,7 +329,7 @@ class TestUpgrades(unittest.TestCase):
         mutation_confidence = 0.80
         m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)])
         new_mappings = infer_mutations(
-            [m1], {("a", "b"): mutation_confidence}, old=DB_XREF, new=EXACT_MATCH, progress=False
+            [m1], {("a", "b"): mutation_confidence}, old_predicate=DB_XREF, new_predicate=EXACT_MATCH, progress=False
         )
         self.assertEqual(2, len(new_mappings))
         new_m1, new_m2 = new_mappings

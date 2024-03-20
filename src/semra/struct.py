@@ -101,7 +101,7 @@ class EvidenceMixin:
     @property
     def mapping_set_names(self) -> t.Set[str]:
         """Get set of mapping set names that contribute to this evidence."""
-        ...
+        raise NotImplementedError
 
 
 class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.mappingset"):

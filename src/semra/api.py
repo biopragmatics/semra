@@ -35,6 +35,52 @@ from semra.struct import (
     triple_key,
 )
 
+__all__ = [
+    # Types
+    "Index",
+    "M2MIndex",
+    # Constants
+    "PREDICATE_KEY",
+    "EVIDENCE_KEY",
+    "TEST_MAPPING_SET",
+    # Functions
+    "get_test_reference",
+    "get_test_evidence",
+    "count_source_target",
+    "str_source_target_counts",
+    "print_source_target_counts",
+    "get_index",
+    "assemble_evidences",
+    "infer_reversible",
+    "flip",
+    "to_digraph",
+    "from_digraph",
+    "infer_chains",
+    "tabulate_index",
+    "infer_mutual_dbxref_mutations",
+    "infer_dbxref_mutations",
+    "infer_mutations",
+    "keep_prefixes",
+    "keep_subject_prefixes",
+    "keep_object_prefixes",
+    "filter_prefixes",
+    "filter_self_matches",
+    "filter_mappings",
+    "get_many_to_many",
+    "filter_many_to_many",
+    "project",
+    "project_dict",
+    "assert_projection",
+    "prioritize",
+    "get_priority_reference",
+    "unindex",
+    "deduplicate_evidence",
+    "validate_mappings",
+    "summarize_prefixes",
+    "filter_minimum_confidence",
+]
+
+
 logger = logging.getLogger(__name__)
 
 PREDICATE_KEY = "predicate"
@@ -54,6 +100,7 @@ def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
     )
 
 
+#: A test mapping set that can be used in examples.
 TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
 
 

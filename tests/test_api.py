@@ -1,3 +1,5 @@
+"""Tests for the core SeMRA API."""
+
 from __future__ import annotations
 
 import typing as t
@@ -49,6 +51,8 @@ MS = MappingSet(name="test", confidence=0.95)
 
 
 class TestOperations(unittest.TestCase):
+    """Test mapping operations."""
+
     def test_path(self):
         """Test quickly creating mapping lists."""
         r1, r2, r3 = _get_references(3)
@@ -92,6 +96,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(docetaxel_anhydrous_chebi, actual.o)
 
     def test_index(self):
+        """Test indexing semantic mappings."""
         r1, r2 = _get_references(2)
         e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"), mapping_set=MS)
         e2 = SimpleEvidence(
@@ -174,6 +179,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_broad_match_1(self):
+        """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3, evidence=[EV])
@@ -207,6 +213,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_broad_match_2(self):
+        """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4)
         m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
@@ -227,6 +234,7 @@ class TestOperations(unittest.TestCase):
         )
 
     def test_infer_narrow_match(self):
+        """Test inferring narrow matches."""
         r1, r2, r3 = _get_references(3)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
@@ -235,6 +243,7 @@ class TestOperations(unittest.TestCase):
         self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False))
 
     def test_mixed_inference_1(self):
+        """Test inferring over a mix of narrow, broad, and exact matches."""
         r1, r2, r3 = _get_references(3)
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
         m2 = Mapping(s=r2, p=NARROW_MATCH, o=r3)

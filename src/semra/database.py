@@ -31,6 +31,7 @@ summaries = []
 
 @click.command()
 def main():
+    """Construct the full SeMRA database."""
     skip = {
         "ado",  # trash
         "epio",  # trash

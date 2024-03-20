@@ -32,10 +32,11 @@ TEST_MAPPINGS = [
 
 
 def get_test_mappings() -> t.List[Mapping]:
-    """A test function to get mappings."""
+    """Get test mappings."""
     return TEST_MAPPINGS
 
 
+# Register a function for getting test mappings in order to test the way Inputs are handled
 SOURCE_RESOLVER.register(get_test_mappings)
 
 

@@ -58,11 +58,11 @@ TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
 
 
 @typing.overload
-def get_test_evidence(n: int) -> t.List[SimpleEvidence]: ...
+def get_test_evidence(n: int) -> t.List[SimpleEvidence]: ...  # noqa:D103
 
 
 @typing.overload
-def get_test_evidence(n: None) -> SimpleEvidence: ...
+def get_test_evidence(n: None) -> SimpleEvidence: ...  # noqa:D103
 
 
 def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.List[SimpleEvidence]]:
@@ -73,11 +73,11 @@ def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.Li
 
 
 @typing.overload
-def get_test_reference(n: int, prefix: str) -> t.List[Reference]: ...
+def get_test_reference(n: int, prefix: str) -> t.List[Reference]: ...  # noqa:D103
 
 
 @typing.overload
-def get_test_reference(n: None, prefix: str) -> Reference: ...
+def get_test_reference(n: None, prefix: str) -> Reference: ...  # noqa:D103
 
 
 def get_test_reference(n: t.Optional[int] = None, prefix: str = "test") -> t.Union[Reference, t.List[Reference]]:

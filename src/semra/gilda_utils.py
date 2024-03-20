@@ -1,3 +1,5 @@
+"""Utilities for working with Gilda."""
+
 from __future__ import annotations
 
 import itertools as itt

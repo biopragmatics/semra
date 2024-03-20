@@ -44,14 +44,9 @@ class Neo4jClient:
     ):
         """Initialize the client.
 
-        Parameters
-        ----------
-        uri :
-            The URI of the Neo4j database.
-        user :
-            The username for the Neo4j database.
-        password :
-            The password for the Neo4j database.
+        :param uri: The URI of the Neo4j database.
+        :param user: The username for the Neo4j database.
+        :param password: The password for the Neo4j database.
         """
         uri = uri or os.environ.get("NEO4J_URL") or "bolt://0.0.0.0:7687"
         user = user or os.environ.get("NEO4J_USER")
@@ -60,24 +55,16 @@ class Neo4jClient:
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=(user, password), max_connection_lifetime=180)
 
     def __del__(self):
-        # Ensure driver is shut down when client is destroyed
+        """Ensure driver is shut down when client is destroyed."""
         if self.driver is not None:
             self.driver.close()
 
     def read_query(self, query: str, **query_params) -> list[list]:
         """Run a read-only query.
 
-        Parameters
-        ----------
-        query :
-            The cypher query to run
-        query_params :
-            The parameters to pass to the query
-
-        Returns
-        -------
-        :
-            The result of the query
+        :param query: The cypher query to run
+        :param query_params: The parameters to pass to the query
+        :return: The result of the query
         """
         with self.driver.session() as session:
             values = session.execute_read(_do_cypher_tx, query, **query_params)
@@ -87,12 +74,9 @@ class Neo4jClient:
     def write_query(self, query: str, **query_params):
         """Run a write query.
 
-        Parameters
-        ----------
-        query :
-            The cypher query to run
-        query_params :
-            The parameters to pass to the query
+        :param query: The cypher query to run
+        :param query_params: The parameters to pass to the query
+        :return: The result of the write query
         """
         with self.driver.session() as session:
             return session.write_transaction(_do_cypher_tx, query, **query_params)
@@ -129,6 +113,7 @@ class Neo4jClient:
         :param curie: Either a Reference object, a string representing
             a curie with ``semra.mapping`` as the prefix, or a local
             unique identifier representing a SeMRA mapping.
+        :return: A semantic mapping object
         """
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -180,7 +165,7 @@ class Neo4jClient:
 
         :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a prefix.
             For example, use ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
-        :return: A mapping set
+        :return: A mapping set object
         """
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -246,6 +231,11 @@ as label, count UNION ALL
         return self._count_with_name(query)
 
     def get_highest_exact_matches(self, limit: int = 10) -> t.Counter[tuple[str, str]]:
+        """Get a counter of concepts with the highest exact matches.
+
+        :param limit: The number of top concepts to return
+        :return: A counter with keys that are CURIE/name pairs
+        """
         query = """\
             MATCH (a)-[:`skos:exactMatch`]-(b)
             WHERE a.priority
@@ -258,14 +248,24 @@ as label, count UNION ALL
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
         return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
 
-    def get_exact_matches(self, curie: str) -> dict[Reference, str]:
+    def get_exact_matches(self, curie: ReferenceHint) -> dict[Reference, str]:
+        """Get a mapping of references->name for all concepts equivalent to the given concept."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
         query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN a.curie, a.name"
         return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
 
     def get_connected_component(
         self, curie: ReferenceHint
     ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
-        """Get the nodes and relations in the connected component of mappings around the given curie."""
+        """Get the nodes and relations in the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+        :return: A pair of:
+
+            1. The nodes in the connected component, as Neo4j node objects
+            2. The relationships in the connected component, as Neo4j relationship objects
+        """
         if isinstance(curie, Reference):
             curie = curie.curie
         query = """\
@@ -274,10 +274,15 @@ as label, count UNION ALL
         """
         res = self.read_query(query, curie=curie)
         nodes = res[0][0]
-        relations = list({r for relations in res[0][1] for r in relations})
+        relations = sorted({r for relations in res[0][1] for r in relations})
         return nodes, relations
 
-    def get_connected_component_graph(self, curie: str) -> nx.MultiDiGraph:
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
+        """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        """
         nodes, relations = self.get_connected_component(curie)
         g = nx.MultiDiGraph()
         for node in nodes:
@@ -292,7 +297,10 @@ as label, count UNION ALL
             )
         return g
 
-    def get_concept_name(self, curie: str) -> str | None:
+    def get_concept_name(self, curie: ReferenceHint) -> str | None:
+        """Get the name for a CURIE or reference."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
         return _get_name_by_curie(curie)
 
 

@@ -79,14 +79,14 @@ class ConfidenceMixin:
     def get_confidence(self) -> float:
         """Get the confidence.
 
-        :returns:
+        :return:
             The confidence, which can either be a direct annotation
             or computed based on other related objects. For example,
             a :class:`MappingSet` has an explicitly annotated confidence,
             whereas a :class:`ReasonedEvidence` calculates its confidence
             based on all of its prior probability *and* the confidences
             of the mappings on which it depends.
-        """
+        """  # noqa:DAR401,DAR202
         raise NotImplementedError
 
 
@@ -260,6 +260,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.map
         return self.s, self.p, self.o
 
     def key(self):
+        """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return self.triple
 
     @classmethod

@@ -755,15 +755,15 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
         appears as subject once. This condition means that the prioritization mapping can be applied
         to upgrade any reference to a "canonical" reference.
 
-    This algorithm works in the following way:
+    This algorithm works in the following way
 
     1. Get the subset of exact matches from the input mapping list
     2. Convert the exact matches to an undirected mapping graph
     3. Extract connected components
-    4. For each component:
-       1. Get the "priority" reference using :func:`get_priority_reference`
-       2. Construct new mappings where all references in the component are the subject
-          and the priority reference is the object (skip the self mapping)
+    4. For each component
+        1. Get the "priority" reference using :func:`get_priority_reference`
+        2. Construct new mappings where all references in the component are the subject
+           and the priority reference is the object (skip the self mapping)
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.p == EXACT_MATCH]

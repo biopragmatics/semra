@@ -1,6 +1,7 @@
 Usage
 =====
 .. automodapi:: semra.struct
+    :skip: Reference
 
 .. automodapi:: semra.pipeline
 

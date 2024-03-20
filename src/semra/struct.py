@@ -40,7 +40,7 @@ def triple_key(triple: Triple) -> t.Tuple[str, str, str]:
 
 
 def _md5_hexdigest(picklable) -> str:
-    hasher = md5()  # noqa:S324
+    hasher = md5(usedforsecurity=False)  # noqa:S324
     hasher.update(pickle.dumps(picklable))
     return hasher.hexdigest()
 

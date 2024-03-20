@@ -165,7 +165,8 @@ class SimpleEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMi
         return self.evidence_type, self.justification, self.author, self.mapping_set.key(), self.uuid
 
     @property
-    def mapping_set_names(self) -> t.Set[str]:  # noqa:D102
+    def mapping_set_names(self) -> t.Set[str]:
+        """Get a set containing 1 element - this evidence's mapping set's name."""
         return {self.mapping_set.name}
 
     def get_confidence(self) -> float:
@@ -218,7 +219,8 @@ class ReasonedEvidence(pydantic.BaseModel, KeyedMixin, EvidenceMixin, Confidence
         return None
 
     @property
-    def mapping_set_names(self) -> t.Set[str]:  # noqa:D102
+    def mapping_set_names(self) -> t.Set[str]:
+        """Get a set containing the union of all the mappings' evidences' mapping set names."""
         return {
             name for mapping in self.mappings for evidence in mapping.evidence for name in evidence.mapping_set_names
         }

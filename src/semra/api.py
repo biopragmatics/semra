@@ -57,10 +57,12 @@ def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
 TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
 
 
+# docstr-coverage: inherited
 @typing.overload
 def get_test_evidence(n: int) -> t.List[SimpleEvidence]: ...  # noqa:D103
 
 
+# docstr-coverage: inherited
 @typing.overload
 def get_test_evidence(n: None) -> SimpleEvidence: ...  # noqa:D103
 
@@ -72,10 +74,12 @@ def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.Li
     return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
 
 
+# docstr-coverage: inherited
 @typing.overload
 def get_test_reference(n: int, prefix: str) -> t.List[Reference]: ...  # noqa:D103
 
 
+# docstr-coverage: inherited
 @typing.overload
 def get_test_reference(n: None, prefix: str) -> Reference: ...  # noqa:D103
 
@@ -394,11 +398,7 @@ def tabulate_index(index: Index) -> str:
     from tabulate import tabulate
 
     rows: t.List[t.Tuple[str, str, str, str]] = []
-
-    def key(pair):
-        return triple_key(pair[0])
-
-    for (s, p, o), evidences in sorted(index.items(), key=key):
+    for (s, p, o), evidences in sorted(index.items(), key=lambda pair: triple_key(pair[0])):
         if not evidences:
             rows.append((s.curie, p.curie, o.curie, ""))
         else:

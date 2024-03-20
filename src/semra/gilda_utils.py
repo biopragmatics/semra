@@ -139,6 +139,7 @@ def make_new_term(
     target_id: str,
     target_name: str | None = None,
 ) -> Term:
+    """Make a new gilda term object by replacing the database, identifier, and name."""
     if target_name is None:
         from indra.ontology.bio import bio_ontology
 

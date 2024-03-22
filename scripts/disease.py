@@ -1,12 +1,14 @@
 """Disease Landscape Assessment."""
 
+import bioregistry
 import click
 import pystow
 
 from semra.pipeline import Configuration, Input, Mutation
 
+ICD_PREFIXES = bioregistry.get_collection("0000004").resources
 MODULE = pystow.module("semra", "case-studies", "disease")
-PREFIXES = PRIORITY = ["doid", "mondo", "efo", "mesh", "ncit", "hp"]
+PREFIXES = PRIORITY = ["doid", "mondo", "efo", "mesh", "ncit", "orphanet.ordo", "omim.ps", "gard", *ICD_PREFIXES]
 
 CONFIGURATION = Configuration(
     name="Disease Landscape Analysis",
@@ -19,6 +21,7 @@ CONFIGURATION = Configuration(
         Input(prefix="efo", source="bioontologies", confidence=0.99),
         Input(prefix="mesh", source="pyobo", confidence=0.99),
         Input(prefix="ncit", source="bioontologies", confidence=0.85),
+        Input(prefix="orphanet.ordo", source="bioontologies", confidence=0.9),
         # Input(prefix="hp", source="bioontologies", confidence=0.99),
     ],
     add_labels=True,
@@ -30,12 +33,12 @@ CONFIGURATION = Configuration(
         Mutation(source="mondo", confidence=0.95),
         Mutation(source="efo", confidence=0.90),
         Mutation(source="ncit", confidence=0.7),
+        Mutation(source="orphanet.ordo", confidence=0.7),
         # Mutation(source="hp", confidence=0.7),
     ],
-    # NEO4j options - add ontologies
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    raw_neo4j_path=MODULE.join("neo4j_raw"),
+    # raw_neo4j_path=MODULE.join("neo4j_raw"),
     processed_pickle_path=MODULE.join(name="processed.pkl"),
     processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
     processed_neo4j_path=MODULE.join("neo4j"),
@@ -48,7 +51,7 @@ CONFIGURATION = Configuration(
 @click.command()
 def main():
     """Get the disease landscape database."""
-    CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=False)
+    CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=True)
 
 
 if __name__ == "__main__":

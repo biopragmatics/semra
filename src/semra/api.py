@@ -472,6 +472,8 @@ def infer_chains(
                             )
                             for path_s, path_o, path_p in path
                         ],
+                        # TODO add confidence that's inversely proportional to sg_len, i.e.
+                        # larger components should return less confident mappings
                     )
                     predicate_evidence_dict[p].append(evidence)
 

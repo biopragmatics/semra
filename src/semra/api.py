@@ -403,7 +403,13 @@ def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference 
 
 
 def infer_chains(
-    mappings: t.List[Mapping], *, backwards: bool = True, progress: bool = True, cutoff: int = 5
+    mappings: t.List[Mapping],
+    *,
+    backwards: bool = True,
+    progress: bool = True,
+    cutoff: int = 5,
+    minimum_component_size: int = 2,
+    maximum_component_size: int = 100,
 ) -> t.List[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
@@ -411,6 +417,10 @@ def infer_chains(
     :param backwards: Should inference be done in reverse?
     :param progress: Should a progress bar be shown? Defaults to true.
     :param cutoff: What's the maximum length path to infer over?
+    :param minimum_component_size: The smallest size of a component to consider, defaults to 2
+    :param maximum_component_size: The smallest size of a component to consider, defaults to 100.
+        Components that are very large (i.e., much larger than the number of target prefixes)
+        likely are the result of many broad/narrow mappings
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
@@ -418,7 +428,11 @@ def infer_chains(
     new_mappings = []
 
     components = sorted(
-        (c for c in nx.weakly_connected_components(graph) if len(c) > 2),  # noqa: PLR2004
+        (
+            component
+            for component in nx.weakly_connected_components(graph)
+            if minimum_component_size < len(component) <= maximum_component_size
+        ),
         key=len,
         reverse=True,
     )

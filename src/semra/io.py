@@ -38,7 +38,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-#: The precision for confidences used before exporing to the graph data model
+#: The precision for confidences used before exporting to the graph data model
 CONFIDENCE_PRECISION = 5
 #: The predicate used in the graph data model connecting a mapping node to an evidence node
 HAS_EVIDENCE_PREDICATE = "hasEvidence"

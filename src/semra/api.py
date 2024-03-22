@@ -343,6 +343,34 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
     return graph
 
 
+def to_multidigraph(mappings: t.List[Mapping]) -> nx.MultiDiGraph:
+    """Convert mappings into a multi directed graph data model.
+
+    :param mappings: An iterable of mappings
+    :returns: A directed graph in which the nodes are
+        :class:`curies.Reference` objects. The predicate
+        is put under the :data:`PREDICATE_KEY` key in the
+        edge data and the evidences are put under the
+        :data:`EVIDENCE_KEY` key in the edge data.
+
+    .. warning::
+
+        This function makes the following assumptions:
+
+        1. The graph has already been assembled using :func:`assemble_evidences`
+
+    """
+    graph = nx.MultiDiGraph()
+    for mapping in mappings:
+        graph.add_edge(
+            mapping.s,
+            mapping.o,
+            key=mapping.p,
+            **{EVIDENCE_KEY: mapping.evidence},
+        )
+    return graph
+
+
 def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
     """Extract mappings from a simple directed graph data model."""
     return [_from_digraph_edge(graph, s, o) for s, o in graph.edges()]
@@ -386,10 +414,7 @@ def infer_chains(
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    # FIXME to_digraph requires a single predicate for each s/o pair,
-    #  which isn't necessarily true, so there should be some kind of reasoning
-    #  step that picks which is "best"
-    graph = to_digraph(mappings)
+    graph = to_multidigraph(mappings)
     new_mappings = []
 
     components = sorted(
@@ -399,7 +424,7 @@ def infer_chains(
     )
     it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
     for _i, component in enumerate(it):
-        sg: nx.DiGraph = graph.subgraph(component).copy()
+        sg: nx.MultiDiGraph = graph.subgraph(component).copy()
         sg_len = sg.number_of_nodes()
         it.set_postfix(size=sg_len)
         inner_it = tqdm(
@@ -416,7 +441,7 @@ def infer_chains(
             # nx.shortest_path(sg, s, o)
             predicate_evidence_dict = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
-                predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
+                predicates = [k for _u, _v, k in path]
                 p = _reason_multiple_predicates(predicates)
                 if p:
                     evidence = ReasonedEvidence(
@@ -425,10 +450,10 @@ def infer_chains(
                             Mapping(
                                 s=path_s,
                                 o=path_o,
-                                p=graph[path_s][path_o][PREDICATE_KEY],
-                                evidence=graph[path_s][path_o][EVIDENCE_KEY],
+                                p=path_p,
+                                evidence=graph[path_s][path_o][path_p][EVIDENCE_KEY],
                             )
-                            for path_s, path_o in path
+                            for path_s, path_o, path_p in path
                         ],
                     )
                     predicate_evidence_dict[p].append(evidence)

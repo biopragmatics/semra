@@ -414,6 +414,7 @@ def infer_chains(
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this
             # nx.shortest_path(sg, s, o)
+            predicate_evidence_dict = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
                 predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
                 p = _reason_multiple_predicates(predicates)
@@ -430,9 +431,13 @@ def infer_chains(
                             for path_s, path_o in path
                         ],
                     )
-                    new_mappings.append(Mapping(s=s, p=p, o=o, evidence=[evidence]))
-                    if backwards:
-                        new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=[evidence]))
+                    predicate_evidence_dict[p].append(evidence)
+
+            for p, evidence in predicate_evidence_dict.items():
+                new_mappings.append(Mapping(s=s, p=p, o=o, evidence=evidence))
+                if backwards:
+                    new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidence))
+
     return [*mappings, *new_mappings]
 
 

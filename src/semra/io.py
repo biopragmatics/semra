@@ -461,7 +461,14 @@ def _get_name_by_curie(curie: str) -> str | None:
 
         orcid = curie[len("orcid:") :]
         res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
-        return res["person"]["name"]["given-names"]["value"] + " " + res["person"]["name"]["family-name"]["value"]
+        name = res["person"]["name"]
+        if name is None:
+            return None
+        if credit_name := name.get("credit-name"):
+            return credit_name["value"]
+        if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
+            return f"{given_names['value']} {family_name['value']}"
+        return None
     return pyobo.get_name_by_curie(curie)
 
 

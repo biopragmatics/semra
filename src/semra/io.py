@@ -835,12 +835,13 @@ def write_neo4j(
         #!/bin/bash
         docker build --tag {docker_name} .
         # -t means allocate a pseudo-TTY, necessary to keep it running in the background
-        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 {docker_name}
+        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 --name {docker_name} {docker_name}:latest
     """
     )
     run_path.write_text(run_command)
     click.secho("Run Neo4j with the following:", fg="green")
-    click.secho(f"  sh {run_path.absolute()}")
+    click.secho(f"  cd {run_path.parent.absolute()}")
+    click.secho(f"  sh {run_script_name}")
 
     # shell_command = dedent(f"""\
     #     neo4j-admin database import full \\

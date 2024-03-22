@@ -400,8 +400,16 @@ def infer_chains(
     it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
     for _i, component in enumerate(it):
         sg: nx.DiGraph = graph.subgraph(component).copy()
-        it.set_postfix(size=sg.number_of_nodes())
-        for s, o in itt.combinations(sg, 2):
+        sg_len = sg.number_of_nodes()
+        it.set_postfix(size=sg_len)
+        inner_it = tqdm(
+            itt.combinations(sg, 2),
+            total=sg_len * (sg_len - 1) // 2,
+            unit_scale=True,
+            disable=not progress,
+            unit="edge",
+        )
+        for s, o in inner_it:
             if sg.has_edge(s, o):  # do not overwrite existing mappings
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this

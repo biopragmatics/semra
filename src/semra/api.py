@@ -433,6 +433,7 @@ def infer_chains(
             unit_scale=True,
             disable=not progress,
             unit="edge",
+            leave=False,
         )
         for s, o in inner_it:
             if sg.has_edge(s, o):  # do not overwrite existing mappings

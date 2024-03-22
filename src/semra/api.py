@@ -441,6 +441,8 @@ def infer_chains(
             # nx.shortest_path(sg, s, o)
             predicate_evidence_dict: t.DefaultDict[Reference, t.List[Evidence]] = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
+                if _path_has_prefix_duplicates(path):
+                    continue
                 predicates = [k for _u, _v, k in path]
                 p = _reason_multiple_predicates(predicates)
                 if p is not None:
@@ -464,6 +466,16 @@ def infer_chains(
                     new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidences))
 
     return [*mappings, *new_mappings]
+
+
+def _path_has_prefix_duplicates(path) -> bool:
+    """Return if the path has multiple unique."""
+    elements = set()
+    for u, v, _ in path:
+        elements.add(u)
+        elements.add(v)
+    counter = Counter(element.prefix for element in elements)
+    return any(v > 1 for v in counter.values())
 
 
 def tabulate_index(index: Index) -> str:

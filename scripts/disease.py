@@ -8,7 +8,20 @@ from semra.pipeline import Configuration, Input, Mutation
 
 ICD_PREFIXES = bioregistry.get_collection("0000004").resources
 MODULE = pystow.module("semra", "case-studies", "disease")
-PREFIXES = PRIORITY = ["doid", "mondo", "efo", "mesh", "ncit", "orphanet.ordo", "omim.ps", "gard", *ICD_PREFIXES]
+PREFIXES = PRIORITY = [
+    "doid",
+    "mondo",
+    "efo",
+    "mesh",
+    # "ncit",
+    # "orphanet",
+    # "orphanet.ordo",
+    # "omim",
+    # "omim.ps",
+    # "snomedct",
+    "gard",
+    # *ICD_PREFIXES,
+]
 
 CONFIGURATION = Configuration(
     name="Disease Landscape Analysis",

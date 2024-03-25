@@ -343,7 +343,7 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
     return graph
 
 
-def to_multidigraph(mappings: t.List[Mapping]) -> nx.MultiDiGraph:
+def to_multidigraph(mappings: t.List[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
     """Convert mappings into a multi directed graph data model.
 
     :param mappings: An iterable of mappings
@@ -361,7 +361,7 @@ def to_multidigraph(mappings: t.List[Mapping]) -> nx.MultiDiGraph:
 
     """
     graph = nx.MultiDiGraph()
-    for mapping in mappings:
+    for mapping in _tqdm(mappings, progress=progress):
         graph.add_edge(
             mapping.s,
             mapping.o,

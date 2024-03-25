@@ -23,8 +23,8 @@
 <!-- doid&#45;&#45;mesh -->
 <g id="edge1" class="edge">
 <title>doid&#45;&#45;mesh</title>
-<path fill="none" stroke="black" stroke-width="1.75" d="M53.47,-87.73C73.7,-92.34 102.1,-98.81 123.08,-103.59"/>
-<text text-anchor="middle" x="87.97" y="-101.2" font-family="Times,serif" font-size="14.00">2,810</text>
+<path fill="none" stroke="black" stroke-width="1.71" d="M53.47,-87.73C73.7,-92.34 102.1,-98.81 123.08,-103.59"/>
+<text text-anchor="middle" x="87.97" y="-101.2" font-family="Times,serif" font-size="14.00">2,642</text>
 </g>
 <!-- efo -->
 <g id="node3" class="node">
@@ -35,8 +35,8 @@
 <!-- doid&#45;&#45;efo -->
 <g id="edge2" class="edge">
 <title>doid&#45;&#45;efo</title>
-<path fill="none" stroke="black" stroke-width="1.64" d="M51.51,-73.08C91.16,-59.24 173.89,-36.53 238.6,-60 250.47,-64.3 261.39,-73.34 269.41,-81.4"/>
-<text text-anchor="middle" x="152.22" y="-57.2" font-family="Times,serif" font-size="14.00">2,391</text>
+<path fill="none" stroke="black" stroke-width="1.62" d="M51.51,-73.08C91.16,-59.24 173.89,-36.53 238.6,-60 250.47,-64.3 261.39,-73.34 269.41,-81.4"/>
+<text text-anchor="middle" x="152.22" y="-57.2" font-family="Times,serif" font-size="14.00">2,326</text>
 </g>
 <!-- mondo -->
 <g id="node4" class="node">
@@ -65,14 +65,14 @@
 <!-- mesh&#45;&#45;efo -->
 <g id="edge5" class="edge">
 <title>mesh&#45;&#45;efo</title>
-<path fill="none" stroke="black" stroke-width="1.59" d="M182.97,-107.02C205.25,-104.78 235.45,-101.76 256.8,-99.62"/>
-<text text-anchor="middle" x="219.85" y="-108.2" font-family="Times,serif" font-size="14.00">2,193</text>
+<path fill="none" stroke="black" stroke-width="1.32" d="M182.97,-107.02C205.25,-104.78 235.45,-101.76 256.8,-99.62"/>
+<text text-anchor="middle" x="219.85" y="-108.2" font-family="Times,serif" font-size="14.00">1,203</text>
 </g>
 <!-- mesh&#45;&#45;mondo -->
 <g id="edge6" class="edge">
 <title>mesh&#45;&#45;mondo</title>
 <path fill="none" stroke="black" stroke-width="3.22" d="M178.79,-119.62C185.93,-122.01 193.75,-124.36 201.1,-126 262.29,-139.66 335.15,-146.17 377.81,-149.02"/>
-<text text-anchor="middle" x="283.9" y="-146.2" font-family="Times,serif" font-size="14.00">8,332</text>
+<text text-anchor="middle" x="283.9" y="-146.2" font-family="Times,serif" font-size="14.00">8,305</text>
 </g>
 <!-- mesh&#45;&#45;gard -->
 <g id="edge7" class="edge">

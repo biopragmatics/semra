@@ -347,6 +347,7 @@ def to_multidigraph(mappings: t.List[Mapping], *, progress: bool = False) -> nx.
     """Convert mappings into a multi directed graph data model.
 
     :param mappings: An iterable of mappings
+    :param progress: Should a progress bar be shown?
     :returns: A directed graph in which the nodes are
         :class:`curies.Reference` objects. The predicate
         is put under the :data:`PREDICATE_KEY` key in the

@@ -13,14 +13,14 @@ PREFIXES = PRIORITY = [
     "mondo",
     "efo",
     "mesh",
-    # "ncit",
-    # "orphanet",
-    # "orphanet.ordo",
-    # "omim",
-    # "omim.ps",
+    "ncit",
+    "orphanet",
+    "orphanet.ordo",
+    "omim",
+    "omim.ps",
     # "snomedct",
     "gard",
-    # *ICD_PREFIXES,
+    *ICD_PREFIXES,
 ]
 
 CONFIGURATION = Configuration(

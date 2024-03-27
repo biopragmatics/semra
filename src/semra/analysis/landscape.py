@@ -1,39 +1,214 @@
 """Supports landscape analysis."""
 
-from collections import defaultdict, Counter
-
-import networkx as nx
 import typing as t
-import pandas as pd
-from dataclasses import dataclass
-from semra.api import to_multidigraph, get_index
-from semra.struct import Mapping
-from semra.rules import EXACT_MATCH
-import upsetplot
-import seaborn as sns
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import bioregistry
 import matplotlib.pyplot as plt
+import networkx as nx
+import pandas as pd
+import pyobo
+import seaborn as sns
+import upsetplot
+
+from semra import Configuration
+from semra.api import get_index, to_multidigraph
+from semra.io import _safe_get_version, from_pickle
+from semra.rules import DB_XREF, EXACT_MATCH
+from semra.struct import Mapping
 
 __all__ = [
     "get_directed_index",
     "draw_counter",
     "counter_to_df",
     "landscape_analysis",
+    "get_symmetric_counts_df",
+    "overlap_analysis",
 ]
 
 
-def get_directed_index(mappings: t.Iterable[Mapping]) -> t.Dict[t.Tuple[str, str], t.Set[str]]:
+DirectedIndex = t.Dict[t.Tuple[str, str], t.Set[str]]
+XXCounter = t.Counter[t.Tuple[str, str]]
+XXTerms = t.Mapping[str, t.Mapping[str, str]]
+
+
+@dataclass
+class OverlapResults:
+    """Results from mapping analysis."""
+
+    raw_mappings: t.List[Mapping]
+    raw_counts_df: pd.DataFrame
+    mappings: t.List[Mapping]
+    counts: XXCounter
+    counts_df: pd.DataFrame
+    gains_df: pd.DataFrame
+    percent_gains_df: pd.DataFrame
+    counts_drawing: bytes = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize the object by creating a drawing of the counter."""
+        self.counts_drawing = draw_counter(self.counts, cls=nx.Graph, minimum_count=20)
+
+    def write(self, directory: t.Union[str, Path]) -> None:
+        """Write the tables and charts to a directory."""
+        directory = Path(directory).resolve()
+        self.counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
+        self.raw_counts_df.to_csv(directory / "raw_counts.tsv", sep="\t", index=True)
+        with open(directory / "disease_graph.svg", "wb") as file:
+            file.write(self.counts_drawing)
+
+
+def overlap_analysis(configuration: Configuration, terms) -> OverlapResults:
+    """Run overlap analysis."""
+    raw_mappings = from_pickle(configuration.raw_pickle_path)
+    raw_index = get_directed_index(raw_mappings)
+    _, raw_counts_df = get_symmetric_counts_df(raw_index, terms, priority=configuration.priority)
+
+    mappings = from_pickle(configuration.processed_pickle_path)
+    directed = get_directed_index(mappings)
+    counts, counts_df = get_symmetric_counts_df(directed, terms, priority=configuration.priority)
+
+    gains_df = counts_df - raw_counts_df
+    percent_gains_df = 100.0 * (counts_df - raw_counts_df) / raw_counts_df
+
+    return OverlapResults(
+        raw_mappings=raw_mappings,
+        raw_counts_df=raw_counts_df,
+        mappings=mappings,
+        counts=counts,
+        counts_df=counts_df,
+        gains_df=gains_df,
+        percent_gains_df=percent_gains_df,
+    )
+
+
+def get_terms(priority: t.List[str], subsets: t.Mapping[str, t.Collection[str]]) -> XXTerms:
+    """Get the set of identifiers for each of the resources."""
+    terms = {}
+    for prefix in priority:
+        id_name_mapping = pyobo.get_id_name_mapping(prefix)
+        subset = {
+            descendant
+            for parent_curie in subsets.get(prefix, [])
+            for descendant in pyobo.get_descendants(parent_curie) or []
+        }
+        if subset:
+            terms[prefix] = {luid: name for luid, name in id_name_mapping.items() if f"{prefix}:{luid}" in subset}
+        else:
+            terms[prefix] = id_name_mapping
+    return terms
+
+
+def get_summary_df(priority: t.List[str], terms: XXTerms) -> pd.DataFrame:
+    summary_rows = [
+        (prefix, bioregistry.get_license(prefix), _safe_get_version(prefix), len(terms.get(prefix, [])))
+        for prefix in priority
+    ]
+    return pd.DataFrame(summary_rows, columns=["prefix", "license", "version", "terms"])
+
+
+def get_directed_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
     index = get_index(mappings, progress=False)
     directed: t.DefaultDict[t.Tuple[str, str], t.Set[str]] = defaultdict(set)
+    target_predicates = {EXACT_MATCH, DB_XREF}
     for s, p, o in index:
-        if p != EXACT_MATCH:
-            continue
-        directed[s.prefix, o.prefix].add(s.identifier)
-        directed[o.prefix, s.prefix].add(o.identifier)
+        if p in target_predicates:
+            directed[s.prefix, o.prefix].add(s.identifier)
+            directed[o.prefix, s.prefix].add(o.identifier)
     return dict(directed)
 
 
+def get_asymmetric_counts_df(directed: DirectedIndex, terms: XXTerms, priority: t.List[str]):
+    asymmetric_counts = Counter()
+    for (l, r), l_entities in directed.items():
+        l_terms = terms.get(l)
+        if l_terms:
+            count = len(l_entities.intersection(l_terms))
+        else:
+            count = len(l_entities)
+        asymmetric_counts[l, r] = count
+
+    df = counter_to_df(asymmetric_counts, priority=priority, default=0).fillna(0).astype(int)
+    return asymmetric_counts, df
+
+
+def get_asymmetric_percents_df(asymmetric_counts, terms: XXTerms, priority: t.List[str]):
+    """
+    The following summary looks for each ordered pair of resources, what
+    percentage of each resources' terms are mapped to the other resource.
+    Because each resource is a different size, this is an asymmetric measurement.
+
+    The way to read this table is the horizontal index corresponds to the
+    source prefix and the columns correspond to the target prefix. This means
+    in the row with label "efo" and column with label "mesh" that has 14% means
+    that 14% of EFO can be mapped to MeSH.
+
+    SVG(draw_counter(asymmetric, count_format=".1%"))
+
+    (asymmetric_summary_df * 100).round(2)
+    """
+    asymmetric = Counter()
+    for (l, r), count in asymmetric_counts.items():
+        denominator = len(terms.get(l, []))
+        asymmetric[l, r] = count / denominator if denominator > 0 else None
+
+    df = counter_to_df(asymmetric, priority=priority)
+    return df, asymmetric
+
+
+def get_symmetric_counts_df(
+    directed: DirectedIndex, terms: XXTerms, priority: t.List[str]
+) -> t.Tuple[XXCounter, pd.DataFrame]:
+    counter: XXCounter = Counter()
+
+    for left_prefix, right_prefix in directed:
+        left = directed[left_prefix, right_prefix]
+        if left_terms := terms.get(left_prefix, []):
+            left.intersection_update(left_terms)
+        right = directed[right_prefix, left_prefix]
+        if right_terms := terms.get(right_prefix, []):
+            right.intersection_update(right_terms)
+        counter[left_prefix, right_prefix] = max(len(left), len(right))
+
+    for prefix in priority:
+        tt = terms.get(prefix, [])
+        if tt:
+            counter[prefix, prefix] = len(tt)
+
+    df = counter_to_df(counter, priority=priority, default=0).fillna(0).astype(int)
+    return counter, df
+
+
+def get_symmetric_percents_df(symmetric_counts, terms: XXTerms, priority: t.List[str]):
+    """
+
+    # clip since there might be some artifacts of mappings to terms that don't exist anymore
+    (symmetric_df * 100).round(3)
+    SVG(draw_counter(symmetric, cls=nx.Graph, count_format=".2%", minimum_count=0.01))
+    """
+    # intersect with the terms for each to make sure we're not keeping any mappings that are irrelevant
+    symmetric = Counter()
+    for (l, r), count in symmetric_counts.items():
+        # FIXME - estimate terms lists based on what appears in the mappings
+        if terms[r] and terms[l]:
+            denom = max(len(terms[r]), len(terms[l]))
+        elif terms[r]:
+            denom = len(terms[r])
+        elif terms[l]:
+            denom = len(terms[l])
+        else:
+            denom = None
+            continue
+        symmetric[l, r] = count / denom
+
+    symmetric_df = counter_to_df(symmetric, priority=priority).fillna(0.0)
+    return symmetric, symmetric_df
+
+
 def draw_counter(
-    counter: t.Counter[t.Tuple[str, str]],
+    counter: XXCounter,
     scaling_factor: float = 3.0,
     count_format=",",
     cls: t.Type[nx.Graph] = nx.DiGraph,
@@ -41,7 +216,7 @@ def draw_counter(
     prog: str = "dot",
     output_format: str = "svg",
     direction: str = "LR",
-) -> str:
+) -> bytes:
     """Draw a source/target prefix pair counter as a network."""
     graph = cls()
     for (source_prefix, target_prefix), count in counter.items():
@@ -68,7 +243,7 @@ def draw_counter(
 
 
 def counter_to_df(
-    counter: t.Counter[t.Tuple[str, str]], priority: t.List[str], default: float = 1.0, drop_missing: bool = True
+    counter: XXCounter, priority: t.List[str], default: float = 1.0, drop_missing: bool = True
 ) -> pd.DataFrame:
     """Get a dataframe from a counter."""
     rows = [[counter.get((p1, p2), None) for p2 in priority] for p1 in priority]
@@ -76,9 +251,6 @@ def counter_to_df(
     if drop_missing:
         df = df.dropna(axis=1, how="all")
         df = df.dropna(axis=0, how="all")
-
-    # for p in priority:
-    #     df.loc[p, p] = default
 
     df.index.name = "source_prefix"
     df.columns.name = "target_prefix"
@@ -103,7 +275,7 @@ def _index_entities(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
     return dict(entities)
 
 
-def landscape_analysis(mappings: t.List[Mapping], terms, priority: t.List[str]):
+def landscape_analysis(mappings: t.List[Mapping], terms: XXTerms, priority: t.List[str]):
     entities = _index_entities(mappings)
     counter = _get_counter(mappings)
 

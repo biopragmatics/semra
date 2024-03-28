@@ -510,9 +510,9 @@ class LandscapeResult:
               are unique to a single resource.
             - {self.conserved:,} ({self.conserved/self.total_entity_estimate:.1%})
               appear in all {len(self.priority)} resources.
-              
+
             This estimate is susceptible to several caveats:
-            
+
             - Missing mappings inflates this measurement
             - Generic resources like MeSH contain irrelevant entities that can't be mapped
         """

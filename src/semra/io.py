@@ -235,7 +235,7 @@ def _from_pyobo_df(
         df[df.columns[0]] = df[df.columns[0]].map(lambda s: bioregistry.standardize_identifier(source_prefix, s))
         df[df.columns[2]] = [
             bioregistry.standardize_identifier(target_prefix, target_id)
-            for target_prefix, target_id in df[[1, 2]].values
+            for target_prefix, target_id in df[[df.columns[1], df.columns[2]]].values
         ]
     rv = [
         Mapping(

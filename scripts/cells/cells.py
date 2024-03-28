@@ -20,23 +20,8 @@ from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
-MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
-PRIORITY_SSSOM_PATH = MODULE.join(name="priority.sssom.tsv")
-
-PREFIXES = {
-    "efo",
-    "cellosaurus",
-    "depmap",
-    "ccle",
-    "clo",
-    "cl",
-    "bto",
-    "mesh",
-}
-PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo"]
-for prefix in PREFIXES:
-    if prefix not in PRIORITY:
-        raise ValueError(f"Missing prioirty order for {prefix}")
+MODULE = pystow.module("semra", "case-studies", "cells")
+PREFIXES = PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo"]
 
 CONFIGURATION = Configuration(
     name="Cell and Cell Line Mappings",
@@ -91,7 +76,7 @@ CONFIGURATION = Configuration(
     processed_neo4j_path=MODULE.join("neo4j"),
     processed_neo4j_name="semra-cell",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
-    priority_sssom_path=PRIORITY_SSSOM_PATH,
+    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
 )
 
 

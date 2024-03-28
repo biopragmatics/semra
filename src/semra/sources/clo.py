@@ -59,7 +59,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
             if p.predicate_raw != "http://www.w3.org/2000/01/rdf-schema#seeAlso":
                 continue
             for raw_curie in _split(p.value_raw):
-                curie = _removeprefix(_removeprefix(raw_curie, "rrid:"), "RRID")
+                curie = _removeprefix(_removeprefix(raw_curie, "rrid:"), "RRID:")
                 prefix: Optional[str]
                 identifier: Optional[str]
                 if curie.startswith("Sanger:COSMICID:"):

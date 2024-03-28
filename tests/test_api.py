@@ -35,8 +35,13 @@ from semra.struct import (
 )
 
 
-def _get_references(n: int, prefix: str = "test") -> t.List[Reference]:
-    return [Reference(prefix=prefix, identifier=str(i)) for i in range(1, n + 1)]
+def _get_references(n: int, *, prefix: str = "test", different_prefixes: bool = False) -> t.List[Reference]:
+    if different_prefixes:
+        prefixes = [f"{prefix}{i + 1}" for i in range(n)]
+    else:
+        prefixes = [prefix for _ in range(n)]
+    identifiers = [str(i + 1) for i in range(n)]
+    return [Reference(prefix=prefix, identifier=identifier) for prefix, identifier in zip(prefixes, identifiers)]
 
 
 def _exact(s, o, evidence: t.Optional[t.List[SimpleEvidence]] = None) -> Mapping:
@@ -138,7 +143,7 @@ class TestOperations(unittest.TestCase):
 
     def test_infer_exact_match(self):
         """Test inference through the transitivity of SKOS exact matches."""
-        r1, r2, r3, r4 = _get_references(4)
+        r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, EXACT_MATCH, r3, EXACT_MATCH, r4)
         m4 = _exact(r1, r3)
         m5 = _exact(r1, r4)
@@ -180,7 +185,7 @@ class TestOperations(unittest.TestCase):
 
     def test_infer_broad_match_1(self):
         """Test inferring broad matches."""
-        r1, r2, r3, r4 = _get_references(4)
+        r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3, evidence=[EV])
         m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4, evidence=[EV])
@@ -214,7 +219,7 @@ class TestOperations(unittest.TestCase):
 
     def test_infer_broad_match_2(self):
         """Test inferring broad matches."""
-        r1, r2, r3, r4 = _get_references(4)
+        r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
         m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
         m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
@@ -235,7 +240,7 @@ class TestOperations(unittest.TestCase):
 
     def test_infer_narrow_match(self):
         """Test inferring narrow matches."""
-        r1, r2, r3 = _get_references(3)
+        r1, r2, r3 = _get_references(3, different_prefixes=True)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
         m3_i = Mapping(o=r1, p=BROAD_MATCH, s=r3)
@@ -244,7 +249,7 @@ class TestOperations(unittest.TestCase):
 
     def test_mixed_inference_1(self):
         """Test inferring over a mix of narrow, broad, and exact matches."""
-        r1, r2, r3 = _get_references(3)
+        r1, r2, r3 = _get_references(3, different_prefixes=True)
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
         m2 = Mapping(s=r2, p=NARROW_MATCH, o=r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)

@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 
-{% import "bootstrap5/utils.html" as util %}
+{% import "bootstrap5/utils.html" as bs_util %}
+{% import "utils.html" as util %}
+
 
 {% block title %}SeMRA{% endblock %}
 
 
 {% block content %}
 <div class="container" style="margin-top: 50px; margin-bottom: 50px">
-    {{ util.render_messages(dismissible=True, container=False) }}
+    {{ bs_util.render_messages(dismissible=True, container=False) }}
     <div class="row">
         <div class="card">
             <div class="card-body">
@@ -22,6 +24,9 @@
                     <dt>Confidence</dt>
                     <dd>{{ mapping_set.confidence }}</dd>
                 </dl>
+
+                <h6>Example Mappings</h6>
+                {{ util.mapping_table(mapping_examples) }}
             </div>
         </div>
     </div>

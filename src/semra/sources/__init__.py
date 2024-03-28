@@ -25,6 +25,7 @@ from semra.sources.pubchem import get_pubchem_mesh_mappings
 from semra.struct import Mapping
 
 __all__ = [
+    "SOURCE_RESOLVER",
     "get_chembl_compound_mappings",
     "get_ncit_chebi_mappings",
     "get_ncit_uniprot_mappings",

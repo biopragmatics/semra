@@ -54,6 +54,7 @@ __all__ = [
     "infer_reversible",
     "flip",
     "to_digraph",
+    "to_multidigraph",
     "from_digraph",
     "infer_chains",
     "tabulate_index",
@@ -250,11 +251,10 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> r2 = get_test_reference(prefix="p2")
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-    >>> mappings = infer_reversible([m1])
+    >>> mappings = list(infer_reversible([m1]))
     >>> len(mappings)
     2
     >>> mappings[0] == m1
-    >>> mappings[1] ==
 
     .. warning::
 
@@ -270,7 +270,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> e1, e2 = get_test_evidence(2)
         >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
-        >>> mappings = infer_reversible([m1, m2])
+        >>> mappings = list(infer_reversible([m1, m2]))
         >>> len(mappings)
         3
         >>> mappings = assemble_evidences(mappings)
@@ -343,6 +343,35 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
     return graph
 
 
+def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
+    """Convert mappings into a multi directed graph data model.
+
+    :param mappings: An iterable of mappings
+    :param progress: Should a progress bar be shown?
+    :returns: A directed graph in which the nodes are
+        :class:`curies.Reference` objects. The predicate
+        is put under the :data:`PREDICATE_KEY` key in the
+        edge data and the evidences are put under the
+        :data:`EVIDENCE_KEY` key in the edge data.
+
+    .. warning::
+
+        This function makes the following assumptions:
+
+        1. The graph has already been assembled using :func:`assemble_evidences`
+
+    """
+    graph = nx.MultiDiGraph()
+    for mapping in _tqdm(mappings, progress=progress):
+        graph.add_edge(
+            mapping.s,
+            mapping.o,
+            key=mapping.p,
+            **{EVIDENCE_KEY: mapping.evidence},
+        )
+    return graph
+
+
 def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
     """Extract mappings from a simple directed graph data model."""
     return [_from_digraph_edge(graph, s, o) for s, o in graph.edges()]
@@ -375,7 +404,13 @@ def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference 
 
 
 def infer_chains(
-    mappings: t.List[Mapping], *, backwards: bool = True, progress: bool = True, cutoff: int = 5
+    mappings: t.List[Mapping],
+    *,
+    backwards: bool = True,
+    progress: bool = True,
+    cutoff: int = 5,
+    minimum_component_size: int = 2,
+    maximum_component_size: int = 100,
 ) -> t.List[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
@@ -383,49 +418,82 @@ def infer_chains(
     :param backwards: Should inference be done in reverse?
     :param progress: Should a progress bar be shown? Defaults to true.
     :param cutoff: What's the maximum length path to infer over?
+    :param minimum_component_size: The smallest size of a component to consider, defaults to 2
+    :param maximum_component_size: The smallest size of a component to consider, defaults to 100.
+        Components that are very large (i.e., much larger than the number of target prefixes)
+        likely are the result of many broad/narrow mappings
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    # FIXME to_digraph requires a single predicate for each s/o pair,
-    #  which isn't necessarily true, so there should be some kind of reasoning
-    #  step that picks which is "best"
-    graph = to_digraph(mappings)
+    graph = to_multidigraph(mappings)
     new_mappings = []
 
     components = sorted(
-        (c for c in nx.weakly_connected_components(graph) if len(c) > 2),  # noqa: PLR2004
+        (
+            component
+            for component in nx.weakly_connected_components(graph)
+            if minimum_component_size < len(component) <= maximum_component_size
+        ),
         key=len,
         reverse=True,
     )
     it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
     for _i, component in enumerate(it):
-        sg: nx.DiGraph = graph.subgraph(component).copy()
-        it.set_postfix(size=sg.number_of_nodes())
-        for s, o in itt.combinations(sg, 2):
+        sg: nx.MultiDiGraph = graph.subgraph(component).copy()
+        sg_len = sg.number_of_nodes()
+        it.set_postfix(size=sg_len)
+        inner_it = tqdm(
+            itt.combinations(sg, 2),
+            total=sg_len * (sg_len - 1) // 2,
+            unit_scale=True,
+            disable=not progress,
+            unit="edge",
+            leave=False,
+        )
+        for s, o in inner_it:
             if sg.has_edge(s, o):  # do not overwrite existing mappings
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this
             # nx.shortest_path(sg, s, o)
+            predicate_evidence_dict: t.DefaultDict[Reference, t.List[Evidence]] = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
-                predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
+                if _path_has_prefix_duplicates(path):
+                    continue
+                predicates = [k for _u, _v, k in path]
                 p = _reason_multiple_predicates(predicates)
-                if p:
+                if p is not None:
                     evidence = ReasonedEvidence(
                         justification=CHAIN_MAPPING,
                         mappings=[
                             Mapping(
                                 s=path_s,
                                 o=path_o,
-                                p=graph[path_s][path_o][PREDICATE_KEY],
-                                evidence=graph[path_s][path_o][EVIDENCE_KEY],
+                                p=path_p,
+                                evidence=graph[path_s][path_o][path_p][EVIDENCE_KEY],
                             )
-                            for path_s, path_o in path
+                            for path_s, path_o, path_p in path
                         ],
+                        # TODO add confidence that's inversely proportional to sg_len, i.e.
+                        # larger components should return less confident mappings
                     )
-                    new_mappings.append(Mapping(s=s, p=p, o=o, evidence=[evidence]))
-                    if backwards:
-                        new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=[evidence]))
+                    predicate_evidence_dict[p].append(evidence)
+
+            for p, evidences in predicate_evidence_dict.items():
+                new_mappings.append(Mapping(s=s, p=p, o=o, evidence=evidences))
+                if backwards:
+                    new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidences))
+
     return [*mappings, *new_mappings]
+
+
+def _path_has_prefix_duplicates(path) -> bool:
+    """Return if the path has multiple unique."""
+    elements = set()
+    for u, v, _ in path:
+        elements.add(u)
+        elements.add(v)
+    counter = Counter(element.prefix for element in elements)
+    return any(v > 1 for v in counter.values())
 
 
 def tabulate_index(index: Index) -> str:
@@ -482,7 +550,7 @@ def infer_mutual_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> r1, r2, r3, r4 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> mappings = [m1, m2, m3]

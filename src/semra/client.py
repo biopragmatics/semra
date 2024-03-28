@@ -18,6 +18,7 @@ from typing_extensions import TypeAlias
 import semra
 from semra import Evidence, MappingSet, Reference
 from semra.io import _get_name_by_curie
+from semra.rules import RELATIONS
 
 __all__ = [
     "Node",
@@ -53,6 +54,10 @@ class Neo4jClient:
         password = password or os.environ.get("NEO4J_PASSWORD")
 
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=(user, password), max_connection_lifetime=180)
+
+        query = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+        self._all_relations = {x for x, in self.read_query(query)}
+        self._rel_q = "|".join(f"`{x.curie}`" for x in RELATIONS if x.curie in self._all_relations)
 
     def __del__(self):
         """Ensure driver is shut down when client is destroyed."""
@@ -115,20 +120,19 @@ class Neo4jClient:
             unique identifier representing a SeMRA mapping.
         :return: A semantic mapping object
         """
-        if isinstance(curie, Reference):
-            curie = curie.curie
-        if not curie.startswith("semra.mapping:"):
-            curie = f"semra.mapping:{curie}"
+        curie = _safe_curie(curie, "semra.mapping")
         query = """\
         MATCH
-            (mapping {curie: $curie})-[:`owl:annotatedSource`]->(source) ,
-            (mapping {curie: $curie})-[:`owl:annotatedTarget`]->(target) ,
-            (mapping {curie: $curie})-[:hasEvidence]->(evidence)
+            (mapping {curie: $curie}) ,
+            (mapping)-[:`owl:annotatedSource`]->(source) ,
+            (mapping)-[:`owl:annotatedTarget`]->(target) ,
+            (mapping)-[:hasEvidence]->(evidence)
         OPTIONAL MATCH
             (evidence)-[:fromSet]->(mset)
         OPTIONAL MATCH
             (evidence)-[:hasAuthor]->(author)
         RETURN mapping, source.curie, target.curie, collect([evidence, mset, author.curie])
+        LIMIT 1
         """
         mapping, source_curie, target_curie, evidence_pairs = self.read_query(query, curie=curie)[0]
         evidence: list[Evidence] = []
@@ -248,19 +252,24 @@ as label, count UNION ALL
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
         return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
 
-    def get_exact_matches(self, curie: ReferenceHint) -> dict[Reference, str]:
+    def get_exact_matches(self, curie: ReferenceHint, *, max_distance: int = 7) -> dict[Reference, str]:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         if isinstance(curie, Reference):
             curie = curie.curie
-        query = "MATCH (a {curie: $curie})-[:`skos:exactMatch`]-(b) RETURN a.curie, a.name"
+        query = f"""\
+            MATCH (a {{curie: $curie}})-[:`skos:exactMatch`*1..{max_distance}]-(b)
+            WHERE a.curie <> b.curie
+            RETURN b.curie, b.name
+        """
         return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
 
     def get_connected_component(
-        self, curie: ReferenceHint
+        self, curie: ReferenceHint, max_distance: int = 7
     ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
         """Get the nodes and relations in the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
+        :param max_distance: The maximum number of hops to consider
         :return: A pair of:
 
             1. The nodes in the connected component, as Neo4j node objects
@@ -268,13 +277,14 @@ as label, count UNION ALL
         """
         if isinstance(curie, Reference):
             curie = curie.curie
-        query = """\
-            MATCH (:concept {curie: $curie})-[r *..3 {hasPrimary: true}]-(n:concept)
+        query = f"""\
+            MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
+            WHERE ALL(p IN r WHERE p.primary or p.secondary)
             RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
         """
         res = self.read_query(query, curie=curie)
         nodes = res[0][0]
-        relations = sorted({r for relations in res[0][1] for r in relations})
+        relations = sorted({r for relations in res[0][1] for r in relations}, key=lambda r: r.type)
         return nodes, relations
 
     def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
@@ -302,6 +312,23 @@ as label, count UNION ALL
         if isinstance(curie, Reference):
             curie = curie.curie
         return _get_name_by_curie(curie)
+
+    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> t.List:
+        """Get n mappings from a given set (by CURIE)."""
+        if isinstance(curie, Reference):
+            curie = curie.curie
+        query = f"""\
+        MATCH
+            (:mappingset {{curie: $curie}})<-[:fromSet]-()<-[:hasEvidence]-(n:mapping)
+        MATCH
+            (n)-[:`owl:annotatedSource`]->(s)
+        MATCH
+            (n)-[:`owl:annotatedTarget`]->(t)
+        WHERE s.name IS NOT NULL and t.name IS NOT NULL and s.curie < t.curie
+        RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
+        LIMIT {n}
+        """
+        return list(self.read_query(query, curie=curie))
 
 
 # Follows example here:

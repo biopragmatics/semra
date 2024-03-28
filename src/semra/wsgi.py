@@ -35,7 +35,18 @@ Bootstrap5(flask_app)
 
 
 EXAMPLE_CONCEPTS = ["efo:0002142"]
-EXAMPLE_MAPPINGS = ["25b67912bc720127a43a06ce4688b672", "5a56bf7ac409d8de84c3382a99e17715"]
+EXAMPLE_MAPPINGS = list(
+    client.read_query(
+        """\
+    MATCH
+        (n:mapping)-[`owl:annotatedSource`]-(s),
+        (n:mapping)-[`owl:annotatedTarget`]-(t)
+    WHERE s.name IS NOT NULL AND t.name IS NOT NULL and s.curie < t.curie
+    RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
+    LIMIT 5
+    """
+    )
+)
 
 
 PREDICATE_COUNTER = client.summarize_predicates()
@@ -150,8 +161,8 @@ def mark_exact_incorrect(source: str, target: str):
 def view_mapping_set(curie: str):
     """View a mapping set by its CURIE."""
     mapping_set = client.get_mapping_set(curie)
-    # TODO sample 10 mappings
-    return render_template("mapping_set.html", mapping_set=mapping_set)
+    examples = client.sample_mappings_from_set(curie, n=10)
+    return render_template("mapping_set.html", mapping_set=mapping_set, mapping_examples=examples)
 
 
 @api_router.get("/evidence/{curie}", response_model=Evidence)
@@ -171,7 +182,9 @@ def get_concept_cytoscape(
 
 
 @api_router.get("/mapping/{mapping}", response_model=Mapping)
-def get_mapping(mapping: str = Path(description="A mapping's MD5 hex digest.", examples=EXAMPLE_MAPPINGS)):
+def get_mapping(
+    mapping: str = Path(description="A mapping's MD5 hex digest.", examples=[t[0] for t in EXAMPLE_MAPPINGS])
+):
     """Get the mapping by its MD5 hex digest."""
     return client.get_mapping(mapping)
 

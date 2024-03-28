@@ -1,0 +1,26 @@
+{% macro mapping_table(mappings) -%}
+<table class="table">
+    <thead>
+    <tr>
+        <td>Hash</td>
+        <td>Subject</td>
+        <td>Predicate</td>
+        <td>Object</td>
+    </tr>
+    </thead>
+    <tbody>
+    {%- for curie, predicate, subject_curie, subject_name, target_curie, target_name in mappings -%}
+    <tr>
+        <td>
+            <a href="{{ url_for('view_mapping', curie=curie) }}">
+                <code>{{ curie[14:22]}}</code>
+            </a>
+        </td>
+        <td>{{subject_name}} ({{subject_curie}})</td>
+        <td>{{predicate}}</td>
+        <td>{{target_name}} ({{target_curie}})</td>
+    </tr>
+    {%- endfor -%}
+    </tbody>
+</table>
+{% endmacro %}

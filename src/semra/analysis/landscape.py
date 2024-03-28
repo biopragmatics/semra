@@ -134,7 +134,7 @@ def notebook(
         overlap_results.mappings, terms=terms, priority=overlap_results.counts_df.index
     )
 
-    display(landscape_results.describe())
+    _markdown(landscape_results.get_description_markdown())
 
     n_prefixes = len(overlap_results.counts_df.index)
     number_overlaps = 2**n_prefixes
@@ -498,17 +498,23 @@ class LandscapeResult:
     total_entity_estimate: int
     counter: t.Counter[t.FrozenSet[str]]
 
-    def describe(self) -> str:
+    def get_description_markdown(self) -> str:
         """Describe the results in English prose."""
-        return (
-            f"This estimates a total of {self.total_entity_estimate:,} unique entities.\n"
-            f"Of these, {self.at_least_1_mapping:,} ({self.at_least_1_mapping/self.total_entity_estimate:.1%}) have "
-            f"at least one mapping.\n{self.only_1_mapping:,} ({self.only_1_mapping/self.total_entity_estimate:.1%}) "
-            f"are unique to a single resource.\n{self.conserved:,} ({self.conserved/self.total_entity_estimate:.1%}) "
-            f"appear in all {len(self.priority)} resources.\n\nThis estimate is susceptible to several caveats:\n\n"
-            "- Missing mappings inflates this measurement\n"
-            "- Generic resources like MeSH contain irrelevant entities that can't be mapped\n"
-        )
+        return f"""\
+            This estimates a total of {self.total_entity_estimate:,} unique entities.
+
+            - {self.at_least_1_mapping:,} ({self.at_least_1_mapping/self.total_entity_estimate:.1%}) have
+              at least one mapping.
+            - {self.only_1_mapping:,} ({self.only_1_mapping/self.total_entity_estimate:.1%})
+              are unique to a single resource.
+            - {self.conserved:,} ({self.conserved/self.total_entity_estimate:.1%})
+              appear in all {len(self.priority)} resources.
+              
+            This estimate is susceptible to several caveats:
+            
+            - Missing mappings inflates this measurement
+            - Generic resources like MeSH contain irrelevant entities that can't be mapped
+        """
 
     def get_upset_df(self) -> pd.DataFrame:
         return upsetplot.from_memberships(*zip(*self.counter.most_common()))

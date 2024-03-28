@@ -188,7 +188,7 @@ class OverlapResults:
         directory.joinpath("graph.svg").write_bytes(self.counts_drawing)
 
 
-def overlap_analysis(configuration: Configuration, terms) -> OverlapResults:
+def overlap_analysis(configuration: Configuration, terms: XXTerms) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
         raise ValueError

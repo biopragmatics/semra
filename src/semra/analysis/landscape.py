@@ -475,6 +475,7 @@ def landscape_analysis(mappings: t.List[Mapping], terms: XXTerms, priority: t.Li
     #:    subset'd. For example, EFO covers many different domains, so when doing disease landscape
     #:    analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
     #:    ``efo:0000408``).
+    #: 5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
     total_entity_estimate = sum(counter.values())
 
     return LandscapeResult(

@@ -54,6 +54,7 @@ __all__ = [
     "infer_reversible",
     "flip",
     "to_digraph",
+    "to_multidigraph",
     "from_digraph",
     "infer_chains",
     "tabulate_index",
@@ -250,11 +251,10 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> r2 = get_test_reference(prefix="p2")
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-    >>> mappings = infer_reversible([m1])
+    >>> mappings = list(infer_reversible([m1]))
     >>> len(mappings)
     2
     >>> mappings[0] == m1
-    >>> mappings[1] ==
 
     .. warning::
 
@@ -270,7 +270,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> e1, e2 = get_test_evidence(2)
         >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
-        >>> mappings = infer_reversible([m1, m2])
+        >>> mappings = list(infer_reversible([m1, m2]))
         >>> len(mappings)
         3
         >>> mappings = assemble_evidences(mappings)
@@ -550,7 +550,7 @@ def infer_mutual_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> r1, r2, r3, r4 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> mappings = [m1, m2, m3]

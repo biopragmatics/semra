@@ -52,6 +52,8 @@ def notebook(
     matplotlib_formats: t.Optional[str] = "svg",
 ) -> None:
     """Run the landscape analysis inside a Jupyter notebook."""
+    if not configuration.raw_pickle_path:
+        raise ValueError
     if matplotlib_formats:
         set_matplotlib_formats(matplotlib_formats)
     if output_directory is None:

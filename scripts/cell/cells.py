@@ -23,6 +23,14 @@ from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_con
 MODULE = pystow.module("semra", "case-studies", "cells")
 PREFIXES = PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo", "ncit", "umls"]
 
+# some resources are generic, so we want to cut to a relevant subset
+SUBSETS = {
+    "mesh": ["mesh:D002477"],
+    "efo": ["efo:0000324"],
+    "ncit": ["ncit:C12508"],
+    "umls": ["sty:T025"],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
+}
+
 CONFIGURATION = Configuration(
     name="Cell and Cell Line Mappings",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, "

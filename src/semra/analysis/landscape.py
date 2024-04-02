@@ -15,6 +15,7 @@ import seaborn as sns
 import upsetplot
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
+from pyobo.getters import NoBuild
 from pyobo.sources.mesh import get_mesh_category_curies
 
 from semra import Configuration
@@ -225,12 +226,16 @@ def get_terms(priority: t.List[str], subsets: XXSubsets) -> XXTerms:
         id_name_mapping = pyobo.get_id_name_mapping(prefix)
         # do this in 2 steps to allow for querying parents inside a resource that
         # aren't defined by it (e.g., sty terms in umls)
-        hierarchy = pyobo.get_hierarchy(prefix)
-        subset = {
-            descendant
-            for parent_curie in subsets.get(prefix, [])
-            for descendant in nx.ancestors(hierarchy, parent_curie) or []
-        }
+        try:
+            hierarchy = pyobo.get_hierarchy(prefix)
+        except NoBuild:
+            subset = set()
+        else:
+            subset = {
+                descendant
+                for parent_curie in subsets.get(prefix, [])
+                for descendant in nx.ancestors(hierarchy, parent_curie) or []
+            }
         if subset:
             terms[prefix] = {luid: name for luid, name in id_name_mapping.items() if f"{prefix}:{luid}" in subset}
         else:

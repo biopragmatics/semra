@@ -21,7 +21,7 @@ from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
 MODULE = pystow.module("semra", "case-studies", "cells")
-PREFIXES = PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo"]
+PREFIXES = PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo", "ncit", "umls"]
 
 CONFIGURATION = Configuration(
     name="Cell and Cell Line Mappings",
@@ -30,18 +30,6 @@ CONFIGURATION = Configuration(
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        # Cellosaurus removed its xrefs to depmap after v43
-        # FIXME need to upgrade these mappings to SSSOM and trash this old source file
-        # Input(
-        #     source="custom",
-        #     extras={
-        #         "path": "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
-        #         "source_prefix": "cellosaurus",
-        #         "prefixes": PREFIXES,
-        #         "version": "43",
-        #         "license": "CC-BY-4.0",
-        #     },
-        # ),
         Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
         Input(prefix="bto", source="bioontologies", confidence=0.99),
         Input(prefix="cl", source="bioontologies", confidence=0.99),
@@ -54,6 +42,8 @@ CONFIGURATION = Configuration(
             extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
         ),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
+        Input(prefix="ncit", source="pyobo", confidence=0.99),
+        Input(prefix="umls", source="pyobo", confidence=0.99),
     ],
     add_labels=False,
     priority=PRIORITY,
@@ -67,6 +57,8 @@ CONFIGURATION = Configuration(
         Mutation(source="depmap", confidence=0.7),
         Mutation(source="ccle", confidence=0.7),
         Mutation(source="cellosaurus", confidence=0.7),
+        Mutation(source="ncit", confidence=0.7),
+        Mutation(source="umls", confidence=0.7),
     ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),

@@ -16,6 +16,7 @@ PREFIXES = PRIORITY = [
     "ncit",
     "orphanet",
     "orphanet.ordo",
+    "umls",
     "omim",
     "omim.ps",
     # "snomedct",
@@ -34,19 +35,24 @@ CONFIGURATION = Configuration(
         Input(prefix="efo", source="bioontologies", confidence=0.99),
         Input(prefix="mesh", source="pyobo", confidence=0.99),
         Input(prefix="ncit", source="bioontologies", confidence=0.85),
+        Input(prefix="umls", source="pyobo", confidence=0.9),
         Input(prefix="orphanet.ordo", source="bioontologies", confidence=0.9),
+        # Input(prefix="orphanet", source="bioontologies", confidence=0.9),
         # Input(prefix="hp", source="bioontologies", confidence=0.99),
     ],
     add_labels=True,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
+    post_remove_prefixes={"umls"},  # only needed these as intermediates
     remove_imprecise=False,
     mutations=[
         Mutation(source="doid", confidence=0.95),
         Mutation(source="mondo", confidence=0.95),
         Mutation(source="efo", confidence=0.90),
         Mutation(source="ncit", confidence=0.7),
+        Mutation(source="umls", confidence=0.7),
         Mutation(source="orphanet.ordo", confidence=0.7),
+        Mutation(source="orphanet", confidence=0.7),
         # Mutation(source="hp", confidence=0.7),
     ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
@@ -64,6 +70,7 @@ CONFIGURATION = Configuration(
 @click.command()
 def main():
     """Get the disease landscape database."""
+    # Takes about 2 hours
     CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=True)
 
 

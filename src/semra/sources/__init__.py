@@ -21,7 +21,9 @@ from semra.sources.ncit import (
     get_ncit_hgnc_mappings,
     get_ncit_uniprot_mappings,
 )
+from semra.sources.omim import get_omim_gene_mappings
 from semra.sources.pubchem import get_pubchem_mesh_mappings
+from semra.sources.wikidata import get_wikidata_mappings
 from semra.struct import Mapping
 
 __all__ = [
@@ -42,6 +44,8 @@ __all__ = [
     "from_biomappings_negative",
     "get_gilda_mappings",
     "get_clo_mappings",
+    "get_wikidata_mappings",
+    "get_omim_gene_mappings",
 ]
 
 SOURCE_RESOLVER: FunctionResolver[t.Callable[[], t.List[Mapping]]] = FunctionResolver(
@@ -61,6 +65,8 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], t.List[Mapping]]] = FunctionRes
         get_biomappings_positive_mappings,
         get_gilda_mappings,
         get_clo_mappings,
+        get_wikidata_mappings,
+        get_omim_gene_mappings,
     ]
 )
 

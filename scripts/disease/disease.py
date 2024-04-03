@@ -43,7 +43,6 @@ CONFIGURATION = Configuration(
     add_labels=True,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
-    post_remove_prefixes={"umls"},  # only needed these as intermediates
     remove_imprecise=False,
     mutations=[
         Mutation(source="doid", confidence=0.95),
@@ -71,7 +70,7 @@ CONFIGURATION = Configuration(
 def main():
     """Get the disease landscape database."""
     # Takes about 2 hours
-    CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=True)
+    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
 
 
 if __name__ == "__main__":

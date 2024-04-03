@@ -1,0 +1,7 @@
+source_prefix	complexportal	fplx	go	chembl.target	wikidata	scomp
+complexportal	4623	7	4	204	3948	2
+fplx	7	782	82	0	399	66
+go	4	82	3852	0	60	31
+chembl.target	204	0	0	0	0	0
+wikidata	3948	399	60	0	0	60
+scomp	2	66	31	0	60	135

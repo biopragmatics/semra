@@ -24,7 +24,6 @@ PREFIXES = PRIORITY = [
     "ncit",
     "wikidata",
 ]
-# consider adding OMIM mapping sheet that isn't part of an ontology resource https://omim.org/static/omim/data/mim2gene.txt
 
 CONFIGURATION = Configuration(
     name="Gene Landscape Analysis",

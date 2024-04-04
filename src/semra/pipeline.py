@@ -95,8 +95,10 @@ class Configuration(BaseModel):
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: Optional[t.List[str]] = None
-    keep_prefixes: Optional[t.List[str]] = None
+    remove_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to remove before processing")
+    keep_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to keep before processing")
+    post_remove_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to remove after processing")
+    post_keep_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to keep after processing")
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
@@ -197,6 +199,8 @@ def get_mappings_from_config(
         ],
         remove_prefix_set=configuration.remove_prefixes,
         keep_prefix_set=configuration.keep_prefixes,
+        post_remove_prefixes=configuration.post_remove_prefixes,
+        post_keep_prefixes=configuration.post_keep_prefixes,
         remove_imprecise=configuration.remove_imprecise,
     )
     prioritized_mappings = prioritize(processed_mappings, configuration.priority)
@@ -275,8 +279,10 @@ def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
 def process(
     mappings: t.List[Mapping],
     upgrade_prefixes=None,
-    remove_prefix_set=None,
-    keep_prefix_set=None,
+    remove_prefix_set: t.Optional[t.Collection[str]]=None,
+    keep_prefix_set: t.Optional[t.Collection[str]]=None,
+    post_remove_prefixes: t.Optional[t.Collection[str]]=None,
+    post_keep_prefixes: t.Optional[t.Collection[str]]=None,
     *,
     remove_imprecise: bool = True,
 ) -> t.List[Mapping]:
@@ -355,6 +361,12 @@ def process(
 
     # filter out self mappings again, just in case
     mappings = filter_self_matches(mappings)
+
+    if post_keep_prefixes:
+        mappings = keep_prefixes(mappings, post_keep_prefixes)
+
+    if post_remove_prefixes:
+        mappings = filter_prefixes(mappings, post_remove_prefixes)
 
     return mappings
 

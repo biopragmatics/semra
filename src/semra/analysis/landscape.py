@@ -47,8 +47,8 @@ def _markdown(x):
 
 def notebook(
     configuration: Configuration,
-    subsets: XXSubsets,
     *,
+    subsets: t.Optional[XXSubsets] = None,
     output_directory: t.Union[str, Path, None] = None,
     matplotlib_formats: t.Optional[str] = "svg",
 ) -> None:
@@ -219,9 +219,11 @@ def overlap_analysis(configuration: Configuration, terms: XXTerms) -> OverlapRes
     )
 
 
-def get_terms(priority: t.List[str], subsets: XXSubsets) -> XXTerms:
+def get_terms(priority: t.List[str], subsets: t.Optional[XXSubsets] = None) -> XXTerms:
     """Get the set of identifiers for each of the resources."""
     terms = {}
+    if subsets is None:
+        subsets = {}
     for prefix in priority:
         id_name_mapping = pyobo.get_id_name_mapping(prefix)
         # do this in 2 steps to allow for querying parents inside a resource that
@@ -230,6 +232,8 @@ def get_terms(priority: t.List[str], subsets: XXSubsets) -> XXTerms:
             hierarchy = pyobo.get_hierarchy(prefix)
         except NoBuild:
             subset = set()
+        except Exception as e:
+            raise ValueError(f"Failed on {prefix}") from e
         else:
             subset = {
                 descendant
@@ -277,7 +281,7 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
            ("P3", "P1"): {"X"},
         }
     """
-    index = get_index(mappings, progress=False)
+    index = get_index(mappings, progress=True, leave=False)
     directed: t.DefaultDict[t.Tuple[str, str], t.Set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
     for s, p, o in index:

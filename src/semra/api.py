@@ -91,12 +91,13 @@ EVIDENCE_KEY = "evidence"
 Index = t.Dict[Triple, t.List[Evidence]]
 
 
-def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
+def _tqdm(mappings, desc: str | None = None, *, progress: bool = True, leave: bool = True):
     return tqdm(
         mappings,
         unit_scale=True,
         unit="mapping",
         desc=desc,
+        leave=leave,
         disable=not progress,
     )
 
@@ -190,10 +191,10 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
 
-def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
+def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool = False) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd: t.DefaultDict[Triple, t.List[Evidence]] = defaultdict(list)
-    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress):
+    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
 

@@ -37,9 +37,9 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
         if not sp or not tp:
             continue
         m = Mapping(
-            s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
+            s=Reference(prefix=bioregistry.normalize_prefix(sp), identifier=bioregistry.standardize_identifier(sp, si)),
             p=EXACT_MATCH,
-            o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
+            o=Reference(prefix=bioregistry.normalize_prefix(tp), identifier=bioregistry.standardize_identifier(tp, ti)),
             evidence=[
                 SimpleEvidence(
                     justification=LEXICAL_MAPPING,

@@ -12,7 +12,7 @@ from semra.sources.biopragmatics import (
 )
 from semra.sources.chembl import get_chembl_compound_mappings, get_chembl_protein_mappings
 from semra.sources.clo import get_clo_mappings
-from semra.sources.famplex import get_famplex_mappings
+from semra.sources.famplex import get_fplx_mappings
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.intact import get_intact_complexportal_mappings, get_intact_reactome_mappings
 from semra.sources.ncit import (
@@ -35,7 +35,7 @@ __all__ = [
     "get_ncit_hgnc_mappings",
     "get_pubchem_mesh_mappings",
     "get_chembl_protein_mappings",
-    "get_famplex_mappings",
+    "get_fplx_mappings",
     "get_intact_complexportal_mappings",
     "get_intact_reactome_mappings",
     "get_custom",
@@ -54,7 +54,7 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], t.List[Mapping]]] = FunctionRes
         get_chembl_protein_mappings,
         get_intact_reactome_mappings,
         get_intact_complexportal_mappings,
-        get_famplex_mappings,
+        get_fplx_mappings,
         get_pubchem_mesh_mappings,
         get_ncit_chebi_mappings,
         get_ncit_hgnc_mappings,

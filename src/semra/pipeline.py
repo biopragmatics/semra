@@ -41,6 +41,7 @@ from semra.sources.biopragmatics import (
     get_biomappings_positive_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
+from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
 
 __all__ = [
@@ -60,7 +61,7 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda", "wikidata"]
     prefix: Optional[str] = None
     confidence: float = 1.0
     extras: t.Dict[str, Any] = Field(default_factory=dict)
@@ -260,6 +261,8 @@ def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
         elif inp.source == "custom":
             func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
             mappings.extend(func())
+        elif inp.source == "wikidata":
+            mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
         elif inp.source == "sssom":
             mappings.extend(from_sssom(inp.prefix, **inp.extras))
         elif inp.source == "cache":

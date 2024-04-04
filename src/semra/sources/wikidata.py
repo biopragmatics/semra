@@ -7,7 +7,10 @@ from curies import Reference
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
 
-__all__ = ["get_wikidata_mappings"]
+__all__ = [
+    "get_wikidata_mappings",
+    "get_wikidata_mappings_by_prefix",
+]
 
 
 def get_wikidata_mappings(prop: str, predicate: t.Optional[Reference] = None) -> t.List[Mapping]:

@@ -279,10 +279,10 @@ def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
 def process(
     mappings: t.List[Mapping],
     upgrade_prefixes=None,
-    remove_prefix_set: t.Optional[t.Collection[str]]=None,
-    keep_prefix_set: t.Optional[t.Collection[str]]=None,
-    post_remove_prefixes: t.Optional[t.Collection[str]]=None,
-    post_keep_prefixes: t.Optional[t.Collection[str]]=None,
+    remove_prefix_set: t.Optional[t.Collection[str]] = None,
+    keep_prefix_set: t.Optional[t.Collection[str]] = None,
+    post_remove_prefixes: t.Optional[t.Collection[str]] = None,
+    post_keep_prefixes: t.Optional[t.Collection[str]] = None,
     *,
     remove_imprecise: bool = True,
 ) -> t.List[Mapping]:

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, root_validator
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from semra.api import (
     assemble_evidences,

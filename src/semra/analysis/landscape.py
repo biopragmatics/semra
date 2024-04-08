@@ -68,7 +68,7 @@ def notebook(
     raw_mappings = from_pickle(configuration.raw_pickle_path)
     terms_observed = _index_entities(raw_mappings)
 
-    summary_df = get_summary_df(priority=configuration.priority, terms=terms, terms_observed=terms_observed)
+    summary_df = get_summary_df(prefixes=configuration.priority, terms=terms, terms_observed=terms_observed)
     number_pyobo_unavailable = (summary_df["terms"] == 0).sum()
     _markdown(
         """\
@@ -307,9 +307,28 @@ def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -
     return count, exact
 
 
-def get_summary_df(priority: t.List[str], terms: XXTerms, terms_observed: XXObservedTerms) -> pd.DataFrame:
+def get_summary_df(prefixes: t.List[str], terms: XXTerms, terms_observed: XXObservedTerms) -> pd.DataFrame:
+    """Create a summary dataframe for the prefixes in a landscape analysis.
+
+    :param prefixes: The list of prefixes
+    :param terms: The dictionary of prefix -> collection of identifiers from :mod:`pyobo`
+    :param terms_observed: The dictionary of prefix -> collection of identifiers encountered in the mappings
+        appearing in the landscape analysis. This should be calculated from raw mappings to make sure that
+        it accounts for any that might be filtered out during processing.
+    :return: A pandas dataframe with the following columns:
+
+        1. Prefix
+        2. Name
+        3. License
+        4. Version
+        5. Terms - the number of terms in the resource. If the full term list can be looked up with :mod:`pyobo`, then
+           this is considered as exact. Otherwise, this will be estimated based on the number of unique terms appearing
+           in the mappings. This is typically an underestimate since not necessarily all terms appear in mappings.
+        6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the resource. Otherwise,
+           will be "false"
+    """
     summary_rows = []
-    for prefix in priority:
+    for prefix in prefixes:
         count, exact = _count_terms(prefix, terms, terms_observed)
         row = (
             prefix,
@@ -532,6 +551,7 @@ class LandscapeResult:
     distribution: t.Counter[int] = field(init=False)
 
     def __post_init__(self):
+        """Post initialize the landscape result object."""
         self.distribution = self.get_distribution()
 
     def get_description_markdown(self) -> str:
@@ -553,6 +573,7 @@ class LandscapeResult:
         """
 
     def get_upset_df(self) -> pd.DataFrame:
+        """Format the landscape analysis's result counter into an :mod:`upsetplot`-compatible dataframe."""
         return upsetplot.from_memberships(*zip(*self.counter.most_common()))
 
     def plot_upset(self):
@@ -577,7 +598,7 @@ class LandscapeResult:
         plot_result["totals"].set_xscale("log")  # gets domain error
 
     def get_distribution(self) -> t.Counter[int]:
-        """Get the distribution."""
+        """Get the distribution of component sizes."""
         counter: t.Counter[int] = Counter()
         for prefixes, count in self.counter.items():
             counter[len(prefixes)] += count
@@ -595,6 +616,7 @@ class LandscapeResult:
         width_ratio: float = 0.65,
         top_ratio: float = 20.0,
     ) -> None:
+        """Plot the distribution of component sizes."""
         fig, ax = plt.subplots(figsize=(len(self.distribution) * width_ratio, height))
         sns.barplot(self.distribution, ax=ax)
 

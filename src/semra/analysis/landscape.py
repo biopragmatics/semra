@@ -19,7 +19,7 @@ from pyobo.getters import NoBuild
 from pyobo.sources.mesh import get_mesh_category_curies
 
 from semra import Configuration
-from semra.api import get_index, to_multidigraph
+from semra.api import get_index, iter_components
 from semra.io import _safe_get_version, from_pickle
 from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping
@@ -38,6 +38,7 @@ __all__ = [
 DirectedIndex = t.Dict[t.Tuple[str, str], t.Set[str]]
 XXCounter = t.Counter[t.Tuple[str, str]]
 XXTerms = t.Mapping[str, t.Mapping[str, str]]
+XXObservedTerms = t.Dict[str, t.Set[str]]
 XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
@@ -51,6 +52,8 @@ def notebook(
     subsets: t.Optional[XXSubsets] = None,
     output_directory: t.Union[str, Path, None] = None,
     matplotlib_formats: t.Optional[str] = "svg",
+    show: bool = True,
+    minimum_count: t.Optional[int] = None,
 ) -> None:
     """Run the landscape analysis inside a Jupyter notebook."""
     if not configuration.raw_pickle_path:
@@ -61,7 +64,11 @@ def notebook(
         output_directory = configuration.raw_pickle_path.parent
     output_directory = Path(output_directory).expanduser().resolve()
     terms = get_terms(configuration.priority, subsets)
-    summary_df = get_summary_df(priority=configuration.priority, terms=terms)
+
+    raw_mappings = from_pickle(configuration.raw_pickle_path)
+    terms_observed = _index_entities(raw_mappings)
+
+    summary_df = get_summary_df(priority=configuration.priority, terms=terms, terms_observed=terms_observed)
     number_pyobo_unavailable = (summary_df["terms"] == 0).sum()
     _markdown(
         """\
@@ -75,7 +82,9 @@ def notebook(
         _markdown(
             f"""\
         {number_pyobo_unavailable} resources were not available through
-        [PyOBO](https://github.com/biopragmatics/pyobo) and therefore list zero terms.
+        [PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the number
+        of terms in that resource based on the ones appearing in mappings. Note that these
+        are typically an underestimate.
         """
         )
 
@@ -91,7 +100,9 @@ def notebook(
     to the processed mappings, then compare them.
     """
     )
-    overlap_results = overlap_analysis(configuration, terms)
+    overlap_results = overlap_analysis(
+        configuration, terms, minimum_count=minimum_count, raw_mappings=raw_mappings, terms_observed=terms_observed
+    )
     overlap_results.write(output_directory)
     _markdown("First, we summarize the raw mappings, i.e., the mappings that are directly available from the sources")
     display(overlap_results.raw_counts_df)
@@ -134,7 +145,10 @@ def notebook(
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = landscape_analysis(
-        overlap_results.mappings, terms=terms, priority=overlap_results.counts_df.index
+        overlap_results.mappings,
+        prefix_to_identifiers=terms,
+        priority=overlap_results.counts_df.index,
+        prefix_to_observed_identifiers=terms_observed,
     )
 
     _markdown(landscape_results.get_description_markdown())
@@ -152,7 +166,8 @@ def notebook(
     landscape_results.plot_upset()
     plt.tight_layout()
     plt.savefig(output_directory.joinpath("landscape_upset.svg"))
-    plt.show()
+    if show:
+        plt.show()
 
     _markdown(
         """\
@@ -163,7 +178,24 @@ def notebook(
     landscape_results.plot_distribution()
     plt.tight_layout()
     plt.savefig(output_directory.joinpath("landscape_histogram.svg"))
-    plt.show()
+    if show:
+        plt.show()
+
+    reduced = landscape_results.total_entity_estimate
+    total_terms = 0
+    for prefix in configuration.priority:
+        count, _exact = _count_terms(prefix, terms=terms, terms_observed=terms_observed)
+        total_terms += count
+    reduction_percent = (total_terms - reduced) / total_terms
+    _markdown(
+        rf"""\
+        The landscape of {len(configuration.priority)} resources has {total_terms:,} total terms.
+        After merging redundant nodes based on mappings, inference, and reasoning, there
+        are {reduced:,} unique concepts. Using the reduction formula
+        $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
+        this is a {reduction_percent:.1%} reduction.
+        """
+    )
 
 
 @dataclass
@@ -177,11 +209,14 @@ class OverlapResults:
     counts_df: pd.DataFrame
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
+    minimum_count: t.Optional[int] = None
     counts_drawing: bytes = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the object by creating a drawing of the counter."""
-        self.counts_drawing = draw_counter(self.counts, cls=nx.Graph, minimum_count=20)
+        if self.minimum_count is None:
+            self.minimum_count = 20
+        self.counts_drawing = draw_counter(self.counts, cls=nx.Graph, minimum_count=self.minimum_count)
 
     def write(self, directory: t.Union[str, Path]) -> None:
         """Write the tables and charts to a directory."""
@@ -191,19 +226,29 @@ class OverlapResults:
         directory.joinpath("graph.svg").write_bytes(self.counts_drawing)
 
 
-def overlap_analysis(configuration: Configuration, terms: XXTerms) -> OverlapResults:
+def overlap_analysis(
+    configuration: Configuration,
+    terms: XXTerms,
+    *,
+    terms_observed: XXObservedTerms,
+    raw_mappings: t.List[Mapping],
+    minimum_count: t.Optional[int] = None,
+) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
-        raise ValueError
-    raw_mappings = from_pickle(configuration.raw_pickle_path)
+        raise ValueError("No raw pickle path available")
     raw_index = _get_summary_index(raw_mappings)
-    _, raw_counts_df = get_symmetric_counts_df(raw_index, terms, priority=configuration.priority)
+    _, raw_counts_df = get_symmetric_counts_df(
+        raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
+    )
 
     if not configuration.processed_pickle_path:
-        raise ValueError
+        raise ValueError("No processed pickle path available")
     mappings = from_pickle(configuration.processed_pickle_path)
     directed = _get_summary_index(mappings)
-    counts, counts_df = get_symmetric_counts_df(directed, terms, priority=configuration.priority)
+    counts, counts_df = get_symmetric_counts_df(
+        directed, terms, priority=configuration.priority, terms_observed=terms_observed
+    )
 
     gains_df = counts_df - raw_counts_df
     percent_gains_df = 100.0 * (counts_df - raw_counts_df) / raw_counts_df
@@ -216,6 +261,7 @@ def overlap_analysis(configuration: Configuration, terms: XXTerms) -> OverlapRes
         counts_df=counts_df,
         gains_df=gains_df,
         percent_gains_df=percent_gains_df,
+        minimum_count=minimum_count,
     )
 
 
@@ -247,18 +293,35 @@ def get_terms(priority: t.List[str], subsets: t.Optional[XXSubsets] = None) -> X
     return terms
 
 
-def get_summary_df(priority: t.List[str], terms: XXTerms) -> pd.DataFrame:
-    summary_rows = [
-        (
+def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> t.Tuple[int, bool]:
+    terms_exact = terms.get(prefix)
+    if terms_exact:
+        exact = True
+        count = len(terms_exact)
+    elif prefix in terms_observed:
+        exact = False
+        count = len(terms_observed[prefix])
+    else:
+        exact = False
+        count = 0
+    return count, exact
+
+
+def get_summary_df(priority: t.List[str], terms: XXTerms, terms_observed: XXObservedTerms) -> pd.DataFrame:
+    summary_rows = []
+    for prefix in priority:
+        count, exact = _count_terms(prefix, terms, terms_observed)
+        row = (
             prefix,
             bioregistry.get_name(prefix),
             bioregistry.get_license(prefix),
             _safe_get_version(prefix),
-            len(terms.get(prefix, [])),
+            count,
+            exact,
         )
-        for prefix in priority
-    ]
-    df = pd.DataFrame(summary_rows, columns=["prefix", "name", "license", "version", "terms"])
+        summary_rows.append(row)
+
+    df = pd.DataFrame(summary_rows, columns=["prefix", "name", "license", "version", "terms", "exact"])
     df = df.set_index("prefix")
     return df
 
@@ -291,45 +354,12 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
     return dict(directed)
 
 
-# def _get_asymmetric_counts_df(directed: DirectedIndex, terms: XXTerms, priority: t.List[str]):
-#     asymmetric_counts = Counter()
-#     for (l, r), l_entities in directed.items():
-#         l_terms = terms.get(l)
-#         if l_terms:
-#             count = len(l_entities.intersection(l_terms))
-#         else:
-#             count = len(l_entities)
-#         asymmetric_counts[l, r] = count
-#
-#     df = counter_to_df(asymmetric_counts, priority=priority, default=0).fillna(0).astype(int)
-#     return asymmetric_counts, df
-
-
-# def _get_asymmetric_percents_df(asymmetric_counts, terms: XXTerms, priority: t.List[str]):
-#     """
-#     The following summary looks for each ordered pair of resources, what
-#     percentage of each resources' terms are mapped to the other resource.
-#     Because each resource is a different size, this is an asymmetric measurement.
-#
-#     The way to read this table is the horizontal index corresponds to the
-#     source prefix and the columns correspond to the target prefix. This means
-#     in the row with label "efo" and column with label "mesh" that has 14% means
-#     that 14% of EFO can be mapped to MeSH.
-#
-#     SVG(draw_counter(asymmetric, count_format=".1%"))
-#
-#     (asymmetric_summary_df * 100).round(2)
-#     """
-#     asymmetric = Counter()
-#     for (left_prefix, right_prefix), count in asymmetric_counts.items():
-#         denominator = len(terms.get(left_prefix, []))
-#         asymmetric[left_prefix, right_prefix] = count / denominator if denominator > 0 else None
-#     df = counter_to_df(asymmetric, priority=priority)
-#     return df, asymmetric
-
-
 def get_symmetric_counts_df(
-    directed: DirectedIndex, terms: XXTerms, priority: t.List[str]
+    directed: DirectedIndex,
+    terms: XXTerms,
+    priority: t.List[str],
+    *,
+    terms_observed: XXObservedTerms,
 ) -> t.Tuple[XXCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter: XXCounter = Counter()
@@ -339,44 +369,20 @@ def get_symmetric_counts_df(
         left_all_terms: t.Collection[str] = terms.get(left_prefix, [])
         if left_all_terms:
             left_observed_terms.intersection_update(left_all_terms)
+
         right_observed_terms = directed[right_prefix, left_prefix]
         right_all_terms: t.Collection[str] = terms.get(right_prefix, [])
         if right_all_terms:
             right_observed_terms.intersection_update(right_all_terms)
+
         counter[left_prefix, right_prefix] = max(len(left_observed_terms), len(right_observed_terms))
 
     for prefix in priority:
-        tt: t.Collection[str] = terms.get(prefix, [])
-        if tt:
-            counter[prefix, prefix] = len(tt)
+        count, _exact = _count_terms(prefix, terms, terms_observed)
+        counter[prefix, prefix] = count
 
-    df = counter_to_df(counter, priority=priority, default=0).fillna(0).astype(int)
+    df = counter_to_df(counter, priority=priority).fillna(0).astype(int)
     return counter, df
-
-
-# def _get_symmetric_percents_df(symmetric_counts, terms: XXTerms, priority: t.List[str]):
-#     """
-#     # clip since there might be some artifacts of mappings to terms that don't exist anymore
-#     (symmetric_df * 100).round(3)
-#     SVG(draw_counter(symmetric, cls=nx.Graph, count_format=".2%", minimum_count=0.01))
-#     """
-#     # intersect with the terms for each to make sure we're not keeping any mappings that are irrelevant
-#     symmetric = Counter()
-#     for (l, r), count in symmetric_counts.items():
-#         # FIXME - estimate terms lists based on what appears in the mappings
-#         if terms[r] and terms[l]:
-#             denom = max(len(terms[r]), len(terms[l]))
-#         elif terms[r]:
-#             denom = len(terms[r])
-#         elif terms[l]:
-#             denom = len(terms[l])
-#         else:
-#             denom = None
-#             continue
-#         symmetric[l, r] = count / denom
-#
-#     symmetric_df = counter_to_df(symmetric, priority=priority).fillna(0.0)
-#     return symmetric, symmetric_df
 
 
 def draw_counter(
@@ -414,9 +420,7 @@ def draw_counter(
     return agraph.draw(prog=prog, format=output_format)
 
 
-def counter_to_df(
-    counter: XXCounter, priority: t.List[str], default: float = 1.0, drop_missing: bool = True
-) -> pd.DataFrame:
+def counter_to_df(counter: XXCounter, priority: t.List[str], drop_missing: bool = True) -> pd.DataFrame:
     """Get a dataframe from a counter."""
     rows = [[counter.get((p1, p2), None) for p2 in priority] for p1 in priority]
     df = pd.DataFrame(rows, columns=priority, index=priority)
@@ -429,16 +433,6 @@ def counter_to_df(
     return df
 
 
-def _get_counter(mappings: t.Iterable[Mapping]) -> t.Counter[t.FrozenSet[str]]:
-    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
-    counter: t.Counter[t.FrozenSet[str]] = Counter()
-    graph = to_multidigraph(mappings)
-    for component in nx.weakly_connected_components(graph):
-        prefixes = frozenset(r.prefix for r in component)
-        counter[prefixes] += 1
-    return counter
-
-
 def _index_entities(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
     entities = defaultdict(set)
     for mapping in mappings:
@@ -447,10 +441,26 @@ def _index_entities(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
     return dict(entities)
 
 
-def landscape_analysis(mappings: t.List[Mapping], terms: XXTerms, priority: t.List[str]) -> "LandscapeResult":
+def _count_components(mappings: t.Iterable[Mapping], priority: t.List[str]) -> t.Counter[t.FrozenSet[str]]:
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
+    counter: t.Counter[t.FrozenSet[str]] = Counter()
+    priority_set = set(priority)
+    for component in iter_components(mappings):
+        # subset to the priority prefixes
+        prefixes = frozenset(r.prefix for r in component if r.prefix in priority_set)
+        counter[prefixes] += 1
+    return counter
+
+
+def landscape_analysis(
+    mappings: t.List[Mapping],
+    prefix_to_identifiers: XXTerms,
+    priority: t.List[str],
+    *,
+    prefix_to_observed_identifiers: XXObservedTerms,
+) -> "LandscapeResult":
     """Run the landscape analysis."""
-    entities = _index_entities(mappings)
-    counter = _get_counter(mappings)
+    counter = _count_components(mappings=mappings, priority=priority)
 
     #: A count of the number of entities that have at least mapping.
     #: This is calculated by the appearance of a weakly connected component
@@ -460,13 +470,20 @@ def landscape_analysis(mappings: t.List[Mapping], terms: XXTerms, priority: t.Li
 
     unique_to_single: t.Counter[str] = Counter()
     for prefix in priority:
-        prefix_terms = terms.get(prefix)
-        if not prefix_terms:
-            continue
-
-        prefix_terms_set = set(prefix_terms)
-        mapped_terms: t.Set[str] = entities[prefix]
-        counter[frozenset([prefix])] = unique_to_single[prefix] = len(prefix_terms_set - mapped_terms)
+        identifiers = prefix_to_identifiers.get(prefix)
+        if not identifiers:
+            # The term list for the resource corresponding to the prefix is unavailable.
+            # There might still be observed terms for this prefix, but they are all appearing
+            # in mappings. Therefore, the count for this resource is zero, since all entities
+            # are observed in mappings
+            count = 0
+        else:
+            # Get the terms appearing in mappings for this vocabulary, then get the difference
+            # between the whole term list and the ones appearing in mappings to count how
+            # many are unique to the specific resource represented by the prefix
+            unmapped_terms = set(identifiers).difference(prefix_to_observed_identifiers[prefix])
+            count = len(unmapped_terms)
+        counter[frozenset([prefix])] = unique_to_single[prefix] = count
 
     #: A count of the number of entities that have no mappings.
     #: This is calculated based on the set difference between entities
@@ -512,6 +529,10 @@ class LandscapeResult:
     conserved: int
     total_entity_estimate: int
     counter: t.Counter[t.FrozenSet[str]]
+    distribution: t.Counter[int] = field(init=False)
+
+    def __post_init__(self):
+        self.distribution = self.get_distribution()
 
     def get_description_markdown(self) -> str:
         """Describe the results in English prose."""
@@ -566,7 +587,6 @@ class LandscapeResult:
         for i in range(1, max_key):
             if i not in counter:
                 counter[i] = 0
-
         return counter
 
     def plot_distribution(
@@ -575,11 +595,10 @@ class LandscapeResult:
         width_ratio: float = 0.65,
         top_ratio: float = 20.0,
     ) -> None:
-        vv = self.get_distribution()
-        fig, ax = plt.subplots(figsize=(len(vv) * width_ratio, height))
-        sns.barplot(vv, ax=ax)
+        fig, ax = plt.subplots(figsize=(len(self.distribution) * width_ratio, height))
+        sns.barplot(self.distribution, ax=ax)
 
-        for index, value in vv.items():
+        for index, value in self.distribution.items():
             plt.text(
                 index - 1, value + 0.2, f"{value:,}\n({value/self.total_entity_estimate:.1%})", ha="center", va="bottom"
             )
@@ -591,4 +610,4 @@ class LandscapeResult:
         # since we're in a log scale, pad half of the max value to the top to make sure
         # the counts fit in the box
         a, b = ax.get_ylim()
-        ax.set_ylim([a, b + top_ratio * max(vv.values())])
+        ax.set_ylim([a, b + top_ratio * max(self.distribution.values())])

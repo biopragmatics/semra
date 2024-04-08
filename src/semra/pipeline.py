@@ -151,6 +151,22 @@ class Configuration(BaseModel):
         """Run assembly based on this configuration."""
         return get_mappings_from_config(self, refresh_raw=refresh_raw, refresh_processed=refresh_processed)
 
+    def read_raw_mappings(self) -> t.List[Mapping]:
+        """Read raw mappings from pickle, if already cached."""
+        if self.raw_pickle_path is None:
+            raise ValueError
+        if not self.raw_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.raw_pickle_path)
+
+    def read_processed_mappings(self) -> t.List[Mapping]:
+        """Read processed mappings from pickle, if already cached."""
+        if self.processed_pickle_path is None:
+            raise ValueError
+        if not self.processed_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.processed_pickle_path)
+
 
 def get_mappings_from_config(
     configuration: Configuration,

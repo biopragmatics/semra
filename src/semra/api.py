@@ -344,6 +344,12 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
     return graph
 
 
+def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[t.Set[Reference]]:
+    """Iterate over connected components in the multidigraph view over the mappings."""
+    graph = to_multidigraph(mappings)
+    return nx.weakly_connected_components(graph)
+
+
 def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
     """Convert mappings into a multi directed graph data model.
 

@@ -32,6 +32,14 @@ TxResult: TypeAlias = t.Optional[t.List[t.List[Any]]]
 ReferenceHint: TypeAlias = t.Union[str, Reference]
 
 
+def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
+    if isinstance(curie_or_luid, Reference):
+        return curie_or_luid.curie
+    if curie_or_luid.startswith(prefix):
+        return curie_or_luid
+    return f"{prefix}:{curie_or_luid}"
+
+
 class Neo4jClient:
     """A client to Neo4j."""
 
@@ -171,10 +179,7 @@ class Neo4jClient:
             For example, use ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
         :return: A mapping set object
         """
-        if isinstance(curie, Reference):
-            curie = curie.curie
-        if not curie.startswith("semra.mappingset:"):
-            curie = f"semra.mappingset:{curie}"
+        curie = _safe_curie(curie, "semra.mappingset")
         node = self._get_node_by_curie(curie)
         return MappingSet.parse_obj(node)
 
@@ -184,8 +189,7 @@ class Neo4jClient:
         :param curie: The CURIE for a mapping set, using ``semra.evidence`` as a prefix.
         :return: An evidence object
         """
-        if isinstance(curie, Reference):
-            curie = curie.curie
+        curie = _safe_curie(curie, "semra.evidence")
         query = "MATCH (n {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
         return res[0][0]

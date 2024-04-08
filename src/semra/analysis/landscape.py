@@ -539,11 +539,11 @@ class LandscapeResult:
         return f"""\
             This estimates a total of {self.total_entity_estimate:,} unique entities.
 
-            - {self.at_least_1_mapping:,} ({self.at_least_1_mapping/self.total_entity_estimate:.1%}) have
+            - {self.at_least_1_mapping:,} ({self.at_least_1_mapping / self.total_entity_estimate:.1%}) have
               at least one mapping.
-            - {self.only_1_mapping:,} ({self.only_1_mapping/self.total_entity_estimate:.1%})
+            - {self.only_1_mapping:,} ({self.only_1_mapping / self.total_entity_estimate:.1%})
               are unique to a single resource.
-            - {self.conserved:,} ({self.conserved/self.total_entity_estimate:.1%})
+            - {self.conserved:,} ({self.conserved / self.total_entity_estimate:.1%})
               appear in all {len(self.priority)} resources.
 
             This estimate is susceptible to several caveats:
@@ -600,7 +600,11 @@ class LandscapeResult:
 
         for index, value in self.distribution.items():
             plt.text(
-                index - 1, value + 0.2, f"{value:,}\n({value/self.total_entity_estimate:.1%})", ha="center", va="bottom"
+                index - 1,
+                value + 0.2,
+                f"{value:,}\n({value / self.total_entity_estimate:.1%})",
+                ha="center",
+                va="bottom",
             )
 
         ax.set_xlabel("# Resources a Concept Appears in")

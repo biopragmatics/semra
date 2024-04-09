@@ -214,25 +214,26 @@ def notebook(
         are {reduced:,} unique concepts. Using the reduction formula
         $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
         this is a {reduction_percent:.1%} reduction.
-
-        This is only an estimate and is susceptible to a few things:
-
-        1. It can be artificially high because there are entities that _should_ be mapped, but are not
-        2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
-           a result of inference. The frontend curation interface can help identify and remove these
-        3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
-           to load a terms list, and therefore it's not possible to account for terms that aren't mapped.
-           Therefore, we make a lower bound estimate based on the terms that appear in mappings
-        4. It can be artificially high if a vocabulary is used that covers many domains and is not properly
-           subset'd. For example, EFO covers many different domains, so when doing disease landscape
-           analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
-           ``efo:0000408``).
-        5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
-        6. It can be affected by the existence of many-to-many mappings, which are filtered out during
-           processing, which makes the estimate artificially high since some subset of those entities
-           could be mapped, but it's not clear which should.
         """
     )
+    _markdown("""\
+    This is only an estimate and is susceptible to a few things:
+
+    1. It can be artificially high because there are entities that _should_ be mapped, but are not
+    2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
+       a result of inference. The frontend curation interface can help identify and remove these
+    3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
+       to load a terms list, and therefore it's not possible to account for terms that aren't mapped.
+       Therefore, we make a lower bound estimate based on the terms that appear in mappings
+    4. It can be artificially high if a vocabulary is used that covers many domains and is not properly
+       subset'd. For example, EFO covers many different domains, so when doing disease landscape
+       analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
+       ``efo:0000408``).
+    5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
+    6. It can be affected by the existence of many-to-many mappings, which are filtered out during
+       processing, which makes the estimate artificially high since some subset of those entities
+       could be mapped, but it's not clear which should.
+    """)
 
     return overlap_results, landscape_results
 

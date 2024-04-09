@@ -3,6 +3,7 @@
 import bioregistry
 import click
 import pystow
+from pyobo.sources.mesh import get_mesh_category_curies
 
 from semra.pipeline import Configuration, Input, Mutation
 
@@ -23,6 +24,20 @@ PREFIXES = PRIORITY = [
     "gard",
     *ICD_PREFIXES,
 ]
+# some resources are generic, so we want to cut to a relevant subset
+SUBSETS = {
+    "mesh": [*get_mesh_category_curies("C"), *get_mesh_category_curies("F")],
+    "efo": ["efo:0000408"],
+    "ncit": ["ncit:C2991"],
+    "umls": [
+        # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
+        "sty:T049",  # cell or molecular dysfunction
+        "sty:T047",  # disease or syndrome
+        "sty:T191",  # neoplastic process
+        "sty:T050",  # experimental model of disease
+        "sty:T048",  # mental or behavioral dysfunction
+    ],
+}
 
 CONFIGURATION = Configuration(
     name="Disease Landscape Analysis",
@@ -40,6 +55,7 @@ CONFIGURATION = Configuration(
         # Input(prefix="orphanet", source="bioontologies", confidence=0.9),
         # Input(prefix="hp", source="bioontologies", confidence=0.99),
     ],
+    subsets=SUBSETS,
     add_labels=True,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,

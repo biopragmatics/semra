@@ -31,6 +31,8 @@ TxResult: TypeAlias = t.Optional[t.List[t.List[Any]]]
 
 ReferenceHint: TypeAlias = t.Union[str, Reference]
 
+DEFAULT_MAX_LENGTH = 3
+
 
 def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
     if isinstance(curie_or_luid, Reference):
@@ -64,8 +66,10 @@ class Neo4jClient:
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=(user, password), max_connection_lifetime=180)
 
         query = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
-        self._all_relations = {x for x, in self.read_query(query)}
-        self._rel_q = "|".join(f"`{x.curie}`" for x in RELATIONS if x.curie in self._all_relations)
+        self._all_relations = {curie for curie, in self.read_query(query)}
+        self._rel_q = "|".join(
+            f"`{reference.curie}`" for reference in RELATIONS if reference.curie in self._all_relations
+        )
 
     def __del__(self):
         """Ensure driver is shut down when client is destroyed."""
@@ -245,7 +249,7 @@ as label, count UNION ALL
         :return: A counter with keys that are CURIE/name pairs
         """
         query = """\
-            MATCH (a)-[:`skos:exactMatch`]-(b)
+            MATCH (a:concept)-[:`skos:exactMatch`]-(b:concept)
             WHERE a.priority
             RETURN a.curie, a.name, count(distinct b) as c
             ORDER BY c DESCENDING
@@ -256,19 +260,21 @@ as label, count UNION ALL
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
         return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
 
-    def get_exact_matches(self, curie: ReferenceHint, *, max_distance: int = 7) -> dict[Reference, str]:
+    def get_exact_matches(self, curie: ReferenceHint, *, max_distance: t.Optional[int] = None) -> dict[Reference, str]:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         if isinstance(curie, Reference):
             curie = curie.curie
+        if max_distance is None:
+            max_distance = DEFAULT_MAX_LENGTH
         query = f"""\
-            MATCH (a {{curie: $curie}})-[:`skos:exactMatch`*1..{max_distance}]-(b)
+            MATCH (a:concept {{curie: $curie}})-[:`skos:exactMatch`*1..{max_distance}]-(b:concept)
             WHERE a.curie <> b.curie
             RETURN b.curie, b.name
         """
         return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
 
     def get_connected_component(
-        self, curie: ReferenceHint, max_distance: int = 7
+        self, curie: ReferenceHint, max_distance: t.Optional[int] = None
     ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
         """Get the nodes and relations in the connected component of mappings around the given CURIE.
 
@@ -281,6 +287,8 @@ as label, count UNION ALL
         """
         if isinstance(curie, Reference):
             curie = curie.curie
+        if max_distance is None:
+            max_distance = DEFAULT_MAX_LENGTH
         query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
             WHERE ALL(p IN r WHERE p.primary or p.secondary)
@@ -325,9 +333,9 @@ as label, count UNION ALL
         MATCH
             (:mappingset {{curie: $curie}})<-[:fromSet]-()<-[:hasEvidence]-(n:mapping)
         MATCH
-            (n)-[:`owl:annotatedSource`]->(s)
+            (n)-[:`owl:annotatedSource`]->(s:concept)
         MATCH
-            (n)-[:`owl:annotatedTarget`]->(t)
+            (n)-[:`owl:annotatedTarget`]->(t:concept)
         WHERE s.name IS NOT NULL and t.name IS NOT NULL and s.curie < t.curie
         RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
         LIMIT {n}

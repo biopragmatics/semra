@@ -9,7 +9,7 @@ import fastapi
 import flask
 import networkx as nx
 from curies import Reference
-from fastapi import Path
+from fastapi import Path, Query
 from fastapi.responses import JSONResponse
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap5
@@ -33,15 +33,13 @@ flask_app = Flask(__name__)
 flask_app.secret_key = os.urandom(8)
 Bootstrap5(flask_app)
 
-
 EXAMPLE_CONCEPTS = ["efo:0002142"]
 EXAMPLE_MAPPINGS = list(
     client.read_query(
         """\
     MATCH
-        (n:mapping)-[`owl:annotatedSource`]-(s),
-        (n:mapping)-[`owl:annotatedTarget`]-(t)
-    WHERE s.name IS NOT NULL AND t.name IS NOT NULL and s.curie < t.curie
+        (t:concept)<-[`owl:annotatedTarget`]-(n:mapping)-[`owl:annotatedSource`]->(s:concept)
+    WHERE n.predicate = 'skos:exactMatch'
     RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
     LIMIT 5
     """
@@ -157,18 +155,18 @@ def mark_exact_incorrect(source: str, target: str):
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
 
-@flask_app.get("/mapping_set/<curie>")
-def view_mapping_set(curie: str):
-    """View a mapping set by its CURIE."""
-    mapping_set = client.get_mapping_set(curie)
-    examples = client.sample_mappings_from_set(curie, n=10)
+@flask_app.get("/mapping_set/{mapping_set_id}")
+def view_mapping_set(mapping_set_id: str):
+    """View a mapping set by its ID."""
+    mapping_set = client.get_mapping_set(mapping_set_id)
+    examples = client.sample_mappings_from_set(mapping_set_id, n=10)
     return render_template("mapping_set.html", mapping_set=mapping_set, mapping_examples=examples)
 
 
-@api_router.get("/evidence/{curie}", response_model=Evidence)
-def get_evidence(curie: str = Path(description="An evidence's MD5 hex digest.")):
+@api_router.get("/evidence/{evidence_id}", response_model=Evidence)
+def get_evidence(evidence_id: str = Path(description="An evidence's MD5 hex digest.")):
     """Get an evidence by its MD5 hex digest."""
-    return client.get_evidence(curie)
+    return client.get_evidence(evidence_id)
 
 
 @api_router.get("/cytoscape/{curie}")
@@ -181,22 +179,31 @@ def get_concept_cytoscape(
     return JSONResponse(cytoscape_json)
 
 
-@api_router.get("/mapping/{mapping}", response_model=Mapping)
+@api_router.get("/exact/{curie}", response_model=t.List[Reference])
+def get_exact_matches(
+    curie: str = Path(description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS),
+    max_distance: int = Query(None, description="the distance in the mapping graph to traverse. Defaults to 7"),
+):
+    """Get the exact matches to the concept."""
+    return list(client.get_exact_matches(curie, max_distance=max_distance))
+
+
+@api_router.get("/mapping/{mapping_id}", response_model=Mapping)
 def get_mapping(
-    mapping: str = Path(description="A mapping's MD5 hex digest.", examples=[t[0] for t in EXAMPLE_MAPPINGS])
+    mapping_id: str = Path(description="A mapping's MD5 hex digest.", examples=[t[0] for t in EXAMPLE_MAPPINGS])
 ):
     """Get the mapping by its MD5 hex digest."""
-    return client.get_mapping(mapping)
+    return client.get_mapping(mapping_id)
 
 
-@api_router.get("/mapping_set/{mapping_set}", response_model=MappingSet)
+@api_router.get("/mapping_set/{mapping_set_id}", response_model=MappingSet)
 def get_mapping_set(
-    mapping_set: str = Path(
+    mapping_set_id: str = Path(
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
     )
 ):
     """Get a mapping set by its MD5 hex digest."""
-    return client.get_mapping_set(mapping_set)
+    return client.get_mapping_set(mapping_set_id)
 
 
 @api_router.get("/mapping_set/", response_model=t.List[MappingSet])

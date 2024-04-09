@@ -12,6 +12,8 @@ from semra.api import (
     EXACT_MATCH,
     NARROW_MATCH,
     Index,
+    count_component_sizes,
+    count_coverage_sizes,
     filter_mappings,
     filter_self_matches,
     flip,
@@ -330,6 +332,39 @@ class TestOperations(unittest.TestCase):
         m2 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)])
         mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
         self.assertEqual([m1], mmm)
+
+    def test_filter_subsets(self):
+        """Test filtering by subsets."""
+        a1, a2 = _get_references(2, prefix="a")
+        b1, b2 = _get_references(2, prefix="b")
+        c1, c2 = _get_references(2, prefix="c")
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        m2 = Mapping(s=b1, p=EXACT_MATCH, o=a1, evidence=[ev])
+        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
+        m4 = Mapping(s=b2, p=EXACT_MATCH, o=a2, evidence=[ev])
+        m5 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
+        m6 = Mapping(s=c1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        terms = {"a": ["1", "2"], "b": ["1"]}
+        mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
+        self.assertEqual(
+            [m1, m2, m5, m6], mmm, msg="Mappings 3 and 4 should not pass since b2 is not in the term filter"
+        )
+
+    def test_count_component_sizes(self):
+        """Test counting component sizes."""
+        priority = "abc"
+        a1, a2 = _get_references(2, prefix="a")
+        b1, b2 = _get_references(2, prefix="b")
+        c1, _ = _get_references(2, prefix="c")
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
+        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
+        m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
+        mappings = [m1, m2, m3, m4]
+        self.assertEqual({frozenset("ab"): 1, frozenset("abc"): 1}, dict(count_component_sizes(mappings, priority)))
+        self.assertEqual({1: 0, 2: 1, 3: 1}, dict(count_coverage_sizes(mappings, priority)))
 
 
 class TestUpgrades(unittest.TestCase):

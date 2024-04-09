@@ -16,6 +16,8 @@ from semra.api import (
     filter_mappings,
     filter_prefixes,
     filter_self_matches,
+    filter_subsets,
+    hydrate_subsets,
     infer_chains,
     infer_mutual_dbxref_mutations,
     infer_reversible,
@@ -47,6 +49,7 @@ from semra.struct import Mapping, Reference
 __all__ = [
     # Configuration model
     "Configuration",
+    "SubsetConfiguration",
     "Input",
     "Mutation",
     # Functions
@@ -76,6 +79,9 @@ class Mutation(BaseModel):
     new: Reference = Field(default=EXACT_MATCH)
 
 
+SubsetConfiguration = t.Mapping[str, t.Collection[str]]
+
+
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
@@ -89,6 +95,16 @@ class Configuration(BaseModel):
         default_factory=list, description="If no priority is given, is inferred from the order of inputs"
     )
     mutations: t.List[Mutation] = Field(default_factory=list)
+    subsets: t.Optional[t.Mapping[str, t.List[str]]] = Field(
+        None,
+        description="A field to put restrictions on the subhierarchies from each resource. For example, if "
+        "you want to assemble cell mappings from MeSH, you don't need all possible mesh mappings, but only "
+        "ones that have to do with terms in the cell hierchy under the mesh:D002477 term. Therefore, this "
+        "dictionary allows for specifying such restrictions",
+        examples=[
+            {"mesh": ["mesh:D002477"]},
+        ],
+    )
 
     exclude_pairs: t.List[t.Tuple[str, str]] = Field(
         default_factory=list,
@@ -167,6 +183,12 @@ class Configuration(BaseModel):
             raise FileNotFoundError
         return from_pickle(self.processed_pickle_path)
 
+    def get_hydrated_subsets(self) -> t.Mapping[str, t.Collection[str]]:
+        """Get the full subset filter lists based on the parent configuration."""
+        if not self.subsets:
+            return {}
+        return hydrate_subsets(self.subsets)
+
 
 def get_mappings_from_config(
     configuration: Configuration,
@@ -198,13 +220,13 @@ def get_mappings_from_config(
         if configuration.raw_pickle_path:
             write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.add_labels)
+            write_sssom(raw_mappings, configuration.raw_sssom_path)  # , add_labels=configuration.add_labels)
         if configuration.raw_neo4j_path:
             write_neo4j(
                 raw_mappings,
                 configuration.raw_neo4j_path,
                 docker_name=configuration.raw_neo4j_name,
-                add_labels=configuration.add_labels,
+                add_labels=False,  # configuration.add_labels,
             )
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -218,6 +240,7 @@ def get_mappings_from_config(
         post_remove_prefixes=configuration.post_remove_prefixes,
         post_keep_prefixes=configuration.post_keep_prefixes,
         remove_imprecise=configuration.remove_imprecise,
+        subsets=configuration.get_hydrated_subsets(),
     )
     prioritized_mappings = prioritize(processed_mappings, configuration.priority)
 
@@ -299,6 +322,7 @@ def process(
     keep_prefix_set: t.Optional[t.Collection[str]] = None,
     post_remove_prefixes: t.Optional[t.Collection[str]] = None,
     post_keep_prefixes: t.Optional[t.Collection[str]] = None,
+    subsets: t.Optional[t.Mapping[str, t.Collection[str]]] = None,
     *,
     remove_imprecise: bool = True,
 ) -> t.List[Mapping]:
@@ -310,6 +334,9 @@ def process(
 
     if remove_prefix_set:
         mappings = filter_prefixes(mappings, remove_prefix_set)
+
+    if subsets:
+        mappings = list(filter_subsets(mappings, subsets))
 
     start = time.time()
     negatives = from_biomappings_negative()

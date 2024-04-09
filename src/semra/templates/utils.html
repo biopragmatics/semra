@@ -16,9 +16,9 @@
                 <code>{{ curie[14:22]}}</code>
             </a>
         </td>
-        <td>{{subject_name}} ({{subject_curie}})</td>
+        <td>{% if subject_name %}{{subject_name}} ({{subject_curie}}){% else %}{{subject_curie}}{% endif %}</td>
         <td>{{predicate}}</td>
-        <td>{{target_name}} ({{target_curie}})</td>
+        <td>{% if target_name %}{{target_name}} ({{target_curie}}){% else %}{{target_curie}}{% endif %}</td>
     </tr>
     {%- endfor -%}
     </tbody>

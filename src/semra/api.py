@@ -79,6 +79,8 @@ __all__ = [
     "validate_mappings",
     "summarize_prefixes",
     "filter_minimum_confidence",
+    "filter_subsets",
+    "count_component_sizes",
 ]
 
 
@@ -313,7 +315,7 @@ def flip(mapping: Mapping) -> Mapping | None:
     )
 
 
-def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
+def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
     """Convert mappings into a simple directed graph data model.
 
     :param mappings: An iterable of mappings
@@ -339,14 +341,15 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
         graph.add_edge(
             mapping.s,
             mapping.o,
-            **{PREDICATE_KEY: mapping.p, EVIDENCE_KEY: mapping.evidence},
+            #  TODO group all predicates then evidences
+            # **{PREDICATE_KEY: mapping.p, EVIDENCE_KEY: mapping.evidence},
         )
     return graph
 
 
 def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[t.Set[Reference]]:
     """Iterate over connected components in the multidigraph view over the mappings."""
-    graph = to_multidigraph(mappings)
+    graph = to_digraph(mappings)
     return nx.weakly_connected_components(graph)
 
 
@@ -1037,3 +1040,134 @@ def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) 
             continue
         if confidence >= cutoff:
             yield mapping
+
+
+def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> t.Mapping[str, t.Collection[str]]:
+    """Convert a subset configuration dictionary into a subset artifact.
+
+    :param subset_configuration: A dictionary of prefixes to sets of parent terms
+    :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
+    :raises ValueError: If a prefix can't be looked up with PyOBO
+
+    To get all the cells from MeSH:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        configuration = {"mesh": ["mesh:D002477"], ...}
+        prefix_to_identifiers = hydrate_subsets(configuration)
+
+    It's also possible to use parents outside the vocabulary, such as when search for entity
+    type in UMLS:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        configuration = {
+            "umls": [
+                # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
+                "sty:T049",  # cell or molecular dysfunction
+                "sty:T047",  # disease or syndrome
+                "sty:T191",  # neoplastic process
+                "sty:T050",  # experimental model of disease
+                "sty:T048",  # mental or behavioral dysfunction
+            ],
+            ...
+        }
+        prefix_to_identifiers = hydrate_subsets(configuration)
+
+    """
+    import pyobo
+    from pyobo.getters import NoBuild
+
+    rv: t.Dict[str, t.Set[str]] = {}
+    # do lookup of the hierarchy and lookup of ancestors in 2 steps to allow for
+    # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
+    for prefix, parent_curies in subset_configuration.items():
+        try:
+            hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
+        except NoBuild:
+            rv[prefix] = set()
+        except Exception as e:
+            raise ValueError(f"Failed on {prefix}") from e
+        else:
+            rv[prefix] = {
+                descendant_curie
+                for parent_curie in parent_curies
+                for descendant_curie in nx.ancestors(hierarchy, parent_curie) or []
+            } | set(parent_curies)
+    return rv
+
+
+def filter_subsets(
+    mappings: t.Iterable[Mapping], prefix_to_identifiers: t.Mapping[str, t.Collection[str]]
+) -> t.Iterable[Mapping]:
+    """Filter mappings that don't appear in the given subsets.
+
+    :param mappings: An iterable of semantic mappings
+    :param prefix_to_identifiers: A dictionary whose keys are prefixes and whose values are collections
+        of local unique identifiers strings for a subset of terms in the resource to keep.
+
+        In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
+        is skipped.
+    :yields: An iterable that has been filtered based on the prefix_to_identifiers dict
+
+    If you have a simple configuration dictionary that contains the parent terms, like
+    ``{"mesh": ["mesh:D002477"]}``, you'll want to do the following first:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        mappings = [ ... ]
+        configuration = {"mesh": ["mesh:D002477"]}
+        prefix_to_identifiers = hydrate_subsets(configuration)
+        filter_subsets(mappings, prefix_to_identifiers)
+    """
+    for mapping in mappings:
+        if (
+            mapping.s.prefix in prefix_to_identifiers
+            and mapping.s.identifier not in prefix_to_identifiers[mapping.s.prefix]
+        ):
+            continue
+        if (
+            mapping.o.prefix in prefix_to_identifiers
+            and mapping.o.identifier not in prefix_to_identifiers[mapping.o.prefix]
+        ):
+            continue
+        yield mapping
+
+
+def aggregate_components(
+    mappings: t.Iterable[Mapping], priority: t.Collection[str]
+) -> t.Mapping[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]]:
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
+    priority_set = set(priority)
+    dd: t.DefaultDict[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]] = defaultdict(set)
+    for component in iter_components(mappings):
+        # subset to the priority prefixes
+        subcomponent: t.FrozenSet[Reference] = frozenset(r for r in component if r.prefix in priority_set)
+        key = frozenset(r.prefix for r in subcomponent)
+        dd[key].add(subcomponent)
+    return dict(dd)
+
+
+def count_component_sizes(mappings: t.Iterable[Mapping], priority: t.Collection[str]) -> t.Counter[t.FrozenSet[str]]:
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
+    xx = aggregate_components(mappings, priority)
+    return Counter({k: len(v) for k, v in xx.items()})
+
+
+def count_coverage_sizes(mappings: t.Iterable[Mapping], priority: t.Collection[str]) -> t.Counter[int]:
+    xx = count_component_sizes(mappings, priority=priority)
+    counter: t.Counter[int] = Counter()
+    for prefixes, count in xx.items():
+        counter[len(prefixes)] += count
+    # Back-fill any intermediate counts with zero
+    max_key = max(counter)
+    for i in range(1, max_key):
+        if i not in counter:
+            counter[i] = 0
+    return counter

@@ -15,12 +15,17 @@ import seaborn as sns
 import upsetplot
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
-from pyobo.getters import NoBuild
 from pyobo.sources.mesh import get_mesh_category_curies
 
-from semra import Configuration
-from semra.api import get_index, iter_components
-from semra.io import _safe_get_version, from_pickle
+from semra.api import (
+    aggregate_components,
+    count_component_sizes,
+    filter_subsets,
+    get_index,
+    hydrate_subsets,
+)
+from semra.io import _safe_get_version
+from semra.pipeline import Configuration, SubsetConfiguration
 from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping
 
@@ -49,12 +54,11 @@ def _markdown(x):
 def notebook(
     configuration: Configuration,
     *,
-    subsets: t.Optional[XXSubsets] = None,
     output_directory: t.Union[str, Path, None] = None,
     matplotlib_formats: t.Optional[str] = "svg",
     show: bool = True,
     minimum_count: t.Optional[int] = None,
-) -> None:
+) -> t.Tuple["OverlapResults", "LandscapeResult"]:
     """Run the landscape analysis inside a Jupyter notebook."""
     if not configuration.raw_pickle_path:
         raise ValueError
@@ -63,11 +67,19 @@ def notebook(
     if output_directory is None:
         output_directory = configuration.raw_pickle_path.parent
     output_directory = Path(output_directory).expanduser().resolve()
-    terms = get_terms(configuration.priority, subsets)
+    terms = get_terms(configuration.priority, configuration.subsets)
 
-    raw_mappings = from_pickle(configuration.raw_pickle_path)
-    terms_observed = _index_entities(raw_mappings)
+    hydrated_subsets = configuration.get_hydrated_subsets()
 
+    raw_mappings = configuration.read_raw_mappings()
+    if configuration.subsets:
+        raw_mappings = list(filter_subsets(raw_mappings, hydrated_subsets))
+
+    processed_mappings = configuration.read_processed_mappings()
+    if configuration.subsets:
+        processed_mappings = list(filter_subsets(processed_mappings, hydrated_subsets))
+
+    terms_observed = get_observed_terms(processed_mappings)
     summary_df = get_summary_df(prefixes=configuration.priority, terms=terms, terms_observed=terms_observed)
     number_pyobo_unavailable = (summary_df["terms"] == 0).sum()
     _markdown(
@@ -90,6 +102,9 @@ def notebook(
 
     display(summary_df)
 
+    _summary_total = summary_df["terms"].sum()
+    _markdown(f"There are a total of {_summary_total:,} terms across the {len(summary_df.index):,} resources.")
+
     _markdown(
         """\
     ## Summarize the Mappings
@@ -101,7 +116,12 @@ def notebook(
     """
     )
     overlap_results = overlap_analysis(
-        configuration, terms, minimum_count=minimum_count, raw_mappings=raw_mappings, terms_observed=terms_observed
+        configuration,
+        terms,
+        minimum_count=minimum_count,
+        mappings=processed_mappings,
+        raw_mappings=raw_mappings,
+        terms_observed=terms_observed,
     )
     overlap_results.write(output_directory)
     _markdown("First, we summarize the raw mappings, i.e., the mappings that are directly available from the sources")
@@ -142,6 +162,7 @@ def notebook(
         each resource covers.
     """
     )
+
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = landscape_analysis(
@@ -154,7 +175,7 @@ def notebook(
     _markdown(landscape_results.get_description_markdown())
 
     n_prefixes = len(overlap_results.counts_df.index)
-    number_overlaps = 2**n_prefixes
+    number_overlaps = 2**n_prefixes - 1
     _markdown(
         f"""\
     Because there are {n_prefixes}, there are {number_overlaps} possible overlaps to consider.
@@ -164,7 +185,6 @@ def notebook(
     """
     )
     landscape_results.plot_upset()
-    plt.tight_layout()
     plt.savefig(output_directory.joinpath("landscape_upset.svg"))
     if show:
         plt.show()
@@ -194,8 +214,27 @@ def notebook(
         are {reduced:,} unique concepts. Using the reduction formula
         $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
         this is a {reduction_percent:.1%} reduction.
+
+        This is only an estimate and is susceptible to a few things:
+
+        1. It can be artificially high because there are entities that _should_ be mapped, but are not
+        2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
+           a result of inference. The frontend curation interface can help identify and remove these
+        3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
+           to load a terms list, and therefore it's not possible to account for terms that aren't mapped.
+           Therefore, we make a lower bound estimate based on the terms that appear in mappings
+        4. It can be artificially high if a vocabulary is used that covers many domains and is not properly
+           subset'd. For example, EFO covers many different domains, so when doing disease landscape
+           analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
+           ``efo:0000408``).
+        5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
+        6. It can be affected by the existence of many-to-many mappings, which are filtered out during
+           processing, which makes the estimate artificially high since some subset of those entities
+           could be mapped, but it's not clear which should.
         """
     )
+
+    return overlap_results, landscape_results
 
 
 @dataclass
@@ -231,6 +270,7 @@ def overlap_analysis(
     terms: XXTerms,
     *,
     terms_observed: XXObservedTerms,
+    mappings: t.List[Mapping],
     raw_mappings: t.List[Mapping],
     minimum_count: t.Optional[int] = None,
 ) -> OverlapResults:
@@ -242,9 +282,6 @@ def overlap_analysis(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    if not configuration.processed_pickle_path:
-        raise ValueError("No processed pickle path available")
-    mappings = from_pickle(configuration.processed_pickle_path)
     directed = _get_summary_index(mappings)
     counts, counts_df = get_symmetric_counts_df(
         directed, terms, priority=configuration.priority, terms_observed=terms_observed
@@ -265,32 +302,22 @@ def overlap_analysis(
     )
 
 
-def get_terms(priority: t.List[str], subsets: t.Optional[XXSubsets] = None) -> XXTerms:
+def get_terms(prefixes: t.List[str], subset_configuration: t.Optional[SubsetConfiguration] = None) -> XXTerms:
     """Get the set of identifiers for each of the resources."""
-    terms = {}
-    if subsets is None:
-        subsets = {}
-    for prefix in priority:
-        id_name_mapping = pyobo.get_id_name_mapping(prefix)
-        # do this in 2 steps to allow for querying parents inside a resource that
-        # aren't defined by it (e.g., sty terms in umls)
-        try:
-            hierarchy = pyobo.get_hierarchy(prefix)
-        except NoBuild:
-            subset = set()
-        except Exception as e:
-            raise ValueError(f"Failed on {prefix}") from e
-        else:
-            subset = {
-                descendant
-                for parent_curie in subsets.get(prefix, [])
-                for descendant in nx.ancestors(hierarchy, parent_curie) or []
-            }
+    prefix_to_identifier_to_name = {}
+    if subset_configuration is None:
+        subset_configuration = {}
+    sss = hydrate_subsets(subset_configuration)
+    for prefix in prefixes:
+        id_to_name = pyobo.get_id_name_mapping(prefix)
+        subset = sss.get(prefix) or set()
         if subset:
-            terms[prefix] = {luid: name for luid, name in id_name_mapping.items() if f"{prefix}:{luid}" in subset}
+            prefix_to_identifier_to_name[prefix] = {
+                identifier: name for identifier, name in id_to_name.items() if f"{prefix}:{identifier}" in subset
+            }
         else:
-            terms[prefix] = id_name_mapping
-    return terms
+            prefix_to_identifier_to_name[prefix] = id_to_name
+    return prefix_to_identifier_to_name
 
 
 def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> t.Tuple[int, bool]:
@@ -452,7 +479,8 @@ def counter_to_df(counter: XXCounter, priority: t.List[str], drop_missing: bool 
     return df
 
 
-def _index_entities(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
+def get_observed_terms(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
+    """Get the set of terms appearing in each prefix."""
     entities = defaultdict(set)
     for mapping in mappings:
         for reference in (mapping.s, mapping.o):
@@ -460,35 +488,20 @@ def _index_entities(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
     return dict(entities)
 
 
-def _count_components(mappings: t.Iterable[Mapping], priority: t.List[str]) -> t.Counter[t.FrozenSet[str]]:
-    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
-    counter: t.Counter[t.FrozenSet[str]] = Counter()
-    priority_set = set(priority)
-    for component in iter_components(mappings):
-        # subset to the priority prefixes
-        prefixes = frozenset(r.prefix for r in component if r.prefix in priority_set)
-        counter[prefixes] += 1
-    return counter
-
-
-def landscape_analysis(
-    mappings: t.List[Mapping],
-    prefix_to_identifiers: XXTerms,
-    priority: t.List[str],
+def count_unobserved(
     *,
+    prefixes: t.Collection[str],
+    prefix_to_identifiers: XXTerms,
     prefix_to_observed_identifiers: XXObservedTerms,
-) -> "LandscapeResult":
-    """Run the landscape analysis."""
-    counter = _count_components(mappings=mappings, priority=priority)
-
-    #: A count of the number of entities that have at least mapping.
-    #: This is calculated by the appearance of a weakly connected component
-    #: in :func:`_get_counter`. This needs to be calculated before enriching
-    #: the resulting counter object with entities that don't appear in mappings
-    at_least_1_mapping = sum(counter.values())
-
-    unique_to_single: t.Counter[str] = Counter()
-    for prefix in priority:
+) -> t.Counter[t.FrozenSet[str]]:
+    """Count the number of unobserved entities for each prefix."""
+    rv: t.Counter[t.FrozenSet[str]] = Counter()
+    for prefix in prefixes:
+        observed_identifiers = prefix_to_observed_identifiers.get(prefix)
+        if not observed_identifiers:
+            # This situation doesn't really make sense - if the prefix is in the given list, and
+            # it doesn't appear at all in the mappings, don't count it
+            continue
         identifiers = prefix_to_identifiers.get(prefix)
         if not identifiers:
             # The term list for the resource corresponding to the prefix is unavailable.
@@ -500,32 +513,48 @@ def landscape_analysis(
             # Get the terms appearing in mappings for this vocabulary, then get the difference
             # between the whole term list and the ones appearing in mappings to count how
             # many are unique to the specific resource represented by the prefix
-            unmapped_terms = set(identifiers).difference(prefix_to_observed_identifiers[prefix])
+            unmapped_terms = set(identifiers).difference(observed_identifiers)
             count = len(unmapped_terms)
-        counter[frozenset([prefix])] = unique_to_single[prefix] = count
+        rv[frozenset([prefix])] = count
+    return rv
+
+
+def landscape_analysis(
+    mappings: t.List[Mapping],
+    prefix_to_identifiers: XXTerms,
+    priority: t.List[str],
+    *,
+    prefix_to_observed_identifiers: XXObservedTerms,
+) -> "LandscapeResult":
+    """Run the landscape analysis."""
+    mapped_counter = count_component_sizes(mappings=mappings, priority=priority)
+
+    xx = aggregate_components(mappings, priority)
+    mapped_counter = Counter({k: len(v) for k, v in xx.items()})
+
+    #: A count of the number of entities that have at least mapping.
+    #: This is calculated by the appearance of a weakly connected component
+    #: in :func:`_get_counter`. This needs to be calculated before enriching
+    #: the resulting counter object with entities that don't appear in mappings
+    at_least_1_mapping = sum(mapped_counter.values())
+
+    #: A count of the number of entities appearing in _all_ resources.
+    #: Also calculated the same way with :func:`_get_counter`
+    conserved = mapped_counter[frozenset(priority)]
+
+    single_counter = count_unobserved(
+        prefixes=priority,
+        prefix_to_identifiers=prefix_to_identifiers,
+        prefix_to_observed_identifiers=prefix_to_observed_identifiers,
+    )
 
     #: A count of the number of entities that have no mappings.
     #: This is calculated based on the set difference between entities
     #: appearing in mappings and the preloaded terms lists
-    only_1_mapping = sum(unique_to_single.values())
+    only_1_mapping = sum(single_counter.values())
 
-    #: A count of the number of entities appearing in _all_ resources.
-    #: Also calculated the same way with :func:`_get_counter`
-    conserved = counter[frozenset(priority)]
+    counter = mapped_counter + single_counter
 
-    #: A counter of the number of entities that either have mappings or not.
-    #: This is only an estimate and is susceptible to a few things:
-    #:
-    #: 1. It can be artificially high because there are entities that _should_ be mapped, but are not
-    #: 2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
-    #:    a result of inference. The frontend curation interface can help identify and remove these
-    #: 3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
-    #:    to load a terms list, and therefore it's not possible to account for terms that aren't mapped
-    #: 4. It can be artificially high if a vocabulary is used that covers many domains and is not properly
-    #:    subset'd. For example, EFO covers many different domains, so when doing disease landscape
-    #:    analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
-    #:    ``efo:0000408``).
-    #: 5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
     total_entity_estimate = sum(counter.values())
 
     return LandscapeResult(
@@ -534,7 +563,8 @@ def landscape_analysis(
         total_entity_estimate=total_entity_estimate,
         conserved=conserved,
         priority=priority,
-        counter=counter,
+        mapped_counter=mapped_counter,
+        single_counter=single_counter,
     )
 
 
@@ -547,11 +577,14 @@ class LandscapeResult:
     only_1_mapping: int
     conserved: int
     total_entity_estimate: int
-    counter: t.Counter[t.FrozenSet[str]]
+    mapped_counter: t.Counter[t.FrozenSet[str]]
+    single_counter: t.Counter[t.FrozenSet[str]]
+    counter: t.Counter[t.FrozenSet[str]] = field(init=False)
     distribution: t.Counter[int] = field(init=False)
 
     def __post_init__(self):
         """Post initialize the landscape result object."""
+        self.counter = self.mapped_counter + self.single_counter
         self.distribution = self.get_distribution()
 
     def get_description_markdown(self) -> str:
@@ -578,7 +611,7 @@ class LandscapeResult:
 
     def plot_upset(self):
         """Plot the results with an UpSet plot."""
-        example = self.get_upset_df()
+        upset_df = self.get_upset_df()
         """Here's what the output from upsetplot.plot looks like:
 
         {'matrix': <Axes: >,
@@ -587,7 +620,7 @@ class LandscapeResult:
          'intersections': <Axes: ylabel='Intersection size'>}
         """
         plot_result = upsetplot.plot(
-            example,
+            upset_df,
             # show_counts=True,
         )
         plot_result["intersections"].set_yscale("log")
@@ -613,7 +646,7 @@ class LandscapeResult:
     def plot_distribution(
         self,
         height: float = 2.7,
-        width_ratio: float = 0.65,
+        width_ratio: float = 0.8,
         top_ratio: float = 20.0,
     ) -> None:
         """Plot the distribution of component sizes."""

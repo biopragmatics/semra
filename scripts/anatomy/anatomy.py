@@ -1,4 +1,5 @@
 import pystow
+from pyobo.sources.mesh import get_mesh_category_curies
 
 import semra
 
@@ -11,6 +12,16 @@ PRIORITY = [
     "ncit",
     "umls",
 ]
+# some resources are generic, so we want to cut to a relevant subset
+SUBSETS = {
+    "mesh": get_mesh_category_curies("A", skip=["A11"]),
+    "ncit": ["ncit:C12219"],
+    "umls": [
+        # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
+        "sty:T024",  # tissue
+        "sty:T017",  # anatomical structure
+    ],
+}
 
 CONFIGURATION = semra.Configuration(
     name="Anatomy mappings",
@@ -24,6 +35,7 @@ CONFIGURATION = semra.Configuration(
         semra.Input(prefix="ncit", source="pyobo", confidence=0.99),
         semra.Input(prefix="umls", source="pyobo", confidence=0.99),
     ],
+    subsets=SUBSETS,
     add_labels=False,
     priority=PRIORITY,
     keep_prefixes=PRIORITY,

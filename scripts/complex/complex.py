@@ -3,7 +3,7 @@
 import click
 import pystow
 
-from semra.pipeline import Configuration, Input
+from semra.pipeline import Configuration, Input, Mutation
 
 MODULE = pystow.module("semra", "case-studies", "complex")
 PREFIXES = PRIORITY = [
@@ -34,12 +34,13 @@ CONFIGURATION = Configuration(
         Input(prefix="reactome", source="wikidata", confidence=0.99),
     ],
     add_labels=True,
+    subsets=SUBSETS,
     priority=PRIORITY,
     post_keep_prefixes=PREFIXES,
     remove_imprecise=False,
-    # mutations=[
-    #     Mutation(source="hgnc", confidence=0.95),
-    # ],
+    mutations=[
+        Mutation(source="go", confidence=0.95),
+    ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
     # raw_neo4j_path=MODULE.join("neo4j_raw"),

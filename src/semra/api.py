@@ -86,6 +86,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+DATA_KEY = "data"
 PREDICATE_KEY = "predicate"
 EVIDENCE_KEY = "evidence"
 
@@ -337,14 +338,26 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
     """
     graph = nx.DiGraph()
+    edges: t.DefaultDict[t.Tuple[Reference, Reference], t.DefaultDict[Reference, t.List[Evidence]]] = defaultdict(lambda: defaultdict(list))
     for mapping in mappings:
-        graph.add_edge(
-            mapping.s,
-            mapping.o,
-            #  TODO group all predicates then evidences
-            # **{PREDICATE_KEY: mapping.p, EVIDENCE_KEY: mapping.evidence},
-        )
+        edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
+    for (s, o), data in edges.items():
+        graph.add_edge(s, o, **{DATA_KEY: data})
     return graph
+
+
+def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
+    """Extract mappings from a simple directed graph data model."""
+    return [
+        mapping
+        for s, o in graph.edges()
+        for mapping in _from_digraph_edge(graph, s, o)
+    ]
+
+def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
+    data = graph[s][o]
+    for p, evidence in data[DATA_KEY].items():
+        yield Mapping(s=s, p=p, o=o, evidence=evidence)
 
 
 def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[t.Set[Reference]]:
@@ -382,14 +395,6 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
     return graph
 
 
-def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
-    """Extract mappings from a simple directed graph data model."""
-    return [_from_digraph_edge(graph, s, o) for s, o in graph.edges()]
-
-
-def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> Mapping:
-    data = graph[s][o]
-    return Mapping(s=s, p=data[PREDICATE_KEY], o=o, evidence=data[EVIDENCE_KEY])
 
 
 def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference | None:
@@ -901,12 +906,13 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
         if o is None:
             continue
         rv.extend(
-            _from_digraph_edge(graph, s, o)
+            mapping
             # TODO should this work even if s-o edge not exists?
             #  can also do "inference" here, but also might be
             #  because of negative edge filtering
             for s in component
             if s != o and graph.has_edge(s, o)
+            for mapping in _from_digraph_edge(graph, s, o)
         )
 
     # sort such that the mappings are ordered by object by priority order
@@ -1093,17 +1099,22 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
         except Exception as e:
             raise ValueError(f"Failed on {prefix}") from e
         else:
+            _pp = f"{prefix}:"
             rv[prefix] = {
-                descendant_curie
+                descendant_curie[len(_pp):]
                 for parent_curie in parent_curies
                 for descendant_curie in nx.ancestors(hierarchy, parent_curie) or []
-            } | set(parent_curies)
+                if descendant_curie.startswith(_pp)
+            }
+            for parent_curie in parent_curies:
+                if parent_curie.startswith(_pp):
+                    rv[prefix].add(parent_curie[len(_pp):])
     return rv
 
 
 def filter_subsets(
     mappings: t.Iterable[Mapping], prefix_to_identifiers: t.Mapping[str, t.Collection[str]]
-) -> t.Iterable[Mapping]:
+) -> t.List[Mapping]:
     """Filter mappings that don't appear in the given subsets.
 
     :param mappings: An iterable of semantic mappings
@@ -1112,7 +1123,7 @@ def filter_subsets(
 
         In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
         is skipped.
-    :yields: An iterable that has been filtered based on the prefix_to_identifiers dict
+    :return: A list that has been filtered based on the prefix_to_identifiers dict
 
     If you have a simple configuration dictionary that contains the parent terms, like
     ``{"mesh": ["mesh:D002477"]}``, you'll want to do the following first:
@@ -1126,18 +1137,34 @@ def filter_subsets(
         prefix_to_identifiers = hydrate_subsets(configuration)
         filter_subsets(mappings, prefix_to_identifiers)
     """
+    clean_prefix_to_identifiers = {}
+    for prefix, identifiers in prefix_to_identifiers.items():
+        if not identifiers:
+            # skip empty lists
+            continue
+        problems = {
+            identifier
+            for identifier in identifiers
+            if ":" in identifier
+        }
+        if problems:
+            raise ValueError(f"value list should be local unique ids, not curies")
+        clean_prefix_to_identifiers[prefix] = identifiers
+
+    rv = []
     for mapping in mappings:
         if (
-            mapping.s.prefix in prefix_to_identifiers
-            and mapping.s.identifier not in prefix_to_identifiers[mapping.s.prefix]
+            mapping.s.prefix in clean_prefix_to_identifiers
+            and mapping.s.identifier not in clean_prefix_to_identifiers[mapping.s.prefix]
         ):
             continue
         if (
-            mapping.o.prefix in prefix_to_identifiers
-            and mapping.o.identifier not in prefix_to_identifiers[mapping.o.prefix]
+            mapping.o.prefix in clean_prefix_to_identifiers
+            and mapping.o.identifier not in clean_prefix_to_identifiers[mapping.o.prefix]
         ):
             continue
-        yield mapping
+        rv.append(mapping)
+    return rv
 
 
 def aggregate_components(

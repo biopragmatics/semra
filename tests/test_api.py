@@ -24,6 +24,8 @@ from semra.api import (
     infer_reversible,
     keep_prefixes,
     project,
+    from_digraph,
+    to_digraph,
 )
 from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
 from semra.struct import (
@@ -345,7 +347,15 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=b2, p=EXACT_MATCH, o=a2, evidence=[ev])
         m5 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
         m6 = Mapping(s=c1, p=EXACT_MATCH, o=b1, evidence=[ev])
+
         terms = {"a": ["1", "2"], "b": ["1"]}
+        mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
+        self.assertEqual(
+            [m1, m2, m5, m6], mmm, msg="Mappings 3 and 4 should not pass since b2 is not in the term filter"
+        )
+
+        terms = {"a": ["1", "2"], "b": ["1"], "c": []}
+        # the fact that c has an empty dictionary will get ignored
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(
             [m1, m2, m5, m6], mmm, msg="Mappings 3 and 4 should not pass since b2 is not in the term filter"
@@ -365,6 +375,19 @@ class TestOperations(unittest.TestCase):
         mappings = [m1, m2, m3, m4]
         self.assertEqual({frozenset("ab"): 1, frozenset("abc"): 1}, dict(count_component_sizes(mappings, priority)))
         self.assertEqual({1: 0, 2: 1, 3: 1}, dict(count_coverage_sizes(mappings, priority)))
+
+    def test_digraph_roundtrip(self):
+        """Test I/O roundtrip through a directed graph."""
+        a1, a2 = _get_references(2, prefix="a")
+        b1, b2 = _get_references(2, prefix="b")
+        c1, _ = _get_references(2, prefix="c")
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
+        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
+        m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
+        mappings = [m1, m2, m3, m4]
+        self.assertEqual(mappings, from_digraph(to_digraph(mappings)))
 
 
 class TestUpgrades(unittest.TestCase):

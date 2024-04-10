@@ -13,9 +13,9 @@ import semra.landscape.genes
 @click.pass_context
 def main(ctx: click.Context):
     """Run all landscape builds."""
+    ctx.invoke(semra.landscape.complexes.main)
     ctx.invoke(semra.landscape.anatomy.main)
     ctx.invoke(semra.landscape.cells.main)
-    ctx.invoke(semra.landscape.complexes.main)
     ctx.invoke(semra.landscape.diseases.main)
     ctx.invoke(semra.landscape.genes.main)
 

@@ -1,0 +1,14 @@
+prefix	name	license	version	terms	status
+ncbigene	Entrez Gene		daily	47782242	full
+hgnc	HUGO Gene Nomenclature Committee	CC0-1.0	2024-03-01	43865	full
+mgi	Mouse Genome Informatics	CC-BY-4.0	6.23	682164	full
+rgd	Rat Genome Database	CC-BY-4.0	2024-03-22	61339	full
+cgnc	Chicken Gene Nomenclature Consortium			25936	full
+wormbase	Wormbase Gene	CC0-1.0		0	observed
+flybase	FlyBase Gene	CC-BY-4.0	2024_01	17883	full
+sgd	Saccharomyces Genome Database	CC-BY-4.0	R64-3-1	6600	full
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	April 9, 2024	26952	observed
+civic.gid	CIViC gene	CC0-1.0	01-Apr-2024	506	full
+umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2023AB	3185657	full
+ncit	NCI Thesaurus	CC-BY-4.0	24.02d	181982	full
+wikidata	Wikidata	CC0-1.0		797967	observed

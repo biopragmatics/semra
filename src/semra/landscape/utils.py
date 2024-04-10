@@ -1,5 +1,6 @@
 """Landscape analysis utilities."""
 
+import json
 import typing as t
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -80,7 +81,10 @@ def notebook(
         processed_mappings = filter_subsets(processed_mappings, hydrated_subsets)
 
     terms_observed = get_observed_terms(processed_mappings)
-    summary_df = get_summary_df(prefixes=configuration.priority, terms=terms, terms_observed=terms_observed)
+    summary_df = get_summary_df(
+        prefixes=configuration.priority, subsets=configuration.subsets, terms=terms, terms_observed=terms_observed
+    )
+    summary_df.to_csv(output_directory.joinpath("summary.tsv"), sep="\t")
     number_pyobo_unavailable = (summary_df["terms"] == 0).sum()
     _markdown(
         """\
@@ -237,6 +241,15 @@ def notebook(
     """
     )
 
+    stats = {
+        "raw_term_count": total_terms,
+        "unique_term_count": reduced,
+        "reduction": reduction_percent,
+        "distribution": landscape_results.distribution,
+    }
+    stats_path = output_directory.joinpath("stats.json")
+    stats_path.write_text(json.dumps(stats, indent=2))
+
     return overlap_results, landscape_results
 
 
@@ -316,7 +329,7 @@ def get_terms(prefixes: t.List[str], subset_configuration: t.Optional[SubsetConf
         subset = sss.get(prefix) or set()
         if subset:
             prefix_to_identifier_to_name[prefix] = {
-                identifier: name for identifier, name in id_to_name.items() if f"{prefix}:{identifier}" in subset
+                identifier: name for identifier, name in id_to_name.items() if identifier in subset
             }
         else:
             prefix_to_identifier_to_name[prefix] = id_to_name
@@ -337,10 +350,13 @@ def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -
     return count, exact
 
 
-def get_summary_df(prefixes: t.List[str], terms: XXTerms, terms_observed: XXObservedTerms) -> pd.DataFrame:
+def get_summary_df(
+    prefixes: t.List[str], *, subsets=None, terms: XXTerms, terms_observed: XXObservedTerms
+) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
     :param prefixes: The list of prefixes
+    :param subsets: The subset configuration
     :param terms: The dictionary of prefix -> collection of identifiers from :mod:`pyobo`
     :param terms_observed: The dictionary of prefix -> collection of identifiers encountered in the mappings
         appearing in the landscape analysis. This should be calculated from raw mappings to make sure that
@@ -358,19 +374,27 @@ def get_summary_df(prefixes: t.List[str], terms: XXTerms, terms_observed: XXObse
            will be "false"
     """
     summary_rows = []
+    if subsets is None:
+        subsets = {}
     for prefix in prefixes:
         count, exact = _count_terms(prefix, terms, terms_observed)
+        if not exact:
+            status = "observed"
+        elif prefix in subsets:
+            status = "subset"
+        else:
+            status = "full"
         row = (
             prefix,
             bioregistry.get_name(prefix),
             bioregistry.get_license(prefix),
             _safe_get_version(prefix),
             count,
-            exact,
+            status,
         )
         summary_rows.append(row)
 
-    df = pd.DataFrame(summary_rows, columns=["prefix", "name", "license", "version", "terms", "exact"])
+    df = pd.DataFrame(summary_rows, columns=["prefix", "name", "license", "version", "terms", "status"])
     df = df.set_index("prefix")
     return df
 

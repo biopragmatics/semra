@@ -3,7 +3,7 @@
 import click
 import pystow
 
-from semra.pipeline import Configuration, Input
+from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
     "MODULE",
@@ -48,14 +48,16 @@ CONFIGURATION = Configuration(
         Input(prefix="wikidata", source="custom", extras=dict(property="P594"), confidence=0.99),  # ENSEMBL Gene
         Input(prefix="wikidata", source="custom", extras=dict(property="P354"), confidence=0.99),  # HGNC Gene ID
         Input(prefix="wikidata", source="custom", extras=dict(property="P492"), confidence=0.99),  # OMIM Gene ID
-        # Input(prefix="wikidata", source="custom", extras=dict(property="P2892"), confidence=0.99), # UMLS ID
+        Input(prefix="wikidata", source="custom", extras=dict(property="P2892"), confidence=0.99),  # UMLS ID
     ],
+    subsets={"umls": ["umls:C0017337"], "ncit": ["ncit:C16612"]},
     add_labels=True,
     priority=PRIORITY,
     remove_imprecise=False,
-    # mutations=[
-    #     Mutation(source="hgnc", confidence=0.95),
-    # ],
+    mutations=[
+        Mutation(source="umls", confidence=0.8),
+        Mutation(source="ncit", confidence=0.8),
+    ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
     # raw_neo4j_path=MODULE.join("neo4j_raw"),

@@ -73,11 +73,11 @@ def notebook(
 
     raw_mappings = configuration.read_raw_mappings()
     if configuration.subsets:
-        raw_mappings = list(filter_subsets(raw_mappings, hydrated_subsets))
+        raw_mappings = filter_subsets(raw_mappings, hydrated_subsets)
 
     processed_mappings = configuration.read_processed_mappings()
     if configuration.subsets:
-        processed_mappings = list(filter_subsets(processed_mappings, hydrated_subsets))
+        processed_mappings = filter_subsets(processed_mappings, hydrated_subsets)
 
     terms_observed = get_observed_terms(processed_mappings)
     summary_df = get_summary_df(prefixes=configuration.priority, terms=terms, terms_observed=terms_observed)
@@ -216,7 +216,8 @@ def notebook(
         this is a {reduction_percent:.1%} reduction.
         """
     )
-    _markdown("""\
+    _markdown(
+        """\
     This is only an estimate and is susceptible to a few things:
 
     1. It can be artificially high because there are entities that _should_ be mapped, but are not
@@ -233,7 +234,8 @@ def notebook(
     6. It can be affected by the existence of many-to-many mappings, which are filtered out during
        processing, which makes the estimate artificially high since some subset of those entities
        could be mapped, but it's not clear which should.
-    """)
+    """
+    )
 
     return overlap_results, landscape_results
 
@@ -444,12 +446,19 @@ def draw_counter(
 ) -> bytes:
     """Draw a source/target prefix pair counter as a network."""
     graph = cls()
+    renames = {}
     for (source_prefix, target_prefix), count in counter.items():
         if not count:
+            continue
+        if source_prefix == target_prefix:
+            renames[source_prefix] = f"{source_prefix}\n{count:,}"
             continue
         if count <= minimum_count:
             continue
         graph.add_edge(source_prefix, target_prefix, label=f"{count:{count_format}}")
+
+    # rename from prefix -> prefix + count
+    graph = nx.relabel_nodes(graph, renames)
 
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.graph_attr["rankdir"] = direction
@@ -647,11 +656,11 @@ class LandscapeResult:
     def plot_distribution(
         self,
         height: float = 2.7,
-        width_ratio: float = 0.8,
+        width_ratio: float = 0.7,
         top_ratio: float = 20.0,
     ) -> None:
         """Plot the distribution of component sizes."""
-        fig, ax = plt.subplots(figsize=(len(self.distribution) * width_ratio, height))
+        fig, ax = plt.subplots(figsize=(1 + len(self.distribution) * width_ratio, height))
         sns.barplot(self.distribution, ax=ax)
 
         for index, value in self.distribution.items():

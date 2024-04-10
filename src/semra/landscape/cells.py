@@ -22,8 +22,24 @@ from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
+__all__ = [
+    "MODULE",
+    "CONFIGURATION",
+]
+
 MODULE = pystow.module("semra", "case-studies", "cells")
-PREFIXES = PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo", "ncit", "umls"]
+PREFIXES = PRIORITY = [
+    "mesh",
+    "efo",
+    "cellosaurus",
+    "ccle",
+    "depmap",
+    "bto",
+    "cl",
+    "clo",
+    "ncit",
+    "umls",
+]
 
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {

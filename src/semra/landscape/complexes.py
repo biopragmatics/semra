@@ -5,6 +5,11 @@ import pystow
 
 from semra.pipeline import Configuration, Input, Mutation
 
+__all__ = [
+    "MODULE",
+    "CONFIGURATION",
+]
+
 MODULE = pystow.module("semra", "case-studies", "complex")
 PREFIXES = PRIORITY = [
     "complexportal",

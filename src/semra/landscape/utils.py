@@ -537,7 +537,7 @@ def landscape_analysis(
     prefix_to_observed_identifiers: XXObservedTerms,
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
-    mapped_counter = count_component_sizes(mappings=mappings, priority=priority)
+    mapped_counter = count_component_sizes(mappings=mappings, prefix_allowlist=priority)
 
     xx = aggregate_components(mappings, priority)
     mapped_counter = Counter({k: len(v) for k, v in xx.items()})

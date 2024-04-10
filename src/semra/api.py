@@ -1162,27 +1162,47 @@ def filter_subsets(
 
 
 def aggregate_components(
-    mappings: t.Iterable[Mapping], priority: t.Collection[str]
+    mappings: t.Iterable[Mapping],
+    prefix_allowlist: t.Optional[t.Collection[str]] = None,
 ) -> t.Mapping[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]]:
-    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
-    priority_set = set(priority)
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component.
+
+    :param mappings: Mappings to aggregate
+    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this list
+    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets of references
+    """
     dd: t.DefaultDict[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]] = defaultdict(set)
-    for component in iter_components(mappings):
-        # subset to the priority prefixes
-        subcomponent: t.FrozenSet[Reference] = frozenset(r for r in component if r.prefix in priority_set)
-        key = frozenset(r.prefix for r in subcomponent)
-        dd[key].add(subcomponent)
+    components = iter_components(mappings)
+
+    if prefix_allowlist is not None:
+        prefix_set = set(prefix_allowlist)
+        for component in components:
+            # subset to the priority prefixes
+            subcomponent: t.FrozenSet[Reference] = frozenset(r for r in component if r.prefix in prefix_set)
+            key = frozenset(r.prefix for r in subcomponent)
+            dd[key].add(subcomponent)
+    else:
+        for component in components:
+            subcomponent = frozenset(component)
+            key = frozenset(r.prefix for r in subcomponent)
+            dd[key].add(subcomponent)
+
     return dict(dd)
 
 
-def count_component_sizes(mappings: t.Iterable[Mapping], priority: t.Collection[str]) -> t.Counter[t.FrozenSet[str]]:
+def count_component_sizes(
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
+) -> t.Counter[t.FrozenSet[str]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
-    xx = aggregate_components(mappings, priority)
+    xx = aggregate_components(mappings, prefix_allowlist)
     return Counter({k: len(v) for k, v in xx.items()})
 
 
-def count_coverage_sizes(mappings: t.Iterable[Mapping], priority: t.Collection[str]) -> t.Counter[int]:
-    xx = count_component_sizes(mappings, priority=priority)
+def count_coverage_sizes(
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
+) -> t.Counter[int]:
+    """Get a counter of the number of prefixes in which each entity appears based on the mappings."""
+    xx = count_component_sizes(mappings, prefix_allowlist=prefix_allowlist)
     counter: t.Counter[int] = Counter()
     for prefixes, count in xx.items():
         counter[len(prefixes)] += count

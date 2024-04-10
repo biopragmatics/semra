@@ -17,6 +17,7 @@ from semra.api import (
     filter_mappings,
     filter_self_matches,
     flip,
+    from_digraph,
     get_index,
     get_many_to_many,
     infer_chains,
@@ -24,7 +25,6 @@ from semra.api import (
     infer_reversible,
     keep_prefixes,
     project,
-    from_digraph,
     to_digraph,
 )
 from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING

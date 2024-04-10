@@ -1,4 +1,4 @@
-"""Protein complex mappings."""
+"""A configuration for assembling mappings for protein complex terms."""
 
 import click
 import pystow
@@ -13,6 +13,9 @@ PREFIXES = PRIORITY = [
     "chembl.target",
     "wikidata",
     "scomp",
+    # "reactome", # TODO need a subset in Reactome to make this useful
+    "signor",
+    "intact",
 ]
 SUBSETS = {
     "go": ["go:0032991"],
@@ -55,7 +58,7 @@ CONFIGURATION = Configuration(
 
 @click.command()
 def main():
-    """Get the protein complex landscape."""
+    """Build the mapping database for protein complex terms."""
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
 
 

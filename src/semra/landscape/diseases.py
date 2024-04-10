@@ -1,4 +1,4 @@
-"""Disease Landscape Assessment."""
+"""A configuration for assembling mappings for disease terms."""
 
 import bioregistry
 import click
@@ -84,7 +84,7 @@ CONFIGURATION = Configuration(
 
 @click.command()
 def main():
-    """Get the disease landscape database."""
+    """Build the mapping database for disease terms."""
     # Takes about 2 hours
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
 

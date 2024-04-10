@@ -1,10 +1,9 @@
-"""Gene mappings."""
+"""A configuration for assembling mappings for gene terms."""
 
-import bioregistry
 import click
 import pystow
 
-from semra.pipeline import Configuration, Input, Mutation
+from semra.pipeline import Configuration, Input
 
 MODULE = pystow.module("semra", "case-studies", "gene")
 PREFIXES = PRIORITY = [
@@ -66,7 +65,7 @@ CONFIGURATION = Configuration(
 
 @click.command()
 def main():
-    """Get the gene landscape database."""
+    """Build the mapping database for gene terms."""
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
 
 

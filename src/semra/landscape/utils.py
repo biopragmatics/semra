@@ -1,4 +1,4 @@
-"""Supports landscape analysis."""
+"""Landscape analysis utilities."""
 
 import typing as t
 from collections import Counter, defaultdict
@@ -664,6 +664,9 @@ class LandscapeResult:
         sns.barplot(self.distribution, ax=ax)
 
         for index, value in self.distribution.items():
+            if value == 0:
+                # don't bother writing labels for zero
+                continue
             plt.text(
                 index - 1,
                 value + 0.2,

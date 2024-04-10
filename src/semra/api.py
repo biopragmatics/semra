@@ -338,7 +338,9 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
     """
     graph = nx.DiGraph()
-    edges: t.DefaultDict[t.Tuple[Reference, Reference], t.DefaultDict[Reference, t.List[Evidence]]] = defaultdict(lambda: defaultdict(list))
+    edges: t.DefaultDict[t.Tuple[Reference, Reference], t.DefaultDict[Reference, t.List[Evidence]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for mapping in mappings:
         edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
     for (s, o), data in edges.items():
@@ -348,11 +350,8 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
 
 def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
     """Extract mappings from a simple directed graph data model."""
-    return [
-        mapping
-        for s, o in graph.edges()
-        for mapping in _from_digraph_edge(graph, s, o)
-    ]
+    return [mapping for s, o in graph.edges() for mapping in _from_digraph_edge(graph, s, o)]
+
 
 def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
     data = graph[s][o]
@@ -393,8 +392,6 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
             **{EVIDENCE_KEY: mapping.evidence},
         )
     return graph
-
-
 
 
 def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference | None:
@@ -1101,14 +1098,14 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
         else:
             _pp = f"{prefix}:"
             rv[prefix] = {
-                descendant_curie[len(_pp):]
+                descendant_curie[len(_pp) :]
                 for parent_curie in parent_curies
                 for descendant_curie in nx.ancestors(hierarchy, parent_curie) or []
                 if descendant_curie.startswith(_pp)
             }
             for parent_curie in parent_curies:
                 if parent_curie.startswith(_pp):
-                    rv[prefix].add(parent_curie[len(_pp):])
+                    rv[prefix].add(parent_curie[len(_pp) :])
     return rv
 
 
@@ -1124,6 +1121,7 @@ def filter_subsets(
         In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
         is skipped.
     :return: A list that has been filtered based on the prefix_to_identifiers dict
+    :raises ValueError: If CURIEs are given instead of identifiers
 
     If you have a simple configuration dictionary that contains the parent terms, like
     ``{"mesh": ["mesh:D002477"]}``, you'll want to do the following first:
@@ -1142,13 +1140,9 @@ def filter_subsets(
         if not identifiers:
             # skip empty lists
             continue
-        problems = {
-            identifier
-            for identifier in identifiers
-            if ":" in identifier
-        }
+        problems = {identifier for identifier in identifiers if ":" in identifier}
         if problems:
-            raise ValueError(f"value list should be local unique ids, not curies")
+            raise ValueError("value list should be local unique ids, not curies")
         clean_prefix_to_identifiers[prefix] = identifiers
 
     rv = []

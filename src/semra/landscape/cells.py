@@ -1,5 +1,7 @@
-"""
-Reproduce the scenario from the Biomappings paper on cancer cell lines
+"""A configuration for assembling mappings for cell and cell line terms.
+
+This configuration can be used to reproduce the results from the Biomappings paper
+by doing the following:
 
 1. Load positive mappings
    - PyOBO: EFO, DepMap, CCLE
@@ -83,7 +85,7 @@ CONFIGURATION = Configuration(
 
 @click.command()
 def main():
-    # 1. load mappings
+    """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
 
     click.echo(f"Processing returned {len(mappings):,} mappings")

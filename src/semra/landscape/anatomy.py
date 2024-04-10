@@ -1,7 +1,15 @@
+"""A configuration for assembling mappings for anatomical terms."""
+
+import click
 import pystow
 from pyobo.sources.mesh import get_mesh_category_curies
 
 import semra
+
+__all__ = [
+    "MODULE",
+    "CONFIGURATION",
+]
 
 MODULE = pystow.module("semra", "case-studies", "anatomy")
 PRIORITY = [
@@ -49,7 +57,7 @@ CONFIGURATION = semra.Configuration(
     ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    raw_neo4j_path=MODULE.join("neo4j_raw"),
+    # raw_neo4j_path=MODULE.join("neo4j_raw"),
     processed_pickle_path=MODULE.join(name="processed.pkl"),
     processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
     processed_neo4j_path=MODULE.join("neo4j"),
@@ -58,5 +66,12 @@ CONFIGURATION = semra.Configuration(
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
 )
 
-if __name__ == "__main__":
+
+@click.command()
+def main():
+    """Build the mapping database for anatomical terms."""
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
+
+
+if __name__ == "__main__":
+    main()

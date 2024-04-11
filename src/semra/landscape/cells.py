@@ -1,5 +1,7 @@
-"""
-Reproduce the scenario from the Biomappings paper on cancer cell lines
+"""A configuration for assembling mappings for cell and cell line terms.
+
+This configuration can be used to reproduce the results from the Biomappings paper
+by doing the following:
 
 1. Load positive mappings
    - PyOBO: EFO, DepMap, CCLE
@@ -20,23 +22,32 @@ from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
-MODULE = pystow.module("semra", "case-studies", "cancer-cell-lines")
-PRIORITY_SSSOM_PATH = MODULE.join(name="priority.sssom.tsv")
+__all__ = [
+    "MODULE",
+    "CONFIGURATION",
+]
 
-PREFIXES = {
+MODULE = pystow.module("semra", "case-studies", "cells")
+PREFIXES = PRIORITY = [
+    "mesh",
     "efo",
     "cellosaurus",
-    "depmap",
     "ccle",
-    "clo",
-    "cl",
+    "depmap",
     "bto",
-    "mesh",
+    "cl",
+    "clo",
+    "ncit",
+    "umls",
+]
+
+# some resources are generic, so we want to cut to a relevant subset
+SUBSETS = {
+    "mesh": ["mesh:D002477"],
+    "efo": ["efo:0000324"],
+    "ncit": ["ncit:C12508"],
+    "umls": ["sty:T025"],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
 }
-PRIORITY = ["mesh", "efo", "cellosaurus", "ccle", "depmap", "bto", "cl", "clo"]
-for prefix in PREFIXES:
-    if prefix not in PRIORITY:
-        raise ValueError(f"Missing prioirty order for {prefix}")
 
 CONFIGURATION = Configuration(
     name="Cell and Cell Line Mappings",
@@ -45,22 +56,10 @@ CONFIGURATION = Configuration(
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        # Cellosaurus removed its xrefs to depmap after v43
-        # FIXME need to upgrade these mappings to SSSOM and trash this old source file
-        # Input(
-        #     source="custom",
-        #     extras={
-        #         "path": "/Users/cthoyt/dev/biomappings/notebooks/cellosaurus_43_xrefs.tsv",
-        #         "source_prefix": "cellosaurus",
-        #         "prefixes": PREFIXES,
-        #         "version": "43",
-        #         "license": "CC-BY-4.0",
-        #     },
-        # ),
         Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
         Input(prefix="bto", source="bioontologies", confidence=0.99),
         Input(prefix="cl", source="bioontologies", confidence=0.99),
-        Input(prefix="clo", source="custom", confidence=0.99),
+        Input(prefix="clo", source="custom", confidence=0.65),
         Input(prefix="efo", source="pyobo", confidence=0.99),
         Input(
             prefix="depmap",
@@ -69,8 +68,10 @@ CONFIGURATION = Configuration(
             extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
         ),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
+        Input(prefix="ncit", source="pyobo", confidence=0.99),
+        Input(prefix="umls", source="pyobo", confidence=0.99),
     ],
-    add_labels=False,
+    subsets=SUBSETS,
     priority=PRIORITY,
     keep_prefixes=PREFIXES,
     remove_imprecise=False,
@@ -82,22 +83,25 @@ CONFIGURATION = Configuration(
         Mutation(source="depmap", confidence=0.7),
         Mutation(source="ccle", confidence=0.7),
         Mutation(source="cellosaurus", confidence=0.7),
+        Mutation(source="ncit", confidence=0.7),
+        Mutation(source="umls", confidence=0.7),
     ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    raw_neo4j_path=MODULE.join("neo4j_raw"),
+    # raw_neo4j_path=MODULE.join("neo4j_raw"),
+    add_labels=True,
     processed_pickle_path=MODULE.join(name="processed.pkl"),
     processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
     processed_neo4j_path=MODULE.join("neo4j"),
     processed_neo4j_name="semra-cell",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
-    priority_sssom_path=PRIORITY_SSSOM_PATH,
+    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
 )
 
 
 @click.command()
 def main():
-    # 1. load mappings
+    """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
 
     click.echo(f"Processing returned {len(mappings):,} mappings")

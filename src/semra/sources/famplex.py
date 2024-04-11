@@ -13,16 +13,16 @@ from semra.rules import BEN_ORCID, EXACT_MATCH, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
-    "get_famplex_mappings",
+    "get_fplx_mappings",
 ]
 
 logger = logging.getLogger(__name__)
 
 URL = "https://github.com/sorgerlab/famplex/raw/master/equivalences.csv"
-MAPPING_SET = MappingSet(name="famplex", confidence=0.99, license="CC0")
+MAPPING_SET = MappingSet(name="fplx", confidence=0.99, license="CC0")
 
 
-def get_famplex_mappings() -> list[Mapping]:
+def get_fplx_mappings() -> list[Mapping]:
     """Get xrefs from FamPlex."""
     df = pd.read_csv(URL, header=None, names=["target_prefix", "target_id", "source_id"], sep=",")
     df = df[df["target_prefix"] != "MEDSCAN"]
@@ -47,4 +47,4 @@ def get_famplex_mappings() -> list[Mapping]:
 
 
 if __name__ == "__main__":
-    get_famplex_mappings()
+    get_fplx_mappings()

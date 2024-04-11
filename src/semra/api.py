@@ -54,6 +54,7 @@ __all__ = [
     "infer_reversible",
     "flip",
     "to_digraph",
+    "to_multidigraph",
     "from_digraph",
     "infer_chains",
     "tabulate_index",
@@ -78,11 +79,14 @@ __all__ = [
     "validate_mappings",
     "summarize_prefixes",
     "filter_minimum_confidence",
+    "filter_subsets",
+    "count_component_sizes",
 ]
 
 
 logger = logging.getLogger(__name__)
 
+DATA_KEY = "data"
 PREDICATE_KEY = "predicate"
 EVIDENCE_KEY = "evidence"
 
@@ -90,12 +94,13 @@ EVIDENCE_KEY = "evidence"
 Index = t.Dict[Triple, t.List[Evidence]]
 
 
-def _tqdm(mappings, desc: str | None = None, *, progress: bool = True):
+def _tqdm(mappings, desc: str | None = None, *, progress: bool = True, leave: bool = True):
     return tqdm(
         mappings,
         unit_scale=True,
         unit="mapping",
         desc=desc,
+        leave=leave,
         disable=not progress,
     )
 
@@ -189,10 +194,10 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
 
-def get_index(mappings: Iterable[Mapping], *, progress: bool = True) -> Index:
+def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool = False) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd: t.DefaultDict[Triple, t.List[Evidence]] = defaultdict(list)
-    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress):
+    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
 
@@ -250,11 +255,10 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> r2 = get_test_reference(prefix="p2")
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-    >>> mappings = infer_reversible([m1])
+    >>> mappings = list(infer_reversible([m1]))
     >>> len(mappings)
     2
     >>> mappings[0] == m1
-    >>> mappings[1] ==
 
     .. warning::
 
@@ -270,7 +274,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> e1, e2 = get_test_evidence(2)
         >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
-        >>> mappings = infer_reversible([m1, m2])
+        >>> mappings = list(infer_reversible([m1, m2]))
         >>> len(mappings)
         3
         >>> mappings = assemble_evidences(mappings)
@@ -312,7 +316,7 @@ def flip(mapping: Mapping) -> Mapping | None:
     )
 
 
-def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
+def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
     """Convert mappings into a simple directed graph data model.
 
     :param mappings: An iterable of mappings
@@ -334,23 +338,60 @@ def to_digraph(mappings: t.List[Mapping]) -> nx.DiGraph:
         ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
     """
     graph = nx.DiGraph()
+    edges: t.DefaultDict[t.Tuple[Reference, Reference], t.DefaultDict[Reference, t.List[Evidence]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for mapping in mappings:
-        graph.add_edge(
-            mapping.s,
-            mapping.o,
-            **{PREDICATE_KEY: mapping.p, EVIDENCE_KEY: mapping.evidence},
-        )
+        edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
+    for (s, o), data in edges.items():
+        graph.add_edge(s, o, **{DATA_KEY: data})
     return graph
 
 
 def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
     """Extract mappings from a simple directed graph data model."""
-    return [_from_digraph_edge(graph, s, o) for s, o in graph.edges()]
+    return [mapping for s, o in graph.edges() for mapping in _from_digraph_edge(graph, s, o)]
 
 
-def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> Mapping:
+def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
     data = graph[s][o]
-    return Mapping(s=s, p=data[PREDICATE_KEY], o=o, evidence=data[EVIDENCE_KEY])
+    for p, evidence in data[DATA_KEY].items():
+        yield Mapping(s=s, p=p, o=o, evidence=evidence)
+
+
+def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[t.Set[Reference]]:
+    """Iterate over connected components in the multidigraph view over the mappings."""
+    graph = to_digraph(mappings)
+    return nx.weakly_connected_components(graph)
+
+
+def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
+    """Convert mappings into a multi directed graph data model.
+
+    :param mappings: An iterable of mappings
+    :param progress: Should a progress bar be shown?
+    :returns: A directed graph in which the nodes are
+        :class:`curies.Reference` objects. The predicate
+        is put under the :data:`PREDICATE_KEY` key in the
+        edge data and the evidences are put under the
+        :data:`EVIDENCE_KEY` key in the edge data.
+
+    .. warning::
+
+        This function makes the following assumptions:
+
+        1. The graph has already been assembled using :func:`assemble_evidences`
+
+    """
+    graph = nx.MultiDiGraph()
+    for mapping in _tqdm(mappings, progress=progress):
+        graph.add_edge(
+            mapping.s,
+            mapping.o,
+            key=mapping.p,
+            **{EVIDENCE_KEY: mapping.evidence},
+        )
+    return graph
 
 
 def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference | None:
@@ -375,7 +416,13 @@ def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference 
 
 
 def infer_chains(
-    mappings: t.List[Mapping], *, backwards: bool = True, progress: bool = True, cutoff: int = 5
+    mappings: t.List[Mapping],
+    *,
+    backwards: bool = True,
+    progress: bool = True,
+    cutoff: int = 5,
+    minimum_component_size: int = 2,
+    maximum_component_size: int = 100,
 ) -> t.List[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
@@ -383,49 +430,82 @@ def infer_chains(
     :param backwards: Should inference be done in reverse?
     :param progress: Should a progress bar be shown? Defaults to true.
     :param cutoff: What's the maximum length path to infer over?
+    :param minimum_component_size: The smallest size of a component to consider, defaults to 2
+    :param maximum_component_size: The smallest size of a component to consider, defaults to 100.
+        Components that are very large (i.e., much larger than the number of target prefixes)
+        likely are the result of many broad/narrow mappings
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    # FIXME to_digraph requires a single predicate for each s/o pair,
-    #  which isn't necessarily true, so there should be some kind of reasoning
-    #  step that picks which is "best"
-    graph = to_digraph(mappings)
+    graph = to_multidigraph(mappings)
     new_mappings = []
 
     components = sorted(
-        (c for c in nx.weakly_connected_components(graph) if len(c) > 2),  # noqa: PLR2004
+        (
+            component
+            for component in nx.weakly_connected_components(graph)
+            if minimum_component_size < len(component) <= maximum_component_size
+        ),
         key=len,
         reverse=True,
     )
     it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
     for _i, component in enumerate(it):
-        sg: nx.DiGraph = graph.subgraph(component).copy()
-        it.set_postfix(size=sg.number_of_nodes())
-        for s, o in itt.combinations(sg, 2):
+        sg: nx.MultiDiGraph = graph.subgraph(component).copy()
+        sg_len = sg.number_of_nodes()
+        it.set_postfix(size=sg_len)
+        inner_it = tqdm(
+            itt.combinations(sg, 2),
+            total=sg_len * (sg_len - 1) // 2,
+            unit_scale=True,
+            disable=not progress,
+            unit="edge",
+            leave=False,
+        )
+        for s, o in inner_it:
             if sg.has_edge(s, o):  # do not overwrite existing mappings
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this
             # nx.shortest_path(sg, s, o)
+            predicate_evidence_dict: t.DefaultDict[Reference, t.List[Evidence]] = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
-                predicates = [sg[u][v][PREDICATE_KEY] for u, v in path]
+                if _path_has_prefix_duplicates(path):
+                    continue
+                predicates = [k for _u, _v, k in path]
                 p = _reason_multiple_predicates(predicates)
-                if p:
+                if p is not None:
                     evidence = ReasonedEvidence(
                         justification=CHAIN_MAPPING,
                         mappings=[
                             Mapping(
                                 s=path_s,
                                 o=path_o,
-                                p=graph[path_s][path_o][PREDICATE_KEY],
-                                evidence=graph[path_s][path_o][EVIDENCE_KEY],
+                                p=path_p,
+                                evidence=graph[path_s][path_o][path_p][EVIDENCE_KEY],
                             )
-                            for path_s, path_o in path
+                            for path_s, path_o, path_p in path
                         ],
+                        # TODO add confidence that's inversely proportional to sg_len, i.e.
+                        # larger components should return less confident mappings
                     )
-                    new_mappings.append(Mapping(s=s, p=p, o=o, evidence=[evidence]))
-                    if backwards:
-                        new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=[evidence]))
+                    predicate_evidence_dict[p].append(evidence)
+
+            for p, evidences in predicate_evidence_dict.items():
+                new_mappings.append(Mapping(s=s, p=p, o=o, evidence=evidences))
+                if backwards:
+                    new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidences))
+
     return [*mappings, *new_mappings]
+
+
+def _path_has_prefix_duplicates(path) -> bool:
+    """Return if the path has multiple unique."""
+    elements = set()
+    for u, v, _ in path:
+        elements.add(u)
+        elements.add(v)
+    counter = Counter(element.prefix for element in elements)
+    return any(v > 1 for v in counter.values())
 
 
 def tabulate_index(index: Index) -> str:
@@ -482,7 +562,7 @@ def infer_mutual_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> r1, r2, r3, r4 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> mappings = [m1, m2, m3]
@@ -823,12 +903,13 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
         if o is None:
             continue
         rv.extend(
-            _from_digraph_edge(graph, s, o)
+            mapping
             # TODO should this work even if s-o edge not exists?
             #  can also do "inference" here, but also might be
             #  because of negative edge filtering
             for s in component
             if s != o and graph.has_edge(s, o)
+            for mapping in _from_digraph_edge(graph, s, o)
         )
 
     # sort such that the mappings are ordered by object by priority order
@@ -962,3 +1043,172 @@ def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) 
             continue
         if confidence >= cutoff:
             yield mapping
+
+
+def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> t.Mapping[str, t.Collection[str]]:
+    """Convert a subset configuration dictionary into a subset artifact.
+
+    :param subset_configuration: A dictionary of prefixes to sets of parent terms
+    :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
+    :raises ValueError: If a prefix can't be looked up with PyOBO
+
+    To get all the cells from MeSH:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        configuration = {"mesh": ["mesh:D002477"], ...}
+        prefix_to_identifiers = hydrate_subsets(configuration)
+
+    It's also possible to use parents outside the vocabulary, such as when search for entity
+    type in UMLS:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        configuration = {
+            "umls": [
+                # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
+                "sty:T049",  # cell or molecular dysfunction
+                "sty:T047",  # disease or syndrome
+                "sty:T191",  # neoplastic process
+                "sty:T050",  # experimental model of disease
+                "sty:T048",  # mental or behavioral dysfunction
+            ],
+            ...
+        }
+        prefix_to_identifiers = hydrate_subsets(configuration)
+
+    """
+    import pyobo
+    from pyobo.getters import NoBuild
+
+    rv: t.Dict[str, t.Set[str]] = {}
+    # do lookup of the hierarchy and lookup of ancestors in 2 steps to allow for
+    # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
+    for prefix, parent_curies in subset_configuration.items():
+        try:
+            hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
+        except NoBuild:
+            rv[prefix] = set()
+        except Exception as e:
+            raise ValueError(f"Failed on {prefix}") from e
+        else:
+            _pp = f"{prefix}:"
+            rv[prefix] = {
+                descendant_curie[len(_pp) :]
+                for parent_curie in parent_curies
+                for descendant_curie in nx.ancestors(hierarchy, parent_curie) or []
+                if descendant_curie.startswith(_pp)
+            }
+            for parent_curie in parent_curies:
+                if parent_curie.startswith(_pp):
+                    rv[prefix].add(parent_curie[len(_pp) :])
+    return rv
+
+
+def filter_subsets(
+    mappings: t.Iterable[Mapping], prefix_to_identifiers: t.Mapping[str, t.Collection[str]]
+) -> t.List[Mapping]:
+    """Filter mappings that don't appear in the given subsets.
+
+    :param mappings: An iterable of semantic mappings
+    :param prefix_to_identifiers: A dictionary whose keys are prefixes and whose values are collections
+        of local unique identifiers strings for a subset of terms in the resource to keep.
+
+        In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
+        is skipped.
+    :return: A list that has been filtered based on the prefix_to_identifiers dict
+    :raises ValueError: If CURIEs are given instead of identifiers
+
+    If you have a simple configuration dictionary that contains the parent terms, like
+    ``{"mesh": ["mesh:D002477"]}``, you'll want to do the following first:
+
+    .. code-block:: python
+
+        from semra.api import hydrate_subsets, filter_subsets
+
+        mappings = [ ... ]
+        configuration = {"mesh": ["mesh:D002477"]}
+        prefix_to_identifiers = hydrate_subsets(configuration)
+        filter_subsets(mappings, prefix_to_identifiers)
+    """
+    clean_prefix_to_identifiers = {}
+    for prefix, identifiers in prefix_to_identifiers.items():
+        if not identifiers:
+            # skip empty lists
+            continue
+        problems = {identifier for identifier in identifiers if ":" in identifier}
+        if problems:
+            raise ValueError("value list should be local unique ids, not curies")
+        clean_prefix_to_identifiers[prefix] = identifiers
+
+    rv = []
+    for mapping in mappings:
+        if (
+            mapping.s.prefix in clean_prefix_to_identifiers
+            and mapping.s.identifier not in clean_prefix_to_identifiers[mapping.s.prefix]
+        ):
+            continue
+        if (
+            mapping.o.prefix in clean_prefix_to_identifiers
+            and mapping.o.identifier not in clean_prefix_to_identifiers[mapping.o.prefix]
+        ):
+            continue
+        rv.append(mapping)
+    return rv
+
+
+def aggregate_components(
+    mappings: t.Iterable[Mapping],
+    prefix_allowlist: t.Optional[t.Collection[str]] = None,
+) -> t.Mapping[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]]:
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component.
+
+    :param mappings: Mappings to aggregate
+    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this list
+    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets of references
+    """
+    dd: t.DefaultDict[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]] = defaultdict(set)
+    components = iter_components(mappings)
+
+    if prefix_allowlist is not None:
+        prefix_set = set(prefix_allowlist)
+        for component in components:
+            # subset to the priority prefixes
+            subcomponent: t.FrozenSet[Reference] = frozenset(r for r in component if r.prefix in prefix_set)
+            key = frozenset(r.prefix for r in subcomponent)
+            dd[key].add(subcomponent)
+    else:
+        for component in components:
+            subcomponent = frozenset(component)
+            key = frozenset(r.prefix for r in subcomponent)
+            dd[key].add(subcomponent)
+
+    return dict(dd)
+
+
+def count_component_sizes(
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
+) -> t.Counter[t.FrozenSet[str]]:
+    """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
+    xx = aggregate_components(mappings, prefix_allowlist)
+    return Counter({k: len(v) for k, v in xx.items()})
+
+
+def count_coverage_sizes(
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
+) -> t.Counter[int]:
+    """Get a counter of the number of prefixes in which each entity appears based on the mappings."""
+    xx = count_component_sizes(mappings, prefix_allowlist=prefix_allowlist)
+    counter: t.Counter[int] = Counter()
+    for prefixes, count in xx.items():
+        counter[len(prefixes)] += count
+    # Back-fill any intermediate counts with zero
+    max_key = max(counter)
+    for i in range(1, max_key):
+        if i not in counter:
+            counter[i] = 0
+    return counter

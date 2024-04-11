@@ -38,7 +38,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-#: The precision for confidences used before exporing to the graph data model
+#: The precision for confidences used before exporting to the graph data model
 CONFIDENCE_PRECISION = 5
 #: The predicate used in the graph data model connecting a mapping node to an evidence node
 HAS_EVIDENCE_PREDICATE = "hasEvidence"
@@ -235,7 +235,7 @@ def _from_pyobo_df(
         df[df.columns[0]] = df[df.columns[0]].map(lambda s: bioregistry.standardize_identifier(source_prefix, s))
         df[df.columns[2]] = [
             bioregistry.standardize_identifier(target_prefix, target_id)
-            for target_prefix, target_id in df[[1, 2]].values
+            for target_prefix, target_id in df[[df.columns[1], df.columns[2]]].values
         ]
     rv = [
         Mapping(
@@ -461,7 +461,14 @@ def _get_name_by_curie(curie: str) -> str | None:
 
         orcid = curie[len("orcid:") :]
         res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
-        return res["person"]["name"]["given-names"]["value"] + " " + res["person"]["name"]["family-name"]["value"]
+        name = res["person"]["name"]
+        if name is None:
+            return None
+        if credit_name := name.get("credit-name"):
+            return credit_name["value"]
+        if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
+            return f"{given_names['value']} {family_name['value']}"
+        return None
     return pyobo.get_name_by_curie(curie)
 
 
@@ -828,12 +835,13 @@ def write_neo4j(
         #!/bin/bash
         docker build --tag {docker_name} .
         # -t means allocate a pseudo-TTY, necessary to keep it running in the background
-        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 {docker_name}
+        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 --name {docker_name} {docker_name}:latest
     """
     )
     run_path.write_text(run_command)
     click.secho("Run Neo4j with the following:", fg="green")
-    click.secho(f"  sh {run_path.absolute()}")
+    click.secho(f"  cd {run_path.parent.absolute()}")
+    click.secho(f"  sh {run_script_name}")
 
     # shell_command = dedent(f"""\
     #     neo4j-admin database import full \\

@@ -9,13 +9,15 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, root_validator
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from semra.api import (
     assemble_evidences,
     filter_mappings,
     filter_prefixes,
     filter_self_matches,
+    filter_subsets,
+    hydrate_subsets,
     infer_chains,
     infer_mutual_dbxref_mutations,
     infer_reversible,
@@ -41,11 +43,13 @@ from semra.sources.biopragmatics import (
     get_biomappings_positive_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
+from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
 
 __all__ = [
     # Configuration model
     "Configuration",
+    "SubsetConfiguration",
     "Input",
     "Mutation",
     # Functions
@@ -60,7 +64,7 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
+    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda", "wikidata"]
     prefix: Optional[str] = None
     confidence: float = 1.0
     extras: t.Dict[str, Any] = Field(default_factory=dict)
@@ -73,6 +77,9 @@ class Mutation(BaseModel):
     confidence: float = 1.0
     old: Reference = Field(default=DB_XREF)
     new: Reference = Field(default=EXACT_MATCH)
+
+
+SubsetConfiguration = t.Mapping[str, t.Collection[str]]
 
 
 class Configuration(BaseModel):
@@ -88,14 +95,26 @@ class Configuration(BaseModel):
         default_factory=list, description="If no priority is given, is inferred from the order of inputs"
     )
     mutations: t.List[Mutation] = Field(default_factory=list)
+    subsets: t.Optional[t.Mapping[str, t.List[str]]] = Field(
+        None,
+        description="A field to put restrictions on the subhierarchies from each resource. For example, if "
+        "you want to assemble cell mappings from MeSH, you don't need all possible mesh mappings, but only "
+        "ones that have to do with terms in the cell hierchy under the mesh:D002477 term. Therefore, this "
+        "dictionary allows for specifying such restrictions",
+        examples=[
+            {"mesh": ["mesh:D002477"]},
+        ],
+    )
 
     exclude_pairs: t.List[t.Tuple[str, str]] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: Optional[t.List[str]] = None
-    keep_prefixes: Optional[t.List[str]] = None
+    remove_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to remove before processing")
+    keep_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to keep before processing")
+    post_remove_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to remove after processing")
+    post_keep_prefixes: Optional[t.List[str]] = Field(None, description="Prefixes to keep after processing")
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
@@ -148,6 +167,28 @@ class Configuration(BaseModel):
         """Run assembly based on this configuration."""
         return get_mappings_from_config(self, refresh_raw=refresh_raw, refresh_processed=refresh_processed)
 
+    def read_raw_mappings(self) -> t.List[Mapping]:
+        """Read raw mappings from pickle, if already cached."""
+        if self.raw_pickle_path is None:
+            raise ValueError
+        if not self.raw_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.raw_pickle_path)
+
+    def read_processed_mappings(self) -> t.List[Mapping]:
+        """Read processed mappings from pickle, if already cached."""
+        if self.processed_pickle_path is None:
+            raise ValueError
+        if not self.processed_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.processed_pickle_path)
+
+    def get_hydrated_subsets(self) -> t.Mapping[str, t.Collection[str]]:
+        """Get the full subset filter lists based on the parent configuration."""
+        if not self.subsets:
+            return {}
+        return hydrate_subsets(self.subsets)
+
 
 def get_mappings_from_config(
     configuration: Configuration,
@@ -179,13 +220,13 @@ def get_mappings_from_config(
         if configuration.raw_pickle_path:
             write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.add_labels)
+            write_sssom(raw_mappings, configuration.raw_sssom_path)  # , add_labels=configuration.add_labels)
         if configuration.raw_neo4j_path:
             write_neo4j(
                 raw_mappings,
                 configuration.raw_neo4j_path,
                 docker_name=configuration.raw_neo4j_name,
-                add_labels=configuration.add_labels,
+                add_labels=False,  # configuration.add_labels,
             )
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -196,7 +237,10 @@ def get_mappings_from_config(
         ],
         remove_prefix_set=configuration.remove_prefixes,
         keep_prefix_set=configuration.keep_prefixes,
+        post_remove_prefixes=configuration.post_remove_prefixes,
+        post_keep_prefixes=configuration.post_keep_prefixes,
         remove_imprecise=configuration.remove_imprecise,
+        subsets=configuration.get_hydrated_subsets(),
     )
     prioritized_mappings = prioritize(processed_mappings, configuration.priority)
 
@@ -260,6 +304,8 @@ def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
         elif inp.source == "custom":
             func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
             mappings.extend(func())
+        elif inp.source == "wikidata":
+            mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
         elif inp.source == "sssom":
             mappings.extend(from_sssom(inp.prefix, **inp.extras))
         elif inp.source == "cache":
@@ -272,8 +318,11 @@ def get_raw_mappings(configuration: Configuration) -> t.List[Mapping]:
 def process(
     mappings: t.List[Mapping],
     upgrade_prefixes=None,
-    remove_prefix_set=None,
-    keep_prefix_set=None,
+    remove_prefix_set: t.Optional[t.Collection[str]] = None,
+    keep_prefix_set: t.Optional[t.Collection[str]] = None,
+    post_remove_prefixes: t.Optional[t.Collection[str]] = None,
+    post_keep_prefixes: t.Optional[t.Collection[str]] = None,
+    subsets: t.Optional[t.Mapping[str, t.Collection[str]]] = None,
     *,
     remove_imprecise: bool = True,
 ) -> t.List[Mapping]:
@@ -285,6 +334,9 @@ def process(
 
     if remove_prefix_set:
         mappings = filter_prefixes(mappings, remove_prefix_set)
+
+    if subsets:
+        mappings = list(filter_subsets(mappings, subsets))
 
     start = time.time()
     negatives = from_biomappings_negative()
@@ -352,6 +404,12 @@ def process(
 
     # filter out self mappings again, just in case
     mappings = filter_self_matches(mappings)
+
+    if post_keep_prefixes:
+        mappings = keep_prefixes(mappings, post_keep_prefixes)
+
+    if post_remove_prefixes:
+        mappings = filter_prefixes(mappings, post_remove_prefixes)
 
     return mappings
 

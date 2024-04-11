@@ -34,7 +34,7 @@
 1,796&#45;&#45;ncit
 7,556</title>
 <path fill="none" stroke="black" d="M65.1,-189.92C81.13,-194.01 100.64,-198.99 116.66,-203.08"/>
-<text text-anchor="middle" x="90.86" y="-201.19" font-family="Times,serif" font-size="14.00">75</text>
+<text text-anchor="middle" x="90.86" y="-201.19" font-family="Times,serif" font-size="14.00">74</text>
 </g>
 <!-- uberon
 14,480 -->
@@ -101,7 +101,7 @@
 7,556&#45;&#45;uberon
 14,480</title>
 <path fill="none" stroke="black" d="M178.18,-197.55C194.42,-189.16 214.62,-177.41 230.48,-163.99 244.47,-152.16 257.67,-136.46 267.62,-123.34"/>
-<text text-anchor="middle" x="215.1" y="-188.19" font-family="Times,serif" font-size="14.00">2,555</text>
+<text text-anchor="middle" x="215.1" y="-188.19" font-family="Times,serif" font-size="14.00">2,531</text>
 </g>
 <!-- ncit
 7,556&#45;&#45;bto
@@ -111,7 +111,7 @@
 7,556&#45;&#45;bto
 6,511</title>
 <path fill="none" stroke="black" d="M181.97,-208.7C196.78,-207.52 214.54,-205.92 230.48,-203.99 287.22,-197.12 352.92,-186.25 391.03,-179.65"/>
-<text text-anchor="middle" x="286.31" y="-205.19" font-family="Times,serif" font-size="14.00">814</text>
+<text text-anchor="middle" x="286.31" y="-205.19" font-family="Times,serif" font-size="14.00">805</text>
 </g>
 <!-- ncit
 7,556&#45;&#45;umls

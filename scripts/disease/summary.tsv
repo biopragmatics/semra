@@ -5,10 +5,10 @@ efo	Experimental Factor Ontology	Apache-2.0	3.64.0	2080	subset
 mesh	Medical Subject Headings	CC0-1.0	2024	3125	subset
 ncit	NCI Thesaurus	CC-BY-4.0	24.02d	20095	subset
 orphanet	Orphanet	CC-BY-4.0		15348	full
-orphanet.ordo	Orphanet Rare Disease Ontology	CC-BY-4.0	4.4	14473	observed
+orphanet.ordo	Orphanet Rare Disease Ontology	CC-BY-4.0	4.4	14495	observed
 umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2023AB	178734	subset
-omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	April 9, 2024	20268	observed
-omim.ps	OMIM Phenotypic Series	https://www.omim.org/help/agreement	April 9, 2024	576	full
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	April 10, 2024	20292	observed
+omim.ps	OMIM Phenotypic Series	https://www.omim.org/help/agreement	April 10, 2024	576	full
 gard	Genetic and Rare Diseases Information Center			12292	observed
 icd10	International Classification of Diseases, 10th Revision	https://cdn.who.int/media/docs/default-source/publishing-policies/copyright/who-faq-licensing-icd-10.pdf	2019	2345	full
 icd10cm	International Classification of Diseases, 10th Revision, Clinical Modification			21556	observed

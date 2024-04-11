@@ -765,19 +765,15 @@ def write_neo4j(
         neo4j start
 
         # Get the port
-        NEO4J_PORT=$(cat $NEO4J_CONFIG/neo4j.conf | grep "http.listen_address" | tr -d -c 0-9)
-
-        # Wait for the server to start up
-        echo "Waiting for database"
         until [ \
-          "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:$NEO4J_PORT")" \
+          "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:7474")" \
           -eq 200 ]
         do
           sleep 5
         done
 
         neo4j status
-        python3.11 -m uvicorn --host 0.0.0.0 --port 8773 semra.wsgi:app
+        python3.11 -m uvicorn --host 0.0.0.0 --port 8773 --factory semra.wsgi:get_app
     """
     )
     startup_path.write_text(startup_commands)

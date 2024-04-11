@@ -9,15 +9,22 @@ import semra.landscape.diseases
 import semra.landscape.genes
 
 
+FUNCTIONS = [
+    ("Complexes", semra.landscape.complexes.main),
+    ("Anatomy", semra.landscape.anatomy.main),
+    ("Cells and Cell Lines", semra.landscape.cells.main),
+    ("Diseases", semra.landscape.diseases.main),
+    ("Genes", semra.landscape.genes.main),
+]
+
+
 @click.command()
 @click.pass_context
 def main(ctx: click.Context):
     """Run all landscape builds."""
-    ctx.invoke(semra.landscape.complexes.main)
-    ctx.invoke(semra.landscape.anatomy.main)
-    ctx.invoke(semra.landscape.cells.main)
-    ctx.invoke(semra.landscape.diseases.main)
-    ctx.invoke(semra.landscape.genes.main)
+    for label, func in FUNCTIONS:
+        click.secho(label, bold=True, fg="green")
+        ctx.invoke(func)
 
 
 if __name__ == "__main__":

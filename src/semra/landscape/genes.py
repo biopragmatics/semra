@@ -43,12 +43,12 @@ CONFIGURATION = Configuration(
         Input(prefix="flybase", source="pyobo", confidence=0.99),
         Input(prefix="ncit_hgnc", source="custom", confidence=0.99),
         Input(prefix="omim_gene", source="custom", confidence=0.99),
-        Input(prefix="wikidata", source="custom", extras=dict(property="P351"), confidence=0.99),  # Entrez
-        Input(prefix="wikidata", source="custom", extras=dict(property="P11277"), confidence=0.99),  # CiVIC
-        Input(prefix="wikidata", source="custom", extras=dict(property="P594"), confidence=0.99),  # ENSEMBL Gene
-        Input(prefix="wikidata", source="custom", extras=dict(property="P354"), confidence=0.99),  # HGNC Gene ID
-        Input(prefix="wikidata", source="custom", extras=dict(property="P492"), confidence=0.99),  # OMIM Gene ID
-        Input(prefix="wikidata", source="custom", extras=dict(property="P2892"), confidence=0.99),  # UMLS ID
+        Input(source="wikidata", prefix="ncbigene", confidence=0.99),
+        Input(source="wikidata", prefix="civic.gid", confidence=0.99),
+        Input(source="wikidata", prefix="ensembl", confidence=0.99),
+        Input(source="wikidata", prefix="hgnc", confidence=0.99),
+        Input(source="wikidata", prefix="omim", confidence=0.99),
+        Input(source="wikidata", prefix="umls", confidence=0.99),
     ],
     subsets={"umls": ["umls:C0017337"], "ncit": ["ncit:C16612"]},
     add_labels=True,

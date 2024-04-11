@@ -17,7 +17,6 @@ from typing_extensions import TypeAlias
 
 import semra
 from semra import Evidence, MappingSet, Reference
-from semra.io import _get_name_by_curie
 from semra.rules import RELATIONS
 
 __all__ = [
@@ -42,11 +41,11 @@ def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
     return f"{prefix}:{curie_or_luid}"
 
 
-#: A cypher query that if it returns a result signifies that there are concept names in the database
-HAS_NAMES_CYPHER = "MATCH (n:concept) WHERE n.name is not null RETURN n LIMIT 1"
-
 #: A cypher query that gets all of the databases' relation types
 RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+
+#: A cypher query format string for getting the name of a concept
+CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
 
 class Neo4jClient:
@@ -76,7 +75,6 @@ class Neo4jClient:
         self._rel_q = "|".join(
             f"`{reference.curie}`" for reference in RELATIONS if reference.curie in self._all_relations
         )
-        self._database_has_names = len(self.read_query(HAS_NAMES_CYPHER)) > 1
 
     def __del__(self):
         """Ensure driver is shut down when client is destroyed."""
@@ -330,11 +328,12 @@ as label, count UNION ALL
         """Get the name for a CURIE or reference."""
         if isinstance(curie, Reference):
             curie = curie.curie
-        if not self._database_has_names:
-            # return _get_name_by_curie(curie)
+        try:
+            name = self.read_query(CONCEPT_NAME_CYPHER, curie=curie)[0][0]
+        except Exception:
             return None
-        query = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name"
-        return self.read_query(query)[0][0]
+        else:
+            return name
 
     def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> t.List:
         """Get n mappings from a given set (by CURIE)."""

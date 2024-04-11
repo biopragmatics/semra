@@ -6,6 +6,7 @@ import gzip
 import logging
 import pickle
 import typing as t
+from functools import lru_cache
 from pathlib import Path
 from textwrap import dedent
 from typing import Literal, Optional, TextIO, cast
@@ -17,6 +18,7 @@ import click
 import pandas as pd
 import pyobo
 import pyobo.utils
+import requests
 from bioregistry import Collection
 from tqdm.autonotebook import tqdm
 
@@ -457,19 +459,25 @@ def _get_name_by_curie(curie: str) -> str | None:
     if any(curie.startswith(p) for p in SKIP_PREFIXES):
         return None
     if curie.startswith("orcid:"):
-        import requests
-
-        orcid = curie[len("orcid:") :]
-        res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
-        name = res["person"]["name"]
-        if name is None:
-            return None
-        if credit_name := name.get("credit-name"):
-            return credit_name["value"]
-        if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
-            return f"{given_names['value']} {family_name['value']}"
-        return None
+        return get_orcid_name(curie)
     return pyobo.get_name_by_curie(curie)
+
+
+@lru_cache(maxsize=None)
+def get_orcid_name(orcid: str) -> Optional[str]:
+    """Retrieve a researcher's name from ORCID's API."""
+    if orcid.startswith("orcid:"):
+        orcid = orcid[len("orcid:") :]
+
+    res = requests.get(f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5).json()
+    name = res["person"]["name"]
+    if name is None:
+        return None
+    if credit_name := name.get("credit-name"):
+        return credit_name["value"]
+    if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
+        return f"{given_names['value']} {family_name['value']}"
+    return None
 
 
 def _get_sssom_row(mapping: Mapping, e: Evidence):

@@ -8,7 +8,6 @@ import semra.landscape.complexes
 import semra.landscape.diseases
 import semra.landscape.genes
 
-
 FUNCTIONS = [
     ("Complexes", semra.landscape.complexes.main),
     ("Anatomy", semra.landscape.anatomy.main),

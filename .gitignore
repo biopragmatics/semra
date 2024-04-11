@@ -901,5 +901,4 @@ FodyWeavers.xsd
 scratch/
 *.jnl
 *.jar
-/scripts/example
 scripts/Untitled.ipynb

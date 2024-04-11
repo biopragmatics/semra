@@ -15,9 +15,12 @@
 </div>
 {% endmacro %}
 
-{% macro do_table(counter, label, is_concept=False, has_names=False) %}
+{% macro do_table(counter, label, is_concept=False, has_names=False, desc=None) %}
 <div class="card-body">
     <h6>{{ label }} Summary</h6>
+    {% if desc is not none %}
+    {{ desc | safe }}
+    {% endif %}
 </div>
 <table class="table">
     <thead>
@@ -105,11 +108,21 @@
                     </tbody>
                 </table>
                 {{ do_table(evidence_type_counter, "Evidence Type") }}
-                {{ do_table(predicate_counter, "Predicate") }}
-                {{ do_table(justification_counter, "Mapping Justification") }}
-                {{ do_table(prefix_counter, "Prefix", has_names=True) }}
-                {{ do_table(author_counter, "Author", has_names=True) }}
-                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True, has_names=True) }}
+                {{ do_table(predicate_counter, "Predicate", desc="What predicates appear in mappings?") }}
+                {{ do_table(justification_counter, "Mapping Justification", desc="How are mappings justified? These come
+                from the <a href='https://bioregistry.io/semapv'>Semantic Mapping Vocabulary (<code>semapv</code>)</a>.")
+                }}
+                {{ do_table(prefix_counter, "Prefix", has_names=True, desc="How many concepts have mappings for each
+                resource? This is typically less than the full number of entities in that resource.") }}
+                {{ do_table(author_counter, "Author", has_names=True, desc="Which authors contributed to mappings? This
+                is typically a small count for mapping databases constructed using ontologies or other resources with
+                low resolution mappings. SSSOM mappings, such as those from Biomappings, contain higher granular
+                provenance information such as author ORCID.") }}
+                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True, has_names=True, desc="This
+                table shows entities from the largest connected components in the mapping graph. These typically
+                correspond to data issues. Click on an entity to explore the mapped entities and an interactive mapping
+                graphing of the primary mappings to help track down the issue mappings. The interface also includes
+                Biomappings controls so you can do local curation of negative mappings.") }}
 
                 <div class="card-body">
                     <h6>Example Mappings</h6>

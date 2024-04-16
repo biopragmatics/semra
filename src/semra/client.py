@@ -310,7 +310,7 @@ as label, count UNION ALL
 
         edge_query = f"""\
             MATCH p=(a:concept)-[r]->(b:concept)
-            WHERE a.curie in $curies and b.curie in $curies
+            WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

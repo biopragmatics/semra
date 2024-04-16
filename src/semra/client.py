@@ -308,7 +308,7 @@ as label, count UNION ALL
         component_curies = {node["curie"] for node in nodes}
         # component_curies.add(curie)
 
-        edge_query = f"""\
+        edge_query = """\
             MATCH p=(a:concept)-[r]->(b:concept)
             WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
             RETURN p

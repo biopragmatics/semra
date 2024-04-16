@@ -280,7 +280,7 @@ as label, count UNION ALL
 
     def get_connected_component(
         self, curie: ReferenceHint, max_distance: t.Optional[int] = None
-    ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
+    ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Path]]:
         """Get the nodes and relations in the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
@@ -294,14 +294,26 @@ as label, count UNION ALL
             curie = curie.curie
         if max_distance is None:
             max_distance = DEFAULT_MAX_LENGTH
-        query = f"""\
+
+        connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
             WHERE ALL(p IN r WHERE p.primary or p.secondary)
-            RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
+            RETURN DISTINCT n
+            UNION ALL
+            MATCH (n:concept {{curie: $curie}})
+            RETURN n
         """
-        res = self.read_query(query, curie=curie)
-        nodes = res[0][0]
-        relations = sorted({r for relations in res[0][1] for r in relations}, key=lambda r: r.type)
+        nodes = [n[0] for n in self.read_query(connected_query, curie=curie)]
+
+        component_curies = {node["curie"] for node in nodes}
+        # component_curies.add(curie)
+
+        edge_query = f"""\
+            MATCH p=(a:concept)-[r]->(b:concept)
+            WHERE a.curie in $curies and b.curie in $curies
+            RETURN p
+        """
+        relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]
         return nodes, relations
 
     def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
@@ -310,18 +322,18 @@ as label, count UNION ALL
         :param curie: A CURIE string or reference
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
-        nodes, relations = self.get_connected_component(curie)
+        nodes, paths = self.get_connected_component(curie)
         g = nx.MultiDiGraph()
         for node in nodes:
             g.add_node(node["curie"], **node)
-        for relation in relations:
-            g.add_edge(
-                relation.nodes[0]["curie"],  # type: ignore
-                relation.nodes[1]["curie"],  # type: ignore
-                key=relation.element_id,
-                type=relation.type,
-                **relation,
-            )
+        for path in paths:
+            for relationship in path.relationships:
+                g.add_edge(
+                    path.start_node["curie"],  # type: ignore
+                    path.end_node["curie"],  # type: ignore
+                    key=relationship.id,
+                    type=relationship.type,
+                )
         return g
 
     def get_concept_name(self, curie: ReferenceHint) -> str | None:

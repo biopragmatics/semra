@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import typing as t
 
+import bioregistry
 import fastapi
 import flask
 import networkx as nx
@@ -18,12 +19,29 @@ from starlette.middleware.wsgi import WSGIMiddleware
 from semra import Evidence, Mapping, MappingSet
 from semra.client import Neo4jClient
 
+
+def _index_mapping(mapping_index, mapping_dict) -> None:
+    if mapping_dict["relation"] != "skos:exactMatch":
+        return
+    sp, si = mapping_dict["source prefix"], mapping_dict["source identifier"]
+    tp, ti = mapping_dict["target prefix"], mapping_dict["target identifier"]
+    si = bioregistry.standardize_identifier(sp, si)
+    ti = bioregistry.standardize_identifier(tp, ti)
+    s, t = f"{sp}:{si}", f"{tp}:{ti}"
+    mapping_index.add((s, t))
+    mapping_index.add((t, s))
+
+
 try:
     import biomappings.utils
 except ImportError:
     BIOMAPPINGS_GIT_HASH = None
+    false_mapping_index: t.Set[t.Tuple[str, str]] = set()
 else:
     BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
+    false_mapping_index = set()
+    for m in biomappings.load_false_mappings():
+        _index_mapping(false_mapping_index, m)
 
 client = Neo4jClient()
 
@@ -111,6 +129,7 @@ def view_concept(curie: str):
     """View a concept."""
     reference = Reference.from_curie(curie)
     name = client.get_concept_name(curie)
+    # TODO include evidence for each for better debugging
     exact_matches = client.get_exact_matches(curie)
     # TODO when showing equivalence between two entities from same namespace, suggest curating a replaced by relation
     return render_template(
@@ -120,6 +139,7 @@ def view_concept(curie: str):
         name=name,
         exact_matches=exact_matches,
         has_biomappings=BIOMAPPINGS_GIT_HASH is not None,
+        false_mapping_index=false_mapping_index,
     )
 
 
@@ -131,6 +151,7 @@ def mark_exact_incorrect(source: str, target: str):
         return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
     import biomappings.resources
+    from biomappings.wsgi import _manual_source
 
     source_reference = Reference.from_curie(source)
     target_reference = Reference.from_curie(target)
@@ -144,12 +165,14 @@ def mark_exact_incorrect(source: str, target: str):
         "target name": client.get_concept_name(target),
         "relation": "skos:exactMatch",
         "type": "semapv:ManualMappingCuration",
-        "source": "semra-web",  # TODO fix way this is retrieved
+        "source": _manual_source(),
         "prediction_type": "",
         "prediction_source": "semra",
         "prediction_confidence": "",
     }
+    mapping = biomappings.resources._standardize_mapping(mapping)
     biomappings.resources.append_false_mappings([mapping])
+    _index_mapping(false_mapping_index, mapping)
 
     flask.flash("Appended negative mapping")
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))

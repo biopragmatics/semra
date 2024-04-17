@@ -19,6 +19,14 @@
 <script src="https://cytoscape.org/cytoscape.js-cola/cytoscape-cola.js"></script>
 {% endblock %}
 
+{% macro bioregistry_href(ref) %}
+{% if ref.prefix == "clo" %}
+https://bioregistry.io/{{ ref.curie }}?provider=ols
+{% else %}
+https://bioregistry.io/{{ ref.curie }}
+{% endif %}
+{% endmacro %}
+
 {% block scripts %}
 <script>
     let edgeLabel = {
@@ -98,13 +106,13 @@
                         <code>{{ exact_match.curie }}</code>
                     </td>
                     <td>
-                        {{ name }}
+                        {% if name %}{{ name }}{% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('view_concept', curie=exact_match.curie) }}">SeMRA</a>
                     </td>
                     <td>
-                        <a href="https://bioregistry.io/{{ exact_match.curie }}">Bioregistry</a>
+                        <a href="{{ bioregistry_href(exact_match) }}">Bioregistry</a>
                     </td>
                     {% if has_biomappings %}
                     <td>

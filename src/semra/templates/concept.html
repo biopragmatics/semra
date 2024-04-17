@@ -19,6 +19,14 @@
 <script src="https://cytoscape.org/cytoscape.js-cola/cytoscape-cola.js"></script>
 {% endblock %}
 
+{% macro bioregistry_href(ref) %}
+{% if ref.prefix == "clo" %}
+https://bioregistry.io/{{ ref.curie }}?provider=ols
+{% else %}
+https://bioregistry.io/{{ ref.curie }}
+{% endif %}
+{% endmacro %}
+
 {% block scripts %}
 <script>
     let edgeLabel = {
@@ -35,7 +43,11 @@
                     selector: 'node',
                     style: {
                         'label': function (node) {
-                            return `${node.data("name")}\n${node.data("curie")}`
+                            if (node.data("name") === node.data("curie")) {
+                                return node.data("curie")
+                            } else {
+                                return `${node.data("name")}\n${node.data("curie")}`
+                            }
                         },
                         'width': '30px',
                         'height': '30px',
@@ -63,7 +75,9 @@
             ],
             layout: {
                 name: 'cola',
-                nodeSpacing: function( node ){ return 75; },
+                nodeSpacing: function (node) {
+                    return 75;
+                },
                 // nodeDimensionsIncludeLabels: true
             }
         });
@@ -78,9 +92,11 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">
-                    {{ name }} <a class="badge badge-info" href="https://bioregistry.io/{{ curie }}"><code>{{ curie }}</code></a>
+                    {{ name }}
+                    <a class="badge bg-info" href="https://bioregistry.io/{{ curie }}"><code>{{ curie }}</code></a>
                 </h5>
                 <h6>Exact Matches</h6>
+                <p>These exact matches are inferred, potentially using promotion of database cross-references.</p>
             </div>
             <table class="table table-striped table-borderless">
                 <tbody>
@@ -90,13 +106,13 @@
                         <code>{{ exact_match.curie }}</code>
                     </td>
                     <td>
-                        {{ name }}
+                        {% if name %}{{ name }}{% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('view_concept', curie=exact_match.curie) }}">SeMRA</a>
                     </td>
                     <td>
-                        <a href="https://bioregistry.io/{{ exact_match.curie }}">Bioregistry</a>
+                        <a href="{{ bioregistry_href(exact_match) }}">Bioregistry</a>
                     </td>
                     {% if has_biomappings %}
                     <td>

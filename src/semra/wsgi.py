@@ -36,7 +36,7 @@ try:
     import biomappings.utils
 except ImportError:
     BIOMAPPINGS_GIT_HASH = None
-    false_mapping_index = set()
+    false_mapping_index: t.Set[t.Tuple[str, str]] = set()
 else:
     BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
     false_mapping_index = set()

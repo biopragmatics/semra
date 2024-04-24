@@ -110,7 +110,7 @@ def main():
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
     for resource in it:
         it.set_postfix(prefix=resource.prefix)
-        path = SOURCES.join(name=f"{resource.prefix}.pkl")
+        path = SOURCES.join(name=f"{resource.prefix}.pkl.gz")
         if path.is_file():
             resource_mappings = from_pickle(path)
         else:
@@ -162,7 +162,7 @@ def main():
 
 
 def _write_source(mappings: t.List[Mapping], key: str) -> None:
-    write_pickle(mappings, SOURCES.join(name=f"{key}.pkl"))
+    write_pickle(mappings, SOURCES.join(name=f"{key}.pkl.gz"))
     if mappings:
         write_sssom(mappings, SOURCES.join(name=f"{key}.sssom.tsv"))
     else:

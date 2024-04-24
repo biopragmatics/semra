@@ -50,6 +50,8 @@ FROM_SET_PREDICATE = "fromSet"
 #: node to the mapping node(s) from which it was derived
 DERIVED_PREDICATE = "derivedFromMapping"
 
+#: The default confidence for ontology-based mappings
+DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
 
 def _safe_get_version(prefix: str) -> str | None:
     """Get a version from Bioversions, or return None if not possible."""
@@ -99,7 +101,7 @@ def _from_pyobo_pair(
     :param source_prefix: The prefix of the ontology
     :param target_prefix: The prefix of the target
     :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
-    :param confidence: The confidence level for the mappings. Defaults to 0.9
+    :param confidence: The confidence level for the mappings. Defaults to :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
     :param standardize:
         Should the local unique identifiers in the first and third columns be standardized
         using :func:`bioregistry.standardize_identifier`? Defaults to false.
@@ -151,7 +153,7 @@ def from_cache_df(
     :param source_prefix: The prefix of the ontology
     :param prefixes: A set of prefixes to subset the second column of cross-reference targets
     :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
-    :param confidence: The confidence level for the mappings. Defaults to 0.9
+    :param confidence: The confidence level for the mappings. Defaults to :data:`DEFAULT_ONTOLOGY_CONFIDENCE`
     :param standardize:
         Should the local unique identifiers in the first and third columns be standardized
         using :func:`bioregistry.standardize_identifier`? Defaults to false.
@@ -205,7 +207,7 @@ def _from_pyobo_df(
     :param source_prefix: The prefix of the ontology
     :param prefixes: A set of prefixes to subset the second column of cross-reference targets
     :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
-    :param confidence: The confidence level for the mappings. Defaults to 0.9
+    :param confidence: The confidence level for the mappings. Defaults to :data:`DEFAULT_ONTOLOGY_CONFIDENCE`
     :param standardize:
         Should the local unique identifiers in the first and third columns be standardized
         using :func:`bioregistry.standardize_identifier`? Defaults to false.
@@ -226,7 +228,7 @@ def _from_pyobo_df(
     if justification is None:
         justification = UNSPECIFIED_MAPPING
     if confidence is None:
-        confidence = 0.9
+        confidence = DEFAULT_ONTOLOGY_CONFIDENCE
     if license is None:
         license = bioregistry.get_license(source_prefix)
     if isinstance(prefixes, str):
@@ -283,8 +285,10 @@ def from_pyobo(
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
 
 
-def from_bioontologies(prefix: str, confidence=None, **kwargs) -> list[Mapping]:
+def from_bioontologies(prefix: str, confidence: float | None =None, **kwargs) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`bioontologies`."""
+    if confidence is None:
+        confidence = DEFAULT_ONTOLOGY_CONFIDENCE
     o = bioontologies.get_obograph_by_prefix(prefix, **kwargs)
     g = o.guess(prefix)
     # note that we don't extract stuff from edges so just node standardization is good enough

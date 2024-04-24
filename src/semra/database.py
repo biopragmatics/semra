@@ -4,12 +4,11 @@ import csv
 import time
 import typing as t
 
-import requests
-
 import bioregistry
 import click
 import pyobo
 import pystow
+import requests
 from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
 from tqdm.auto import tqdm
@@ -113,7 +112,7 @@ def main():
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
         _write_summary()
 
-    skip_wikidata_prefixes = {"pubmed", "doi"} # too big! need paging?
+    skip_wikidata_prefixes = {"pubmed", "doi"}  # too big! need paging?
     for prefix in tqdm(bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"):
         it.set_postfix(prefix=prefix)
         if prefix in skip_wikidata_prefixes:

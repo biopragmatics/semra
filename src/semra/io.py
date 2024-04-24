@@ -53,6 +53,7 @@ DERIVED_PREDICATE = "derivedFromMapping"
 #: The default confidence for ontology-based mappings
 DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
 
+
 def _safe_get_version(prefix: str) -> str | None:
     """Get a version from Bioversions, or return None if not possible."""
     try:
@@ -285,7 +286,7 @@ def from_pyobo(
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
 
 
-def from_bioontologies(prefix: str, confidence: float | None =None, **kwargs) -> list[Mapping]:
+def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`bioontologies`."""
     if confidence is None:
         confidence = DEFAULT_ONTOLOGY_CONFIDENCE

@@ -138,6 +138,8 @@ class Configuration(BaseModel):
 
     add_labels: bool = Field(default=False, description="Should PyOBO be used to look up labels for SSSOM output?")
 
+    configuration_path: Optional[Path] = Field(None, description="The path where this configuration should be written.")
+
     @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
         """Infer the priority from the input list of not given."""
@@ -214,6 +216,11 @@ def get_mappings_from_config(
             "loaded cached raw mappings from %s in %.2f seconds", configuration.raw_pickle_path, time.time() - start
         )
     else:
+        if configuration.configuration_path is not None:
+            configuration.configuration_path.write_text(
+                configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
+            )
+
         raw_mappings = get_raw_mappings(configuration)
         if configuration.validate_raw:
             validate_mappings(raw_mappings)

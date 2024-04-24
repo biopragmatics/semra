@@ -44,4 +44,5 @@ CHAIN_MAPPING = Reference.from_curie("semapv:MappingChaining")
 KNOWLEDGE_MAPPING = Reference.from_curie("semapv:BackgroundKnowledgeBasedMatching")
 
 CHARLIE_ORCID = Reference.from_curie("orcid:0000-0003-4423-4370")
+CHARLIE_NAME = "Charles Tapley Hoyt"
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")

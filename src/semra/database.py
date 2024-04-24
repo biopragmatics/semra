@@ -4,6 +4,8 @@ import csv
 import time
 import typing as t
 
+import requests
+
 import bioregistry
 import click
 import pyobo
@@ -25,6 +27,7 @@ from semra.io import (
 )
 from semra.rules import CHARLIE_NAME, CHARLIE_ORCID
 from semra.sources import SOURCE_RESOLVER
+from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
@@ -99,12 +102,32 @@ def main():
     for func in it:
         start = time.time()
         resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
+        if resource_name == "wikidata":
+            # this one needs extra informatzi
+            continue
         it.set_postfix(source=resource_name)
         with logging_redirect_tqdm():
             resource_mappings = func()
             _write_source(resource_mappings, resource_name)
             mappings.extend(resource_mappings)
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
+        _write_summary()
+
+    skip_wikidata_prefixes = {"pubmed", "doi"} # too big! need paging?
+    for prefix in tqdm(bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"):
+        it.set_postfix(prefix=prefix)
+        if prefix in skip_wikidata_prefixes:
+            continue
+        start = time.time()
+        resource_name = f"wikidata_{prefix}"
+        try:
+            resource_mappings = get_wikidata_mappings_by_prefix(prefix)
+        except requests.exceptions.JSONDecodeError as e:
+            tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+            continue
+        _write_source(resource_mappings, resource_name)
+        mappings.extend(resource_mappings)
+        summaries.append((resource_name, len(resource_mappings), time.time() - start, "wikidata"))
         _write_summary()
 
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")

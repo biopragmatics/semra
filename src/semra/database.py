@@ -173,9 +173,9 @@ def _write_source(mappings: t.List[Mapping], key: str) -> None:
 def _write_summary() -> None:
     with SUMMARY_PATH.open("w") as file:
         writer = csv.writer(file, delimiter="\t")
-        writer.writerow(("prefix", "mappings", "time", "source_type"))
+        writer.writerow(("prefix", "mappings", "seconds", "source_type"))
         for prefix, n_mappings, time_delta, source_type in summaries:
-            writer.writerow((prefix, f"{n_mappings:,}", round(time_delta, 3), source_type))
+            writer.writerow((prefix, n_mappings, round(time_delta, 2), source_type))
 
 
 if __name__ == "__main__":

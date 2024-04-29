@@ -31,7 +31,8 @@ from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
 LOGS = MODULE.module("logs")
-SSSOM_PATH = MODULE.join(name="sssom.tsv")
+SSSOM_PATH = MODULE.join(name="mappings.sssom.tsv.gz")
+PICKLE_PATH = MODULE.join(name="mappings.pkl.gz")
 WARNINGS_PATH = LOGS.join(name="warnings.tsv")
 ERRORS_PATH = LOGS.join(name="errors.tsv")
 SUMMARY_PATH = LOGS.join(name="summary.tsv")
@@ -41,33 +42,34 @@ NEO4J_DIR = MODULE.join("neo4j")
 EMPTY = []
 summaries = []
 
+skip = {
+    "ado",  # trash
+    "epio",  # trash
+    "chebi",  # too big
+    "pr",  # too big
+    "ncbitaxon",  # too big
+    "ncit",  # too big
+    "ncbigene",  # too big
+    # duplicates of EDAM
+    "edam.data",
+    "edam.format",
+    "edam.operation",
+    "edam.topic",
+    "gwascentral.phenotype",  # added on 2024-04-24, service down
+    "gwascentral.study",  # added on 2024-04-24, service down
+}
+#: A set of prefixes whose obo files need to be parsed without ROBOT checks
+loose = {
+    "caloha",
+    "foodon",
+    "cellosaurus",
+}
+
 
 @click.command()
-def main():
+@click.option("--include-wikidata")
+def main(include_wikidata: bool):
     """Construct the full SeMRA database."""
-    skip = {
-        "ado",  # trash
-        "epio",  # trash
-        "chebi",  # too big
-        "pr",  # too big
-        "ncbitaxon",  # too big
-        "ncit",  # too big
-        "ncbigene",  # too big
-        # duplicates of EDAM
-        "edam.data",
-        "edam.format",
-        "edam.operation",
-        "edam.topic",
-        "gwascentral.phenotype",  # added on 2024-04-24, service down
-        "gwascentral.study",  # added on 2024-04-24, service down
-    }
-    #: A set of prefixes whose obo files need to be parsed without ROBOT checks
-    loose = {
-        "caloha",
-        "foodon",
-        "cellosaurus",
-    }
-
     ontology_resources = []
     pyobo_resources = []
     for resource in bioregistry.resources():
@@ -112,22 +114,28 @@ def main():
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
         _write_summary()
 
-    skip_wikidata_prefixes = {"pubmed", "doi"}  # too big! need paging?
-    for prefix in tqdm(bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"):
-        it.set_postfix(prefix=prefix)
-        if prefix in skip_wikidata_prefixes:
-            continue
-        start = time.time()
-        resource_name = f"wikidata_{prefix}"
-        try:
-            resource_mappings = get_wikidata_mappings_by_prefix(prefix)
-        except requests.exceptions.JSONDecodeError as e:
-            tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
-            continue
-        _write_source(resource_mappings, resource_name)
-        mappings.extend(resource_mappings)
-        summaries.append((resource_name, len(resource_mappings), time.time() - start, "wikidata"))
-        _write_summary()
+    skip_wikidata_prefixes = {
+        "pubmed",  # too big! need paging?
+        "doi",  # too big! need paging?
+        "inchi",  # too many funny characters
+        "smiles",  # too many funny characters
+    }
+    if include_wikidata:
+        for prefix in tqdm(bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"):
+            it.set_postfix(prefix=prefix)
+            if prefix in skip_wikidata_prefixes:
+                continue
+            start = time.time()
+            resource_name = f"wikidata_{prefix}"
+            try:
+                resource_mappings = get_wikidata_mappings_by_prefix(prefix)
+            except requests.exceptions.JSONDecodeError as e:
+                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+                continue
+            _write_source(resource_mappings, resource_name)
+            mappings.extend(resource_mappings)
+            summaries.append((resource_name, len(resource_mappings), time.time() - start, "wikidata"))
+            _write_summary()
 
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
     for resource in it:
@@ -154,7 +162,9 @@ def main():
 
     click.echo(f"Writing SSSOM to {SSSOM_PATH}")
     write_sssom(mappings, SSSOM_PATH)
-    click.echo(f"Writing Neo4j folder to {SSSOM_PATH}")
+    click.echo(f"Writing Pickle to {PICKLE_PATH}")
+    write_pickle(mappings, PICKLE_PATH)
+    click.echo(f"Writing Neo4j folder to {NEO4J_DIR}")
     write_neo4j(mappings, NEO4J_DIR)
 
     # Define the metadata that will be used on initial upload
@@ -184,9 +194,9 @@ def main():
 
 
 def _write_source(mappings: t.List[Mapping], key: str) -> None:
-    write_pickle(mappings, SOURCES.join(name=f"{key}.pkl.gz"))
     if mappings:
-        write_sssom(mappings, SOURCES.join(name=f"{key}.sssom.tsv"))
+        write_pickle(mappings, SOURCES.join(name=f"{key}.pkl.gz"))
+        write_sssom(mappings, SOURCES.join(name=f"{key}.sssom.tsv"), add_labels=True)
     else:
         EMPTY.append(key)
         EMPTY_PATH.write_text("\n".join(EMPTY))

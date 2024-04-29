@@ -54,9 +54,9 @@ def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
     df = chembl_downloader.get_uniprot_mapping_df(version=version)
     return [
         Mapping(
-            s=Reference(prefix="uniprot", identifier=uniprot),
+            s=Reference(prefix="chembl.target", identifier=chembl_id),
             p=EXACT_MATCH,
-            o=Reference(prefix="chembl.target", identifier=chembl_id),
+            o=Reference(prefix="uniprot", identifier=uniprot),
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,

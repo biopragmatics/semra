@@ -1,0 +1,120 @@
+{
+  "name": "Anatomy mappings",
+  "inputs": [
+    {
+      "source": "biomappings"
+    },
+    {
+      "source": "gilda"
+    },
+    {
+      "source": "pyobo",
+      "prefix": "uberon",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "bto",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "caro",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "mesh",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "ncit",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "umls",
+      "confidence": 0.99
+    }
+  ],
+  "priority": [
+    "uberon",
+    "mesh",
+    "bto",
+    "caro",
+    "ncit",
+    "umls"
+  ],
+  "mutations": [
+    {
+      "source": "uberon",
+      "confidence": 0.8
+    },
+    {
+      "source": "bto",
+      "confidence": 0.65
+    },
+    {
+      "source": "caro",
+      "confidence": 0.8
+    },
+    {
+      "source": "ncit",
+      "confidence": 0.7
+    },
+    {
+      "source": "umls",
+      "confidence": 0.7
+    }
+  ],
+  "subsets": {
+    "mesh": [
+      "mesh:D001829",
+      "mesh:D009141",
+      "mesh:D004064",
+      "mesh:D012137",
+      "mesh:D014566",
+      "mesh:D004703",
+      "mesh:D002319",
+      "mesh:D009420",
+      "mesh:D012679",
+      "mesh:D014024",
+      "mesh:D005441",
+      "mesh:D000825",
+      "mesh:D013284",
+      "mesh:D006424",
+      "mesh:D004628",
+      "mesh:D034582",
+      "mesh:D018514",
+      "mesh:D056229",
+      "mesh:D056226",
+      "mesh:D056224"
+    ],
+    "ncit": [
+      "ncit:C12219"
+    ],
+    "umls": [
+      "sty:T024",
+      "sty:T017"
+    ]
+  },
+  "keep_prefixes": [
+    "uberon",
+    "mesh",
+    "bto",
+    "caro",
+    "ncit",
+    "umls"
+  ],
+  "remove_imprecise": false,
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/raw.pkl",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/processed.pkl",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/neo4j",
+  "processed_neo4j_name": "semra-anatomy",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.pkl",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.sssom.tsv",
+  "add_labels": false
+}

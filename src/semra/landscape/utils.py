@@ -68,6 +68,9 @@ def notebook(
     if output_directory is None:
         output_directory = configuration.raw_pickle_path.parent
     output_directory = Path(output_directory).expanduser().resolve()
+    configuration_path = output_directory.joinpath("configuration.json")
+    configuration_path.write_text(configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True))
+
     terms = get_terms(configuration.priority, configuration.subsets)
 
     hydrated_subsets = configuration.get_hydrated_subsets()

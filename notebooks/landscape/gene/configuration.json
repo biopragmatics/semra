@@ -1,0 +1,124 @@
+{
+  "name": "Gene Landscape Analysis",
+  "description": "Analyze the landscape of gene nomenclature resources, species-agnostic.",
+  "inputs": [
+    {
+      "source": "pyobo",
+      "prefix": "hgnc",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "mgi",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "rgd",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "cgnc",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "sgd",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "civic.gid",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "flybase",
+      "confidence": 0.99
+    },
+    {
+      "source": "custom",
+      "prefix": "ncit_hgnc",
+      "confidence": 0.99
+    },
+    {
+      "source": "custom",
+      "prefix": "omim_gene",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "ncbigene",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "civic.gid",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "ensembl",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "hgnc",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "omim",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "umls",
+      "confidence": 0.99
+    }
+  ],
+  "priority": [
+    "ncbigene",
+    "hgnc",
+    "mgi",
+    "rgd",
+    "cgnc",
+    "wormbase",
+    "flybase",
+    "sgd",
+    "omim",
+    "civic.gid",
+    "umls",
+    "ncit",
+    "wikidata"
+  ],
+  "mutations": [
+    {
+      "source": "umls",
+      "confidence": 0.8
+    },
+    {
+      "source": "ncit",
+      "confidence": 0.8
+    }
+  ],
+  "subsets": {
+    "umls": [
+      "umls:C0017337"
+    ],
+    "ncit": [
+      "ncit:C16612"
+    ]
+  },
+  "remove_imprecise": false,
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/raw.pkl",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/processed.pkl",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/gene/neo4j",
+  "processed_neo4j_name": "semra-gene",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/priority.pkl",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/priority.sssom.tsv",
+  "add_labels": true
+}

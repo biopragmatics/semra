@@ -42,13 +42,19 @@ def _help(
     if predicate is None:
         predicate = EXACT_MATCH
 
-    mapping_set = MappingSet(name="Wikidata", license="CC0", confidence=0.99)
+    mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
     return [
         Mapping(
             s=Reference(prefix="wikidata", identifier=wikidata_id),
             p=predicate,
-            o=Reference(prefix=target_prefix, identifier=xref_id),
+            o=Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)),
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )
         for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache)
     ]
+
+
+def _clean_xref_id(prefix: str, identifier: str) -> str:
+    if identifier.lower().startswith(f"{prefix}_"):
+        identifier = identifier[len(prefix) + 1 :]
+    return identifier

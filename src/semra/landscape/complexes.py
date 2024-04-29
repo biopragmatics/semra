@@ -79,7 +79,7 @@ ZENODO_METADATA = Metadata(
 @click.command()
 def main():
     """Build the mapping database for protein complex terms."""
-    # CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=False)
+    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
 
     res = ensure_zenodo(
         key="semra-complex",

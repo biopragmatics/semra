@@ -1,5 +1,12 @@
 {
-  "name": "Anatomy mappings",
+  "name": "SeMRA Anatomy Mappings Database",
+  "description": "Supports the analysis of the landscape of anatomy nomenclature resources.",
+  "creators": [
+    {
+      "name": "Charles Tapley Hoyt",
+      "orcid": "0000-0003-4423-4370"
+    }
+  ],
   "inputs": [
     {
       "source": "biomappings"
@@ -116,5 +123,7 @@
   "processed_neo4j_name": "semra-anatomy",
   "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.pkl",
   "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.sssom.tsv",
-  "add_labels": false
+  "add_labels": false,
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/configuration.json",
+  "zenodo_record": 11091803
 }

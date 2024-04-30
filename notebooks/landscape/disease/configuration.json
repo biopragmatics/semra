@@ -1,6 +1,12 @@
 {
-  "name": "Disease Landscape Analysis",
-  "description": "",
+  "name": "SeMRA Disease Mappings Database",
+  "description": "Supports the analysis of the landscape of disease nomenclature resources.",
+  "creators": [
+    {
+      "name": "Charles Tapley Hoyt",
+      "orcid": "0000-0003-4423-4370"
+    }
+  ],
   "inputs": [
     {
       "source": "biomappings"
@@ -145,5 +151,7 @@
   "processed_neo4j_name": "semra-disease",
   "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/disease/priority.pkl",
   "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/disease/priority.sssom.tsv",
-  "add_labels": true
+  "add_labels": true,
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/disease/configuration.json",
+  "zenodo_record": 11091886
 }

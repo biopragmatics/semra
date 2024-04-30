@@ -168,7 +168,9 @@ class Configuration(BaseModel):
 
     def zenodo_url(self) -> t.Optional[str]:
         """Get the zenodo URL, if available."""
-        return self.zenodo_record and f"https://bioregistry.io/zenodo.record:{self.zenodo_record}"
+        if self.zenodo_record is None:
+            return None
+        return f"https://bioregistry.io/zenodo.record:{self.zenodo_record}"
 
     @classmethod
     def from_prefixes(

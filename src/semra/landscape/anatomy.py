@@ -5,6 +5,7 @@ import pystow
 from pyobo.sources.mesh import get_mesh_category_curies
 
 import semra
+from semra.pipeline import CREATOR_CHARLIE
 
 __all__ = [
     "MODULE",
@@ -32,7 +33,9 @@ SUBSETS = {
 }
 
 CONFIGURATION = semra.Configuration(
-    name="Anatomy mappings",
+    name="SeMRA Anatomy Mappings Database",
+    description="Supports the analysis of the landscape of anatomy nomenclature resources.",
+    creators=[CREATOR_CHARLIE],
     inputs=[
         semra.Input(source="biomappings"),
         semra.Input(source="gilda"),
@@ -64,6 +67,7 @@ CONFIGURATION = semra.Configuration(
     processed_neo4j_name="semra-anatomy",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
 )
 
 

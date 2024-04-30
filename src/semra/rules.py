@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from semra.struct import Reference
+from curies import Reference
 
 EXACT_MATCH = Reference(prefix="skos", identifier="exactMatch")
 BROAD_MATCH = Reference(prefix="skos", identifier="broadMatch")

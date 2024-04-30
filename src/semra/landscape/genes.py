@@ -3,7 +3,7 @@
 import click
 import pystow
 
-from semra.pipeline import Configuration, Input, Mutation
+from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation
 
 __all__ = [
     "MODULE",
@@ -30,8 +30,9 @@ PREFIXES = PRIORITY = [
 ]
 
 CONFIGURATION = Configuration(
-    name="Gene Landscape Analysis",
+    name="SeMRA Gene Mapping Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
+    creators=[CREATOR_CHARLIE],
     inputs=[
         Input(prefix="hgnc", source="pyobo", confidence=0.99),
         Input(prefix="mgi", source="pyobo", confidence=0.99),
@@ -67,6 +68,7 @@ CONFIGURATION = Configuration(
     processed_neo4j_name="semra-gene",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
 )
 
 

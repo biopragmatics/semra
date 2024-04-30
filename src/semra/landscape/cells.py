@@ -106,6 +106,7 @@ CONFIGURATION = Configuration(
 def main():
     """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.upload_zenodo()
 
     click.echo(f"Processing returned {len(mappings):,} mappings")
     click.echo(str_source_target_counts(mappings))

@@ -69,7 +69,7 @@ CONFIGURATION = Configuration(
     priority_pickle_path=MODULE.join(name="priority.pkl.gz"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv.gz"),
     configuration_path=MODULE.join(name="configuration.json"),
-    zenodo_record=11092012,
+    zenodo_record=11092013,
 )
 
 

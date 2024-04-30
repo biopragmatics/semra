@@ -20,7 +20,7 @@ import pystow
 
 from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
-from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
+from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation, get_mappings_from_config
 
 __all__ = [
     "MODULE",
@@ -50,9 +50,10 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
-    name="Cell and Cell Line Mappings",
+    name="SeMRA Cell and Cell Line Mappings Database",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, "
     "this configuration imports several different cell and cell line resources and identifies mappings between them.",
+    creators=[CREATOR_CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
@@ -96,6 +97,8 @@ CONFIGURATION = Configuration(
     processed_neo4j_name="semra-cell",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
+    zenodo_record=11091581,
 )
 
 
@@ -103,6 +106,7 @@ CONFIGURATION = Configuration(
 def main():
     """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.upload_zenodo()
 
     click.echo(f"Processing returned {len(mappings):,} mappings")
     click.echo(str_source_target_counts(mappings))

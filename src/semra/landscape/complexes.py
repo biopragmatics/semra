@@ -3,7 +3,8 @@
 import click
 import pystow
 
-from semra.pipeline import Configuration, Input, Mutation
+from semra.pipeline import Configuration, Creator, Input, Mutation
+from semra.rules import CHARLIE_NAME, CHARLIE_ORCID
 
 __all__ = [
     "MODULE",
@@ -27,8 +28,9 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
-    name="Protein Complex Landscape Analysis",
+    name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
+    creators=[Creator(orcid=CHARLIE_ORCID.identifier, name=CHARLIE_NAME)],
     inputs=[
         Input(source="gilda"),
         Input(source="biomappings"),
@@ -51,20 +53,25 @@ CONFIGURATION = Configuration(
     ],
     raw_pickle_path=MODULE.join(name="raw.pkl"),
     raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    # raw_neo4j_path=MODULE.join("neo4j_raw"),
+    raw_neo4j_path=MODULE.join("neo4j_raw"),
+    raw_neo4j_name="semra-complex",
     processed_pickle_path=MODULE.join(name="processed.pkl"),
     processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
     processed_neo4j_path=MODULE.join("neo4j"),
     processed_neo4j_name="semra-complex",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
+    zenodo_record=11091422,
 )
 
 
 @click.command()
 def main():
     """Build the mapping database for protein complex terms."""
-    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=False)
+    res = CONFIGURATION.upload_zenodo()
+    click.echo(res.json()["links"]["html"])
 
 
 if __name__ == "__main__":

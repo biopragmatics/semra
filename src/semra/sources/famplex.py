@@ -42,7 +42,7 @@ def get_fplx_mappings() -> list[Mapping]:
             and not (target_prefix == "NXP" and target_id.startswith("FA:"))  # is this a problem?
         )
     ]
-    validate_mappings(rv)
+    validate_mappings(rv, progress=False)
     return rv
 
 

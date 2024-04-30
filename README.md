@@ -40,6 +40,9 @@ This software provides:
 4. A confidence model granular at the curator-level,
    mapping set-level, and community feedback-level
 
+We also provide an accompanying raw semantic mapping database on Zenodo at
+https://zenodo.org/records/11082039.
+
 ## 🚀 Installation
 
 The most recent release can be installed from

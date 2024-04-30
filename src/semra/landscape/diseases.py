@@ -5,7 +5,7 @@ import click
 import pystow
 from pyobo.sources.mesh import get_mesh_category_curies
 
-from semra.pipeline import Configuration, Input, Mutation
+from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation
 
 __all__ = [
     "MODULE",
@@ -45,8 +45,9 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
-    name="Disease Landscape Analysis",
-    description="",
+    name="SeMRA Disease Mappings Database",
+    description="Supports the analysis of the landscape of disease nomenclature resources.",
+    creators=[CREATOR_CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
@@ -84,6 +85,8 @@ CONFIGURATION = Configuration(
     processed_neo4j_name="semra-disease",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
+    zenodo_record=11091886,
 )
 
 
@@ -92,6 +95,7 @@ def main():
     """Build the mapping database for disease terms."""
     # Takes about 2 hours
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.upload_zenodo()
 
 
 if __name__ == "__main__":

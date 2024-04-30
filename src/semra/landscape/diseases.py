@@ -86,6 +86,7 @@ CONFIGURATION = Configuration(
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
     configuration_path=MODULE.join(name="configuration.json"),
+    zenodo_record=11091885,
 )
 
 
@@ -94,6 +95,7 @@ def main():
     """Build the mapping database for disease terms."""
     # Takes about 2 hours
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.upload_zenodo()
 
 
 if __name__ == "__main__":

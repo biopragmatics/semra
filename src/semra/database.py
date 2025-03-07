@@ -15,6 +15,7 @@ from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from zenodo_client import Creator, Metadata, ensure_zenodo
 
+from curies.vocabulary import charlie
 from semra import Mapping
 from semra.io import (
     from_bioontologies,
@@ -24,7 +25,6 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.rules import CHARLIE_NAME, CHARLIE_ORCID
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 
@@ -175,7 +175,7 @@ def main(include_wikidata: bool):
         f"Note that primary mappings are marked with the license of their source (when available). "
         f"Inferred mappings are distributed under the CC0 license.",
         creators=[
-            Creator(name=CHARLIE_NAME, orcid=CHARLIE_ORCID.identifier),
+            Creator(name=charlie.name, orcid=charlie.identifier),
         ],
     )
     res = ensure_zenodo(

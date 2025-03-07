@@ -17,10 +17,11 @@ by doing the following:
 
 import click
 import pystow
+from curies.vocabulary import charlie
 
 from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
-from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation, get_mappings_from_config
+from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
 
 __all__ = [
     "MODULE",
@@ -53,7 +54,7 @@ CONFIGURATION = Configuration(
     name="SeMRA Cell and Cell Line Mappings Database",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, "
     "this configuration imports several different cell and cell line resources and identifies mappings between them.",
-    creators=[CREATOR_CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

@@ -65,6 +65,7 @@ dependencies = [
     "typing_extensions",
     "zenodo_client",
     "ssslm",
+    "curies>=0.10.6",
 ]
 
 [project.optional-dependencies]

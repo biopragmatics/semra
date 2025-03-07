@@ -93,6 +93,7 @@ class Configuration(BaseModel):
     name: str = Field(description="The name of the mapping set configuration")
     description: Optional[str] = Field(
         None, description="An explanation of the purpose of the mapping set configuration"
+    )
     creators: t.List[NamedReference] = Field(
         default_factory=list, description="A list of the ORCID identifiers for creators"
     )

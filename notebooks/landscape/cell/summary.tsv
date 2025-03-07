@@ -1,0 +1,11 @@
+prefix	name	license	version	terms	status
+mesh	Medical Subject Headings	CC0-1.0	2024	636	subset
+efo	Experimental Factor Ontology	Apache-2.0	3.64.0	25	subset
+cellosaurus	Cellosaurus	CC-BY-4.0	48.0	148681	full
+ccle	Cancer Cell Line Encyclopedia Cells	ODbL-1.0		1061	full
+depmap	DepMap Cell Lines	CC-BY-4.0	23Q4	1719	full
+bto	BRENDA Tissue Ontology	CC-BY-4.0	2021-10-26	6511	full
+cl	Cell Ontology	CC-BY-4.0	2024-04-05	2746	full
+clo	Cell Line Ontology	CC-BY-3.0	2.1.178	39080	full
+ncit	NCI Thesaurus	CC-BY-4.0	24.02d	503	subset
+umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2023AB	6057	subset

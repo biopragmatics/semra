@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import logging
 import time
+import typing as t
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
+import requests
+from curies import NamedReference
 from pydantic import BaseModel, Field, root_validator
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from semra.api import (
     assemble_evidences,
     filter_mappings,
     filter_prefixes,
     filter_self_matches,
+    filter_subsets,
+    hydrate_subsets,
     infer_chains,
     infer_mutual_dbxref_mutations,
     infer_reversible,
@@ -40,14 +45,17 @@ from semra.sources.biopragmatics import (
     get_biomappings_positive_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
+from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
 
+if t.TYPE_CHECKING:
+    import zenodo_client
+
 __all__ = [
-    # Configuration model
     "Configuration",
     "Input",
     "Mutation",
-    # Functions
+    "SubsetConfiguration",
     "get_mappings_from_config",
     "get_raw_mappings",
     "process",
@@ -59,8 +67,8 @@ logger = logging.getLogger(__name__)
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda"]
-    prefix: Optional[str] = None
+    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda", "wikidata"]
+    prefix: str | None = None
     confidence: float = 1.0
     extras: dict[str, Any] = Field(default_factory=dict)
 
@@ -74,23 +82,53 @@ class Mutation(BaseModel):
     new: Reference = Field(default=EXACT_MATCH)
 
 
+SubsetConfiguration = t.Mapping[str, t.Collection[str]]
+
+
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
     name: str = Field(description="The name of the mapping set configuration")
-    description: str = Field(description="An explanation of the purpose of the mapping set configuration")
-    inputs: list[Input]
+    description: str | None = Field(
+        None, description="An explanation of the purpose of the mapping set configuration"
+    )
+    creators: list[NamedReference] = Field(
+        default_factory=list, description="A list of the ORCID identifiers for creators"
+    )
+    inputs: list[Input] = Field(..., description="A list of sources of mappings")
     negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
-    priority: list[str] = Field(..., description="If no priority is given, is inferred from the order of inputs")
+    priority: list[str] = Field(
+        default_factory=list,
+        description="If no priority is given, is inferred from the order of inputs",
+    )
     mutations: list[Mutation] = Field(default_factory=list)
+    subsets: t.Mapping[str, list[str]] | None = Field(
+        None,
+        description="A field to put restrictions on the sub-hierarchies from each resource."
+        "For example, if you want to assemble cell mappings from MeSH, you don't need all "
+        "possible mesh mappings, but only ones that have to do with terms in the cell hierarchy "
+        "under the mesh:D002477 term. Therefore, this dictionary allows for specifying such "
+        "restrictions",
+        examples=[
+            {"mesh": ["mesh:D002477"]},
+        ],
+    )
 
     exclude_pairs: list[tuple[str, str]] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: Optional[list[str]] = None
-    keep_prefixes: Optional[list[str]] = None
+    remove_prefixes: list[str] | None = Field(
+        None, description="Prefixes to remove before processing"
+    )
+    keep_prefixes: list[str] | None = Field(None, description="Prefixes to keep before processing")
+    post_remove_prefixes: list[str] | None = Field(
+        None, description="Prefixes to remove after processing"
+    )
+    post_keep_prefixes: list[str] | None = Field(
+        None, description="Prefixes to keep after processing"
+    )
     remove_imprecise: bool = True
     validate_raw: bool = Field(
         default=False,
@@ -98,29 +136,194 @@ class Configuration(BaseModel):
         "prefixes and local unique identifier regular expressions (when available)?",
     )
 
-    raw_pickle_path: Optional[Path] = None
-    raw_sssom_path: Optional[Path] = None
-    raw_neo4j_path: Optional[Path] = Field(default=None, description="Directory in which Neo4j stuff goes")
-    raw_neo4j_name: Optional[str] = Field(default=None, description="Directory for docker tag for Neo4j")
+    raw_pickle_path: Path | None = None
+    raw_sssom_path: Path | None = None
+    raw_neo4j_path: Path | None = Field(
+        default=None, description="Directory in which Neo4j stuff goes"
+    )
+    raw_neo4j_name: str | None = Field(
+        default=None, description="Directory for docker tag for Neo4j"
+    )
 
-    processed_pickle_path: Optional[Path] = None
-    processed_sssom_path: Optional[Path] = None
-    processed_neo4j_path: Optional[Path] = Field(default=None, description="Directory in which Neo4j stuff goes")
-    processed_neo4j_name: Optional[str] = Field(default=None, description="Directory for docker tag for Neo4j")
+    processed_pickle_path: Path | None = None
+    processed_sssom_path: Path | None = None
+    processed_neo4j_path: Path | None = Field(
+        default=None, description="Directory in which Neo4j stuff goes"
+    )
+    processed_neo4j_name: str | None = Field(
+        default=None, description="Directory for docker tag for Neo4j"
+    )
 
-    priority_pickle_path: Optional[Path] = None
-    priority_sssom_path: Optional[Path] = None
+    priority_pickle_path: Path | None = None
+    priority_sssom_path: Path | None = None
     # note that making a priority neo4j doesn't make sense
 
-    add_labels: bool = Field(default=False, description="Should PyOBO be used to look up labels for SSSOM output?")
+    add_labels: bool = Field(
+        default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
+    )
+
+    configuration_path: Path | None = Field(
+        None, description="The path where this configuration should be written."
+    )
+
+    zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
 
     @root_validator(skip_on_failure=True)
     def infer_priority(cls, values):  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]
-        if priority is None:
-            values["priority"] = [inp.prefix for inp in values["inputs"].inputs if inp.prefix is not None]
+        if not priority:
+            values["priority"] = [
+                inp.prefix for inp in values["inputs"].inputs if inp.prefix is not None
+            ]
         return values
+
+    def zenodo_url(self) -> str | None:
+        """Get the zenodo URL, if available."""
+        if self.zenodo_record is None:
+            return None
+        return f"https://bioregistry.io/zenodo.record:{self.zenodo_record}"
+
+    @classmethod
+    def from_prefixes(
+        cls,
+        *,
+        name: str,
+        prefixes: t.Iterable[str],
+        include_biomappings: bool = True,
+        include_gilda: bool = True,
+    ):
+        """Get a configuration from ontology prefixes."""
+        inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
+        if include_biomappings:
+            inputs.append(Input(source="biomappings"))
+        if include_gilda:
+            inputs.append(Input(source="gilda"))
+        return cls(name=name, inputs=inputs)
+
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+    ) -> list[Mapping]:
+        """Run assembly based on this configuration."""
+        return get_mappings_from_config(
+            self, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+        )
+
+    def read_raw_mappings(self) -> list[Mapping]:
+        """Read raw mappings from pickle, if already cached."""
+        if self.raw_pickle_path is None:
+            raise ValueError
+        if not self.raw_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.raw_pickle_path)
+
+    def read_processed_mappings(self) -> list[Mapping]:
+        """Read processed mappings from pickle, if already cached."""
+        if self.processed_pickle_path is None:
+            raise ValueError
+        if not self.processed_pickle_path.is_file():
+            raise FileNotFoundError
+        return from_pickle(self.processed_pickle_path)
+
+    def get_hydrated_subsets(self) -> t.Mapping[str, t.Collection[str]]:
+        """Get the full subset filter lists based on the parent configuration."""
+        if not self.subsets:
+            return {}
+        return hydrate_subsets(self.subsets)
+
+    def _get_zenodo_metadata(self) -> zenodo_client.Metadata:
+        if not self.creators:
+            raise ValueError("Creating a Zenodo record requires annotating the creators field")
+        import zenodo_client
+
+        if self.name is None:
+            raise ValueError("name must be given to upload to zenodo")
+        if self.description is None:
+            raise ValueError("description must be given to upload to zenodo")
+        if not self.creators:
+            raise ValueError("at least one creator must be given to upload to zenodo")
+
+        return zenodo_client.Metadata(
+            upload_type="dataset",
+            title=self.name,
+            description=self.description,
+            creators=[
+                zenodo_client.Creator(name=creator.name, orcid=creator.identifier)
+                for creator in self.creators
+                if creator.prefix == "orcid"
+            ],
+        )
+
+    def _get_zenodo_paths(self, *, processed: bool = True) -> list[Path]:
+        if self.configuration_path is not None and not self.configuration_path.is_file():
+            self.configuration_path.write_text(
+                self.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
+            )
+        paths = [
+            self.configuration_path,
+            self.raw_sssom_path,
+            self.raw_pickle_path,
+            self.processed_sssom_path,
+            self.processed_pickle_path,
+            self.priority_sssom_path,
+            self.processed_pickle_path,
+        ]
+        for path in paths:
+            if path is None:
+                raise ValueError("Can't upload to Zenodo if not all output paths are configured")
+            if not path.is_file():
+                raise FileNotFoundError(path)
+        if (
+            processed
+            and self.processed_neo4j_path is not None
+            and self.processed_neo4j_path.is_dir()
+        ):
+            paths.extend(self.processed_neo4j_path.iterdir())
+        elif self.raw_neo4j_path is not None and self.raw_neo4j_path.is_dir():
+            paths.extend(self.raw_neo4j_path.iterdir())
+        else:
+            logger.debug("Not uploading neo4j")
+        return t.cast(list[Path], paths)
+
+    def ensure_zenodo(
+        self,
+        key: str,
+        *,
+        metadata: zenodo_client.Metadata | None = None,
+        processed: bool = True,
+        **kwargs,
+    ) -> requests.Response:
+        """Ensure a zenodo record."""
+        if self.zenodo_record is not None:
+            raise ValueError(
+                f"Refusing to create new Zenodo record since it already exists: "
+                f"https://bioregistry.io/zenodo.record:{self.zenodo_record}.\n\n"
+                f"Use `Configuration.upload_zenodo(processed={processed})` instead."
+            )
+
+        from zenodo_client import ensure_zenodo
+
+        paths = self._get_zenodo_paths(processed=processed)
+        res = ensure_zenodo(
+            key=key, data=metadata or self._get_zenodo_metadata(), paths=paths, **kwargs
+        )
+        return res
+
+    def upload_zenodo(self, processed: bool = True, **kwargs) -> requests.Response:
+        """Upload a Zenodo record."""
+        if not self.zenodo_record:
+            raise ValueError(
+                "Can not upload to zenodo if no record is configured.\n\n"
+                f"Use `Configuration.ensure_zenodo(key=..., processed={processed})` instead."
+            )
+        from zenodo_client import update_zenodo
+
+        paths = self._get_zenodo_paths(processed=processed)
+        res = update_zenodo(str(self.zenodo_record), paths=paths, **kwargs)
+        return res
 
 
 def get_mappings_from_config(
@@ -131,34 +334,48 @@ def get_mappings_from_config(
 ) -> list[Mapping]:
     """Run assembly based on a configuration."""
     if (
-        configuration.processed_pickle_path
-        and configuration.processed_pickle_path.is_file()
+        configuration.priority_pickle_path
+        and configuration.priority_pickle_path.is_file()
         and not refresh_raw
         and not refresh_processed
     ):
-        logger.info("loading cached processed mappings from %s", configuration.processed_pickle_path)
-        return from_pickle(configuration.processed_pickle_path)
-    if configuration.raw_pickle_path and configuration.raw_pickle_path.is_file() and not refresh_raw:
+        logger.info("loading cached priority mappings from %s", configuration.priority_pickle_path)
+        return from_pickle(configuration.priority_pickle_path)
+
+    if (
+        configuration.raw_pickle_path
+        and configuration.raw_pickle_path.is_file()
+        and not refresh_raw
+    ):
         start = time.time()
         logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
         raw_mappings = from_pickle(configuration.raw_pickle_path)
         logger.info(
-            "loaded cached raw mappings from %s in %.2f seconds", configuration.raw_pickle_path, time.time() - start
+            "loaded cached raw mappings from %s in %.2f seconds",
+            configuration.raw_pickle_path,
+            time.time() - start,
         )
     else:
+        if configuration.configuration_path is not None:
+            configuration.configuration_path.write_text(
+                configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
+            )
+
         raw_mappings = get_raw_mappings(configuration)
         if configuration.validate_raw:
             validate_mappings(raw_mappings)
         if configuration.raw_pickle_path:
             write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
-            write_sssom(raw_mappings, configuration.raw_sssom_path, add_labels=configuration.add_labels)
+            write_sssom(
+                raw_mappings, configuration.raw_sssom_path
+            )  # , add_labels=configuration.add_labels)
         if configuration.raw_neo4j_path:
             write_neo4j(
                 raw_mappings,
                 configuration.raw_neo4j_path,
                 docker_name=configuration.raw_neo4j_name,
-                add_labels=configuration.add_labels,
+                add_labels=False,  # configuration.add_labels,
             )
 
     # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -169,14 +386,21 @@ def get_mappings_from_config(
         ],
         remove_prefix_set=configuration.remove_prefixes,
         keep_prefix_set=configuration.keep_prefixes,
+        post_remove_prefixes=configuration.post_remove_prefixes,
+        post_keep_prefixes=configuration.post_keep_prefixes,
         remove_imprecise=configuration.remove_imprecise,
+        subsets=configuration.get_hydrated_subsets(),
     )
     prioritized_mappings = prioritize(processed_mappings, configuration.priority)
 
     if configuration.processed_pickle_path:
         write_pickle(processed_mappings, configuration.processed_pickle_path)
     if configuration.processed_sssom_path:
-        write_sssom(processed_mappings, configuration.processed_sssom_path, add_labels=configuration.add_labels)
+        write_sssom(
+            processed_mappings,
+            configuration.processed_sssom_path,
+            add_labels=configuration.add_labels,
+        )
     if configuration.processed_neo4j_path:
         equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
         write_neo4j(
@@ -190,7 +414,11 @@ def get_mappings_from_config(
     if configuration.priority_pickle_path:
         write_pickle(prioritized_mappings, configuration.priority_pickle_path)
     if configuration.priority_sssom_path:
-        write_sssom(prioritized_mappings, configuration.priority_sssom_path, add_labels=configuration.add_labels)
+        write_sssom(
+            prioritized_mappings,
+            configuration.priority_sssom_path,
+            add_labels=configuration.add_labels,
+        )
 
     return prioritized_mappings
 
@@ -233,6 +461,8 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
         elif inp.source == "custom":
             func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
             mappings.extend(func())
+        elif inp.source == "wikidata":
+            mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
         elif inp.source == "sssom":
             mappings.extend(from_sssom(inp.prefix, **inp.extras))
         elif inp.source == "cache":
@@ -245,8 +475,11 @@ def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
 def process(
     mappings: list[Mapping],
     upgrade_prefixes=None,
-    remove_prefix_set=None,
-    keep_prefix_set=None,
+    remove_prefix_set: t.Collection[str] | None = None,
+    keep_prefix_set: t.Collection[str] | None = None,
+    post_remove_prefixes: t.Collection[str] | None = None,
+    post_keep_prefixes: t.Collection[str] | None = None,
+    subsets: t.Mapping[str, t.Collection[str]] | None = None,
     *,
     remove_imprecise: bool = True,
 ) -> list[Mapping]:
@@ -258,6 +491,9 @@ def process(
 
     if remove_prefix_set:
         mappings = filter_prefixes(mappings, remove_prefix_set)
+
+    if subsets:
+        mappings = list(filter_subsets(mappings, subsets))
 
     start = time.time()
     negatives = from_biomappings_negative()
@@ -295,7 +531,7 @@ def process(
         mappings = infer_mutual_dbxref_mutations(mappings, upgrade_prefixes, confidence=0.95)
         _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
 
-    # remove dbxrefs
+    # remove database cross-references
     if remove_imprecise:
         logger.info("Removing unqualified database xrefs")
         before = len(mappings)
@@ -303,7 +539,7 @@ def process(
         mappings = [m for m in mappings if m.p not in IMPRECISE]
         _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
 
-    # 3. Inference based on adding reverse relations then doing multi-chain hopping
+    # 3. Inference based on adding reverse relations then doing multichain hopping
     logger.info("Inferring reverse mappings")
     before = len(mappings)
     start = time.time()
@@ -326,11 +562,18 @@ def process(
     # filter out self mappings again, just in case
     mappings = filter_self_matches(mappings)
 
+    if post_keep_prefixes:
+        mappings = keep_prefixes(mappings, post_keep_prefixes)
+
+    if post_remove_prefixes:
+        mappings = filter_prefixes(mappings, post_remove_prefixes)
+
     return mappings
 
 
 def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> None:
     logger.info(
-        f"{verb} from {before:,} to {len(mappings):,} mappings (Δ={len(mappings) - before:,}) in %.2f seconds.",
+        f"{verb} from {before:,} to {len(mappings):,} mappings "
+        f"(Δ={len(mappings) - before:,}) in %.2f seconds.",
         elapsed,
     )

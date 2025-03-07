@@ -6,18 +6,21 @@ from pathlib import Path
 
 import bioregistry
 import pandas as pd
+from curies import Reference
 from tqdm.auto import tqdm
 
-from semra import EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.api import validate_mappings
-from semra.rules import BEN_ORCID, LEXICAL_MAPPING
+from semra.rules import BEN_ORCID, EXACT_MATCH, LEXICAL_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_gilda_mappings",
 ]
 
 GILDA_LOCAL = Path("/Users/cthoyt/dev/gilda/gilda/resources/mesh_mappings.tsv")
-GILDA_MAPPINGS = "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
+GILDA_MAPPINGS = (
+    "https://raw.githubusercontent.com/indralab/gilda/master/gilda/resources/mesh_mappings.tsv"
+)
 
 
 def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
@@ -36,9 +39,15 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
         if not sp or not tp:
             continue
         m = Mapping(
-            s=Reference(prefix=sp, identifier=bioregistry.standardize_identifier(sp, si)),
+            s=Reference(
+                prefix=bioregistry.normalize_prefix(sp),
+                identifier=bioregistry.standardize_identifier(sp, si),
+            ),
             p=EXACT_MATCH,
-            o=Reference(prefix=tp, identifier=bioregistry.standardize_identifier(tp, ti)),
+            o=Reference(
+                prefix=bioregistry.normalize_prefix(tp),
+                identifier=bioregistry.standardize_identifier(tp, ti),
+            ),
             evidence=[
                 SimpleEvidence(
                     justification=LEXICAL_MAPPING,

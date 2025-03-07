@@ -1,13 +1,16 @@
 """Get mappings from PubChem."""
 
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import bioversions
-import pandas as pd
 import pyobo
+import requests
+from curies import Reference
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_pubchem_mesh_mappings",
@@ -17,42 +20,42 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-def get_pubchem_mesh_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
     """Get a mapping from PubChem compound identifiers to their equivalent MeSH terms."""
     if version is None:
         version = bioversions.get_version("pubchem")
-    url = f"ftp://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Monthly/{version}/Extras/CID-MeSH"
-    df = pd.read_csv(
-        url,
-        dtype=str,
-        header=None,
-        names=["pubchem", "mesh"],
-    )
-    mesh_name_to_id = pyobo.get_name_id_mapping("mesh")
-    needs_curation = set()
-    mesh_ids = []
-    for name in df["mesh"]:
-        mesh_id = mesh_name_to_id.get(name)
-        if mesh_id is None and name not in needs_curation:
-            needs_curation.add(name)
-            logger.debug("[mesh] needs curating: %s", name)
-        mesh_ids.append(mesh_id)
-    logger.info("[mesh] %d/%d need updating", len(needs_curation), len(mesh_ids))
-    df["mesh"] = mesh_ids
 
-    return [
-        Mapping(
+    mesh_name_to_id = pyobo.get_name_id_mapping("mesh")
+    needs_curation: set[str] = set()
+
+    url = f"https://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Monthly/{version}/Extras/CID-MeSH"
+    res = requests.get(url, stream=True, timeout=600)
+
+    rv = []
+    for line in res.iter_lines():
+        # on a small number of entries, there are multiple names. their impact is negligible
+        pubchem, mesh_name, *_ = line.decode("utf8").strip().split("\t")
+        mesh_id = mesh_name_to_id.get(mesh_name)
+        if mesh_id is None:
+            if mesh_name not in needs_curation:
+                needs_curation.add(mesh_name)
+                logger.debug("[mesh] needs curating: %s", mesh_name)
+            continue
+        mapping = Mapping(
             s=Reference(prefix="pubchem.compound", identifier=pubchem),
-            o=Reference(prefix="mesh", identifier=mesh),
+            o=Reference(prefix="mesh", identifier=mesh_id),
             p=EXACT_MATCH,
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
                     # Data is in public domain: https://www.ncbi.nlm.nih.gov/home/about/policies/
-                    mapping_set=MappingSet(name="pubchem", version=version, confidence=0.99, license="CC0"),
+                    mapping_set=MappingSet(
+                        name="pubchem", version=version, confidence=0.99, license="CC0"
+                    ),
                 )
             ],
         )
-        for pubchem, mesh in df.values
-        if mesh is not None
-    ]
+        rv.append(mapping)
+
+    logger.warning("[pubchem-mesh] %d MeSH names need manual curation", len(needs_curation))
+    return rv

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% import "bootstrap5/utils.html" as util %}
+{% import "bootstrap5/utils.html" as bs_util %}
+{% import "utils.html" as util %}
 
 {% block title %}SeMRA{% endblock %}
 
@@ -14,15 +15,20 @@
 </div>
 {% endmacro %}
 
-{% macro do_table(counter, label, is_concept=False, has_names=False) %}
+{% macro do_table(counter, label, is_concept=False, has_names=False, desc=None) %}
 <div class="card-body">
     <h6>{{ label }} Summary</h6>
+    {% if desc is not none %}
+    {{ desc | safe }}
+    {% endif %}
 </div>
 <table class="table">
     <thead>
     <tr>
         <th>{{ label }}</th>
-        {% if has_names %}<th>Name</th>{% endif %}
+        {% if has_names %}
+        <th>Name</th>
+        {% endif %}
         <th>Count</th>
     </tr>
     </thead>
@@ -30,7 +36,7 @@
     {% for key, count in counter.most_common() %}
     <tr>
         <td><code>
-        {%- if is_concept -%}
+            {%- if is_concept -%}
             {% if has_names %}
             <a href="{{ url_for('view_concept', curie=key[0]) }}">{{ key[0] }}</a>
             {% else %}
@@ -41,7 +47,9 @@
             {% if has_names %}{{ key[0] }}{% else %}{{ key }}{% endif %}
             {%- endif -%}
         </code></td>
-        {% if has_names %}<td>{{ key[1] }}</td>{% endif %}
+        {% if has_names %}
+        <td>{{ key[1] }}</td>
+        {% endif %}
         <td align="right">{{ "{:,}".format(count) }}</td>
     </tr>
     {% endfor %}
@@ -51,7 +59,7 @@
 
 {% block content %}
 <div class="container" style="margin-top: 50px; margin-bottom: 50px">
-    {{ util.render_messages(dismissible=True, container=False) }}
+    {{ bs_util.render_messages(dismissible=True, container=False) }}
     <div class="row justify-content-md-center">
         <div class="col-8">
             <div class="card">
@@ -66,6 +74,7 @@
                         {{ count_column(node_counter, "Evidences", "book") }}
                         {{ count_column(node_counter, "Mapping Sets", "puzzle-piece") }}
                     </div>
+                    <p>See the <a href="/docs">API Documentation</a>.</p>
                     <h6>Mapping Sets</h6>
                 </div>
                 <table class="table">
@@ -99,27 +108,28 @@
                     </tbody>
                 </table>
                 {{ do_table(evidence_type_counter, "Evidence Type") }}
-                {{ do_table(predicate_counter, "Predicate") }}
-                {{ do_table(justification_counter, "Mapping Justification") }}
-                {{ do_table(prefix_counter, "Prefix", has_names=True) }}
-                {{ do_table(author_counter, "Author", has_names=True) }}
-                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True, has_names=True) }}
+                {{ do_table(predicate_counter, "Predicate", desc="What predicates appear in mappings?") }}
+                {{ do_table(justification_counter, "Mapping Justification", desc="How are mappings justified? These come
+                from the <a href='https://bioregistry.io/semapv'>Semantic Mapping Vocabulary (<code>semapv</code>)</a>.")
+                }}
+                {{ do_table(prefix_counter, "Prefix", has_names=True, desc="How many concepts have mappings for each
+                resource? This is typically less than the full number of entities in that resource.") }}
+                {{ do_table(author_counter, "Author", has_names=True, desc="Which authors contributed to mappings? This
+                is typically a small count for mapping databases constructed using ontologies or other resources with
+                low resolution mappings. SSSOM mappings, such as those from Biomappings, contain higher granular
+                provenance information such as author ORCID.") }}
+                {{ do_table(high_matches_counter, "Potential Data Issues", is_concept=True, has_names=True, desc="This
+                table shows entities from the largest connected components in the mapping graph. These typically
+                correspond to data issues. Click on an entity to explore the mapped entities and an interactive mapping
+                graphing of the primary mappings to help track down the issue mappings. The interface also includes
+                Biomappings controls so you can do local curation of negative mappings.") }}
 
                 <div class="card-body">
                     <h6>Example Mappings</h6>
                 </div>
-                <ul class="list-group list-group-flush">
-                    {%- for example_mapping in example_mappings -%}
-                    <li class="list-group-item">
-                        <a href="{{ url_for('view_mapping', curie=example_mapping) }}">
-                            <code>{{ example_mapping[:8]}}</code>
-                        </a>
-                    </li>
-                    {%- endfor -%}
-                </ul>
+                {{ util.mapping_table(example_mappings) }}
             </div>
         </div>
     </div>
-</div>
 </div>
 {% endblock %}

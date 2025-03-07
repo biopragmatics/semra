@@ -1,9 +1,12 @@
 """Get mappings from ChEMBL."""
-from typing import Optional
+
+from __future__ import annotations
 
 import bioregistry
+from curies import Reference
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
     "get_chembl_compound_mappings",
@@ -11,7 +14,7 @@ __all__ = [
 ]
 
 
-def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL chemical equivalences."""
     import chembl_downloader
 
@@ -30,7 +33,9 @@ def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]
                 evidence=[
                     SimpleEvidence(
                         justification=UNSPECIFIED_MAPPING,
-                        mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
+                        mapping_set=MappingSet(
+                            name="chembl", version=version, license=license, confidence=0.99
+                        ),
                     )
                 ],
             )
@@ -38,7 +43,7 @@ def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]
     return rows
 
 
-def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL to protein mappings."""
     import chembl_downloader
 
@@ -49,13 +54,15 @@ def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
     df = chembl_downloader.get_uniprot_mapping_df(version=version)
     return [
         Mapping(
-            s=Reference(prefix="uniprot", identifier=uniprot),
+            s=Reference(prefix="chembl.target", identifier=chembl_id),
             p=EXACT_MATCH,
-            o=Reference(prefix="chembl.target", identifier=chembl_id),
+            o=Reference(prefix="uniprot", identifier=uniprot),
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
-                    mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
+                    mapping_set=MappingSet(
+                        name="chembl", version=version, license=license, confidence=0.99
+                    ),
                 )
             ],
         )

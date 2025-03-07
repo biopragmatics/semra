@@ -1,8 +1,9 @@
 """Get mappings from NCIT."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Callable
 
 import bioregistry
 import pandas as pd
@@ -10,12 +11,13 @@ import requests
 from curies import Reference
 from tqdm.asyncio import tqdm
 
-from semra import EXACT_MATCH, UNSPECIFIED_MAPPING, Evidence, Mapping, MappingSet, SimpleEvidence
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.struct import Evidence, Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
-    "get_ncit_hgnc_mappings",
     "get_ncit_chebi_mappings",
     "get_ncit_go_mappings",
+    "get_ncit_hgnc_mappings",
     "get_ncit_uniprot_mappings",
 ]
 
@@ -46,11 +48,14 @@ def _get_evidence() -> SimpleEvidence:
     license = bioregistry.get_license("ncit")
     return SimpleEvidence(
         justification=UNSPECIFIED_MAPPING,
-        mapping_set=MappingSet(name="ncit", version=version, license=license, confidence=CONFIDENCE),
+        mapping_set=MappingSet(
+            name="ncit", version=version, license=license, confidence=CONFIDENCE
+        ),
     )
 
 
 def get_ncit_hgnc_mappings() -> list[Mapping]:
+    """Get NCIT to HGNC semantic mappings."""
     df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "hgnc"])
     df["hgnc"] = df["hgnc"].map(lambda s: s.removeprefix("HGNC:"))  # type:ignore
     return _df_to_mappings(
@@ -62,6 +67,7 @@ def get_ncit_hgnc_mappings() -> list[Mapping]:
 
 
 def get_ncit_go_mappings() -> list[Mapping]:
+    """Get NCIT to Gene Ontology (GO) semantic mappings."""
     df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["go", "ncit"])
     df["go"] = df["go"].map(lambda s: s.removeprefix("GO:"))  # type:ignore
     return _df_to_mappings(
@@ -73,6 +79,7 @@ def get_ncit_go_mappings() -> list[Mapping]:
 
 
 def get_ncit_chebi_mappings() -> list[Mapping]:
+    """Get NCIT to ChEBI semantic mappings."""
     df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "chebi"])
     df["chebi"] = df["chebi"].map(lambda s: s.removeprefix("CHEBI:"))  # type:ignore
     return _df_to_mappings(
@@ -84,6 +91,7 @@ def get_ncit_chebi_mappings() -> list[Mapping]:
 
 
 def get_ncit_uniprot_mappings() -> list[Mapping]:
+    """Get NCIT to UniProt semantic mappings."""
     df = pd.read_csv(SWISSPROT_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "uniprot"])
     return _df_to_mappings(
         df,

@@ -286,7 +286,7 @@ def from_pyobo(
     :returns: A list of semantic mapping objects
     """
     if target_prefix:
-        return _from_pyobo_pair(prefix, target_prefix, standardize=standardize, **kwargs)
+        return _from_pyobo_pair(prefix, target_prefix, **kwargs)
     return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
 
 

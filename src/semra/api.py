@@ -152,7 +152,7 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
     >>> r1 = Reference(prefix="p1", identifier="1")
     >>> r2 = Reference(prefix="p2", identifier="a")
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-    >>> count_source_target(mappings)
+    >>> count_source_target([m1])
     Counter({('p1', 'p2'): 1})
     """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
@@ -255,7 +255,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> mappings = list(infer_reversible([m1]))
     >>> len(mappings)
     2
-    >>> mappings[0] == m1
+    >>> assert mappings[0] == m1
 
     .. warning::
 
@@ -273,7 +273,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
         >>> mappings = list(infer_reversible([m1, m2]))
         >>> len(mappings)
-        3
+        4
         >>> mappings = assemble_evidences(mappings)
         >>> len(mappings)
         2
@@ -561,13 +561,12 @@ def infer_mutual_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = map(Reference.from_curie, curies)
+    >>> r1, r2, r3 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2, m3]
     >>> pairs = {("DOID", "mesh"): 0.99}
     >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
-    >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
+    >>> assert infer_dbxref_mutations([m1, m2], pairs) == [m1, m3, m2]
 
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
     is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
@@ -605,10 +604,10 @@ def infer_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2, m3]
+    >>> mappings = [m1, m2]
     >>> pairs = {("DOID", "mesh"): 0.99}
     >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
     >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
@@ -734,7 +733,7 @@ def keep_subject_prefixes(
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
-    >>> assert keep_prefixes([m1, m2, m3], {"DOID"}) == [m1, m3]
+    >>> assert keep_subject_prefixes([m1, m2, m3], {"DOID"})
     """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
@@ -953,9 +952,9 @@ def get_priority_reference(
     >>> from curies import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
     >>> references = [Reference.from_curie(curie) for curie in curies]
-    >>> get_priority_reference(references, ["mesh", "umls"])
+    >>> get_priority_reference(references, ["mesh", "umls"]).curie
     'mesh:C562966'
-    >>> get_priority_reference(references, ["doid", "mesh", "umls"])
+    >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
     'DOID:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
 

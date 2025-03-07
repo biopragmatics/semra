@@ -12,7 +12,7 @@ __all__ = [
     "MODULE",
 ]
 
-ICD_PREFIXES = bioregistry.get_collection("0000004").resources
+ICD_PREFIXES = bioregistry.get_collection("0000004").resources  # type:ignore
 MODULE = pystow.module("semra", "case-studies", "disease")
 PREFIXES = PRIORITY = [
     "doid",

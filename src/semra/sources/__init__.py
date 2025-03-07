@@ -65,7 +65,7 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResol
         get_biomappings_positive_mappings,
         get_gilda_mappings,
         get_clo_mappings,
-        get_wikidata_mappings,
+        get_wikidata_mappings,  # type:ignore
         get_omim_gene_mappings,
     ]
 )

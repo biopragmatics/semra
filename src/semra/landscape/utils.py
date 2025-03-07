@@ -546,7 +546,7 @@ def counter_to_df(
 
 def get_observed_terms(mappings: t.Iterable[Mapping]) -> dict[str, set[str]]:
     """Get the set of terms appearing in each prefix."""
-    entities = defaultdict(set)
+    entities: defaultdict[str, set[str]] = defaultdict(set)
     for mapping in mappings:
         for reference in (mapping.s, mapping.o):
             entities[reference.prefix].add(reference.identifier)

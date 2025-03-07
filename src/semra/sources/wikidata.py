@@ -11,7 +11,7 @@ __all__ = [
 ]
 
 
-def get_wikidata_mappings(prop: str, predicate: Reference | None = None) -> list[Mapping]:
+def get_wikidata_mappings(*, prop: str, predicate: Reference | None = None) -> list[Mapping]:
     """Get mappings from Wikidata."""
     import bioregistry
 

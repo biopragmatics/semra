@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import bioontologies
 import bioregistry
 import click
@@ -20,7 +18,11 @@ CLO_URI_PREFIX = "http://purl.obolibrary.org/obo/CLO_"
 
 
 def _split(s: str) -> list[str]:
-    return [p2.replace(" ", "").rstrip(")") for p1 in s.strip().split(";") for p2 in p1.strip().split(",")]
+    return [
+        p2.replace(" ", "").rstrip(")")
+        for p1 in s.strip().split(";")
+        for p2 in p1.strip().split(",")
+    ]
 
 
 def _removeprefix(s: str, prefix: str) -> str:
@@ -29,15 +31,18 @@ def _removeprefix(s: str, prefix: str) -> str:
     return s
 
 
-def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
+def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
     """Get Cell Line Ontology mappings.
 
-    :param confidence: How confidence are you in the quality of these mappings being exact? By default, is 0.8.
-    :return: Semantic mappings extracted from the CLO
-    :raises ValueError:
-        if a prefix is encountered that doesn't have a regular expression defined in the
-        Bioregistry. If you get this error, please report it on the Bioregistry's issue
-        tracker https://github.com/biopragmatics/bioregistry/issues/new?&labels=Update&template=update-misc.yml
+    :param confidence: How confidence are you in the quality of these mappings being
+        exact? By default, is 0.8.
+
+    :returns: Semantic mappings extracted from the CLO
+
+    :raises ValueError: if a prefix is encountered that doesn't have a regular
+        expression defined in the Bioregistry. If you get this error, please report it
+        on the Bioregistry's issue tracker
+        https://github.com/biopragmatics/bioregistry/issues/new?&labels=Update&template=update-misc.yml
 
     Note that this function exists because CLO doesn't use standard curation for xrefs
     and instead uses a combination of messy references inside rdfs:seeAlso annotations
@@ -60,8 +65,8 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
                 continue
             for raw_curie in _split(p.value_raw):
                 curie = _removeprefix(_removeprefix(raw_curie, "rrid:"), "RRID:")
-                prefix: Optional[str]
-                identifier: Optional[str]
+                prefix: str | None
+                identifier: str | None
                 if curie.startswith("Sanger:COSMICID:"):
                     prefix, identifier = "cosmic.cell", _removeprefix(curie, "Sanger:COSMICID:")
                 elif curie.startswith("RRID:CVCL_"):
@@ -116,7 +121,10 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
                     prefix, identifier = bioregistry.parse_curie(curie)
 
                 if prefix is None or identifier is None:
-                    tqdm.write(f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} from line:\n  {p.value_raw}")
+                    tqdm.write(
+                        f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} "
+                        f"from line:\n  {p.value_raw}"
+                    )
                     continue
                 if prefix in SKIP_PREFIXES:
                     continue
@@ -132,7 +140,11 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:  # noqa:C901
                         s=Reference(prefix="clo", identifier=clo_id),
                         p=DB_XREF,
                         o=Reference(prefix=prefix, identifier=identifier),
-                        evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
+                        evidence=[
+                            SimpleEvidence(
+                                justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set
+                            )
+                        ],
                     )
                 )
     return mappings

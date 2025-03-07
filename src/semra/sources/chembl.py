@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import bioregistry
 from curies import Reference
 
@@ -16,7 +14,7 @@ __all__ = [
 ]
 
 
-def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL chemical equivalences."""
     import chembl_downloader
 
@@ -35,7 +33,9 @@ def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]
                 evidence=[
                     SimpleEvidence(
                         justification=UNSPECIFIED_MAPPING,
-                        mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
+                        mapping_set=MappingSet(
+                            name="chembl", version=version, license=license, confidence=0.99
+                        ),
                     )
                 ],
             )
@@ -43,7 +43,7 @@ def get_chembl_compound_mappings(version: Optional[str] = None) -> list[Mapping]
     return rows
 
 
-def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
     """Get ChEMBL to protein mappings."""
     import chembl_downloader
 
@@ -60,7 +60,9 @@ def get_chembl_protein_mappings(version: Optional[str] = None) -> list[Mapping]:
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
-                    mapping_set=MappingSet(name="chembl", version=version, license=license, confidence=0.99),
+                    mapping_set=MappingSet(
+                        name="chembl", version=version, license=license, confidence=0.99
+                    ),
                 )
             ],
         )

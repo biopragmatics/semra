@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import click
 import pandas as pd
 
 from semra import Configuration
@@ -10,6 +11,7 @@ from semra import Configuration
 HERE = Path(__file__).parent.resolve()
 
 
+@click.command()
 def main() -> None:
     """Generate a summary over the landscape analyses."""
     rows = []
@@ -32,7 +34,7 @@ def main() -> None:
     df = df[["raw_term_count", "unique_term_count", "reduction", "zenodo"]]
     df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
     df = df.astype(str)
-    print(df.to_latex(label="landscape-summary-table", caption=""))
+    click.echo(df.to_latex(label="landscape-summary-table", caption=""))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 Usage
 =====
+
 .. automodapi:: semra.struct
     :skip: Reference
 

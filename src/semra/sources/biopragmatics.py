@@ -12,9 +12,9 @@ from tqdm.asyncio import tqdm
 from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
-    "get_biomappings_positive_mappings",
     "from_biomappings_negative",
     "from_biomappings_predicted",
+    "get_biomappings_positive_mappings",
 ]
 
 
@@ -64,28 +64,37 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         biomappings_version = importlib.metadata.version("biomappings")
     except Exception:
         biomappings_version = None
-    mapping_set = MappingSet(name="biomappings", confidence=confidence, license="CC0", version=biomappings_version)
+    mapping_set = MappingSet(
+        name="biomappings", confidence=confidence, license="CC0", version=biomappings_version
+    )
     rv = []
-    for mapping_dict in tqdm(mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False):
+    for mapping_dict in tqdm(
+        mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False
+    ):
         source_prefix = mapping_dict["source prefix"]
         target_prefix = mapping_dict["target prefix"]
         author = Reference.from_curie(mapping_dict["source"])
         mm = Mapping(
             s=Reference(
                 prefix=source_prefix,
-                identifier=bioregistry.standardize_identifier(source_prefix, mapping_dict["source identifier"]),
+                identifier=bioregistry.standardize_identifier(
+                    source_prefix, mapping_dict["source identifier"]
+                ),
             ),
             p=Reference.from_curie(mapping_dict["relation"]),
             o=Reference(
                 prefix=target_prefix,
-                identifier=bioregistry.standardize_identifier(target_prefix, mapping_dict["target identifier"]),
+                identifier=bioregistry.standardize_identifier(
+                    target_prefix, mapping_dict["target identifier"]
+                ),
             ),
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),
                     mapping_set=mapping_set,
                     author=author,
-                    # TODO configurable confidence globally per author or based on author's self-reported confidence
+                    # TODO configurable confidence globally per author or
+                    #  based on author's self-reported confidence
                 )
             ],
         )

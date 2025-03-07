@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Callable
 
 import bioregistry
 import pandas as pd
@@ -15,9 +15,9 @@ from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Evidence, Mapping, MappingSet, SimpleEvidence
 
 __all__ = [
-    "get_ncit_hgnc_mappings",
     "get_ncit_chebi_mappings",
     "get_ncit_go_mappings",
+    "get_ncit_hgnc_mappings",
     "get_ncit_uniprot_mappings",
 ]
 
@@ -48,7 +48,9 @@ def _get_evidence() -> SimpleEvidence:
     license = bioregistry.get_license("ncit")
     return SimpleEvidence(
         justification=UNSPECIFIED_MAPPING,
-        mapping_set=MappingSet(name="ncit", version=version, license=license, confidence=CONFIDENCE),
+        mapping_set=MappingSet(
+            name="ncit", version=version, license=license, confidence=CONFIDENCE
+        ),
     )
 
 

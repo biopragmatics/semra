@@ -36,51 +36,48 @@ from semra.struct import (
 )
 
 __all__ = [
-    # Types
+    "EVIDENCE_KEY",
+    "PREDICATE_KEY",
+    "TEST_MAPPING_SET",
     "Index",
     "M2MIndex",
-    # Constants
-    "PREDICATE_KEY",
-    "EVIDENCE_KEY",
-    "TEST_MAPPING_SET",
-    # Functions
-    "get_test_reference",
-    "get_test_evidence",
-    "count_source_target",
-    "str_source_target_counts",
-    "print_source_target_counts",
-    "get_index",
     "assemble_evidences",
-    "infer_reversible",
-    "flip",
-    "to_digraph",
-    "to_multidigraph",
-    "from_digraph",
-    "infer_chains",
-    "tabulate_index",
-    "infer_mutual_dbxref_mutations",
-    "infer_dbxref_mutations",
-    "infer_mutations",
-    "keep_prefixes",
-    "keep_subject_prefixes",
-    "keep_object_prefixes",
+    "assert_projection",
+    "count_component_sizes",
+    "count_source_target",
+    "deduplicate_evidence",
+    "filter_many_to_many",
+    "filter_mappings",
+    "filter_minimum_confidence",
     "filter_prefixes",
     "filter_self_matches",
-    "filter_mappings",
+    "filter_subsets",
+    "flip",
+    "from_digraph",
+    "get_index",
     "get_many_to_many",
-    "filter_many_to_many",
+    "get_priority_reference",
+    "get_test_evidence",
+    "get_test_reference",
+    "infer_chains",
+    "infer_dbxref_mutations",
+    "infer_mutations",
+    "infer_mutual_dbxref_mutations",
+    "infer_reversible",
+    "keep_object_prefixes",
+    "keep_prefixes",
+    "keep_subject_prefixes",
+    "print_source_target_counts",
+    "prioritize",
     "project",
     "project_dict",
-    "assert_projection",
-    "prioritize",
-    "get_priority_reference",
-    "unindex",
-    "deduplicate_evidence",
-    "validate_mappings",
+    "str_source_target_counts",
     "summarize_prefixes",
-    "filter_minimum_confidence",
-    "filter_subsets",
-    "count_component_sizes",
+    "tabulate_index",
+    "to_digraph",
+    "to_multidigraph",
+    "unindex",
+    "validate_mappings",
 ]
 
 
@@ -91,7 +88,7 @@ PREDICATE_KEY = "predicate"
 EVIDENCE_KEY = "evidence"
 
 #: An index allows for the aggregation of evidences for each core triple
-Index = t.Dict[Triple, t.List[Evidence]]
+Index = dict[Triple, list[Evidence]]
 
 
 def _tqdm(mappings, desc: str | None = None, *, progress: bool = True, leave: bool = True):
@@ -111,15 +108,15 @@ TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: int) -> t.List[SimpleEvidence]: ...  # noqa:D103
+def get_test_evidence(n: int) -> list[SimpleEvidence]: ...
 
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: None) -> SimpleEvidence: ...  # noqa:D103
+def get_test_evidence(n: None) -> SimpleEvidence: ...
 
 
-def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.List[SimpleEvidence]]:
+def get_test_evidence(n: int | None = None) -> SimpleEvidence | list[SimpleEvidence]:
     """Get test evidence."""
     if isinstance(n, int):
         return [SimpleEvidence(mapping_set=TEST_MAPPING_SET) for _ in range(n)]
@@ -128,22 +125,22 @@ def get_test_evidence(n: t.Optional[int] = None) -> t.Union[SimpleEvidence, t.Li
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_reference(n: int, prefix: str) -> t.List[Reference]: ...  # noqa:D103
+def get_test_reference(n: int, prefix: str) -> list[Reference]: ...
 
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_reference(n: None, prefix: str) -> Reference: ...  # noqa:D103
+def get_test_reference(n: None, prefix: str) -> Reference: ...
 
 
-def get_test_reference(n: t.Optional[int] = None, prefix: str = "test") -> t.Union[Reference, t.List[Reference]]:
+def get_test_reference(n: int | None = None, prefix: str = "test") -> Reference | list[Reference]:
     """Get test reference(s)."""
     if isinstance(n, int):
         return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
     return Reference(prefix=prefix, identifier="1")
 
 
-def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str]]:
+def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]:
     """Count pairs of source/target prefixes.
 
     :param mappings: An iterable of mappings
@@ -155,7 +152,7 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[t.Tuple[str, str
     >>> r1 = Reference(prefix="p1", identifier="1")
     >>> r2 = Reference(prefix="p2", identifier="a")
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-    >>> count_source_target(mappings)
+    >>> count_source_target([m1])
     Counter({('p1', 'p2'): 1})
     """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
@@ -196,13 +193,13 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
 
 def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool = False) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
-    dd: t.DefaultDict[Triple, t.List[Evidence]] = defaultdict(list)
+    dd: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
 
 
-def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Assemble evidences.
 
     More specifically, this aggregates evidences for all subject-predicate-object triples
@@ -229,7 +226,7 @@ def assemble_evidences(mappings: t.List[Mapping], *, progress: bool = True) -> t
     return unindex(index, progress=progress)
 
 
-def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Extend the mapping list with flipped mappings.
 
     :param mappings: An iterable of mappings
@@ -258,7 +255,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> mappings = list(infer_reversible([m1]))
     >>> len(mappings)
     2
-    >>> mappings[0] == m1
+    >>> assert mappings[0] == m1
 
     .. warning::
 
@@ -276,7 +273,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
         >>> mappings = list(infer_reversible([m1, m2]))
         >>> len(mappings)
-        3
+        4
         >>> mappings = assemble_evidences(mappings)
         >>> len(mappings)
         2
@@ -338,8 +335,8 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
     """
     graph = nx.DiGraph()
-    edges: t.DefaultDict[t.Tuple[Reference, Reference], t.DefaultDict[Reference, t.List[Evidence]]] = defaultdict(
-        lambda: defaultdict(list)
+    edges: defaultdict[tuple[Reference, Reference], defaultdict[Reference, list[Evidence]]] = (
+        defaultdict(lambda: defaultdict(list))
     )
     for mapping in mappings:
         edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
@@ -348,7 +345,7 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
     return graph
 
 
-def from_digraph(graph: nx.DiGraph) -> t.List[Mapping]:
+def from_digraph(graph: nx.DiGraph) -> list[Mapping]:
     """Extract mappings from a simple directed graph data model."""
     return [mapping for s, o in graph.edges() for mapping in _from_digraph_edge(graph, s, o)]
 
@@ -359,7 +356,7 @@ def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterabl
         yield Mapping(s=s, p=p, o=o, evidence=evidence)
 
 
-def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[t.Set[Reference]]:
+def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[set[Reference]]:
     """Iterate over connected components in the multidigraph view over the mappings."""
     graph = to_digraph(mappings)
     return nx.weakly_connected_components(graph)
@@ -408,22 +405,22 @@ def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference 
     predicate_set = set(predicates)
     if predicate_set == {EXACT_MATCH}:
         return EXACT_MATCH
-    if predicate_set == {BROAD_MATCH} or predicate_set == {EXACT_MATCH, BROAD_MATCH}:  # noqa:PLR1714
+    if predicate_set == {BROAD_MATCH} or predicate_set == {EXACT_MATCH, BROAD_MATCH}:
         return BROAD_MATCH
-    if predicate_set == {NARROW_MATCH} or predicate_set == {EXACT_MATCH, NARROW_MATCH}:  # noqa:PLR1714
+    if predicate_set == {NARROW_MATCH} or predicate_set == {EXACT_MATCH, NARROW_MATCH}:
         return NARROW_MATCH
     return None
 
 
 def infer_chains(
-    mappings: t.List[Mapping],
+    mappings: list[Mapping],
     *,
     backwards: bool = True,
     progress: bool = True,
     cutoff: int = 5,
     minimum_component_size: int = 2,
     maximum_component_size: int = 100,
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Apply graph-based reasoning over mapping chains to infer new mappings.
 
     :param mappings: A list of input mappings
@@ -449,7 +446,9 @@ def infer_chains(
         key=len,
         reverse=True,
     )
-    it = tqdm(components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress)
+    it = tqdm(
+        components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress
+    )
     for _i, component in enumerate(it):
         sg: nx.MultiDiGraph = graph.subgraph(component).copy()
         sg_len = sg.number_of_nodes()
@@ -467,7 +466,7 @@ def infer_chains(
                 continue
             # TODO there has to be a way to reimplement transitive closure to handle this
             # nx.shortest_path(sg, s, o)
-            predicate_evidence_dict: t.DefaultDict[Reference, t.List[Evidence]] = defaultdict(list)
+            predicate_evidence_dict: defaultdict[Reference, list[Evidence]] = defaultdict(list)
             for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
                 if _path_has_prefix_duplicates(path):
                     continue
@@ -524,7 +523,7 @@ def tabulate_index(index: Index) -> str:
     """
     from tabulate import tabulate
 
-    rows: t.List[t.Tuple[str, str, str, str]] = []
+    rows: list[tuple[str, str, str, str]] = []
     for (s, p, o), evidences in sorted(index.items(), key=lambda pair: triple_key(pair[0])):
         if not evidences:
             rows.append((s.curie, p.curie, o.curie, ""))
@@ -538,11 +537,11 @@ def tabulate_index(index: Index) -> str:
 
 def infer_mutual_dbxref_mutations(
     mappings: Iterable[Mapping],
-    prefixes: set[str],
+    prefixes: Iterable[str],
     confidence: float | None = None,
     *,
     progress: bool = False,
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Upgrade database cross-references into exact matches for the given pairs.
 
     :param mappings: A list of mappings
@@ -562,13 +561,22 @@ def infer_mutual_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = map(Reference.from_curie, curies)
+    >>> r1, r2, r3 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2, m3]
-    >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
-    >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring
+    >>> assert infer_mutual_dbxref_mutations([m1, m2], ["DOID", "mesh"], confidence=0.99) == [
+    ...     m1,
+    ...     m3,
+    ...     m2,
+    ... ]
 
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
     is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
@@ -583,10 +591,10 @@ def infer_mutual_dbxref_mutations(
 
 def infer_dbxref_mutations(
     mappings: Iterable[Mapping],
-    pairs: t.Dict[t.Tuple[str, str], float] | Iterable[t.Tuple[str, str]],
+    pairs: dict[tuple[str, str], float] | Iterable[tuple[str, str]],
     confidence: float | None = None,
     progress: bool = False,
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Upgrade database cross-references into exact matches for the given pairs.
 
     :param mappings: A list of mappings
@@ -606,12 +614,19 @@ def infer_dbxref_mutations(
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3, r4 = (Reference.from_curie(c) for c in curies)
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2, m3]
+    >>> mappings = [m1, m2]
     >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring
     >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
 
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
@@ -632,12 +647,12 @@ def infer_dbxref_mutations(
 
 def infer_mutations(
     mappings: Iterable[Mapping],
-    pairs: t.Dict[t.Tuple[str, str], float],
+    pairs: dict[tuple[str, str], float],
     old_predicate: Reference,
     new_predicate: Reference,
     *,
     progress: bool = False,
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Infer mappings with alternate predicates for the given prefix pairs.
 
     :param mappings: Mappings to infer from
@@ -660,10 +675,16 @@ def infer_mutations(
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2]
     >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
-    >>> assert infer_mutations(mappings, pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring  # this is what we are inferring
+    >>> assert infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
     """
     rv = []
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
@@ -691,7 +712,9 @@ def infer_mutations(
     return rv
 
 
-def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> t.List[Mapping]:
+def keep_prefixes(
+    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+) -> list[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes.
 
     :param mappings: A list of mappings
@@ -710,14 +733,16 @@ def keep_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progr
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in _tqdm(mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress)
+        for mapping in _tqdm(
+            mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress
+        )
         if mapping.s.prefix in prefixes and mapping.o.prefix in prefixes
     ]
 
 
 def keep_subject_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Filter out mappings whose subjects are not in the given list of prefixes.
 
     :param mappings: A list of mappings
@@ -731,7 +756,7 @@ def keep_subject_prefixes(
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
-    >>> assert keep_prefixes([m1, m2, m3], {"DOID"}) == [m1, m3]
+    >>> assert keep_subject_prefixes([m1, m2, m3], {"DOID"})
     """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
@@ -743,7 +768,7 @@ def keep_subject_prefixes(
 
 def keep_object_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Filter out mappings whose objects are not in the given list of prefixes.
 
     :param mappings: A list of mappings
@@ -757,7 +782,7 @@ def keep_object_prefixes(
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
-    >>> assert keep_prefixes([m1, m2, m3], {"mesh"}) == [m1]
+    >>> assert keep_object_prefixes([m1, m2, m3], {"mesh"}) == [m1]
     """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [
@@ -767,17 +792,21 @@ def keep_object_prefixes(
     ]
 
 
-def filter_prefixes(mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True) -> t.List[Mapping]:
+def filter_prefixes(
+    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
     prefixes = set(prefixes)
     return [
         mapping
-        for mapping in _tqdm(mappings, desc=f"Filtering out {len(prefixes)} prefixes", progress=progress)
+        for mapping in _tqdm(
+            mappings, desc=f"Filtering out {len(prefixes)} prefixes", progress=progress
+        )
         if mapping.s.prefix not in prefixes and mapping.o.prefix not in prefixes
     ]
 
 
-def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out mappings within the same resource."""
     return [
         mapping
@@ -787,8 +816,8 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
 
 
 def filter_mappings(
-    mappings: t.List[Mapping], skip_mappings: t.List[Mapping], *, progress: bool = True
-) -> t.List[Mapping]:
+    mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True
+) -> list[Mapping]:
     """Filter out mappings in the second set from the first set."""
     skip_triples = {skip_mapping.triple for skip_mapping in skip_mappings}
     return [
@@ -804,18 +833,22 @@ def filter_mappings(
 #:
 #: This data structure can be used to index either forward or backwards mappings,
 #: as done inside :func:`get_many_to_many`
-M2MIndex = t.DefaultDict[t.Tuple[str, str], t.DefaultDict[str, t.DefaultDict[str, t.List[Mapping]]]]
+M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[Mapping]]]]
 
 
-def get_many_to_many(mappings: t.List[Mapping]) -> t.List[Mapping]:
+def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     """Get many-to-many mappings, disregarding predicate type."""
     forward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     backward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
-        forward[mapping.s.prefix, mapping.o.prefix][mapping.s.identifier][mapping.o.identifier].append(mapping)
-        backward[mapping.s.prefix, mapping.o.prefix][mapping.o.identifier][mapping.s.identifier].append(mapping)
+        forward[mapping.s.prefix, mapping.o.prefix][mapping.s.identifier][
+            mapping.o.identifier
+        ].append(mapping)
+        backward[mapping.s.prefix, mapping.o.prefix][mapping.o.identifier][
+            mapping.s.identifier
+        ].append(mapping)
 
-    index: t.DefaultDict[Triple, t.List[Evidence]] = defaultdict(list)
+    index: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for preindex in [forward, backward]:
         for d1 in preindex.values():
             for d2 in d1.values():
@@ -825,24 +858,27 @@ def get_many_to_many(mappings: t.List[Mapping]) -> t.List[Mapping]:
 
     # this is effectively the same as :func:`unindex` except the deduplicate_evidence is called
     # explicitly
-    rv = [Mapping.from_triple(triple, deduplicate_evidence(evidence)) for triple, evidence in index.items()]
+    rv = [
+        Mapping.from_triple(triple, deduplicate_evidence(evidence))
+        for triple, evidence in index.items()
+    ]
     return rv
 
 
-def filter_many_to_many(mappings: t.List[Mapping], *, progress: bool = True) -> t.List[Mapping]:
+def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out many to many mappings."""
     skip_mappings = get_many_to_many(mappings)
     return filter_mappings(mappings, skip_mappings, progress=progress)
 
 
 def project(
-    mappings: t.List[Mapping],
+    mappings: list[Mapping],
     source_prefix: str,
     target_prefix: str,
     *,
     return_sus: bool = False,
     progress: bool = False,
-) -> t.List[Mapping] | t.Tuple[t.List[Mapping], t.List[Mapping]]:
+) -> list[Mapping] | tuple[list[Mapping], list[Mapping]]:
     """Ensure that each identifier only appears as the subject of one mapping."""
     mappings = keep_subject_prefixes(mappings, source_prefix, progress=progress)
     mappings = keep_object_prefixes(mappings, target_prefix, progress=progress)
@@ -854,13 +890,13 @@ def project(
     return mappings
 
 
-def project_dict(mappings: t.List[Mapping], source_prefix: str, target_prefix: str) -> t.Dict[str, str]:
+def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:
     """Get a dictionary from source identifiers to target identifiers."""
-    mappings = cast(t.List[Mapping], project(mappings, source_prefix, target_prefix))
+    mappings = cast(list[Mapping], project(mappings, source_prefix, target_prefix))
     return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
 
 
-def assert_projection(mappings: t.List[Mapping]) -> None:
+def assert_projection(mappings: list[Mapping]) -> None:
     """Raise an exception if any entities appear as the subject in multiple mappings."""
     counter = Counter(m.s for m in mappings)
     counter = Counter({k: v for k, v in counter.items() if v > 1})
@@ -872,7 +908,7 @@ def assert_projection(mappings: t.List[Mapping]) -> None:
     )
 
 
-def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mapping]:
+def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     """Get a priority star graph.
 
     :param mappings: An iterable of mappings
@@ -897,7 +933,7 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
     exact_mappings = len(mappings)
 
     graph = to_digraph(mappings).to_undirected()
-    rv: t.List[Mapping] = []
+    rv: list[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
         o = get_priority_reference(component, priority)
         if o is None:
@@ -918,11 +954,15 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
     rv = sorted(rv, key=lambda m: (pos[m.o.prefix], m.o.identifier, m.s.prefix, m.s.identifier))
 
     end_mappings = len(rv)
-    logger.info(f"Prioritized from {original_mappings:,} original ({exact_mappings:,} exact) to {end_mappings:,}")
+    logger.info(
+        f"Prioritized from {original_mappings:,} original ({exact_mappings:,} exact) to {end_mappings:,}"
+    )
     return rv
 
 
-def get_priority_reference(component: t.Iterable[Reference], priority: t.List[str]) -> t.Optional[Reference]:
+def get_priority_reference(
+    component: t.Iterable[Reference], priority: list[str]
+) -> Reference | None:
     """Get the priority reference from a component.
 
     :param component: A set of references with the pre-condition that they're all "equivalent"
@@ -935,14 +975,14 @@ def get_priority_reference(component: t.Iterable[Reference], priority: t.List[st
     >>> from curies import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
     >>> references = [Reference.from_curie(curie) for curie in curies]
-    >>> get_priority_reference(references, ["mesh", "umls"])
+    >>> get_priority_reference(references, ["mesh", "umls"]).curie
     'mesh:C562966'
-    >>> get_priority_reference(references, ["doid", "mesh", "umls"])
+    >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
     'DOID:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
 
     """
-    prefix_to_references = defaultdict(list)
+    prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
     for reference in component:
         prefix_to_references[reference.prefix].append(reference)
     for prefix in priority:
@@ -958,7 +998,7 @@ def get_priority_reference(component: t.Iterable[Reference], priority: t.List[st
     return None
 
 
-def unindex(index: Index, *, progress: bool = True) -> t.List[Mapping]:
+def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     """Convert a mapping index into a list of mapping objects.
 
     :param index: A mapping from subject-predicate-object triples to lists of evidence objects
@@ -980,19 +1020,23 @@ def unindex(index: Index, *, progress: bool = True) -> t.List[Mapping]:
     ]
 
 
-def deduplicate_evidence(evidence: t.List[Evidence]) -> t.List[Evidence]:
+def deduplicate_evidence(evidence: list[Evidence]) -> list[Evidence]:
     """Deduplicate a list of evidences based on their "key" function."""
     d = {e.key(): e for e in evidence}
     return list(d.values())
 
 
-def validate_mappings(mappings: t.List[Mapping], *, progress: bool = True) -> None:
+def validate_mappings(mappings: list[Mapping], *, progress: bool = True) -> None:
     """Validate mappings against the Bioregistry and raise an error on the first invalid."""
     import bioregistry
 
-    for mapping in tqdm(mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress):
+    for mapping in tqdm(
+        mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress
+    ):
         if bioregistry.normalize_prefix(mapping.s.prefix) != mapping.s.prefix:
-            raise ValueError(f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.s}.")
+            raise ValueError(
+                f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.s}."
+            )
         if bioregistry.normalize_prefix(mapping.o.prefix) != mapping.o.prefix:
             raise ValueError(f"invalid object prefix: {mapping}.")
         if not bioregistry.is_valid_identifier(mapping.s.prefix, mapping.s.identifier):
@@ -1015,7 +1059,7 @@ def validate_mappings(mappings: t.List[Mapping], *, progress: bool = True) -> No
             raise ValueError(f"banana in mapping object: {mapping}")
 
 
-def summarize_prefixes(mappings: t.List[Mapping]) -> pd.DataFrame:
+def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
     """Get a dataframe summarizing the prefixes appearing in the mappings."""
     import bioregistry
 
@@ -1034,7 +1078,9 @@ def summarize_prefixes(mappings: t.List[Mapping]) -> pd.DataFrame:
     ).set_index("prefix")
 
 
-def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) -> Iterable[Mapping]:
+def filter_minimum_confidence(
+    mappings: Iterable[Mapping], cutoff: float = 0.7
+) -> Iterable[Mapping]:
     """Filter mappings below a given confidence."""
     for mapping in mappings:
         try:
@@ -1045,7 +1091,9 @@ def filter_minimum_confidence(mappings: Iterable[Mapping], cutoff: float = 0.7) 
             yield mapping
 
 
-def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> t.Mapping[str, t.Collection[str]]:
+def hydrate_subsets(
+    subset_configuration: t.Mapping[str, t.Collection[str]],
+) -> t.Mapping[str, t.Collection[str]]:
     """Convert a subset configuration dictionary into a subset artifact.
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
@@ -1083,15 +1131,14 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
 
     """
     import pyobo
-    from pyobo.getters import NoBuild
 
-    rv: t.Dict[str, t.Set[str]] = {}
+    rv: dict[str, set[str]] = {}
     # do lookup of the hierarchy and lookup of ancestors in 2 steps to allow for
     # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
     for prefix, parent_curies in subset_configuration.items():
         try:
             hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
-        except NoBuild:
+        except RuntimeError:  # e.g., no build
             rv[prefix] = set()
         except Exception as e:
             raise ValueError(f"Failed on {prefix}") from e
@@ -1111,7 +1158,7 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
 
 def filter_subsets(
     mappings: t.Iterable[Mapping], prefix_to_identifiers: t.Mapping[str, t.Collection[str]]
-) -> t.List[Mapping]:
+) -> list[Mapping]:
     """Filter mappings that don't appear in the given subsets.
 
     :param mappings: An iterable of semantic mappings
@@ -1130,7 +1177,7 @@ def filter_subsets(
 
         from semra.api import hydrate_subsets, filter_subsets
 
-        mappings = [ ... ]
+        mappings = [...]
         configuration = {"mesh": ["mesh:D002477"]}
         prefix_to_identifiers = hydrate_subsets(configuration)
         filter_subsets(mappings, prefix_to_identifiers)
@@ -1163,22 +1210,24 @@ def filter_subsets(
 
 def aggregate_components(
     mappings: t.Iterable[Mapping],
-    prefix_allowlist: t.Optional[t.Collection[str]] = None,
-) -> t.Mapping[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]]:
+    prefix_allowlist: t.Collection[str] | None = None,
+) -> t.Mapping[frozenset[str], set[frozenset[Reference]]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component.
 
     :param mappings: Mappings to aggregate
     :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this list
     :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets of references
     """
-    dd: t.DefaultDict[t.FrozenSet[str], t.Set[t.FrozenSet[Reference]]] = defaultdict(set)
+    dd: defaultdict[frozenset[str], set[frozenset[Reference]]] = defaultdict(set)
     components = iter_components(mappings)
 
     if prefix_allowlist is not None:
         prefix_set = set(prefix_allowlist)
         for component in components:
             # subset to the priority prefixes
-            subcomponent: t.FrozenSet[Reference] = frozenset(r for r in component if r.prefix in prefix_set)
+            subcomponent: frozenset[Reference] = frozenset(
+                r for r in component if r.prefix in prefix_set
+            )
             key = frozenset(r.prefix for r in subcomponent)
             dd[key].add(subcomponent)
     else:
@@ -1191,15 +1240,15 @@ def aggregate_components(
 
 
 def count_component_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
-) -> t.Counter[t.FrozenSet[str]]:
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
+) -> t.Counter[frozenset[str]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
     xx = aggregate_components(mappings, prefix_allowlist)
     return Counter({k: len(v) for k, v in xx.items()})
 
 
 def count_coverage_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Optional[t.Collection[str]] = None
+    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
 ) -> t.Counter[int]:
     """Get a counter of the number of prefixes in which each entity appears based on the mappings."""
     xx = count_component_sizes(mappings, prefix_allowlist=prefix_allowlist)

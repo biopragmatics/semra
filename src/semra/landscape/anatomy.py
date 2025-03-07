@@ -8,8 +8,8 @@ import semra
 from semra.pipeline import CREATOR_CHARLIE
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "anatomy")

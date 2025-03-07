@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typing as t
 import unittest
 
 from semra import api
@@ -39,16 +38,21 @@ from semra.struct import (
 )
 
 
-def _get_references(n: int, *, prefix: str = "test", different_prefixes: bool = False) -> t.List[Reference]:
+def _get_references(
+    n: int, *, prefix: str = "test", different_prefixes: bool = False
+) -> list[Reference]:
     if different_prefixes:
         prefixes = [f"{prefix}{i + 1}" for i in range(n)]
     else:
         prefixes = [prefix for _ in range(n)]
     identifiers = [str(i + 1) for i in range(n)]
-    return [Reference(prefix=prefix, identifier=identifier) for prefix, identifier in zip(prefixes, identifiers)]
+    return [
+        Reference(prefix=prefix, identifier=identifier)
+        for prefix, identifier in zip(prefixes, identifiers, strict=False)
+    ]
 
 
-def _exact(s, o, evidence: t.Optional[t.List[SimpleEvidence]] = None) -> Mapping:
+def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
     return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
 
 
@@ -107,9 +111,12 @@ class TestOperations(unittest.TestCase):
     def test_index(self):
         """Test indexing semantic mappings."""
         r1, r2 = _get_references(2)
-        e1 = SimpleEvidence(justification=Reference(prefix="semapv", identifier="LexicalMatching"), mapping_set=MS)
+        e1 = SimpleEvidence(
+            justification=Reference(prefix="semapv", identifier="LexicalMatching"), mapping_set=MS
+        )
         e2 = SimpleEvidence(
-            justification=Reference(prefix="semapv", identifier="ManualMappingCuration"), mapping_set=MS
+            justification=Reference(prefix="semapv", identifier="ManualMappingCuration"),
+            mapping_set=MS,
         )
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
@@ -124,8 +131,8 @@ class TestOperations(unittest.TestCase):
 
     def assert_same_triples(
         self,
-        expected_mappings: t.Union[Index, t.List[Mapping]],
-        actual_mappings: t.Union[Index, t.List[Mapping]],
+        expected_mappings: Index | list[Mapping],
+        actual_mappings: Index | list[Mapping],
         msg: str | None = None,
     ) -> None:
         """Assert that two sets of mappings are the same."""
@@ -141,7 +148,7 @@ class TestOperations(unittest.TestCase):
         )
 
     @staticmethod
-    def _clean_index(index: Index) -> t.List[str]:
+    def _clean_index(index: Index) -> list[str]:
         triples = sorted(set(index), key=triple_key)
         return ["<" + ", ".join(element.curie for element in triple) + ">" for triple in triples]
 
@@ -159,7 +166,9 @@ class TestOperations(unittest.TestCase):
         index = get_index(infer_chains([m1, m2], backwards=False, progress=False), progress=False)
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
 
-        index = get_index(infer_chains([m1, m2, m3], backwards=False, progress=False), progress=False)
+        index = get_index(
+            infer_chains([m1, m2, m3], backwards=False, progress=False), progress=False
+        )
         self.assert_same_triples([m1, m2, m3, m4, m4, m5, m6], index)
         self.assertNotIn(m4_inv.triple, index, msg=backwards_msg)
         self.assertNotIn(m5_inv.triple, index, msg=backwards_msg)
@@ -178,13 +187,17 @@ class TestOperations(unittest.TestCase):
 
         m1, m2 = line(r1, NARROW_MATCH, r2, BROAD_MATCH, r3)
         self.assert_same_triples(
-            [m1, m2], infer_chains([m1, m2], progress=False), msg="No inference between broad and narrow"
+            [m1, m2],
+            infer_chains([m1, m2], progress=False),
+            msg="No inference between broad and narrow",
         )
 
         # ------ Same but in reverse ---------
         m1, m2 = line(r1, BROAD_MATCH, r2, NARROW_MATCH, r3)
         self.assert_same_triples(
-            [m1, m2], infer_chains([m1, m2], progress=False), msg="No inference between broad and narrow"
+            [m1, m2],
+            infer_chains([m1, m2], progress=False),
+            msg="No inference between broad and narrow",
         )
 
     def test_infer_broad_match_1(self):
@@ -233,13 +246,20 @@ class TestOperations(unittest.TestCase):
         m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
 
         # Check inference over two steps
-        self.assert_same_triples([m1, m2, m4], infer_chains([m1, m2], backwards=False, progress=False))
-        self.assert_same_triples([m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True, progress=False))
+        self.assert_same_triples(
+            [m1, m2, m4], infer_chains([m1, m2], backwards=False, progress=False)
+        )
+        self.assert_same_triples(
+            [m1, m2, m4, m4_i], infer_chains([m1, m2], backwards=True, progress=False)
+        )
 
         # Check inference over multiple steps
-        self.assert_same_triples([m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3], backwards=False, progress=False))
         self.assert_same_triples(
-            [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i], infer_chains([m1, m2, m3], backwards=True, progress=False)
+            [m1, m2, m3, m4, m5, m6], infer_chains([m1, m2, m3], backwards=False, progress=False)
+        )
+        self.assert_same_triples(
+            [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i],
+            infer_chains([m1, m2, m3], backwards=True, progress=False),
         )
 
     def test_infer_narrow_match(self):
@@ -248,8 +268,12 @@ class TestOperations(unittest.TestCase):
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
         m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
         m3_i = Mapping(o=r1, p=BROAD_MATCH, s=r3)
-        self.assert_same_triples([m1, m2, m3], infer_chains([m1, m2], backwards=False, progress=False))
-        self.assert_same_triples([m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False))
+        self.assert_same_triples(
+            [m1, m2, m3], infer_chains([m1, m2], backwards=False, progress=False)
+        )
+        self.assert_same_triples(
+            [m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False)
+        )
 
     def test_mixed_inference_1(self):
         """Test inferring over a mix of narrow, broad, and exact matches."""
@@ -330,8 +354,12 @@ class TestOperations(unittest.TestCase):
         """Test filtering by confidence."""
         (a1, a2) = _get_references(2, prefix="a")
         (b1, b2) = _get_references(2, prefix="b")
-        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)])
-        m2 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)])
+        m1 = Mapping(
+            s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)]
+        )
+        m2 = Mapping(
+            s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)]
+        )
         mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
         self.assertEqual([m1], mmm)
 
@@ -351,14 +379,18 @@ class TestOperations(unittest.TestCase):
         terms = {"a": ["1", "2"], "b": ["1"]}
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(
-            [m1, m2, m5, m6], mmm, msg="Mappings 3 and 4 should not pass since b2 is not in the term filter"
+            [m1, m2, m5, m6],
+            mmm,
+            msg="Mappings 3 and 4 should not pass since b2 is not in the term filter",
         )
 
         terms = {"a": ["1", "2"], "b": ["1"], "c": []}
         # the fact that c has an empty dictionary will get ignored
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(
-            [m1, m2, m5, m6], mmm, msg="Mappings 3 and 4 should not pass since b2 is not in the term filter"
+            [m1, m2, m5, m6],
+            mmm,
+            msg="Mappings 3 and 4 should not pass since b2 is not in the term filter",
         )
 
     def test_count_component_sizes(self):
@@ -373,7 +405,10 @@ class TestOperations(unittest.TestCase):
         m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
         m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
         mappings = [m1, m2, m3, m4]
-        self.assertEqual({frozenset("ab"): 1, frozenset("abc"): 1}, dict(count_component_sizes(mappings, priority)))
+        self.assertEqual(
+            {frozenset("ab"): 1, frozenset("abc"): 1},
+            dict(count_component_sizes(mappings, priority)),
+        )
         self.assertEqual({1: 0, 2: 1, 3: 1}, dict(count_coverage_sizes(mappings, priority)))
 
     def test_digraph_roundtrip(self):
@@ -399,9 +434,18 @@ class TestUpgrades(unittest.TestCase):
         (b1,) = _get_references(1, prefix="b")
         original_confidence = 0.95
         mutation_confidence = 0.80
-        m1 = Mapping(s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)])
+        m1 = Mapping(
+            s=a1,
+            p=DB_XREF,
+            o=b1,
+            evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)],
+        )
         new_mappings = infer_mutations(
-            [m1], {("a", "b"): mutation_confidence}, old_predicate=DB_XREF, new_predicate=EXACT_MATCH, progress=False
+            [m1],
+            {("a", "b"): mutation_confidence},
+            old_predicate=DB_XREF,
+            new_predicate=EXACT_MATCH,
+            progress=False,
         )
         self.assertEqual(2, len(new_mappings))
         new_m1, new_m2 = new_mappings

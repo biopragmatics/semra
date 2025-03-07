@@ -1,23 +1,22 @@
 """Version information for SeMRA."""
 
 import os
-from subprocess import CalledProcessError, check_output  # noqa: S404
-from typing import Optional
+from subprocess import CalledProcessError, check_output
 
 __all__ = [
     "VERSION",
-    "get_version",
     "get_git_hash",
+    "get_version",
 ]
 
 VERSION = "0.0.10-dev"
 
 
-def get_git_hash() -> Optional[str]:
+def get_git_hash() -> str | None:
     """Get the bioregistry git hash."""
     with open(os.devnull, "w") as devnull:
         try:
-            ret = check_output(  # noqa: S603,S607
+            ret = check_output(
                 ["git", "rev-parse", "HEAD"],
                 cwd=os.path.dirname(__file__),
                 stderr=devnull,

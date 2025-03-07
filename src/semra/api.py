@@ -12,6 +12,8 @@ from typing import cast
 
 import networkx as nx
 import pandas as pd
+import ssslm
+from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
 from semra.rules import (
@@ -81,6 +83,7 @@ __all__ = [
     "filter_minimum_confidence",
     "filter_subsets",
     "count_component_sizes",
+    "update_literal_mappings",
 ]
 
 
@@ -1212,3 +1215,44 @@ def count_coverage_sizes(
         if i not in counter:
             counter[i] = 0
     return counter
+
+
+def update_literal_mappings(literal_mappings: list[LiteralMapping], mappings: list[Mapping]) -> list[LiteralMapping]:
+    """Use a priority mapping to re-write terms with priority groundings.
+
+    :param literal_mappings: A list of literal mappings
+    :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
+        This means that each mapping has a unique subject.
+    :return: A new list of literal mappings that have been remapped
+
+    .. code-block:: python
+
+        from itertools import chain
+
+        from pyobo import get_literal_mappings
+        from ssslm.ner import make_grounder
+
+        from semra import Configuration, Input
+        from semra.api import update_literal_mappings
+
+        prefixes = ["doid", "mondo", "efo"]
+
+        # 1. Get terms
+        literal_mappings = chain.from_iterable(get_literal_mappings(p) for p in prefixes)
+
+        # 2. Get mappings
+        configuration = Configuration.from_prefixes(
+            name="Diseases", prefixes=prefixes
+        )
+        mappings = configuration.get_mappings()
+
+        # 3. Update terms and use them (i.e., to construct a grounder)
+        new_literal_mappings = update_literal_mappings(literal_mappings, mappings)
+        grounder = make_grounder(new_literal_mappings)
+
+    """
+    assert_projection(mappings)
+    return ssslm.remap_literal_mappings(
+        literal_mappings=literal_mappings,
+        mappings=[(mapping.s, mapping.o) for mapping in mappings],
+    )

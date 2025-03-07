@@ -34,11 +34,10 @@ Semantic mapping reasoner and assembler
 This software provides:
 
 1. An object model for semantic mappings (based on SSSOM)
-2. Functionality for assembling and reasoning over
-   semantic mappings at scale
+2. Functionality for assembling and reasoning over semantic mappings at scale
 3. A provenance model for automatically generated mappings
-4. A confidence model granular at the curator-level,
-   mapping set-level, and community feedback-level
+4. A confidence model granular at the curator-level, mapping set-level, and
+   community feedback-level
 
 We also provide an accompanying raw semantic mapping database on Zenodo at
 https://zenodo.org/records/11082039.

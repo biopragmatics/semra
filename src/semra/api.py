@@ -1083,7 +1083,7 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
 
     """
     import pyobo
-    from pyobo.getters import NoBuild
+    from pyobo.getters import NoBuildError
 
     rv: t.Dict[str, t.Set[str]] = {}
     # do lookup of the hierarchy and lookup of ancestors in 2 steps to allow for
@@ -1091,7 +1091,7 @@ def hydrate_subsets(subset_configuration: t.Mapping[str, t.Collection[str]]) -> 
     for prefix, parent_curies in subset_configuration.items():
         try:
             hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
-        except NoBuild:
+        except NoBuildError:
             rv[prefix] = set()
         except Exception as e:
             raise ValueError(f"Failed on {prefix}") from e

@@ -61,7 +61,7 @@ dependencies = [
     "networkx",
     "bioregistry",
     "bioontologies",
-    "pyobo",
+    "pyobo @ git+https://github.com/biopragmatics/pyobo",
     "typing_extensions",
     "zenodo_client",
 ]

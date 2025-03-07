@@ -182,6 +182,8 @@ ignore = [
     "E203", # Black conflicts with the following
     "ERA001", # FIXME
     "C901", # FIXME
+    "E501",
+    "S301",
 ]
 
 # See https://docs.astral.sh/ruff/settings/#per-file-ignores

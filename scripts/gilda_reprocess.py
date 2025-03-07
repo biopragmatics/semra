@@ -1,9 +1,11 @@
+"""Reprocess the gilda default lexical index."""
+
 import click
 import gilda
 import pystow
 from gilda import Grounder
-from gilda.grounder import get_grounding_terms, load_entries_from_terms_file
-from gilda.resources import resource_dir
+from gilda.grounder import load_entries_from_terms_file
+from gilda.resources import get_grounding_terms, resource_dir
 
 from semra.gilda_utils import (
     GILDA_TO_BIOREGISTRY,
@@ -81,6 +83,7 @@ def _get_terms() -> list[gilda.Term]:
 
 
 def main():
+    """Reprocess the gilda default lexical index."""
     mappings = get_mappings_from_config(CONFIGURATION)
     if not mappings:
         raise ValueError("Bad mapping priority definition resulted in no mappings")

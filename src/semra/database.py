@@ -10,11 +10,11 @@ import pystow
 import requests
 from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
+from curies.vocabulary import charlie
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from zenodo_client import Creator, Metadata, ensure_zenodo
 
-from curies.vocabulary import charlie
 from semra import Mapping
 from semra.io import (
     from_bioontologies,

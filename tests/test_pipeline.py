@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from curies.vocabulary import charlie
+
 from semra import EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, get_raw_mappings

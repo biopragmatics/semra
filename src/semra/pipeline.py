@@ -251,8 +251,9 @@ class Configuration(BaseModel):
             title=self.name,
             description=self.description,
             creators=[
-                zenodo_client.Creator(name=creator.name, orcid=creator.orcid)
+                zenodo_client.Creator(name=creator.name, orcid=creator.identifier)
                 for creator in self.creators
+                if creator.prefix == "orcid"
             ],
         )
 

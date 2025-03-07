@@ -1,22 +1,52 @@
 Installation
 ============
-The most recent release can be installed from
-`PyPI <https://pypi.org/project/semra>`_ with:
 
-.. code-block:: shell
+The most recent release can be installed from `PyPI <https://pypi.org/project/semra>`_
+with uv:
 
-    pip install semra
+.. code-block:: console
 
-The most recent code and data can be installed directly from GitHub with:
+    $ uv pip install semra
 
-.. code-block:: shell
+or with pip:
 
-    pip install git+https://github.com/biopragmatics/semra.git
+.. code-block:: console
 
-To install in development mode, use the following:
+    $ python3 -m pip install semra
 
-.. code-block:: shell
+Installing from git
+-------------------
 
-    git clone git+https://github.com/biopragmatics/semra.git
-    cd semra
-    pip install -e .
+The most recent code and data can be installed directly from GitHub with uv:
+
+.. code-block:: console
+
+    $ uv --preview pip install git+https://github.com/biopragmatics/semra.git
+
+or with pip:
+
+.. code-block:: console
+
+    $ UV_PREVIEW=1 python3 -m pip install git+https://github.com/biopragmatics/semra.git
+
+.. note::
+
+    The ``UV_PREVIEW`` environment variable is required to be set until the uv build
+    backend becomes a stable feature.
+
+Installing for development
+--------------------------
+
+To install in development mode with uv:
+
+.. code-block:: console
+
+    $ git clone git+https://github.com/biopragmatics/semra.git
+    $cd semra
+    $ uv --preview pip install -e .
+
+or with pip:
+
+.. code-block:: console
+
+    $ UV_PREVIEW=1 python3 -m pip install -e .

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Set
 
 import bioversions
 import pyobo
@@ -21,16 +20,16 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-def get_pubchem_mesh_mappings(version: Optional[str] = None) -> list[Mapping]:
+def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
     """Get a mapping from PubChem compound identifiers to their equivalent MeSH terms."""
     if version is None:
         version = bioversions.get_version("pubchem")
 
     mesh_name_to_id = pyobo.get_name_id_mapping("mesh")
-    needs_curation: Set[str] = set()
+    needs_curation: set[str] = set()
 
     url = f"https://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Monthly/{version}/Extras/CID-MeSH"
-    res = requests.get(url, stream=True)
+    res = requests.get(url, stream=True, timeout=600)
 
     rv = []
     for line in res.iter_lines():
@@ -50,7 +49,9 @@ def get_pubchem_mesh_mappings(version: Optional[str] = None) -> list[Mapping]:
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
                     # Data is in public domain: https://www.ncbi.nlm.nih.gov/home/about/policies/
-                    mapping_set=MappingSet(name="pubchem", version=version, confidence=0.99, license="CC0"),
+                    mapping_set=MappingSet(
+                        name="pubchem", version=version, confidence=0.99, license="CC0"
+                    ),
                 )
             ],
         )

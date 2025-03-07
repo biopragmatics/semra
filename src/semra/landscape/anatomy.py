@@ -8,8 +8,8 @@ from pyobo.sources.mesh import get_mesh_category_curies
 import semra
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "anatomy")

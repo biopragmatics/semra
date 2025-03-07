@@ -55,7 +55,8 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
     :param terms: A list of Gilda term objects
     :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
         This means that each mapping has a unique subject.
-    :return: A new list of Gilda term objects that have been remapped
+
+    :returns: A new list of Gilda term objects that have been remapped
 
     .. code-block:: python
 
@@ -75,15 +76,12 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
         terms = filter_out_duplicates(list(terms))
 
         # 2. Get mappings
-        configuration = Configuration.from_prefixes(
-            name="Diseases", prefixes=prefixes
-        )
+        configuration = Configuration.from_prefixes(name="Diseases", prefixes=prefixes)
         mappings = configuration.get_mappings()
 
         # 3. Update terms and use them (i.e., to construct a grounder)
         new_terms = update_terms(terms, mappings)
         grounder = Grounder(new_terms)
-
     """
     assert_projection(mappings)
 
@@ -174,6 +172,16 @@ def print_scored_matches(scored_matches: list[gilda.ScoredMatch]) -> None:
         for scored_match in scored_matches
     ]
     text = tabulate(
-        rows, headers=["name", "prefix", "identifier", "norm_text", "status", "score", "source_prefix", "source_id"]
+        rows,
+        headers=[
+            "name",
+            "prefix",
+            "identifier",
+            "norm_text",
+            "status",
+            "score",
+            "source_prefix",
+            "source_id",
+        ],
     )
     print(text)  # noqa:T201

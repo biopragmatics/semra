@@ -1,7 +1,5 @@
 """Get arbitrary Wikidata mappings."""
 
-import typing as t
-
 from curies import Reference
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
@@ -13,7 +11,7 @@ __all__ = [
 ]
 
 
-def get_wikidata_mappings(prop: str, predicate: t.Optional[Reference] = None) -> t.List[Mapping]:
+def get_wikidata_mappings(*, prop: str, predicate: Reference | None = None) -> list[Mapping]:
     """Get mappings from Wikidata."""
     import bioregistry
 
@@ -23,7 +21,9 @@ def get_wikidata_mappings(prop: str, predicate: t.Optional[Reference] = None) ->
     return _help(target_prefix=target_prefix, prop=prop, predicate=predicate)
 
 
-def get_wikidata_mappings_by_prefix(prefix: str, predicate: t.Optional[Reference] = None) -> t.List[Mapping]:
+def get_wikidata_mappings_by_prefix(
+    prefix: str, predicate: Reference | None = None
+) -> list[Mapping]:
     """Get mappings from Wikidata."""
     import bioregistry
 
@@ -34,8 +34,8 @@ def get_wikidata_mappings_by_prefix(prefix: str, predicate: t.Optional[Reference
 
 
 def _help(
-    target_prefix: str, prop: str, *, predicate: t.Optional[Reference] = None, cache: bool = True
-) -> t.List[Mapping]:
+    target_prefix: str, prop: str, *, predicate: Reference | None = None, cache: bool = True
+) -> list[Mapping]:
     """Get mappings from Wikidata."""
     from pyobo.xrefdb.sources.wikidata import iter_wikidata_mappings
 

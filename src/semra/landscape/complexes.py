@@ -7,8 +7,8 @@ from curies.vocabulary import charlie
 from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "complex")
@@ -29,7 +29,8 @@ SUBSETS = {
 
 CONFIGURATION = Configuration(
     name="SeMRA Protein Complex Landscape Analysis",
-    description="Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
+    description="Analyze the landscape of protein complex nomenclature "
+    "resources, species-agnostic.",
     creators=[charlie],
     inputs=[
         Input(source="gilda"),

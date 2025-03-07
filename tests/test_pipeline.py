@@ -1,7 +1,6 @@
 """Tests for the automated assembly pipeline."""
 
 import tempfile
-import typing as t
 import unittest
 from pathlib import Path
 
@@ -32,7 +31,7 @@ TEST_MAPPINGS = [
 ]
 
 
-def get_test_mappings() -> t.List[Mapping]:
+def get_test_mappings() -> list[Mapping]:
     """Get test mappings."""
     return TEST_MAPPINGS
 
@@ -64,7 +63,10 @@ class TestPipeline(unittest.TestCase):
         """Test using custom sources in the configuration."""
         inp = Input(source="custom", prefix="get_test_mappings")
         config = Configuration(
-            inputs=[inp], priority=["a", "b"], name="Test Configuration", description="Tests using custom sources"
+            inputs=[inp],
+            priority=["a", "b"],
+            name="Test Configuration",
+            description="Tests using custom sources",
         )
         mappings = get_raw_mappings(config)
         self.assert_test_mappings(mappings)
@@ -77,7 +79,10 @@ class TestPipeline(unittest.TestCase):
 
             inp = Input(source="sssom", prefix=path.as_posix(), extras={"mapping_set_name": "test"})
             config = Configuration(
-                inputs=[inp], priority=["a", "b"], name="Test Configuration", description="Tests using SSSOM sources"
+                inputs=[inp],
+                priority=["a", "b"],
+                name="Test Configuration",
+                description="Tests using SSSOM sources",
             )
             mappings = get_raw_mappings(config)
             self.assert_test_mappings(mappings)

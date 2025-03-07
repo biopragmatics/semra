@@ -7,8 +7,8 @@ from curies.vocabulary import charlie
 from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "gene")

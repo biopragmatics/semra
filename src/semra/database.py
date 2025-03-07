@@ -2,7 +2,6 @@
 
 import csv
 import time
-import typing as t
 
 import bioregistry
 import click
@@ -73,7 +72,12 @@ def main(include_wikidata: bool):
     ontology_resources = []
     pyobo_resources = []
     for resource in bioregistry.resources():
-        if resource.is_deprecated() or resource.prefix in skip or resource.no_own_terms or resource.proprietary:
+        if (
+            resource.is_deprecated()
+            or resource.prefix in skip
+            or resource.no_own_terms
+            or resource.proprietary
+        ):
             continue
         if resource.prefix.startswith("kegg") or resource.prefix.startswith("pubchem"):
             continue
@@ -121,7 +125,9 @@ def main(include_wikidata: bool):
         "smiles",  # too many funny characters
     }
     if include_wikidata:
-        for prefix in tqdm(bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"):
+        for prefix in tqdm(
+            bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"
+        ):
             it.set_postfix(prefix=prefix)
             if prefix in skip_wikidata_prefixes:
                 continue
@@ -134,7 +140,9 @@ def main(include_wikidata: bool):
                 continue
             _write_source(resource_mappings, resource_name)
             mappings.extend(resource_mappings)
-            summaries.append((resource_name, len(resource_mappings), time.time() - start, "wikidata"))
+            summaries.append(
+                (resource_name, len(resource_mappings), time.time() - start, "wikidata")
+            )
             _write_summary()
 
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
@@ -147,7 +155,9 @@ def main(include_wikidata: bool):
             start = time.time()
             try:
                 with logging_redirect_tqdm():
-                    resource_mappings = from_bioontologies(resource.prefix, check=resource.prefix not in loose)
+                    resource_mappings = from_bioontologies(
+                        resource.prefix, check=resource.prefix not in loose
+                    )
             except ValueError as e:
                 tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
                 continue
@@ -155,7 +165,9 @@ def main(include_wikidata: bool):
             # this outputs on each iteration to get faster insight
             write_warned(WARNINGS_PATH)
             write_getter_warnings(ERRORS_PATH)
-            summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "bioontologies"))
+            summaries.append(
+                (resource.prefix, len(resource_mappings), time.time() - start, "bioontologies")
+            )
             _write_summary()
 
         mappings.extend(resource_mappings)
@@ -193,7 +205,7 @@ def main(include_wikidata: bool):
     click.echo(res.json()["links"]["html"])
 
 
-def _write_source(mappings: t.List[Mapping], key: str) -> None:
+def _write_source(mappings: list[Mapping], key: str) -> None:
     if mappings:
         write_pickle(mappings, SOURCES.join(name=f"{key}.pkl.gz"))
         write_sssom(mappings, SOURCES.join(name=f"{key}.sssom.tsv"), add_labels=True)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
+import time
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -409,16 +410,25 @@ def project_dict(mappings: t.List[Mapping], source_prefix: str, target_prefix: s
     return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
 
 
-def assert_projection(mappings: t.List[Mapping]) -> None:
+def assert_projection(mappings: t.List[Mapping], top: int = 20) -> None:
     """Raise an exception if any entities appear as the subject in multiple mappings."""
     counter = Counter(m.s for m in mappings)
-    counter = Counter({k: v for k, v in counter.items() if v > 1})
+    counter = Counter({subject: count for subject, count in counter.items() if count > 1})
     if not counter:
         return
+
+    rows = "\n".join(f"{k}: {v}" for k, v in counter.most_common(top))
     raise ValueError(
         f"Some subjects appear in multiple mappings, therefore this is not a "
-        f"valid projection. Showing top 5: {counter.most_common(20)}"
+        f"valid projection. Showing top {top}:\n{rows}"
     )
+
+
+def clean_projection(mappings: t.List[Mapping]) -> t.List[Mapping]:
+    """Removes any invalidities from a projection."""
+    counter = Counter(m.s for m in mappings)
+    counter: t.Counter[Reference] = Counter({subject: count for subject, count in counter.items() if count > 1})
+    return [m for m in mappings if m not in counter]
 
 
 def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mapping]:
@@ -427,13 +437,14 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
     :param mappings:
     :param priority: A list of prefixes to prioritize. The first prefix in the list gets highest.
     """
+    start = time.time()
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.p == EXACT_MATCH]
     exact_mappings = len(mappings)
 
     graph = to_graph(mappings).to_undirected()
     rv: t.List[Mapping] = []
-    for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
+    for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True, desc="Prioritizing"):
         o = _get_priority(component, priority)
         if o is None:
             continue
@@ -452,7 +463,10 @@ def prioritize(mappings: t.List[Mapping], priority: t.List[str]) -> t.List[Mappi
     rv = sorted(rv, key=lambda m: (pos[m.o.prefix], m.o.identifier, m.s.prefix, m.s.identifier))
 
     end_mappings = len(rv)
-    logger.info(f"Prioritized from {original_mappings:,} original ({exact_mappings:,} exact) to {end_mappings:,}")
+    delta = time.time() - start
+    logger.info(
+        f"Prioritized from {original_mappings:,} original ({exact_mappings:,} exact) to {end_mappings:,} in {delta:.2f} seconds"
+    )
     return rv
 
 

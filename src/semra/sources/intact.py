@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 COMPLEXPORTAL_MAPPINGS_UNVERSIONED = (
-    "ftp://ftp.ebi.ac.uk/pub/databases/intact/current/various/cpx_ebi_ac_translation.txt"
+    "https://ftp.ebi.ac.uk/pub/databases/intact/complex/current/various/cpx_ebi_ac_translation.txt"
 )
 REACTOME_MAPPINGS_UNVERSIONED = (
     "ftp://ftp.ebi.ac.uk/pub/databases/intact/current/various/reactome.dat"

@@ -3,9 +3,10 @@
 import bioregistry
 import click
 import pystow
+from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_curies
 
-from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation
+from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
     "CONFIGURATION",
@@ -47,7 +48,7 @@ SUBSETS = {
 CONFIGURATION = Configuration(
     name="SeMRA Disease Mappings Database",
     description="Supports the analysis of the landscape of disease nomenclature resources.",
-    creators=[CREATOR_CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

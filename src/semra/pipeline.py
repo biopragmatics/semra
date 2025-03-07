@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import requests
+from curies import NamedReference
 from pydantic import BaseModel, Field, root_validator
 from tqdm.auto import tqdm
 
@@ -36,7 +37,7 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.rules import CHARLIE_NAME, CHARLIE_ORCID, DB_XREF, EXACT_MATCH, IMPRECISE
+from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.biopragmatics import (
     from_biomappings_negative,
@@ -51,13 +52,10 @@ if t.TYPE_CHECKING:
     import zenodo_client
 
 __all__ = [
-    # Configuration model
     "Configuration",
-    "Creator",
     "Input",
     "Mutation",
     "SubsetConfiguration",
-    # Functions
     "get_mappings_from_config",
     "get_raw_mappings",
     "process",
@@ -87,16 +85,6 @@ class Mutation(BaseModel):
 SubsetConfiguration = t.Mapping[str, t.Collection[str]]
 
 
-class Creator(BaseModel):
-    """A model describing a creator."""
-
-    name: str
-    orcid: str
-
-
-CREATOR_CHARLIE = Creator(name=CHARLIE_NAME, orcid=CHARLIE_ORCID.identifier)
-
-
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
@@ -104,7 +92,7 @@ class Configuration(BaseModel):
     description: str | None = Field(
         None, description="An explanation of the purpose of the mapping set configuration"
     )
-    creators: list[Creator] = Field(
+    creators: list[NamedReference] = Field(
         default_factory=list, description="A list of the ORCID identifiers for creators"
     )
     inputs: list[Input] = Field(..., description="A list of sources of mappings")
@@ -263,8 +251,9 @@ class Configuration(BaseModel):
             title=self.name,
             description=self.description,
             creators=[
-                zenodo_client.Creator(name=creator.name, orcid=creator.orcid)
+                zenodo_client.Creator(name=creator.name, orcid=creator.identifier)
                 for creator in self.creators
+                if creator.prefix == "orcid"
             ],
         )
 

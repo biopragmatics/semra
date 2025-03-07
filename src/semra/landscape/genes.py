@@ -2,8 +2,9 @@
 
 import click
 import pystow
+from curies.vocabulary import charlie
 
-from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation
+from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
     "CONFIGURATION",
@@ -32,7 +33,7 @@ PREFIXES = PRIORITY = [
 CONFIGURATION = Configuration(
     name="SeMRA Gene Mapping Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
-    creators=[CREATOR_CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(prefix="hgnc", source="pyobo", confidence=0.99),
         Input(prefix="mgi", source="pyobo", confidence=0.99),

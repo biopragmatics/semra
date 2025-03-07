@@ -2,10 +2,10 @@
 
 import click
 import pystow
+from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_curies
 
 import semra
-from semra.pipeline import CREATOR_CHARLIE
 
 __all__ = [
     "CONFIGURATION",
@@ -35,7 +35,7 @@ SUBSETS = {
 CONFIGURATION = semra.Configuration(
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
-    creators=[CREATOR_CHARLIE],
+    creators=[charlie],
     inputs=[
         semra.Input(source="biomappings"),
         semra.Input(source="gilda"),

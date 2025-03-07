@@ -2,9 +2,9 @@
 
 import click
 import pystow
+from curies.vocabulary import charlie
 
-from semra.pipeline import Configuration, Creator, Input, Mutation
-from semra.rules import CHARLIE_NAME, CHARLIE_ORCID
+from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [
     "CONFIGURATION",
@@ -31,7 +31,7 @@ CONFIGURATION = Configuration(
     name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature "
     "resources, species-agnostic.",
-    creators=[Creator(orcid=CHARLIE_ORCID.identifier, name=CHARLIE_NAME)],
+    creators=[charlie],
     inputs=[
         Input(source="gilda"),
         Input(source="biomappings"),

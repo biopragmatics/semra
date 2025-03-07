@@ -537,7 +537,7 @@ def tabulate_index(index: Index) -> str:
 
 def infer_mutual_dbxref_mutations(
     mappings: Iterable[Mapping],
-    prefixes: set[str],
+    prefixes: Iterable[str],
     confidence: float | None = None,
     *,
     progress: bool = False,
@@ -564,9 +564,19 @@ def infer_mutual_dbxref_mutations(
     >>> r1, r2, r3 = map(Reference.from_curie, curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
-    >>> assert infer_dbxref_mutations([m1, m2], pairs) == [m1, m3, m2]
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring
+    >>> assert infer_mutual_dbxref_mutations([m1, m2], ["DOID", "mesh"], confidence=0.99) == [
+    ...     m1,
+    ...     m3,
+    ...     m2,
+    ... ]
 
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
     is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
@@ -609,7 +619,14 @@ def infer_dbxref_mutations(
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> mappings = [m1, m2]
     >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring
     >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
 
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
@@ -658,10 +675,16 @@ def infer_mutations(
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2]
     >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r2))  # this is what we are inferring
-    >>> assert infer_mutations(mappings, pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
+    >>> m3 = Mapping.from_triple(
+    ...     (r1, EXACT_MATCH, r2),
+    ...     evidence=[
+    ...         ReasonedEvidence(
+    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
+    ...         )
+    ...     ],
+    ... )  # this is what we are inferring  # this is what we are inferring
+    >>> assert infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
     """
     rv = []
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
@@ -759,7 +782,7 @@ def keep_object_prefixes(
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
     >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
-    >>> assert keep_prefixes([m1, m2, m3], {"mesh"}) == [m1]
+    >>> assert keep_object_prefixes([m1, m2, m3], {"mesh"}) == [m1]
     """
     prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
     return [

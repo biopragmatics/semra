@@ -8,8 +8,8 @@ from pyobo.sources.mesh import get_mesh_category_curies
 from semra.pipeline import CREATOR_CHARLIE, Configuration, Input, Mutation
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 ICD_PREFIXES = bioregistry.get_collection("0000004").resources

@@ -31,20 +31,20 @@ from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping
 
 __all__ = [
-    "notebook",
-    "draw_counter",
     "counter_to_df",
-    "landscape_analysis",
-    "get_symmetric_counts_df",
-    "overlap_analysis",
+    "draw_counter",
     "get_mesh_category_curies",
+    "get_symmetric_counts_df",
+    "landscape_analysis",
+    "notebook",
+    "overlap_analysis",
 ]
 
 
-DirectedIndex = t.Dict[t.Tuple[str, str], t.Set[str]]
-XXCounter = t.Counter[t.Tuple[str, str]]
+DirectedIndex = dict[tuple[str, str], set[str]]
+XXCounter = t.Counter[tuple[str, str]]
 XXTerms = t.Mapping[str, t.Mapping[str, str]]
-XXObservedTerms = t.Dict[str, t.Set[str]]
+XXObservedTerms = dict[str, set[str]]
 XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
@@ -55,11 +55,11 @@ def _markdown(x):
 def notebook(
     configuration: Configuration,
     *,
-    output_directory: t.Union[str, Path, None] = None,
-    matplotlib_formats: t.Optional[str] = "svg",
+    output_directory: str | Path | None = None,
+    matplotlib_formats: str | None = "svg",
     show: bool = True,
-    minimum_count: t.Optional[int] = None,
-) -> t.Tuple["OverlapResults", "LandscapeResult"]:
+    minimum_count: int | None = None,
+) -> tuple["OverlapResults", "LandscapeResult"]:
     """Run the landscape analysis inside a Jupyter notebook."""
     if not configuration.raw_pickle_path:
         raise ValueError
@@ -69,7 +69,9 @@ def notebook(
         output_directory = configuration.raw_pickle_path.parent
     output_directory = Path(output_directory).expanduser().resolve()
     configuration_path = output_directory.joinpath("configuration.json")
-    configuration_path.write_text(configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True))
+    configuration_path.write_text(
+        configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
+    )
 
     terms = get_terms(configuration.priority, configuration.subsets)
 
@@ -85,7 +87,10 @@ def notebook(
 
     terms_observed = get_observed_terms(processed_mappings)
     summary_df = get_summary_df(
-        prefixes=configuration.priority, subsets=configuration.subsets, terms=terms, terms_observed=terms_observed
+        prefixes=configuration.priority,
+        subsets=configuration.subsets,
+        terms=terms,
+        terms_observed=terms_observed,
     )
     summary_df.to_csv(output_directory.joinpath("summary.tsv"), sep="\t")
     number_pyobo_unavailable = (summary_df["terms"] == 0).sum()
@@ -93,8 +98,9 @@ def notebook(
         """\
     ## Summarize the Resources
 
-    We summarize the resources used in the landscape analysis, including their [Bioregistry](https://bioregistry.io)
-    prefix, license, current version, and number of terms (i.e., named concepts) they contain.
+    We summarize the resources used in the landscape analysis, including their
+    [Bioregistry](https://bioregistry.io) prefix, license, current version, and
+    number of terms (i.e., named concepts) they contain.
     """
     )
     if number_pyobo_unavailable > 0:
@@ -110,7 +116,10 @@ def notebook(
     display(summary_df)
 
     _summary_total = summary_df["terms"].sum()
-    _markdown(f"There are a total of {_summary_total:,} terms across the {len(summary_df.index):,} resources.")
+    _markdown(
+        f"There are a total of {_summary_total:,} terms across the {len(summary_df.index):,} "
+        f"resources."
+    )
 
     _markdown(
         """\
@@ -131,10 +140,14 @@ def notebook(
         terms_observed=terms_observed,
     )
     overlap_results.write(output_directory)
-    _markdown("First, we summarize the raw mappings, i.e., the mappings that are directly available from the sources")
+    _markdown(
+        "First, we summarize the raw mappings, i.e., the mappings that are directly available "
+        "from the sources"
+    )
     display(overlap_results.raw_counts_df)
     _markdown(
-        "Next, we summarize the processed mappings, which include inference, reasoning, and confidence filtering."
+        "Next, we summarize the processed mappings, which include inference, reasoning, and "
+        "confidence filtering."
     )
     display(overlap_results.counts_df)
     _markdown("Below is an graph-based view on the processed mappings.")
@@ -155,8 +168,10 @@ def notebook(
 
     Note:
 
-    - `inf` means that there were no mappings before and now there are a non-zero number of mappings
-    - `NaN` means there were no mappings before inference and continue to be no mappings after inference
+    - `inf` means that there were no mappings before and now there are a non-zero number of
+       mappings
+    - `NaN` means there were no mappings before inference and continue to be no mappings after
+       inference
     """
     )
     display(overlap_results.percent_gains_df.round(1))
@@ -164,9 +179,9 @@ def notebook(
         """\
         ## Landscape Analysis
 
-        Before, we looked at the overlaps between each resource. Now, we use that information jointly to
-        estimate the number of terms in the landscape itself, and estimate how much of the landscape
-        each resource covers.
+        Before, we looked at the overlaps between each resource. Now, we use that information
+        jointly to estimate the number of terms in the landscape itself, and estimate how much
+        of the landscape each resource covers.
     """
     )
 
@@ -187,8 +202,8 @@ def notebook(
         f"""\
     Because there are {n_prefixes}, there are {number_overlaps} possible overlaps to consider.
     Therefore, a Venn diagram is not possible, so we
-    we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993) (Lex *et al.*, 2014)
-    as a high-dimensional Venn diagram.
+    we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
+    (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
     """
     )
     landscape_results.plot_upset()
@@ -231,12 +246,13 @@ def notebook(
     2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
        a result of inference. The frontend curation interface can help identify and remove these
     3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
-       to load a terms list, and therefore it's not possible to account for terms that aren't mapped.
-       Therefore, we make a lower bound estimate based on the terms that appear in mappings
-    4. It can be artificially high if a vocabulary is used that covers many domains and is not properly
-       subset'd. For example, EFO covers many different domains, so when doing disease landscape
-       analysis, it should be subset to only terms in the disease hierarchy (i.e., appearing under
-       ``efo:0000408``).
+       to load a terms list, and therefore it's not possible to account for terms that aren't
+       mapped. Therefore, we make a lower bound estimate based on the terms that appear in
+       mappings.
+    4. It can be artificially high if a vocabulary is used that covers many domains and is not
+       properly subset'd. For example, EFO covers many different domains, so when doing disease
+       landscape analysis, it should be subset to only terms in the disease hierarchy
+       (i.e., appearing under ``efo:0000408``).
     5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
     6. It can be affected by the existence of many-to-many mappings, which are filtered out during
        processing, which makes the estimate artificially high since some subset of those entities
@@ -260,23 +276,25 @@ def notebook(
 class OverlapResults:
     """Results from mapping analysis."""
 
-    raw_mappings: t.List[Mapping]
+    raw_mappings: list[Mapping]
     raw_counts_df: pd.DataFrame
-    mappings: t.List[Mapping]
+    mappings: list[Mapping]
     counts: XXCounter
     counts_df: pd.DataFrame
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
-    minimum_count: t.Optional[int] = None
+    minimum_count: int | None = None
     counts_drawing: bytes = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the object by creating a drawing of the counter."""
         if self.minimum_count is None:
             self.minimum_count = 20
-        self.counts_drawing = draw_counter(self.counts, cls=nx.Graph, minimum_count=self.minimum_count)
+        self.counts_drawing = draw_counter(
+            self.counts, cls=nx.Graph, minimum_count=self.minimum_count
+        )
 
-    def write(self, directory: t.Union[str, Path]) -> None:
+    def write(self, directory: str | Path) -> None:
         """Write the tables and charts to a directory."""
         directory = Path(directory).resolve()
         self.counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
@@ -289,9 +307,9 @@ def overlap_analysis(
     terms: XXTerms,
     *,
     terms_observed: XXObservedTerms,
-    mappings: t.List[Mapping],
-    raw_mappings: t.List[Mapping],
-    minimum_count: t.Optional[int] = None,
+    mappings: list[Mapping],
+    raw_mappings: list[Mapping],
+    minimum_count: int | None = None,
 ) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
@@ -321,7 +339,9 @@ def overlap_analysis(
     )
 
 
-def get_terms(prefixes: t.List[str], subset_configuration: t.Optional[SubsetConfiguration] = None) -> XXTerms:
+def get_terms(
+    prefixes: list[str], subset_configuration: SubsetConfiguration | None = None
+) -> XXTerms:
     """Get the set of identifiers for each of the resources."""
     prefix_to_identifier_to_name = {}
     if subset_configuration is None:
@@ -339,7 +359,7 @@ def get_terms(prefixes: t.List[str], subset_configuration: t.Optional[SubsetConf
     return prefix_to_identifier_to_name
 
 
-def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> t.Tuple[int, bool]:
+def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> tuple[int, bool]:
     terms_exact = terms.get(prefix)
     if terms_exact:
         exact = True
@@ -354,27 +374,29 @@ def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -
 
 
 def get_summary_df(
-    prefixes: t.List[str], *, subsets=None, terms: XXTerms, terms_observed: XXObservedTerms
+    prefixes: list[str], *, subsets=None, terms: XXTerms, terms_observed: XXObservedTerms
 ) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
     :param prefixes: The list of prefixes
     :param subsets: The subset configuration
     :param terms: The dictionary of prefix -> collection of identifiers from :mod:`pyobo`
-    :param terms_observed: The dictionary of prefix -> collection of identifiers encountered in the mappings
-        appearing in the landscape analysis. This should be calculated from raw mappings to make sure that
-        it accounts for any that might be filtered out during processing.
+    :param terms_observed:
+        The dictionary of prefix -> collection of identifiers encountered in the mappings
+        appearing in the landscape analysis. This should be calculated from raw mappings
+        to make sure that it accounts for any that might be filtered out during processing.
     :return: A pandas dataframe with the following columns:
 
         1. Prefix
         2. Name
         3. License
         4. Version
-        5. Terms - the number of terms in the resource. If the full term list can be looked up with :mod:`pyobo`, then
-           this is considered as exact. Otherwise, this will be estimated based on the number of unique terms appearing
-           in the mappings. This is typically an underestimate since not necessarily all terms appear in mappings.
-        6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the resource. Otherwise,
-           will be "false"
+        5. Terms - the number of terms in the resource. If the full term list can be looked up
+           with :mod:`pyobo`, then this is considered as exact. Otherwise, this will be estimated
+           based on the number of unique terms appearing in the mappings. This is typically an
+           underestimate since not necessarily all terms appear in mappings.
+        6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the resource.
+           Otherwise, will be "false"
     """
     summary_rows = []
     if subsets is None:
@@ -397,7 +419,9 @@ def get_summary_df(
         )
         summary_rows.append(row)
 
-    df = pd.DataFrame(summary_rows, columns=["prefix", "name", "license", "version", "terms", "status"])
+    df = pd.DataFrame(
+        summary_rows, columns=["prefix", "name", "license", "version", "terms", "status"]
+    )
     df = df.set_index("prefix")
     return df
 
@@ -421,7 +445,7 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
         }
     """
     index = get_index(mappings, progress=True, leave=False)
-    directed: t.DefaultDict[t.Tuple[str, str], t.Set[str]] = defaultdict(set)
+    directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
     for s, p, o in index:
         if p in target_predicates:
@@ -433,10 +457,10 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
 def get_symmetric_counts_df(
     directed: DirectedIndex,
     terms: XXTerms,
-    priority: t.List[str],
+    priority: list[str],
     *,
     terms_observed: XXObservedTerms,
-) -> t.Tuple[XXCounter, pd.DataFrame]:
+) -> tuple[XXCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter: XXCounter = Counter()
 
@@ -451,7 +475,9 @@ def get_symmetric_counts_df(
         if right_all_terms:
             right_observed_terms.intersection_update(right_all_terms)
 
-        counter[left_prefix, right_prefix] = max(len(left_observed_terms), len(right_observed_terms))
+        counter[left_prefix, right_prefix] = max(
+            len(left_observed_terms), len(right_observed_terms)
+        )
 
     for prefix in priority:
         count, _exact = _count_terms(prefix, terms, terms_observed)
@@ -465,7 +491,7 @@ def draw_counter(
     counter: XXCounter,
     scaling_factor: float = 3.0,
     count_format=",",
-    cls: t.Type[nx.Graph] = nx.DiGraph,
+    cls: type[nx.Graph] = nx.DiGraph,
     minimum_count: float = 0.0,
     prog: str = "dot",
     output_format: str = "svg",
@@ -503,7 +529,9 @@ def draw_counter(
     return agraph.draw(prog=prog, format=output_format)
 
 
-def counter_to_df(counter: XXCounter, priority: t.List[str], drop_missing: bool = True) -> pd.DataFrame:
+def counter_to_df(
+    counter: XXCounter, priority: list[str], drop_missing: bool = True
+) -> pd.DataFrame:
     """Get a dataframe from a counter."""
     rows = [[counter.get((p1, p2), None) for p2 in priority] for p1 in priority]
     df = pd.DataFrame(rows, columns=priority, index=priority)
@@ -516,7 +544,7 @@ def counter_to_df(counter: XXCounter, priority: t.List[str], drop_missing: bool 
     return df
 
 
-def get_observed_terms(mappings: t.Iterable[Mapping]) -> t.Dict[str, t.Set[str]]:
+def get_observed_terms(mappings: t.Iterable[Mapping]) -> dict[str, set[str]]:
     """Get the set of terms appearing in each prefix."""
     entities = defaultdict(set)
     for mapping in mappings:
@@ -530,9 +558,9 @@ def count_unobserved(
     prefixes: t.Collection[str],
     prefix_to_identifiers: XXTerms,
     prefix_to_observed_identifiers: XXObservedTerms,
-) -> t.Counter[t.FrozenSet[str]]:
+) -> t.Counter[frozenset[str]]:
     """Count the number of unobserved entities for each prefix."""
-    rv: t.Counter[t.FrozenSet[str]] = Counter()
+    rv: t.Counter[frozenset[str]] = Counter()
     for prefix in prefixes:
         observed_identifiers = prefix_to_observed_identifiers.get(prefix)
         if not observed_identifiers:
@@ -557,9 +585,9 @@ def count_unobserved(
 
 
 def landscape_analysis(
-    mappings: t.List[Mapping],
+    mappings: list[Mapping],
     prefix_to_identifiers: XXTerms,
-    priority: t.List[str],
+    priority: list[str],
     *,
     prefix_to_observed_identifiers: XXObservedTerms,
 ) -> "LandscapeResult":
@@ -609,14 +637,14 @@ def landscape_analysis(
 class LandscapeResult:
     """Describes results of landscape analysis."""
 
-    priority: t.List[str]
+    priority: list[str]
     at_least_1_mapping: int
     only_1_mapping: int
     conserved: int
     total_entity_estimate: int
-    mapped_counter: t.Counter[t.FrozenSet[str]]
-    single_counter: t.Counter[t.FrozenSet[str]]
-    counter: t.Counter[t.FrozenSet[str]] = field(init=False)
+    mapped_counter: t.Counter[frozenset[str]]
+    single_counter: t.Counter[frozenset[str]]
+    counter: t.Counter[frozenset[str]] = field(init=False)
     distribution: t.Counter[int] = field(init=False)
 
     def __post_init__(self):
@@ -629,7 +657,8 @@ class LandscapeResult:
         return f"""\
             This estimates a total of {self.total_entity_estimate:,} unique entities.
 
-            - {self.at_least_1_mapping:,} ({self.at_least_1_mapping / self.total_entity_estimate:.1%}) have
+            - {self.at_least_1_mapping:,}
+              ({self.at_least_1_mapping / self.total_entity_estimate:.1%}) have
               at least one mapping.
             - {self.only_1_mapping:,} ({self.only_1_mapping / self.total_entity_estimate:.1%})
               are unique to a single resource.
@@ -643,8 +672,8 @@ class LandscapeResult:
         """
 
     def get_upset_df(self) -> pd.DataFrame:
-        """Format the landscape analysis's result counter into an :mod:`upsetplot`-compatible dataframe."""
-        return upsetplot.from_memberships(*zip(*self.counter.most_common()))
+        """Get an :mod:`upsetplot`-compatible dataframe for the result counter."""
+        return upsetplot.from_memberships(*zip(*self.counter.most_common(), strict=False))
 
     def plot_upset(self):
         """Plot the results with an UpSet plot."""

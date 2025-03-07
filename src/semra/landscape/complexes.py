@@ -7,8 +7,8 @@ from semra.pipeline import Configuration, Creator, Input, Mutation
 from semra.rules import CHARLIE_NAME, CHARLIE_ORCID
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "complex")
@@ -29,7 +29,8 @@ SUBSETS = {
 
 CONFIGURATION = Configuration(
     name="SeMRA Protein Complex Landscape Analysis",
-    description="Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
+    description="Analyze the landscape of protein complex nomenclature "
+    "resources, species-agnostic.",
     creators=[Creator(orcid=CHARLIE_ORCID.identifier, name=CHARLIE_NAME)],
     inputs=[
         Input(source="gilda"),

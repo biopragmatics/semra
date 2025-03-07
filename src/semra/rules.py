@@ -12,7 +12,15 @@ DB_XREF = Reference(prefix="oboinowl", identifier="hasDbXref")
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
 REPLACED_BY = Reference(prefix="iao", identifier="0100001")
 
-RELATIONS = [EXACT_MATCH, DB_XREF, BROAD_MATCH, NARROW_MATCH, CLOSE_MATCH, EQUIVALENT_TO, REPLACED_BY]
+RELATIONS = [
+    EXACT_MATCH,
+    DB_XREF,
+    BROAD_MATCH,
+    NARROW_MATCH,
+    CLOSE_MATCH,
+    EQUIVALENT_TO,
+    REPLACED_BY,
+]
 
 IMPRECISE = {DB_XREF, CLOSE_MATCH}
 FLIP = {

@@ -3,26 +3,38 @@
 import json
 from pathlib import Path
 
+import click
 import pandas as pd
+
+from semra import Configuration
 
 HERE = Path(__file__).parent.resolve()
 
 
+@click.command()
 def main() -> None:
     """Generate a summary over the landscape analyses."""
     rows = []
     for directory in HERE.iterdir():
         if not directory.is_dir():
             continue
-        path = directory.joinpath("stats.json")
-        if not path.is_file():
+
+        row = {"name": directory.name}
+
+        statistics_path = directory.joinpath("stats.json")
+        if not statistics_path.is_file():
             continue
-        row = json.loads(path.read_text())
-        row["name"] = directory.name
+        row.update(json.loads(statistics_path.read_text()))
+
+        configuration_path = directory.joinpath("configuration.json")
+        configuration = Configuration.parse_file(configuration_path)
+        row["zenodo"] = configuration.zenodo_url()
         rows.append(row)
     df = pd.DataFrame(rows).set_index("name")
-    df = df[["raw_term_count", "unique_term_count", "reduction"]]
-    print(df.to_markdown(tablefmt="github"))
+    df = df[["raw_term_count", "unique_term_count", "reduction", "zenodo"]]
+    df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
+    df = df.astype(str)
+    click.echo(df.to_latex(label="landscape-summary-table", caption=""))
 
 
 if __name__ == "__main__":

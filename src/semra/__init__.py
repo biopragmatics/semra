@@ -14,24 +14,21 @@ from semra.rules import (
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
-    "Mapping",
-    "Evidence",
-    "SimpleEvidence",
-    "ReasonedEvidence",
-    "Reference",
-    "MappingSet",
-    # Mapping predicates
-    "EXACT_MATCH",
-    "DB_XREF",
-    "REPLACED_BY",
-    "NARROW_MATCH",
     "BROAD_MATCH",
-    # Mapping justifications
+    "DB_XREF",
+    "EXACT_MATCH",
     "LEXICAL_MAPPING",
     "MANUAL_MAPPING",
+    "NARROW_MATCH",
+    "REPLACED_BY",
     "UNSPECIFIED_MAPPING",
-    # Pipeline
     "Configuration",
+    "Evidence",
     "Input",
+    "Mapping",
+    "MappingSet",
     "Mutation",
+    "ReasonedEvidence",
+    "Reference",
+    "SimpleEvidence",
 ]

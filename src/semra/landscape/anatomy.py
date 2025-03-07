@@ -2,13 +2,14 @@
 
 import click
 import pystow
+from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_curies
 
 import semra
 
 __all__ = [
-    "MODULE",
     "CONFIGURATION",
+    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "anatomy")
@@ -32,7 +33,9 @@ SUBSETS = {
 }
 
 CONFIGURATION = semra.Configuration(
-    name="Anatomy mappings",
+    name="SeMRA Anatomy Mappings Database",
+    description="Supports the analysis of the landscape of anatomy nomenclature resources.",
+    creators=[charlie],
     inputs=[
         semra.Input(source="biomappings"),
         semra.Input(source="gilda"),
@@ -64,6 +67,8 @@ CONFIGURATION = semra.Configuration(
     processed_neo4j_name="semra-anatomy",
     priority_pickle_path=MODULE.join(name="priority.pkl"),
     priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
+    configuration_path=MODULE.join(name="configuration.json"),
+    zenodo_record=11091803,
 )
 
 
@@ -71,6 +76,7 @@ CONFIGURATION = semra.Configuration(
 def main():
     """Build the mapping database for anatomical terms."""
     CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
+    CONFIGURATION.upload_zenodo()
 
 
 if __name__ == "__main__":

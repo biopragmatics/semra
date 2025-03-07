@@ -34,7 +34,11 @@ def get_fplx_mappings() -> list[Mapping]:
                 prefix=bioregistry.normalize_prefix(target_prefix),
                 identifier=bioregistry.standardize_identifier(target_prefix, target_id),
             ),
-            evidence=[SimpleEvidence(justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_ORCID)],
+            evidence=[
+                SimpleEvidence(
+                    justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_ORCID
+                )
+            ],
         )
         for target_prefix, target_id, source_id in df.values
         if (
@@ -42,7 +46,7 @@ def get_fplx_mappings() -> list[Mapping]:
             and not (target_prefix == "NXP" and target_id.startswith("FA:"))  # is this a problem?
         )
     ]
-    validate_mappings(rv)
+    validate_mappings(rv, progress=False)
     return rv
 
 

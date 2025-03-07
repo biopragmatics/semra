@@ -1,0 +1,98 @@
+{
+  "name": "SeMRA Protein Complex Landscape Analysis",
+  "description": "Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
+  "creators": [
+    {
+      "name": "Charles Tapley Hoyt",
+      "orcid": "0000-0003-4423-4370"
+    }
+  ],
+  "inputs": [
+    {
+      "source": "gilda"
+    },
+    {
+      "source": "biomappings"
+    },
+    {
+      "source": "pyobo",
+      "prefix": "fplx",
+      "confidence": 0.99
+    },
+    {
+      "source": "custom",
+      "prefix": "fplx",
+      "confidence": 0.99
+    },
+    {
+      "source": "custom",
+      "prefix": "intact_complexportal",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "complexportal",
+      "confidence": 0.99
+    },
+    {
+      "source": "pyobo",
+      "prefix": "go",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "complexportal",
+      "confidence": 0.99
+    },
+    {
+      "source": "wikidata",
+      "prefix": "reactome",
+      "confidence": 0.99
+    }
+  ],
+  "priority": [
+    "complexportal",
+    "fplx",
+    "go",
+    "chembl.target",
+    "wikidata",
+    "scomp",
+    "signor",
+    "intact"
+  ],
+  "mutations": [
+    {
+      "source": "go",
+      "confidence": 0.95
+    }
+  ],
+  "subsets": {
+    "go": [
+      "go:0032991"
+    ]
+  },
+  "post_keep_prefixes": [
+    "complexportal",
+    "fplx",
+    "go",
+    "chembl.target",
+    "wikidata",
+    "scomp",
+    "signor",
+    "intact"
+  ],
+  "remove_imprecise": false,
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/complex/raw.pkl",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/complex/raw.sssom.tsv",
+  "raw_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/complex/neo4j_raw",
+  "raw_neo4j_name": "semra-complex",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/complex/processed.pkl",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/complex/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/complex/neo4j",
+  "processed_neo4j_name": "semra-complex",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/complex/priority.pkl",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/complex/priority.sssom.tsv",
+  "add_labels": true,
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/complex/configuration.json",
+  "zenodo_record": 11091422
+}

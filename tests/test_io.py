@@ -16,9 +16,9 @@ class TestIO(unittest.TestCase):
         """Test loading content from PyOBO."""
         mappings = from_pyobo("doid")
         for mapping in mappings:
-            self.assertEquals("doid", mapping.s.prefix)
+            self.assertEqual("doid", mapping.s.prefix)
 
         mappings_2 = from_pyobo("doid", "mesh")
         for mapping in mappings_2:
-            self.assertEquals("doid", mapping.s.prefix)
-            self.assertEquals("mesh", mapping.o.prefix)
+            self.assertEqual("doid", mapping.s.prefix)
+            self.assertEqual("mesh", mapping.o.prefix)

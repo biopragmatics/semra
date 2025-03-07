@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import typing as t
 from collections import Counter
-from typing import Any
+from typing import Any, TypeAlias
 
 import bioregistry
 import neo4j
@@ -13,23 +13,21 @@ import neo4j.graph
 import networkx as nx
 import pydantic
 from neo4j import unit_of_work
-from typing_extensions import TypeAlias
 
 import semra
 from semra import Evidence, MappingSet, Reference
-from semra.io import _get_name_by_curie
 from semra.rules import RELATIONS
 
 __all__ = [
-    "Node",
     "Neo4jClient",
+    "Node",
 ]
 
 Node: TypeAlias = t.Mapping[str, Any]
 
-TxResult: TypeAlias = t.Optional[t.List[t.List[Any]]]
+TxResult: TypeAlias = list[list[Any]] | None
 
-ReferenceHint: TypeAlias = t.Union[str, Reference]
+ReferenceHint: TypeAlias = str | Reference
 
 DEFAULT_MAX_LENGTH = 3
 
@@ -40,6 +38,13 @@ def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
     if curie_or_luid.startswith(prefix):
         return curie_or_luid
     return f"{prefix}:{curie_or_luid}"
+
+
+#: A cypher query that gets all of the databases' relation types
+RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+
+#: A cypher query format string for getting the name of a concept
+CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
 
 class Neo4jClient:
@@ -63,12 +68,15 @@ class Neo4jClient:
         user = user or os.environ.get("NEO4J_USER")
         password = password or os.environ.get("NEO4J_PASSWORD")
 
-        self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=(user, password), max_connection_lifetime=180)
+        self.driver = neo4j.GraphDatabase.driver(
+            uri=uri, auth=(user, password), max_connection_lifetime=180
+        )
 
-        query = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
-        self._all_relations = {curie for curie, in self.read_query(query)}
+        self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
         self._rel_q = "|".join(
-            f"`{reference.curie}`" for reference in RELATIONS if reference.curie in self._all_relations
+            f"`{reference.curie}`"
+            for reference in RELATIONS
+            if reference.curie in self._all_relations
         )
 
     def __del__(self):
@@ -81,7 +89,8 @@ class Neo4jClient:
 
         :param query: The cypher query to run
         :param query_params: The parameters to pass to the query
-        :return: The result of the query
+
+        :returns: The result of the query
         """
         with self.driver.session() as session:
             values = session.execute_read(_do_cypher_tx, query, **query_params)
@@ -93,7 +102,8 @@ class Neo4jClient:
 
         :param query: The cypher query to run
         :param query_params: The parameters to pass to the query
-        :return: The result of the write query
+
+        :returns: The result of the write query
         """
         with self.driver.session() as session:
             return session.write_transaction(_do_cypher_tx, query, **query_params)
@@ -127,10 +137,11 @@ class Neo4jClient:
     def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
         """Get a mapping.
 
-        :param curie: Either a Reference object, a string representing
-            a curie with ``semra.mapping`` as the prefix, or a local
-            unique identifier representing a SeMRA mapping.
-        :return: A semantic mapping object
+        :param curie: Either a Reference object, a string representing a curie with
+            ``semra.mapping`` as the prefix, or a local unique identifier representing a
+            SeMRA mapping.
+
+        :returns: A semantic mapping object
         """
         curie = _safe_curie(curie, "semra.mapping")
         query = """\
@@ -157,7 +168,9 @@ class Neo4jClient:
             evidence_dict["evidence_type"] = evidence_dict.pop("type")
             if evidence_dict["evidence_type"] == "reasoned":
                 evidence_dict["mappings"] = []  # TODO add in mappings?
-            evidence_dict["justification"] = Reference.from_curie(evidence_dict.pop("mapping_justification"))
+            evidence_dict["justification"] = Reference.from_curie(
+                evidence_dict.pop("mapping_justification")
+            )
             evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
         return semra.Mapping(
             s=Reference.from_curie(source_curie),
@@ -174,14 +187,16 @@ class Neo4jClient:
         """Get all mappings sets."""
         query = "MATCH (m:mappingset) RETURN m"
         records = self.read_query(query)
-        return [MappingSet.parse_obj(record) for record, in records]
+        return [MappingSet.parse_obj(record) for (record,) in records]
 
     def get_mapping_set(self, curie: ReferenceHint) -> MappingSet:
         """Get a mappings set.
 
-        :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a prefix.
-            For example, use ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
-        :return: A mapping set object
+        :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
+            prefix. For example, use
+            ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
+
+        :returns: A mapping set object
         """
         curie = _safe_curie(curie, "semra.mappingset")
         node = self._get_node_by_curie(curie)
@@ -191,7 +206,8 @@ class Neo4jClient:
         """Get an evidence.
 
         :param curie: The CURIE for a mapping set, using ``semra.evidence`` as a prefix.
-        :return: An evidence object
+
+        :returns: An evidence object
         """
         curie = _safe_curie(curie, "semra.evidence")
         query = "MATCH (n {curie: $curie}) RETURN n"
@@ -234,7 +250,10 @@ as label, count UNION ALL
         """Get a counter of prefixes in concept nodes."""
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
         return Counter(
-            {(prefix, t.cast(str, bioregistry.get_name(prefix))): count for prefix, count in self.read_query(query)}
+            {
+                (prefix, t.cast(str, bioregistry.get_name(prefix))): count
+                for prefix, count in self.read_query(query)
+            }
         )
 
     def summarize_authors(self) -> t.Counter[tuple[str, str]]:
@@ -246,7 +265,8 @@ as label, count UNION ALL
         """Get a counter of concepts with the highest exact matches.
 
         :param limit: The number of top concepts to return
-        :return: A counter with keys that are CURIE/name pairs
+
+        :returns: A counter with keys that are CURIE/name pairs
         """
         query = """\
             MATCH (a:concept)-[:`skos:exactMatch`]-(b:concept)
@@ -258,9 +278,13 @@ as label, count UNION ALL
         return self._count_with_name(query, limit=limit)
 
     def _count_with_name(self, query: str, **kwargs: Any) -> t.Counter[tuple[str, str]]:
-        return Counter({(curie, name): count for curie, name, count in self.read_query(query, **kwargs)})
+        return Counter(
+            {(curie, name): count for curie, name, count in self.read_query(query, **kwargs)}
+        )
 
-    def get_exact_matches(self, curie: ReferenceHint, *, max_distance: t.Optional[int] = None) -> dict[Reference, str]:
+    def get_exact_matches(
+        self, curie: ReferenceHint, *, max_distance: int | None = None
+    ) -> dict[Reference, str]:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -271,61 +295,84 @@ as label, count UNION ALL
             WHERE a.curie <> b.curie
             RETURN b.curie, b.name
         """
-        return {Reference.from_curie(n_curie): name for n_curie, name in self.read_query(query, curie=curie)}
+        return {
+            Reference.from_curie(n_curie): name
+            for n_curie, name in self.read_query(query, curie=curie)
+        }
 
     def get_connected_component(
-        self, curie: ReferenceHint, max_distance: t.Optional[int] = None
-    ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Relationship]]:
+        self, curie: ReferenceHint, max_distance: int | None = None
+    ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Path]]:
         """Get the nodes and relations in the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
         :param max_distance: The maximum number of hops to consider
-        :return: A pair of:
+
+        :returns: A pair of:
 
             1. The nodes in the connected component, as Neo4j node objects
-            2. The relationships in the connected component, as Neo4j relationship objects
+            2. The relationships in the connected component, as Neo4j relationship
+               objects
         """
         if isinstance(curie, Reference):
             curie = curie.curie
         if max_distance is None:
             max_distance = DEFAULT_MAX_LENGTH
-        query = f"""\
+
+        connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
             WHERE ALL(p IN r WHERE p.primary or p.secondary)
-            RETURN collect(DISTINCT n) AS nodes, collect(DISTINCT r) AS relations
+            RETURN DISTINCT n
+            UNION ALL
+            MATCH (n:concept {{curie: $curie}})
+            RETURN n
         """
-        res = self.read_query(query, curie=curie)
-        nodes = res[0][0]
-        relations = sorted({r for relations in res[0][1] for r in relations}, key=lambda r: r.type)
+        nodes = [n[0] for n in self.read_query(connected_query, curie=curie)]
+
+        component_curies = {node["curie"] for node in nodes}
+        # component_curies.add(curie)
+
+        edge_query = """\
+            MATCH p=(a:concept)-[r]->(b:concept)
+            WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
+            RETURN p
+        """
+        relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]
         return nodes, relations
 
     def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
+
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
-        nodes, relations = self.get_connected_component(curie)
+        nodes, paths = self.get_connected_component(curie)
         g = nx.MultiDiGraph()
         for node in nodes:
             g.add_node(node["curie"], **node)
-        for relation in relations:
-            g.add_edge(
-                relation.nodes[0]["curie"],  # type: ignore
-                relation.nodes[1]["curie"],  # type: ignore
-                key=relation.element_id,
-                type=relation.type,
-                **relation,
-            )
+        for path in paths:
+            for relationship in path.relationships:
+                g.add_edge(
+                    path.start_node["curie"],  # type: ignore
+                    path.end_node["curie"],  # type: ignore
+                    key=relationship.id,
+                    type=relationship.type,
+                )
         return g
 
     def get_concept_name(self, curie: ReferenceHint) -> str | None:
         """Get the name for a CURIE or reference."""
         if isinstance(curie, Reference):
             curie = curie.curie
-        return _get_name_by_curie(curie)
+        try:
+            name = self.read_query(CONCEPT_NAME_CYPHER, curie=curie)[0][0]
+        except Exception:
+            return None
+        else:
+            return name
 
-    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> t.List:
+    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list:
         """Get n mappings from a given set (by CURIE)."""
         if isinstance(curie, Reference):
             curie = curie.curie

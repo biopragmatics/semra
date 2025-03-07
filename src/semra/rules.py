@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
-from semra.struct import Reference
+from curies import Reference
+from curies import vocabulary as v
 
-EXACT_MATCH = Reference(prefix="skos", identifier="exactMatch")
-BROAD_MATCH = Reference(prefix="skos", identifier="broadMatch")
-NARROW_MATCH = Reference(prefix="skos", identifier="narrowMatch")
-CLOSE_MATCH = Reference(prefix="skos", identifier="closeMatch")
-DB_XREF = Reference(prefix="oboinowl", identifier="hasDbXref")
+EXACT_MATCH = v.exact_match
+BROAD_MATCH = v.broad_match
+NARROW_MATCH = v.narrow_match
+CLOSE_MATCH = v.close_match
+DB_XREF = v.has_dbxref
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
-REPLACED_BY = Reference(prefix="iao", identifier="0100001")
+REPLACED_BY = v.term_replaced_by
 
-RELATIONS = [EXACT_MATCH, DB_XREF, BROAD_MATCH, NARROW_MATCH, CLOSE_MATCH, EQUIVALENT_TO, REPLACED_BY]
+RELATIONS = [
+    EXACT_MATCH,
+    DB_XREF,
+    BROAD_MATCH,
+    NARROW_MATCH,
+    CLOSE_MATCH,
+    EQUIVALENT_TO,
+    REPLACED_BY,
+]
 
 IMPRECISE = {DB_XREF, CLOSE_MATCH}
 FLIP = {
@@ -43,5 +52,4 @@ INVERSION_MAPPING = Reference.from_curie("semapv:MappingInversion")
 CHAIN_MAPPING = Reference.from_curie("semapv:MappingChaining")
 KNOWLEDGE_MAPPING = Reference.from_curie("semapv:BackgroundKnowledgeBasedMatching")
 
-CHARLIE_ORCID = Reference.from_curie("orcid:0000-0003-4423-4370")
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")

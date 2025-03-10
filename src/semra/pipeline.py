@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 import requests
 from curies import NamedReference
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
 
 from semra.api import (
@@ -96,7 +96,9 @@ class Configuration(BaseModel):
         default_factory=list, description="A list of the ORCID identifiers for creators"
     )
     inputs: list[Input] = Field(..., description="A list of sources of mappings")
-    negative_inputs: list[Input] = Field(default=[Input(source="biomappings", prefix="negative")])
+    negative_inputs: list[Input] = Field(
+        default_factory=lambda: [Input(source="biomappings", prefix="negative")]
+    )
     priority: list[str] = Field(
         default_factory=list,
         description="If no priority is given, is inferred from the order of inputs",
@@ -168,7 +170,7 @@ class Configuration(BaseModel):
 
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode="before")
     def infer_priority(cls, values):  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]
@@ -432,10 +434,15 @@ def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, 
     return rv
 
 
-def get_raw_mappings(configuration: Configuration) -> list[Mapping]:
+def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
-    for inp in tqdm(configuration.inputs, desc="Loading configured mappings", unit="source"):
+    for inp in tqdm(
+        configuration.inputs,
+        desc="Loading configured mappings",
+        unit="source",
+        disable=not show_progress,
+    ):
         tqdm.write(f"Loading {inp.source}" + (f" ({inp.prefix})" if inp.prefix else ""))
         if inp.source is None:
             continue

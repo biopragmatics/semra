@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal
 import pydantic
 from curies import Reference
 from more_itertools import triplewise
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from pydantic.types import UUID4
 
 __all__ = [
@@ -134,10 +134,7 @@ class SimpleEvidence(
     Ideally, this matches the SSSOM data model.
     """
 
-    class Config:
-        """Pydantic configuration for evidence."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     evidence_type: Literal["simple"] = Field(default="simple")
     justification: Reference = Field(
@@ -187,10 +184,7 @@ class ReasonedEvidence(
 ):
     """A complex evidence based on multiple mappings."""
 
-    class Config:
-        """Pydantic configuration for evidence."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     evidence_type: Literal["reasoned"] = Field(default="reasoned")
     justification: Reference = Field(..., description="A SSSOM-compliant justification")
@@ -261,10 +255,7 @@ Evidence = Annotated[
 class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.mapping"):
     """A semantic mapping."""
 
-    class Config:
-        """Pydantic configuration for evidence."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     s: Reference = Field(..., title="subject")
     p: Reference = Field(..., title="predicate")
@@ -321,7 +312,7 @@ def line(*references: Reference) -> list[Mapping]:
     return [Mapping(s=s, p=p, o=o) for s, p, o in islice(triplewise(references), None, None, 2)]
 
 
-ReasonedEvidence.update_forward_refs()
+ReasonedEvidence.model_rebuild()
 
 
 def _joint_probability(probabilities: Iterable[float]) -> float:

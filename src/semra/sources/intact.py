@@ -19,7 +19,7 @@ COMPLEXPORTAL_MAPPINGS_UNVERSIONED = (
     "https://ftp.ebi.ac.uk/pub/databases/intact/complex/current/various/cpx_ebi_ac_translation.txt"
 )
 REACTOME_MAPPINGS_UNVERSIONED = (
-    "ftp://ftp.ebi.ac.uk/pub/databases/intact/current/various/reactome.dat"
+    "https://ftp.ebi.ac.uk/pub/databases/intact/current/various/reactome.dat"
 )
 INTACT_CONFIDENCE = 0.99
 

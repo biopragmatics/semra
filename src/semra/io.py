@@ -320,7 +320,7 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
 
     prefix, identifier = bioregistry.parse_curie(curie)
     if not prefix or not identifier:
-        raise ValueError
+        raise ValueError(f"could not standardize curie: {curie}")
 
     if has_name:
         return NamedReference(prefix=prefix, identifier=identifier, name=name)

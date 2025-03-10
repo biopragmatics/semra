@@ -5,17 +5,16 @@ import unittest
 import uuid
 
 import pandas as pd
-from curies import Reference
 from curies.vocabulary import exact_match, unspecified_matching_process
 
 from semra import Mapping, MappingSet, SimpleEvidence
 from semra.io import from_pyobo, from_sssom_df
+from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
 CONST_UUID = uuid.uuid4()
 
-a1, a2 = (Reference(prefix="a", identifier=str(i + 1)) for i in range(2))
-b1, b2 = (Reference(prefix="b", identifier=str(i + 1)) for i in range(2))
+
 mapping_set_name = "test"
 mapping_set_confidence = 0.6
 
@@ -56,8 +55,8 @@ class TestIO(unittest.TestCase):
 
         # Test 1 - from kwargs
         rows = [
-            ("a:1", "skos:exactMatch", "exact match", "b:1"),
-            ("a:2", "skos:exactMatch", "exact match", "b:2"),
+            (a1_curie, "skos:exactMatch", "exact match", b1_curie),
+            (a2_curie, "skos:exactMatch", "exact match", b2_curie),
         ]
         columns = [
             "subject_id",
@@ -76,8 +75,8 @@ class TestIO(unittest.TestCase):
 
         # Test 2 - from columns (partial)
         rows_test_2 = [
-            ("a:1", "skos:exactMatch", "exact match", "b:1", mapping_set_name),
-            ("a:2", "skos:exactMatch", "exact match", "b:2", mapping_set_name),
+            (a1_curie, "skos:exactMatch", "exact match", b1_curie, mapping_set_name),
+            (a2_curie, "skos:exactMatch", "exact match", b2_curie, mapping_set_name),
         ]
         columns = [
             "subject_id",
@@ -97,18 +96,18 @@ class TestIO(unittest.TestCase):
         # Test 3 - from columns (full)
         rows_test_3 = [
             (
-                "a:1",
+                a1_curie,
                 "skos:exactMatch",
                 "exact match",
-                "b:1",
+                b1_curie,
                 mapping_set_name,
                 mapping_set_confidence,
             ),
             (
-                "a:2",
+                a2_curie,
                 "skos:exactMatch",
                 "exact match",
-                "b:2",
+                b2_curie,
                 mapping_set_name,
                 mapping_set_confidence,
             ),
@@ -145,8 +144,8 @@ class TestIO(unittest.TestCase):
         ]
 
         rows = [
-            ("a:1", "skos:exactMatch", "exact match", "b:1"),
-            ("a:2", "skos:exactMatch", "exact match", "b:2"),
+            (a1_curie, "skos:exactMatch", "exact match", b1_curie),
+            (a2_curie, "skos:exactMatch", "exact match", b2_curie),
         ]
         columns = [
             "subject_id",

@@ -14,7 +14,6 @@ from semra.io import from_pyobo, from_sssom_df
 LOCAL = getpass.getuser() == "cthoyt"
 CONST_UUID = uuid.uuid4()
 
-
 a1, a2 = (Reference(prefix="a", identifier=str(i + 1)) for i in range(2))
 b1, b2 = (Reference(prefix="b", identifier=str(i + 1)) for i in range(2))
 mapping_set_name = "test"
@@ -22,8 +21,8 @@ mapping_set_confidence = 0.6
 
 
 @unittest.skipUnless(LOCAL, reason="Don't test remotely since PyOBO content isn't available")
-class TestIO(unittest.TestCase):
-    """Test I/O functions."""
+class TestIOLocal(unittest.TestCase):
+    """Test I/O functions that only run if pyobo is available."""
 
     def test_from_pyobo(self):
         """Test loading content from PyOBO."""
@@ -35,6 +34,10 @@ class TestIO(unittest.TestCase):
         for mapping in mappings_2:
             self.assertEqual("doid", mapping.s.prefix)
             self.assertEqual("mesh", mapping.o.prefix)
+
+
+class TestIO(unittest.TestCase):
+    """Tests for I/O functions."""
 
     def test_from_sssom_df(self) -> None:
         """Test importing mappings from a SSSOM dataframe."""
@@ -72,7 +75,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(expected_mappings, actual_mappings)
 
         # Test 2 - from columns (partial)
-        rows = [
+        rows_test_2 = [
             ("a:1", "skos:exactMatch", "exact match", "b:1", mapping_set_name),
             ("a:2", "skos:exactMatch", "exact match", "b:2", mapping_set_name),
         ]
@@ -83,7 +86,7 @@ class TestIO(unittest.TestCase):
             "object_id",
             "mapping_set_name",
         ]
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows_test_2, columns=columns)
         actual_mappings = from_sssom_df(
             df,
             mapping_set_confidence=mapping_set_confidence,
@@ -92,7 +95,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(expected_mappings, actual_mappings)
 
         # Test 3 - from columns (full)
-        rows = [
+        rows_test_3 = [
             (
                 "a:1",
                 "skos:exactMatch",
@@ -118,7 +121,7 @@ class TestIO(unittest.TestCase):
             "mapping_set_name",
             "mapping_set_confidence",
         ]
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows_test_3, columns=columns)
         actual_mappings = from_sssom_df(df, _uuid=CONST_UUID)
         self.assertEqual(expected_mappings, actual_mappings)
 

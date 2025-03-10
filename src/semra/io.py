@@ -123,7 +123,7 @@ def _from_pyobo_sssom_df(
     *,
     prefixes: str | t.Collection[str] | None = None,
     confidence: float | None = None,
-    standardize: bool = False,
+    standardize: bool = True,
     version: str | None = None,
     license: str | None = None,
     justification: Reference | None = None,
@@ -190,7 +190,7 @@ def from_pyobo(
     prefix: str,
     target_prefix: str | None = None,
     *,
-    standardize: bool = False,
+    standardize: bool = True,
     version: str | None = None,
     license: str | None = None,
     confidence: float | None = None,
@@ -202,12 +202,9 @@ def from_pyobo(
     :param target_prefix: The optional prefix for targets for semantic mappings.
     :param standardize: Should the local unique identifiers in the first and third
         columns be standardized using :func:`bioregistry.standardize_identifier`?
-        Defaults to false.
+        Defaults to true.
     :param confidence: The confidence level for the mappings. Defaults to
         :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
-    :param standardize: Should the local unique identifiers in the first and third
-        columns be standardized using :func:`bioregistry.standardize_identifier`?
-        Defaults to false.
     :param version: The version of the ontology that's been loaded (does not proactively
         load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
     :param license: The license of the ontology that's been loaded. If not given, will
@@ -288,7 +285,7 @@ def from_sssom_df(
     justification: Reference | None = None,
     version: str | None = None,
     _uuid: uuid.UUID | None = None,
-    standardize: bool = False,
+    standardize: bool = True,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
     return [
@@ -388,15 +385,15 @@ def _parse_sssom_row(
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
     o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
-    ed: dict[str, t.Any] = {
+    e: dict[str, t.Any] = {
         "justification": justification,
         "mapping_set": mapping_set,
         "author": author,
     }
     if _uuid:
-        ed["uuid"] = _uuid
+        e["uuid"] = _uuid
 
-    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(ed)])
+    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
 
 
 def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:

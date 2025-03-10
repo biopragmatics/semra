@@ -45,11 +45,11 @@ TWO_STEP: dict[tuple[Reference, Reference], Reference] = {
     (EXACT_MATCH, NARROW_MATCH): NARROW_MATCH,
 }
 
-MANUAL_MAPPING = Reference.from_curie("semapv:ManualMappingCuration")
-LEXICAL_MAPPING = Reference.from_curie("semapv:LexicalMatching")
-UNSPECIFIED_MAPPING = Reference.from_curie("semapv:UnspecifiedMatching")
-INVERSION_MAPPING = Reference.from_curie("semapv:MappingInversion")
-CHAIN_MAPPING = Reference.from_curie("semapv:MappingChaining")
-KNOWLEDGE_MAPPING = Reference.from_curie("semapv:BackgroundKnowledgeBasedMatching")
+MANUAL_MAPPING = v.manual_mapping_curation
+LEXICAL_MAPPING = v.lexical_matching_process
+UNSPECIFIED_MAPPING = v.unspecified_matching_process
+INVERSION_MAPPING = v.mapping_inversion
+CHAIN_MAPPING = v.mapping_chaining
+KNOWLEDGE_MAPPING = v.background_knowledge_based_matching_process
 
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")

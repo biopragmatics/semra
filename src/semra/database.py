@@ -66,8 +66,8 @@ loose = {
 
 
 @click.command()
-@click.option("--include-wikidata")
-def main(include_wikidata: bool):
+@click.option("--include-wikidata", is_flag=True)
+def build(include_wikidata: bool):
     """Construct the full SeMRA database."""
     ontology_resources = []
     pyobo_resources = []
@@ -223,4 +223,4 @@ def _write_summary() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    build()

@@ -4,6 +4,8 @@ import logging
 
 import click
 
+from .database import build
+
 __all__ = [
     "main",
 ]
@@ -14,7 +16,11 @@ logger = logging.getLogger(__name__)
 @click.group()
 @click.version_option()
 def main():
-    """CLI for semra."""
+    """CLI for SeMRA."""
+
+
+main.add_command(build)
+# TODO add web command
 
 
 if __name__ == "__main__":

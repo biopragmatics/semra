@@ -70,7 +70,7 @@ class TestPipeline(unittest.TestCase):
             name="Test Configuration",
             description="Tests using custom sources",
         )
-        mappings = get_raw_mappings(config)
+        mappings = get_raw_mappings(config, show_progress=False)
         self.assert_test_mappings(mappings)
 
     def test_sssom(self):
@@ -86,5 +86,5 @@ class TestPipeline(unittest.TestCase):
                 name="Test Configuration",
                 description="Tests using SSSOM sources",
             )
-            mappings = get_raw_mappings(config)
+            mappings = get_raw_mappings(config, show_progress=False)
             self.assert_test_mappings(mappings)

@@ -7,10 +7,11 @@ import gzip
 import logging
 import pickle
 import typing as t
+import uuid
 from functools import cache
 from pathlib import Path
 from textwrap import dedent
-from typing import Literal, TextIO, cast
+from typing import Any, Literal, TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -21,11 +22,12 @@ import pyobo
 import pyobo.utils
 import requests
 from bioregistry import Collection
+from curies import NamedReference, Reference
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from semra.rules import DB_XREF, UNSPECIFIED_MAPPING
-from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.rules import UNSPECIFIED_MAPPING
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
 
 __all__ = [
     "from_bioontologies",
@@ -66,80 +68,12 @@ def _safe_get_version(prefix: str) -> str | None:
         return None
 
 
-def _from_pyobo_prefix(
-    source_prefix: str,
-    *,
-    confidence=None,
-    standardize: bool = False,
-    version: str | None = None,
-    license: str | None = None,
-    justification: Reference | None = None,
-    **kwargs,
-) -> list[Mapping]:
-    """Get mappings from a given ontology via :mod:`pyobo`."""
-    logger.debug("loading mappings with PyOBO from %s v%s", source_prefix, version)
-    df = pyobo.get_xrefs_df(source_prefix, version=version, **kwargs)
-    return _from_pyobo_df(
-        df,
-        source_prefix=source_prefix,
-        standardize=standardize,
-        confidence=confidence,
-        version=version,
-        license=license,
-        justification=justification,
-    )
-
-
-def _from_pyobo_pair(
-    source_prefix: str,
-    target_prefix: str,
-    *,
-    predicate: Reference | None = None,
-    standardize: bool = True,
-    version: str | None = None,
-    license: str | None = None,
-    confidence: float | None = None,
-    justification: Reference | None = None,
-) -> list[Mapping]:
-    """Get mappings from a :mod:`pyobo`-flavored cache file.
-
-    :param source_prefix: The prefix of the ontology
-    :param target_prefix: The prefix of the target
-    :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
-    :param confidence: The confidence level for the mappings. Defaults to
-        :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
-    :param standardize: Should the local unique identifiers in the first and third
-        columns be standardized using :func:`bioregistry.standardize_identifier`?
-        Defaults to false.
-    :param version: The version of the ontology that's been loaded (does not proactively
-        load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
-    :param license: The license of the ontology that's been loaded. If not given, will
-        try and look up with :func:`bioregistry.get_license`.
-    :param justification: The justification from the SEMAPV vocabulary (given as a
-        Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
-
-    :returns: A list of semantic mapping objects
-    """
-    df = pyobo.get_xrefs_df(source_prefix)
-    return _from_pyobo_df(
-        df,
-        source_prefix=source_prefix,
-        prefixes={target_prefix},
-        predicate=predicate,
-        standardize=standardize,
-        version=version,
-        license=license,
-        confidence=confidence,
-        justification=justification,
-    )
-
-
+# TODO delete this
 def from_cache_df(
     path,
     source_prefix: str,
     *,
     prefixes: t.Collection[str] | None = None,
-    predicate: Reference | None = None,
     standardize: bool = True,
     version: str | None = None,
     license: str | None = None,
@@ -156,7 +90,6 @@ def from_cache_df(
     :param source_prefix: The prefix of the ontology
     :param prefixes: A set of prefixes to subset the second column of cross-reference
         targets
-    :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
     :param confidence: The confidence level for the mappings. Defaults to
         :data:`DEFAULT_ONTOLOGY_CONFIDENCE`
     :param standardize: Should the local unique identifiers in the first and third
@@ -173,11 +106,10 @@ def from_cache_df(
     """
     logger.info("loading cached dataframe from PyOBO for %s", source_prefix)
     df = pd.read_csv(path, sep="\t")
-    return _from_pyobo_df(
+    return _from_pyobo_sssom_df(
         df,
-        source_prefix=source_prefix,
+        prefix=source_prefix,
         prefixes=prefixes,
-        predicate=predicate,
         standardize=standardize,
         version=version,
         license=license,
@@ -186,18 +118,58 @@ def from_cache_df(
     )
 
 
-def _from_pyobo_df(
-    df: pd.DataFrame,
-    source_prefix: str,
+def from_pyobo(
+    prefix: str,
+    target_prefix: str | None = None,
     *,
-    prefixes: str | t.Collection[str] | None = None,
-    predicate: Reference | None = None,
-    confidence: float | None = None,
-    standardize: bool = False,
+    standardize: bool = True,
     version: str | None = None,
     license: str | None = None,
-    leave_progress: bool = False,
+    confidence: float | None = None,
     justification: Reference | None = None,
+) -> list[Mapping]:
+    """Get mappings from a given ontology via :mod:`pyobo`.
+
+    :param prefix: The prefix of the ontology to get semantic mappings from
+    :param target_prefix: The optional prefix for targets for semantic mappings.
+    :param standardize: Should the local unique identifiers in the first and third
+        columns be standardized using :func:`bioregistry.standardize_identifier`?
+        Defaults to true.
+    :param confidence: The confidence level for the mappings. Defaults to
+        :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
+    :param version: The version of the ontology that's been loaded (does not proactively
+        load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
+    :param license: The license of the ontology that's been loaded. If not given, will
+        try and look up with :func:`bioregistry.get_license`.
+    :param justification: The justification from the SEMAPV vocabulary (given as a
+        Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
+
+    :returns: A list of semantic mapping objects
+    """
+    df: pd.DataFrame = pyobo.get_mappings_df(prefix, names=False)  # type:ignore
+    return _from_pyobo_sssom_df(
+        df,
+        prefix=prefix,
+        prefixes={target_prefix} if target_prefix else None,
+        standardize=standardize,
+        version=version,
+        license=license,
+        confidence=confidence,
+        justification=justification,
+    )
+
+
+def _from_pyobo_sssom_df(
+    df: pd.DataFrame,
+    prefix: str,
+    *,
+    prefixes: str | t.Collection[str] | None = None,
+    confidence: float | None = None,
+    standardize: bool = True,
+    version: str | None = None,
+    license: str | None = None,
+    justification: Reference | None = None,
+    mapping_set_name: str | None = None,
 ) -> list[Mapping]:
     """Get mappings from a :mod:`pyobo`-flavored cache file.
 
@@ -206,10 +178,9 @@ def _from_pyobo_df(
         1. Local unique identifiers from the source prefix
         2. Cross-reference prefix
         3. Cross-reference local unique identifier
-    :param source_prefix: The prefix of the ontology
+    :param prefix: The prefix of the ontology
     :param prefixes: A set of prefixes to subset the second column of cross-reference
         targets
-    :param predicate: The predicate of the mappings. Defaults to :data:`DB_XREF`.
     :param confidence: The confidence level for the mappings. Defaults to
         :data:`DEFAULT_ONTOLOGY_CONFIDENCE`
     :param standardize: Should the local unique identifiers in the first and third
@@ -219,75 +190,42 @@ def _from_pyobo_df(
         load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
     :param license: The license of the ontology that's been loaded. If not given, will
         try and look up with :func:`bioregistry.get_license`.
-    :param leave_progress: If true, leave the progress bar.
     :param justification: The justification from the SEMAPV vocabulary (given as a
         Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
 
     :returns: A list of semantic mapping objects
     """
-    if predicate is None:
-        predicate = DB_XREF
     if justification is None:
         justification = UNSPECIFIED_MAPPING
     if confidence is None:
         confidence = DEFAULT_ONTOLOGY_CONFIDENCE
     if license is None:
-        license = bioregistry.get_license(source_prefix)
+        license = bioregistry.get_license(prefix)
+    if mapping_set_name is None:
+        mapping_set_name = bioregistry.get_name(prefix)
+    if prefixes:
+        df = _filter_sssom_by_prefixes(df, prefixes)
+    return from_sssom_df(
+        df,
+        standardize=standardize,
+        license=license,
+        version=version,
+        justification=justification,
+        mapping_set_confidence=confidence,
+        mapping_set_name=mapping_set_name,
+    )
+
+
+def _filter_sssom_by_prefixes(df: pd.DataFrame, prefixes: str | t.Collection[str]) -> pd.DataFrame:
     if isinstance(prefixes, str):
-        df = df[df[df.columns[1]] == prefixes]
-    elif prefixes is not None:
-        df = df[df[df.columns[1]].isin(prefixes)]
-    if standardize:
-        df[df.columns[0]] = df[df.columns[0]].map(
-            lambda s: bioregistry.standardize_identifier(source_prefix, s)
+        prefix_ = prefixes + ":"
+        idx = df["object_id"].str.startswith(prefix_)
+    else:
+        prefix_tuple = tuple(set(prefixes))
+        idx = df["object_id"].map(
+            lambda curie: any(curie.startswith(f"{prefix}:") for prefix in prefix_tuple)
         )
-        df[df.columns[2]] = [
-            bioregistry.standardize_identifier(target_prefix, target_id)
-            for target_prefix, target_id in df[[df.columns[1], df.columns[2]]].values
-        ]
-    rv = [
-        Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_id),
-            p=predicate,
-            o=Reference(prefix=target_prefix, identifier=target_id),
-            evidence=[
-                SimpleEvidence(
-                    mapping_set=MappingSet(
-                        name=source_prefix, version=version, confidence=confidence, license=license
-                    ),
-                    justification=justification,
-                ),
-            ],
-        )
-        for source_id, target_prefix, target_id in tqdm(
-            df.values, desc=f"Loading {source_prefix}", unit_scale=True, leave=leave_progress
-        )
-    ]
-    return rv
-
-
-def from_pyobo(
-    prefix: str,
-    target_prefix: str | None = None,
-    *,
-    standardize: bool = False,
-    **kwargs,
-) -> list[Mapping]:
-    """Get mappings from a given ontology via :mod:`pyobo`.
-
-    :param prefix: The prefix of the ontology to get semantic mappings from
-    :param target_prefix: The optional prefix for targets for semantic mappings.
-    :param standardize: Should the local unique identifiers in the first and third
-        columns be standardized using :func:`bioregistry.standardize_identifier`?
-        Defaults to false.
-    :param kwargs: Keyword arguments passed to either :func:`_from_pyobo_pair` if a
-        target prefix is given, otherwise :func:`_from_pyobo_prefix`.
-
-    :returns: A list of semantic mapping objects
-    """
-    if target_prefix:
-        return _from_pyobo_pair(prefix, target_prefix, standardize=standardize, **kwargs)
-    return _from_pyobo_prefix(prefix, standardize=standardize, **kwargs)
+    return df[idx]
 
 
 def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -> list[Mapping]:
@@ -320,7 +258,10 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
 
 
 def from_sssom(
-    path, mapping_set_name: str | None = None, mapping_set_confidence: float | None = None
+    path,
+    mapping_set_name: str | None = None,
+    mapping_set_confidence: float | None = None,
+    **kwargs: Any,
 ) -> list[Mapping]:
     """Get mappings from a path to a SSSOM TSV file."""
     # FIXME use sssom-py for this
@@ -335,19 +276,35 @@ def from_sssom(
         }
     )
     return from_sssom_df(
-        df, mapping_set_name=mapping_set_name, mapping_set_confidence=mapping_set_confidence
+        df,
+        mapping_set_name=mapping_set_name,
+        mapping_set_confidence=mapping_set_confidence,
+        **kwargs,
     )
 
 
 def from_sssom_df(
     df: pd.DataFrame,
+    *,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
+    license: str | None = None,
+    justification: Reference | None = None,
+    version: str | None = None,
+    _uuid: uuid.UUID | None = None,
+    standardize: bool = True,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
     return [
         _parse_sssom_row(
-            row, mapping_set_name=mapping_set_name, mapping_set_confidence=mapping_set_confidence
+            row,
+            mapping_set_name=mapping_set_name,
+            mapping_set_confidence=mapping_set_confidence,
+            mapping_set_license=license,
+            mapping_set_version=version,
+            justification=justification,
+            standardize=standardize,
+            _uuid=_uuid,
         )
         for _, row in tqdm(
             df.iterrows(),
@@ -361,12 +318,20 @@ def from_sssom_df(
 
 
 def _parse_sssom_row(
-    row, mapping_set_name: str | None = None, mapping_set_confidence: float | None = None
+    row,
+    mapping_set_name: str | None,
+    mapping_set_confidence: float | None,
+    mapping_set_license: str | None,
+    justification: Reference | None,
+    mapping_set_version: str | None,
+    standardize: bool,
+    _uuid: uuid.UUID | None = None,
 ) -> Mapping:
     if "author_id" in row and pd.notna(row["author_id"]):
-        author = Reference.from_curie(row["author_id"])
+        author = _from_curie(row["author_id"], standardize=standardize)
     else:
         author = None
+
     if "mapping_set_name" in row and pd.notna(row["mapping_set_name"]):
         n = row["mapping_set_name"]
     elif "mapping_set" in row and pd.notna(row["mapping_set"]):
@@ -375,39 +340,67 @@ def _parse_sssom_row(
         raise KeyError("need a mapping set name")
     else:
         n = mapping_set_name
+
     confidence = None
-    mapping_set_version = None
-    mapping_set_license = None
     if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
         confidence = row["mapping_set_confidence"]
     if confidence is None:
         confidence = mapping_set_confidence
-    if "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
+
+    if mapping_set_version is not None:
+        pass
+    elif "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
         mapping_set_version = row["mapping_set_version"]
-    if "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):
+
+    if mapping_set_license is not None:
+        pass
+    elif "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):
         mapping_set_license = row["mapping_set_license"]
+
     mapping_set = MappingSet(
         name=n,
         version=mapping_set_version,
         license=mapping_set_license,
         confidence=confidence,
     )
-    if "mapping_justification" in row and pd.notna(row["mapping_justification"]):
+
+    if justification is not None:
+        pass
+    elif "mapping_justification" in row and pd.notna(row["mapping_justification"]):
         justification = Reference.from_curie(row["mapping_justification"])
     else:
         justification = UNSPECIFIED_MAPPING
-    return Mapping(
-        s=Reference.from_curie(row["subject_id"]),
-        p=Reference.from_curie(row["predicate_id"]),
-        o=Reference.from_curie(row["object_id"]),
-        evidence=[
-            SimpleEvidence(
-                justification=justification,
-                mapping_set=mapping_set,
-                author=author,
-            )
-        ],
-    )
+
+    s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
+    p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
+    o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
+    e: dict[str, t.Any] = {
+        "justification": justification,
+        "mapping_set": mapping_set,
+        "author": author,
+    }
+    if _uuid:
+        e["uuid"] = _uuid
+
+    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
+
+
+def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:
+    has_name = pd.notna(name) and name
+    if not standardize:
+        if has_name:
+            return NamedReference.from_curie(curie, name=cast(str, name))
+        else:
+            return Reference.from_curie(curie)
+
+    prefix, identifier = bioregistry.parse_curie(curie)
+    if not prefix or not identifier:
+        raise ValueError(f"could not standardize curie: {curie}")
+
+    if has_name:
+        return NamedReference(prefix=prefix, identifier=identifier, name=name)
+    else:
+        return Reference(prefix=prefix, identifier=identifier)
 
 
 def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:

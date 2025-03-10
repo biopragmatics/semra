@@ -11,7 +11,7 @@ import uuid
 from functools import cache
 from pathlib import Path
 from textwrap import dedent
-from typing import Literal, TextIO, cast
+from typing import Any, Literal, TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -68,6 +68,7 @@ def _safe_get_version(prefix: str) -> str | None:
         return None
 
 
+# TODO delete this
 def from_cache_df(
     path,
     source_prefix: str,
@@ -109,6 +110,47 @@ def from_cache_df(
         df,
         prefix=source_prefix,
         prefixes=prefixes,
+        standardize=standardize,
+        version=version,
+        license=license,
+        confidence=confidence,
+        justification=justification,
+    )
+
+
+def from_pyobo(
+    prefix: str,
+    target_prefix: str | None = None,
+    *,
+    standardize: bool = True,
+    version: str | None = None,
+    license: str | None = None,
+    confidence: float | None = None,
+    justification: Reference | None = None,
+) -> list[Mapping]:
+    """Get mappings from a given ontology via :mod:`pyobo`.
+
+    :param prefix: The prefix of the ontology to get semantic mappings from
+    :param target_prefix: The optional prefix for targets for semantic mappings.
+    :param standardize: Should the local unique identifiers in the first and third
+        columns be standardized using :func:`bioregistry.standardize_identifier`?
+        Defaults to true.
+    :param confidence: The confidence level for the mappings. Defaults to
+        :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
+    :param version: The version of the ontology that's been loaded (does not proactively
+        load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
+    :param license: The license of the ontology that's been loaded. If not given, will
+        try and look up with :func:`bioregistry.get_license`.
+    :param justification: The justification from the SEMAPV vocabulary (given as a
+        Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
+
+    :returns: A list of semantic mapping objects
+    """
+    df: pd.DataFrame = pyobo.get_mappings_df(prefix)  # type:ignore
+    return _from_pyobo_sssom_df(
+        df,
+        prefix=prefix,
+        prefixes={target_prefix} if target_prefix else None,
         standardize=standardize,
         version=version,
         license=license,
@@ -186,47 +228,6 @@ def _filter_sssom_by_prefixes(df: pd.DataFrame, prefixes: str | t.Collection[str
     return df[idx]
 
 
-def from_pyobo(
-    prefix: str,
-    target_prefix: str | None = None,
-    *,
-    standardize: bool = True,
-    version: str | None = None,
-    license: str | None = None,
-    confidence: float | None = None,
-    justification: Reference | None = None,
-) -> list[Mapping]:
-    """Get mappings from a given ontology via :mod:`pyobo`.
-
-    :param prefix: The prefix of the ontology to get semantic mappings from
-    :param target_prefix: The optional prefix for targets for semantic mappings.
-    :param standardize: Should the local unique identifiers in the first and third
-        columns be standardized using :func:`bioregistry.standardize_identifier`?
-        Defaults to true.
-    :param confidence: The confidence level for the mappings. Defaults to
-        :data:`DEFAULT_ONTOLOGY_CONFIDENCE`.
-    :param version: The version of the ontology that's been loaded (does not proactively
-        load, but you can use :func:`bioversions.get_version` to go along with PyOBO).
-    :param license: The license of the ontology that's been loaded. If not given, will
-        try and look up with :func:`bioregistry.get_license`.
-    :param justification: The justification from the SEMAPV vocabulary (given as a
-        Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
-
-    :returns: A list of semantic mapping objects
-    """
-    df: pd.DataFrame = pyobo.get_mappings_df(prefix)  # type:ignore
-    return _from_pyobo_sssom_df(
-        df,
-        prefix=prefix,
-        prefixes={target_prefix} if target_prefix else None,
-        standardize=standardize,
-        version=version,
-        license=license,
-        confidence=confidence,
-        justification=justification,
-    )
-
-
 def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`bioontologies`."""
     if confidence is None:
@@ -257,7 +258,10 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
 
 
 def from_sssom(
-    path, mapping_set_name: str | None = None, mapping_set_confidence: float | None = None
+    path,
+    mapping_set_name: str | None = None,
+    mapping_set_confidence: float | None = None,
+    **kwargs: Any,
 ) -> list[Mapping]:
     """Get mappings from a path to a SSSOM TSV file."""
     # FIXME use sssom-py for this
@@ -272,7 +276,10 @@ def from_sssom(
         }
     )
     return from_sssom_df(
-        df, mapping_set_name=mapping_set_name, mapping_set_confidence=mapping_set_confidence
+        df,
+        mapping_set_name=mapping_set_name,
+        mapping_set_confidence=mapping_set_confidence,
+        **kwargs,
     )
 
 
@@ -308,24 +315,6 @@ def from_sssom_df(
             desc="Loading SSSOM dataframe",
         )
     ]
-
-
-def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:
-    has_name = pd.notna(name) and name
-    if not standardize:
-        if has_name:
-            return NamedReference.from_curie(curie, name=cast(str, name))
-        else:
-            return Reference.from_curie(curie)
-
-    prefix, identifier = bioregistry.parse_curie(curie)
-    if not prefix or not identifier:
-        raise ValueError(f"could not standardize curie: {curie}")
-
-    if has_name:
-        return NamedReference(prefix=prefix, identifier=identifier, name=name)
-    else:
-        return Reference(prefix=prefix, identifier=identifier)
 
 
 def _parse_sssom_row(
@@ -394,6 +383,24 @@ def _parse_sssom_row(
         e["uuid"] = _uuid
 
     return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
+
+
+def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:
+    has_name = pd.notna(name) and name
+    if not standardize:
+        if has_name:
+            return NamedReference.from_curie(curie, name=cast(str, name))
+        else:
+            return Reference.from_curie(curie)
+
+    prefix, identifier = bioregistry.parse_curie(curie)
+    if not prefix or not identifier:
+        raise ValueError(f"could not standardize curie: {curie}")
+
+    if has_name:
+        return NamedReference(prefix=prefix, identifier=identifier, name=name)
+    else:
+        return Reference(prefix=prefix, identifier=identifier)
 
 
 def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:

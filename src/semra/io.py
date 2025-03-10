@@ -146,7 +146,7 @@ def from_pyobo(
 
     :returns: A list of semantic mapping objects
     """
-    df: pd.DataFrame = pyobo.get_mappings_df(prefix)  # type:ignore
+    df: pd.DataFrame = pyobo.get_mappings_df(prefix, names=False)  # type:ignore
     return _from_pyobo_sssom_df(
         df,
         prefix=prefix,

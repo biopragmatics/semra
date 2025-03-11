@@ -1,7 +1,6 @@
 """A configuration for assembling mappings for disease terms."""
 
 import bioregistry
-import click
 import pystow
 from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_curies
@@ -91,13 +90,5 @@ CONFIGURATION = Configuration(
 )
 
 
-@click.command()
-def main():
-    """Build the mapping database for disease terms."""
-    # Takes about 2 hours
-    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
-    CONFIGURATION.upload_zenodo()
-
-
 if __name__ == "__main__":
-    main()
+    CONFIGURATION.cli()

@@ -1,6 +1,5 @@
 """A configuration for assembling mappings for gene terms."""
 
-import click
 import pystow
 from curies.vocabulary import charlie
 
@@ -74,12 +73,5 @@ CONFIGURATION = Configuration(
 )
 
 
-@click.command()
-def main():
-    """Build the mapping database for gene terms."""
-    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
-    CONFIGURATION.upload_zenodo()
-
-
 if __name__ == "__main__":
-    main()
+    CONFIGURATION.cli()

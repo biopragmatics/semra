@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import cast
+from typing import cast, overload
 
 import networkx as nx
 import pandas as pd
@@ -873,6 +873,30 @@ def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> li
     """Filter out many to many mappings."""
     skip_mappings = get_many_to_many(mappings)
     return filter_mappings(mappings, skip_mappings, progress=progress)
+
+
+# docstr-coverage:excused `overload`
+@overload
+def project(
+    mappings: list[Mapping],
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    return_sus: typing.Literal[True] = True,
+    progress: bool = False,
+) -> tuple[list[Mapping], list[Mapping]]: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def project(
+    mappings: list[Mapping],
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    return_sus: typing.Literal[False] = False,
+    progress: bool = False,
+) -> list[Mapping]: ...
 
 
 def project(

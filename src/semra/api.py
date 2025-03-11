@@ -874,6 +874,7 @@ def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> li
     return filter_mappings(mappings, skip_mappings, progress=progress)
 
 
+# docstr-coverage:excused `overload`
 @overload
 def project(
     mappings: list[Mapping],
@@ -885,6 +886,7 @@ def project(
 ) -> tuple[list[Mapping], list[Mapping]]: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def project(
     mappings: list[Mapping],

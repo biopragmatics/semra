@@ -10,6 +10,7 @@ from semra.sources.biopragmatics import (
     from_biomappings_predicted,
     get_biomappings_positive_mappings,
 )
+from semra.sources.cbms2019 import get_cbms2019_mappings
 from semra.sources.chembl import get_chembl_compound_mappings, get_chembl_protein_mappings
 from semra.sources.clo import get_clo_mappings
 from semra.sources.famplex import get_fplx_mappings
@@ -31,6 +32,7 @@ __all__ = [
     "from_biomappings_negative",
     "from_biomappings_predicted",
     "get_biomappings_positive_mappings",
+    "get_cbms2019_mappings",
     "get_chembl_compound_mappings",
     "get_chembl_protein_mappings",
     "get_clo_mappings",
@@ -67,6 +69,7 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResol
         get_clo_mappings,
         get_wikidata_mappings,  # type:ignore
         get_omim_gene_mappings,
+        get_cbms2019_mappings,
     ]
 )
 

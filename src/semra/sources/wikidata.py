@@ -1,17 +1,17 @@
 """Get arbitrary Wikidata mappings."""
 
-from datasets import tqdm
+import json
+from collections.abc import Iterable
 
+import bioregistry
+import pystow
+import requests
 from curies import Reference
+from datasets import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
-import requests
-import json
-from typing import Iterable
 from semra.version import get_version
-import pystow
-import bioregistry
 
 __all__ = [
     "get_wikidata_mappings",
@@ -24,7 +24,9 @@ URL = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 WIKIDATA_MAPPING_DIRECTORY = pystow.module("wikidata", "mappings")
 
 
-def get_all_wikidata_mappings(*, use_tqdm: bool = True, predicate: Reference | None = None) -> list[Mapping]:
+def get_all_wikidata_mappings(
+    *, use_tqdm: bool = True, predicate: Reference | None = None
+) -> list[Mapping]:
     """Iterate over WikiData xref dataframes."""
     if predicate is None:
         predicate = EXACT_MATCH
@@ -80,7 +82,7 @@ def _help(
 
 def _clean_xref_id(prefix: str, identifier: str) -> str:
     if identifier.lower().startswith(f"{prefix}_"):
-        identifier = identifier[len(prefix) + 1:]
+        identifier = identifier[len(prefix) + 1 :]
     return identifier
 
 
@@ -111,7 +113,7 @@ HEADERS = {
 
 
 def _run_query(query, base: str = URL):
-    res = requests.get(base, params={"query": query, "format": "json"}, headers=HEADERS)
+    res = requests.get(base, params={"query": query, "format": "json"}, headers=HEADERS, timeout=45)
     res.raise_for_status()
     res_json = res.json()
     return res_json["results"]["bindings"]

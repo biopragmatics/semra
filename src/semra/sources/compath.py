@@ -3,8 +3,6 @@
 from collections.abc import Iterable
 
 import pandas as pd
-from pystow.utils import get_commit
-
 from pyobo.constants import (
     PROVENANCE,
     SOURCE_ID,
@@ -13,6 +11,7 @@ from pyobo.constants import (
     TARGET_PREFIX,
     XREF_COLUMNS,
 )
+from pystow.utils import get_commit
 
 __all__ = [
     "iter_compath_dfs",

@@ -14,6 +14,7 @@ doing the following:
 
 import click
 import pystow
+from curies import Reference
 from curies.vocabulary import charlie
 
 from semra.api import project, str_source_target_counts
@@ -41,10 +42,12 @@ PREFIXES = PRIORITY = [
 
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {
-    "mesh": ["mesh:D002477"],
-    "efo": ["efo:0000324"],
-    "ncit": ["ncit:C12508"],
-    "umls": ["sty:T025"],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
+    "mesh": [Reference.from_curie("mesh:D002477")],
+    "efo": [Reference.from_curie("efo:0000324")],
+    "ncit": [Reference.from_curie("ncit:C12508")],
+    "umls": [
+        Reference.from_curie("sty:T025")
+    ],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
 }
 
 CONFIGURATION = Configuration(

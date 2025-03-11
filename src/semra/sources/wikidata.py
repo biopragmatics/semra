@@ -37,7 +37,7 @@ def _help(
     target_prefix: str, prop: str, *, predicate: Reference | None = None, cache: bool = True
 ) -> list[Mapping]:
     """Get mappings from Wikidata."""
-    from pyobo.xrefdb.sources.wikidata import iter_wikidata_mappings
+    from pyobo.xrefdb.pyobo_sources.wikidata import iter_wikidata_mappings
 
     if predicate is None:
         predicate = EXACT_MATCH

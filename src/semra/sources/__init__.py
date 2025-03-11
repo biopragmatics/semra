@@ -13,6 +13,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.cbms2019 import get_cbms2019_mappings
 from semra.sources.chembl import get_chembl_compound_mappings, get_chembl_protein_mappings
 from semra.sources.clo import get_clo_mappings
+from semra.sources.compath import get_compath_mappings
 from semra.sources.famplex import get_fplx_mappings
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.intact import get_intact_complexportal_mappings, get_intact_reactome_mappings
@@ -36,6 +37,7 @@ __all__ = [
     "get_chembl_compound_mappings",
     "get_chembl_protein_mappings",
     "get_clo_mappings",
+    "get_compath_mappings",
     "get_custom",
     "get_fplx_mappings",
     "get_gilda_mappings",
@@ -70,6 +72,7 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResol
         get_wikidata_mappings,  # type:ignore
         get_omim_gene_mappings,
         get_cbms2019_mappings,
+        get_compath_mappings,
     ]
 )
 

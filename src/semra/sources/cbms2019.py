@@ -8,8 +8,7 @@
 import pandas as pd
 from curies import Reference
 
-from semra import UNSPECIFIED_MAPPING
-from semra.rules import CHAIN_MAPPING, EXACT_MATCH
+from semra.rules import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
 
 __all__ = [

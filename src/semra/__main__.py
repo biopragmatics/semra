@@ -1,6 +1,6 @@
 """Entrypoint module, in case you use `python -m semra`."""
 
-from .cli import main
+from semra.landscape.cli import landscape
 
 if __name__ == "__main__":
-    main()
+    landscape()

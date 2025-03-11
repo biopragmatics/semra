@@ -1,6 +1,5 @@
 """A configuration for assembling mappings for anatomical terms."""
 
-import click
 import pystow
 from curies import Reference
 from curies.vocabulary import charlie
@@ -73,12 +72,5 @@ CONFIGURATION = semra.Configuration(
 )
 
 
-@click.command()
-def main():
-    """Build the mapping database for anatomical terms."""
-    CONFIGURATION.get_mappings(refresh_raw=True, refresh_processed=True)
-    CONFIGURATION.upload_zenodo()
-
-
 if __name__ == "__main__":
-    main()
+    CONFIGURATION.cli()

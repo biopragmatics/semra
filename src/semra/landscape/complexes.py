@@ -1,6 +1,5 @@
 """A configuration for assembling mappings for protein complex terms."""
 
-import click
 import pystow
 from curies import Reference
 from curies.vocabulary import charlie
@@ -68,13 +67,5 @@ CONFIGURATION = Configuration(
 )
 
 
-@click.command()
-def main():
-    """Build the mapping database for protein complex terms."""
-    CONFIGURATION.get_mappings(refresh_raw=False, refresh_processed=False)
-    res = CONFIGURATION.upload_zenodo()
-    click.echo(res.json()["links"]["html"])
-
-
 if __name__ == "__main__":
-    main()
+    CONFIGURATION.cli()

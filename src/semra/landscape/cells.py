@@ -19,7 +19,15 @@ from curies.vocabulary import charlie
 
 from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
-from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
+from semra.pipeline import (
+    REFRESH_PROCESSED_OPTION,
+    REFRESH_RAW_OPTION,
+    UPLOAD_OPTION,
+    Configuration,
+    Input,
+    Mutation,
+    get_mappings_from_config,
+)
 
 __all__ = [
     "CONFIGURATION",
@@ -105,10 +113,16 @@ CONFIGURATION = Configuration(
 
 
 @click.command()
-def main():
+@UPLOAD_OPTION
+@REFRESH_RAW_OPTION
+@REFRESH_PROCESSED_OPTION
+def main(upload: bool, refresh_raw: bool, refresh_processed: bool):
     """Build the mapping database for cell and cell line terms."""
-    mappings = get_mappings_from_config(CONFIGURATION, refresh_raw=True, refresh_processed=True)
-    CONFIGURATION.upload_zenodo()
+    mappings = get_mappings_from_config(
+        CONFIGURATION, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+    )
+    if upload:
+        CONFIGURATION._safe_upload()
 
     click.echo(f"Processing returned {len(mappings):,} mappings")
     click.echo(str_source_target_counts(mappings))

@@ -8,6 +8,7 @@ import typing as t
 from pathlib import Path
 from typing import Any, Literal
 
+import click
 import requests
 from curies import NamedReference
 from pydantic import BaseModel, Field, model_validator
@@ -62,6 +63,10 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+UPLOAD_OPTION = click.option("--upload", is_flag=True)
+REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
+REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
 
 
 class Input(BaseModel):
@@ -324,6 +329,34 @@ class Configuration(BaseModel):
         res = update_zenodo(str(self.zenodo_record), paths=paths, **kwargs)
         return res
 
+    def cli(self) -> None:
+        """Get and run a command line interface for this configuration."""
+        self.get_cli()()
+
+    def get_cli(self):
+        """Get a command line interface for this configuration."""
+        import click
+
+        @click.command()
+        @UPLOAD_OPTION
+        @REFRESH_RAW_OPTION
+        @REFRESH_PROCESSED_OPTION
+        def main(upload: bool, refresh_raw: bool, refresh_processed: bool):
+            """Build the mapping database terms."""
+            self.get_mappings(refresh_raw=refresh_raw, refresh_processed=refresh_processed)
+            if upload:
+                self._safe_upload()
+
+        return main
+
+    def _safe_upload(self):
+        if not self.zenodo_record:
+            click.secho("can't upload to Zenodo - no record configued", fg="red")
+        else:
+            res = self.upload_zenodo()
+            url = res.json()["links"]["html"]
+            click.echo(f"uploaded to {url}")
+
 
 def get_mappings_from_config(
     configuration: Configuration,
@@ -434,13 +467,20 @@ def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, 
 def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
-    for inp in tqdm(
-        configuration.inputs,
-        desc="Loading configured mappings",
-        unit="source",
-        disable=not show_progress,
+    for i, inp in enumerate(
+        tqdm(
+            configuration.inputs,
+            desc="Getting raw mappings",
+            unit="source",
+            disable=not show_progress,
+        ),
+        start=1,
     ):
-        tqdm.write(f"Loading {inp.source}" + (f" ({inp.prefix})" if inp.prefix else ""))
+        tqdm.write(
+            f"{i}/{len(configuration.inputs)} "
+            + click.style(f"Loading mappings from {inp.source}", fg="green")
+            + (f" ({inp.prefix})" if inp.prefix else "")
+        )
         if inp.source is None:
             continue
         elif inp.source == "bioontologies":

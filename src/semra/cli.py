@@ -5,6 +5,7 @@ import logging
 import click
 
 from .database import build
+from .landscape.cli import landscape
 
 __all__ = [
     "main",
@@ -20,6 +21,7 @@ def main():
 
 
 main.add_command(build)
+main.add_command(landscape)
 # TODO add web command
 
 

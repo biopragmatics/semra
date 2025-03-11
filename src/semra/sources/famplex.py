@@ -18,7 +18,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-URL = "https://github.com/sorgerlab/famplex/raw/master/equivalences.csv"
+URL = "https://raw.githubusercontent.com/sorgerlab/famplex/master/equivalences.csv"
 MAPPING_SET = MappingSet(name="fplx", confidence=0.99, license="CC0")
 
 

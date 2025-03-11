@@ -2,6 +2,7 @@
 
 import click
 import pystow
+from curies import Reference
 from curies.vocabulary import charlie
 
 from semra.pipeline import Configuration, Input, Mutation
@@ -24,7 +25,7 @@ PREFIXES = PRIORITY = [
     "intact",
 ]
 SUBSETS = {
-    "go": ["go:0032991"],
+    "go": [Reference.from_curie("go:0032991")],
 }
 
 CONFIGURATION = Configuration(

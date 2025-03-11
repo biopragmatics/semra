@@ -376,7 +376,10 @@ class TestOperations(unittest.TestCase):
         m5 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
         m6 = Mapping(s=c1, p=EXACT_MATCH, o=b1, evidence=[ev])
 
-        terms = {"a": ["1", "2"], "b": ["1"]}
+        terms = {
+            "a": [Reference.from_curie("a:1"), Reference.from_curie("a:2")],
+            "b": [Reference.from_curie("b:1")],
+        }
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(
             [m1, m2, m5, m6],
@@ -384,7 +387,11 @@ class TestOperations(unittest.TestCase):
             msg="Mappings 3 and 4 should not pass since b2 is not in the term filter",
         )
 
-        terms = {"a": ["1", "2"], "b": ["1"], "c": []}
+        terms = {
+            "a": [Reference.from_curie("a:1"), Reference.from_curie("a:2")],
+            "b": [Reference.from_curie("b:1")],
+            "c": [],
+        }
         # the fact that c has an empty dictionary will get ignored
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(

@@ -3,8 +3,9 @@
 import bioregistry
 import click
 import pystow
+from curies import Reference
 from curies.vocabulary import charlie
-from pyobo.sources.mesh import get_mesh_category_curies
+from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
 from semra.pipeline import Configuration, Input, Mutation
 
@@ -32,16 +33,16 @@ PREFIXES = PRIORITY = [
 ]
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {
-    "mesh": [*get_mesh_category_curies("C"), *get_mesh_category_curies("F")],
-    "efo": ["efo:0000408"],
-    "ncit": ["ncit:C2991"],
+    "mesh": [*get_mesh_category_references("C"), *get_mesh_category_references("F")],
+    "efo": [Reference.from_curie("efo:0000408")],
+    "ncit": [Reference.from_curie("ncit:C2991")],
     "umls": [
         # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
-        "sty:T049",  # cell or molecular dysfunction
-        "sty:T047",  # disease or syndrome
-        "sty:T191",  # neoplastic process
-        "sty:T050",  # experimental model of disease
-        "sty:T048",  # mental or behavioral dysfunction
+        Reference.from_curie("sty:T049"),  # cell or molecular dysfunction
+        Reference.from_curie("sty:T047"),  # disease or syndrome
+        Reference.from_curie("sty:T191"),  # neoplastic process
+        Reference.from_curie("sty:T050"),  # experimental model of disease
+        Reference.from_curie("sty:T048"),  # mental or behavioral dysfunction
     ],
 }
 

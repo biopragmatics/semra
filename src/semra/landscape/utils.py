@@ -14,6 +14,7 @@ import pandas as pd
 import pyobo
 import seaborn as sns
 import upsetplot
+from curies import Reference
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 from pyobo.sources.mesh import get_mesh_category_curies
@@ -345,14 +346,17 @@ def get_terms(
     """Get the set of identifiers for each of the resources."""
     prefix_to_identifier_to_name = {}
     if subset_configuration is None:
-        subset_configuration = {}
-    sss = hydrate_subsets(subset_configuration)
+        hydrated_subset_configuration: SubsetConfiguration = {}
+    else:
+        hydrated_subset_configuration = hydrate_subsets(subset_configuration)
     for prefix in prefixes:
         id_to_name = pyobo.get_id_name_mapping(prefix)
-        subset = sss.get(prefix) or set()
+        subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
             prefix_to_identifier_to_name[prefix] = {
-                identifier: name for identifier, name in id_to_name.items() if identifier in subset
+                identifier: name
+                for identifier, name in id_to_name.items()
+                if Reference(prefix=prefix, identifier=identifier) in subset
             }
         else:
             prefix_to_identifier_to_name[prefix] = id_to_name

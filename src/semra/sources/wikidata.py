@@ -7,7 +7,7 @@ import bioregistry
 import pystow
 import requests
 from curies import Reference
-from datasets import tqdm
+from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence

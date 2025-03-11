@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import cast
+from typing import cast, overload
 
 import networkx as nx
 import pandas as pd
@@ -25,6 +25,7 @@ from semra.rules import (
     INVERSION_MAPPING,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
+    SubsetConfiguration,
 )
 from semra.struct import (
     Evidence,
@@ -874,6 +875,30 @@ def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> li
     return filter_mappings(mappings, skip_mappings, progress=progress)
 
 
+# docstr-coverage:excused `overload`
+@overload
+def project(
+    mappings: list[Mapping],
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    return_sus: typing.Literal[True] = True,
+    progress: bool = False,
+) -> tuple[list[Mapping], list[Mapping]]: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def project(
+    mappings: list[Mapping],
+    source_prefix: str,
+    target_prefix: str,
+    *,
+    return_sus: typing.Literal[False] = False,
+    progress: bool = False,
+) -> list[Mapping]: ...
+
+
 def project(
     mappings: list[Mapping],
     source_prefix: str,
@@ -1095,8 +1120,8 @@ def filter_minimum_confidence(
 
 
 def hydrate_subsets(
-    subset_configuration: t.Mapping[str, t.Collection[str]],
-) -> t.Mapping[str, t.Collection[str]]:
+    subset_configuration: SubsetConfiguration,
+) -> SubsetConfiguration:
     """Convert a subset configuration dictionary into a subset artifact.
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
@@ -1110,35 +1135,36 @@ def hydrate_subsets(
         from semra.api import hydrate_subsets, filter_subsets
 
         configuration = {"mesh": ["mesh:D002477"], ...}
-        prefix_to_identifiers = hydrate_subsets(configuration)
+        prefix_to_references = hydrate_subsets(configuration)
 
     It's also possible to use parents outside the vocabulary, such as when search for entity
     type in UMLS:
 
     .. code-block:: python
 
+        from curies import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         configuration = {
             "umls": [
                 # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
-                "sty:T049",  # cell or molecular dysfunction
-                "sty:T047",  # disease or syndrome
-                "sty:T191",  # neoplastic process
-                "sty:T050",  # experimental model of disease
-                "sty:T048",  # mental or behavioral dysfunction
+                Reference.from_curie("sty:T049"),  # cell or molecular dysfunction
+                Reference.from_curie("sty:T047"),  # disease or syndrome
+                Reference.from_curie("sty:T191"),  # neoplastic process
+                Reference.from_curie("sty:T050"),  # experimental model of disease
+                Reference.from_curie("sty:T048"),  # mental or behavioral dysfunction
             ],
             ...
         }
-        prefix_to_identifiers = hydrate_subsets(configuration)
+        prefix_to_references = hydrate_subsets(configuration)
 
     """
     import pyobo
 
-    rv: dict[str, set[str]] = {}
+    rv: dict[str, set[Reference]] = {}
     # do lookup of the hierarchy and lookup of ancestors in 2 steps to allow for
     # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
-    for prefix, parent_curies in subset_configuration.items():
+    for prefix, parents in subset_configuration.items():
         try:
             hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
         except RuntimeError:  # e.g., no build
@@ -1146,27 +1172,26 @@ def hydrate_subsets(
         except Exception as e:
             raise ValueError(f"Failed on {prefix}") from e
         else:
-            _pp = f"{prefix}:"
             rv[prefix] = {
-                descendant_curie[len(_pp) :]
-                for parent_curie in parent_curies
-                for descendant_curie in nx.ancestors(hierarchy, parent_curie) or []
-                if descendant_curie.startswith(_pp)
+                descendant
+                for parent in parents
+                for descendant in nx.ancestors(hierarchy, parent) or []
+                if descendant.prefix == prefix
             }
-            for parent_curie in parent_curies:
-                if parent_curie.startswith(_pp):
-                    rv[prefix].add(parent_curie[len(_pp) :])
-    return rv
+            for parent in parents:
+                if parent.prefix == prefix:
+                    rv[prefix].add(parent)
+    return {k: sorted(v) for k, v in rv.items()}
 
 
 def filter_subsets(
-    mappings: t.Iterable[Mapping], prefix_to_identifiers: t.Mapping[str, t.Collection[str]]
+    mappings: t.Iterable[Mapping], prefix_to_references: SubsetConfiguration
 ) -> list[Mapping]:
     """Filter mappings that don't appear in the given subsets.
 
     :param mappings: An iterable of semantic mappings
-    :param prefix_to_identifiers: A dictionary whose keys are prefixes and whose values are collections
-        of local unique identifiers strings for a subset of terms in the resource to keep.
+    :param prefix_to_references: A dictionary whose keys are prefixes and whose values are collections
+        of references for a subset of terms in the resource to keep.
 
         In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
         is skipped.
@@ -1174,37 +1199,33 @@ def filter_subsets(
     :raises ValueError: If CURIEs are given instead of identifiers
 
     If you have a simple configuration dictionary that contains the parent terms, like
-    ``{"mesh": ["mesh:D002477"]}``, you'll want to do the following first:
+    ``{"mesh": [Reference.from_curie("mesh:D002477")]}``, you'll want to do the following first:
 
     .. code-block:: python
 
+        from curies import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         mappings = [...]
-        configuration = {"mesh": ["mesh:D002477"]}
+        configuration = {"mesh": [Reference.from_curie("mesh:D002477")]}
         prefix_to_identifiers = hydrate_subsets(configuration)
         filter_subsets(mappings, prefix_to_identifiers)
     """
-    clean_prefix_to_identifiers = {}
-    for prefix, identifiers in prefix_to_identifiers.items():
-        if not identifiers:
-            # skip empty lists
-            continue
-        problems = {identifier for identifier in identifiers if ":" in identifier}
-        if problems:
-            raise ValueError("value list should be local unique ids, not curies")
-        clean_prefix_to_identifiers[prefix] = identifiers
-
+    clean_prefix_to_identifiers = {
+        prefix: set(references)
+        for prefix, references in prefix_to_references.items()
+        if references  # skip empty lists
+    }
     rv = []
     for mapping in mappings:
         if (
             mapping.s.prefix in clean_prefix_to_identifiers
-            and mapping.s.identifier not in clean_prefix_to_identifiers[mapping.s.prefix]
+            and mapping.s not in clean_prefix_to_identifiers[mapping.s.prefix]
         ):
             continue
         if (
             mapping.o.prefix in clean_prefix_to_identifiers
-            and mapping.o.identifier not in clean_prefix_to_identifiers[mapping.o.prefix]
+            and mapping.o not in clean_prefix_to_identifiers[mapping.o.prefix]
         ):
             continue
         rv.append(mapping)

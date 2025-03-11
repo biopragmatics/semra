@@ -1,8 +1,9 @@
 """A configuration for assembling mappings for anatomical terms."""
 
 import pystow
+from curies import Reference
 from curies.vocabulary import charlie
-from pyobo.sources.mesh import get_mesh_category_curies
+from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
 import semra
 
@@ -22,12 +23,12 @@ PRIORITY = [
 ]
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {
-    "mesh": get_mesh_category_curies("A", skip=["A11"]),
-    "ncit": ["ncit:C12219"],
+    "mesh": get_mesh_category_references("A", skip=["A11"]),
+    "ncit": [Reference.from_curie("ncit:C12219")],
     "umls": [
         # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
-        "sty:T024",  # tissue
-        "sty:T017",  # anatomical structure
+        Reference.from_curie("sty:T024"),  # tissue
+        Reference.from_curie("sty:T017"),  # anatomical structure
     ],
 }
 

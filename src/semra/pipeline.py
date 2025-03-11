@@ -38,7 +38,7 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE
+from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE, SubsetConfiguration
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.biopragmatics import (
     from_biomappings_negative,
@@ -87,9 +87,6 @@ class Mutation(BaseModel):
     new: Reference = Field(default=EXACT_MATCH)
 
 
-SubsetConfiguration = t.Mapping[str, t.Collection[str]]
-
-
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
@@ -109,7 +106,7 @@ class Configuration(BaseModel):
         description="If no priority is given, is inferred from the order of inputs",
     )
     mutations: list[Mutation] = Field(default_factory=list)
-    subsets: t.Mapping[str, list[str]] | None = Field(
+    subsets: SubsetConfiguration | None = Field(
         None,
         description="A field to put restrictions on the sub-hierarchies from each resource."
         "For example, if you want to assemble cell mappings from MeSH, you don't need all "
@@ -117,7 +114,7 @@ class Configuration(BaseModel):
         "under the mesh:D002477 term. Therefore, this dictionary allows for specifying such "
         "restrictions",
         examples=[
-            {"mesh": ["mesh:D002477"]},
+            {"mesh": [Reference.from_curie("mesh:D002477")]},
         ],
     )
 
@@ -235,7 +232,7 @@ class Configuration(BaseModel):
             raise FileNotFoundError
         return from_pickle(self.processed_pickle_path)
 
-    def get_hydrated_subsets(self) -> t.Mapping[str, t.Collection[str]]:
+    def get_hydrated_subsets(self) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
         if not self.subsets:
             return {}
@@ -526,7 +523,7 @@ def process(
     keep_prefix_set: t.Collection[str] | None = None,
     post_remove_prefixes: t.Collection[str] | None = None,
     post_keep_prefixes: t.Collection[str] | None = None,
-    subsets: t.Mapping[str, t.Collection[str]] | None = None,
+    subsets: SubsetConfiguration | None = None,
     *,
     remove_imprecise: bool = True,
 ) -> list[Mapping]:

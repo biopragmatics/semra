@@ -1,6 +1,7 @@
 """A configuration for assembling mappings for gene terms."""
 
 import pystow
+from curies import Reference
 from curies.vocabulary import charlie
 
 from semra.pipeline import Configuration, Input, Mutation
@@ -51,7 +52,10 @@ CONFIGURATION = Configuration(
         Input(source="wikidata", prefix="omim", confidence=0.99),
         Input(source="wikidata", prefix="umls", confidence=0.99),
     ],
-    subsets={"umls": ["umls:C0017337"], "ncit": ["ncit:C16612"]},
+    subsets={
+        "umls": [Reference.from_curie("umls:C0017337")],
+        "ncit": [Reference.from_curie("ncit:C16612")],
+    },
     add_labels=True,
     priority=PRIORITY,
     remove_imprecise=False,

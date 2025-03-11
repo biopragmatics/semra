@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import TypeAlias
+
 from curies import Reference
 from curies import vocabulary as v
 
@@ -53,3 +56,5 @@ CHAIN_MAPPING = v.mapping_chaining
 KNOWLEDGE_MAPPING = v.background_knowledge_based_matching_process
 
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")
+
+SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]

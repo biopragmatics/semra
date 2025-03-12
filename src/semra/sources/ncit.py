@@ -80,7 +80,7 @@ def get_ncit_go_mappings() -> list[Mapping]:
 
 def get_ncit_chebi_mappings() -> list[Mapping]:
     """Get NCIT to ChEBI semantic mappings."""
-    df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "chebi"])
+    df = pd.read_csv(CHEBI_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "chebi"])
     df["chebi"] = df["chebi"].map(lambda s: s.removeprefix("CHEBI:"))  # type:ignore
     return _df_to_mappings(
         df,
@@ -92,11 +92,13 @@ def get_ncit_chebi_mappings() -> list[Mapping]:
 
 def get_ncit_uniprot_mappings() -> list[Mapping]:
     """Get NCIT to UniProt semantic mappings."""
-    df = pd.read_csv(SWISSPROT_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "uniprot"])
+    df = pd.read_csv(SWISSPROT_MAPPINGS_URL, sep="\t", usecols=[0, 1])
     return _df_to_mappings(
         df,
         source_prefix="ncit",
         target_prefix="uniprot",
+        source_identifier_column="NCIt Code",
+        target_identifier_column="SwissProt ID",
         evidence=_get_evidence,
     )
 
@@ -133,4 +135,4 @@ def _df_to_mappings(
 if __name__ == "__main__":
     from semra.api import print_source_target_counts
 
-    print_source_target_counts(get_ncit_hgnc_mappings())
+    print_source_target_counts(get_ncit_chebi_mappings())

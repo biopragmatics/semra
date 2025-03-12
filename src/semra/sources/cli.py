@@ -1,9 +1,12 @@
+"""CLI for running all semra custom mapping getter functions."""
+
 import click
 from tqdm import tqdm
 
 
 @click.command()
 def main() -> None:
+    """Run all custom SeMRA mapping getters."""
     from semra.sources import SOURCE_RESOLVER
 
     for func in tqdm(list(SOURCE_RESOLVER)):

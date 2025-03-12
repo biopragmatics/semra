@@ -6,7 +6,7 @@ from collections.abc import Iterable
 import bioregistry
 import pystow
 import requests
-from curies import Reference
+from pyobo import Reference
 from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING

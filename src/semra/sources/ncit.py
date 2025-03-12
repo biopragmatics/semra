@@ -8,7 +8,7 @@ from functools import lru_cache
 import bioregistry
 import pandas as pd
 import requests
-from curies import Reference
+from pyobo import Reference
 from tqdm.asyncio import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING

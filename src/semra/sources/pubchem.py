@@ -7,7 +7,7 @@ import logging
 import bioversions
 import pyobo
 import requests
-from curies import Reference
+from pyobo import Reference
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence

@@ -6,7 +6,7 @@ import importlib.metadata
 
 import bioregistry
 import pandas as pd
-from curies import Reference
+from pyobo import Reference
 from tqdm.asyncio import tqdm
 
 from semra.struct import Mapping, MappingSet, SimpleEvidence

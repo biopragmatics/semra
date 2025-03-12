@@ -6,7 +6,7 @@ from pathlib import Path
 
 import bioregistry
 import pandas as pd
-from curies import Reference
+from pyobo import Reference
 from tqdm.auto import tqdm
 
 from semra.api import validate_mappings

@@ -307,6 +307,7 @@ def write_neo4j(
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render())
 
+    # TODO flag for swapping on version of semra / git installation
     docker_path = directory.joinpath(dockerfile_name)
     docker_path.write_text(DOCKERFILE_TEMPLATE.render())
 

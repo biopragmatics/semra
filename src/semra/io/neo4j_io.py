@@ -4,20 +4,92 @@ from __future__ import annotations
 
 import csv
 import gzip
+from collections.abc import Hashable, Iterable, Sequence
 from pathlib import Path
-from textwrap import dedent
-from typing import Literal
 
 import click
 from curies import Reference
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from tqdm import tqdm
 
 from .io_utils import get_confidence_str, get_name_by_curie
-from ..struct import Mapping, ReasonedEvidence
+from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence
 
 __all__ = [
     "write_neo4j",
 ]
+
+HERE = Path(__file__).parent.resolve()
+
+TEMPLATES = HERE.joinpath("templates")
+# STARTUP_PATH = TEMPLATES.joinpath("startup.sh")
+# DOCKERFILE_PATH = TEMPLATES.joinpath("Dockerfile")
+# RUN_ON_STARTUP_PATH = TEMPLATES.joinpath("run_on_startup.sh")
+
+env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
+
+STARTUP_TEMPLATE = env.get_template("startup.sh")
+DOCKERFILE_TEMPLATE = env.get_template("Dockerfile")
+RUN_ON_STARTUP_TEMPLATE = env.get_template("run_on_startup.sh")
+
+SEMRA_MAPPING_PREFIX = "semra.mapping"
+SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
+SEMRA_EVIDENCE_PREFIX = "semra.evidence"
+
+CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
+MAPPING_NODES_HEADER = [
+    "curie:ID",
+    "prefix",
+    "predicate",
+    "confidence",
+    "primary:boolean",
+    "secondary:boolean",
+    "tertiary:boolean",
+]
+EVIDENCE_NODES_HEADER = [
+    "curie:ID",
+    "prefix",
+    "type",
+    "mapping_justification",
+    "confidence:float",
+]
+MAPPING_SET_NODES_HEADER = [
+    "curie:ID",
+    "prefix",
+    "name",
+    "license",
+    "version",
+    "confidence:float",
+]
+EDGES_HEADER = [
+    ":START_ID",
+    ":TYPE",
+    ":END_ID",
+    "confidence:float",
+    "primary:boolean",
+    "secondary:boolean",
+    "tertiary:boolean",
+    "mapping_sets:string[]",
+]
+# for extra edges that aren't mapping edges
+EDGES_SUPPLEMENT_HEADER = [
+    ":START_ID",
+    ":TYPE",
+    ":END_ID",
+]
+
+ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")
+ANNOTATED_SOURCE = Reference(prefix="owl", identifier="annotatedSource")
+ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
+
+#: The predicate used in the graph data model connecting a mapping node to an evidence node
+HAS_EVIDENCE_PREDICATE = "hasEvidence"
+#: The predicate used in the graph data model connecting an evidence node to a mapping set node
+FROM_SET_PREDICATE = "fromSet"
+#: The predicate used in the graph data model connecting a reasoned evidence
+DERIVED_PREDICATE = "derivedFromMapping"
+#: node to the mapping node(s) from which it was derived
+HAS_AUTHOR_PREDICATE = "hasAuthor"
 
 
 def write_neo4j(
@@ -29,6 +101,7 @@ def write_neo4j(
     add_labels: bool = False,
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
+    dockerfile_name: str = "Dockerfile",
     sort: bool = False,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
@@ -80,71 +153,29 @@ def write_neo4j(
     if not directory.is_dir():
         raise NotADirectoryError
 
-    startup_path = directory.joinpath(startup_script_name)
-    run_path = directory.joinpath(run_script_name)
-    docker_path = directory.joinpath("Dockerfile")
-
-    concept_nodes_path = directory.joinpath("concept_nodes.tsv.gz")
-    concepts: set[Reference] = set()
-    concept_nodes_header = ["curie:ID", "prefix", "name", "priority:boolean"]
+    if docker_name is None:
+        docker_name = "semra"
     if equivalence_classes is None:
         equivalence_classes = {}
 
+    concept_nodes_path = directory.joinpath("concept_nodes.tsv.gz")
+    concepts: set[Reference] = set()
+
+    evidences: dict[Hashable, Evidence] = {}
+    mapping_sets: dict[str, MappingSet] = {}
+
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv.gz")
-    mapping_nodes_header = [
-        "curie:ID",
-        "prefix",
-        "predicate",
-        "confidence",
-        "primary:boolean",
-        "secondary:boolean",
-        "tertiary:boolean",
-    ]
-
     evidence_nodes_path = directory.joinpath("evidence_nodes.tsv.gz")
-    evidences = {}
-    evidence_nodes_header = [
-        "curie:ID",
-        "prefix",
-        "type",
-        "mapping_justification",
-        "confidence:float",
-    ]
-
     mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv.gz")
-    mapping_sets = {}
-    mapping_set_nodes_header = [
-        "curie:ID",
-        "prefix",
-        "name",
-        "license",
-        "version",
-        "confidence:float",
-    ]
-
     mapping_edges_path = directory.joinpath("mapping_edges.tsv.gz")
-    edges_header = [
-        ":START_ID",
-        ":TYPE",
-        ":END_ID",
-        "confidence:float",
-        "primary:boolean",
-        "secondary:boolean",
-        "tertiary:boolean",
-        "mapping_sets:string[]",
-    ]
     edges_path = directory.joinpath("edges.tsv.gz")
-    edges_supp_header = [
-        ":START_ID",
-        ":TYPE",
-        ":END_ID",
-    ]
+
     with gzip.open(mapping_edges_path, "wt") as file1, gzip.open(edges_path, "wt") as file2:
         mapping_writer = csv.writer(file1, delimiter="\t")
-        mapping_writer.writerow(edges_header)
+        mapping_writer.writerow(EDGES_HEADER)
 
         edge_writer = csv.writer(file2, delimiter="\t")
-        edge_writer.writerow(edges_supp_header)
+        edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
 
         for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
             concepts.add(mapping.s)
@@ -198,7 +229,7 @@ def write_neo4j(
     sorted_concepts = sorted(concepts, key=lambda n: n.curie) if sort else list(concepts)
     _write_tsv_gz(
         concept_nodes_path,
-        concept_nodes_header,
+        CONCEPT_NODES_HEADER,
         (
             (
                 concept.curie,
@@ -215,11 +246,11 @@ def write_neo4j(
     sorted_mappings = sorted(mappings, key=lambda n: n.curie) if sort else mappings
     _write_tsv_gz(
         mapping_nodes_path,
-        mapping_nodes_header,
+        MAPPING_NODES_HEADER,
         (
             (
                 mapping.curie,
-                "semra.mapping",
+                SEMRA_MAPPING_PREFIX,
                 mapping.p.curie,
                 get_confidence_str(mapping),
                 _neo4j_bool(mapping.has_primary),
@@ -239,11 +270,11 @@ def write_neo4j(
     )
     _write_tsv_gz(
         mapping_set_nodes_path,
-        mapping_set_nodes_header,
+        MAPPING_SET_NODES_HEADER,
         (
             (
                 mapping_set.curie,
-                "semra.mappingset",
+                SEMRA_MAPPING_SET_PREFIX,
                 mapping_set.name,
                 mapping_set.license or "",
                 mapping_set.version or "",
@@ -258,11 +289,11 @@ def write_neo4j(
     )
     _write_tsv_gz(
         evidence_nodes_path,
-        evidence_nodes_header,
+        EVIDENCE_NODES_HEADER,
         (
             (
                 evidence.curie,
-                "semra.evidence",
+                SEMRA_EVIDENCE_PREFIX,
                 evidence.evidence_type,
                 evidence.justification.curie,
                 get_confidence_str(evidence),
@@ -277,87 +308,15 @@ def write_neo4j(
         ),
     )
 
-    startup_commands = dedent(
-        """\
-        #!/bin/bash
-        neo4j start
+    startup_path = directory.joinpath(startup_script_name)
+    startup_path.write_text(STARTUP_TEMPLATE.render())
 
-        # Get the port
-        until [ "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:7474")" -eq 200 ]
-        do
-          sleep 5
-        done
+    docker_path = directory.joinpath(dockerfile_name)
+    docker_path.write_text(DOCKERFILE_TEMPLATE.render())
 
-        neo4j status
-        python3.11 -m uvicorn --host 0.0.0.0 --port 8773 --factory semra.wsgi:get_app
-    """
-    )
-    startup_path.write_text(startup_commands)
+    run_path = directory.joinpath(run_script_name)
+    run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))
 
-    docker_commands = dedent(
-        """\
-        FROM ubuntu:20.04
-
-        WORKDIR /sw
-
-        # Install and configure neo4j and python environment
-        RUN apt-get update && \\
-            apt-get install -y apt-transport-https ca-certificates curl wget software-properties-common && \\
-            curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | apt-key add - && \\
-            add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \\
-            apt-get install -y neo4j
-
-        # Install python
-        RUN apt-get update && \\
-            add-apt-repository ppa:deadsnakes/ppa && \\
-            apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \\
-            curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
-
-        RUN python3.11 -m pip install "semra[web] @ git+https://github.com/biopragmatics/semra.git"
-
-        # Add graph content
-        COPY concept_nodes.tsv.gz /sw/concept_nodes.tsv.gz
-        COPY mapping_nodes.tsv.gz /sw/mapping_nodes.tsv.gz
-        COPY evidence_nodes.tsv.gz /sw/evidence_nodes.tsv.gz
-        COPY mapping_set_nodes.tsv.gz /sw/mapping_set_nodes.tsv.gz
-        COPY mapping_edges.tsv.gz /sw/mapping_edges.tsv.gz
-        COPY edges.tsv.gz /sw/edges.tsv.gz
-
-        # Ingest graph content into neo4j
-        RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \\
-            sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \\
-            neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \\
-                --relationships /sw/mapping_edges.tsv \\
-                --relationships /sw/edges.tsv \\
-                --nodes=concept=/sw/concept_nodes.tsv \\
-                --nodes=mapping=/sw/mapping_nodes.tsv \\
-                --nodes=mappingset=/sw/mapping_set_nodes.tsv \\
-                --nodes=evidence=/sw/evidence_nodes.tsv
-
-        RUN rm /sw/concept_nodes.tsv.gz
-        RUN rm /sw/mapping_nodes.tsv.gz
-        RUN rm /sw/evidence_nodes.tsv.gz
-        RUN rm /sw/mapping_set_nodes.tsv.gz
-        RUN rm /sw/edges.tsv.gz
-        RUN rm /sw/mapping_edges.tsv.gz
-
-        COPY startup.sh startup.sh
-        ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]
-    """
-    )
-    docker_path.write_text(docker_commands)
-
-    if docker_name is None:
-        docker_name = "semra"
-    run_command = dedent(
-        f"""\
-        #!/bin/bash
-        docker build --tag {docker_name} .
-        # -t means allocate a pseudo-TTY, necessary to keep it running in the background
-        docker run -t --detach -p 7474:7474 -p 7687:7687 -p 8773:8773 --name {docker_name} {docker_name}:latest
-    """
-    )
-    run_path.write_text(run_command)
     click.secho("Run Neo4j with the following:", fg="green")
     click.secho(f"  cd {run_path.parent.absolute()}")
     click.secho(f"  sh {run_script_name}")
@@ -375,27 +334,12 @@ def write_neo4j(
     # command_path.write_text(shell_command)
 
 
-def _neo4j_bool(b: bool, /) -> Literal["true", "false"]:
+def _neo4j_bool(b: bool, /) -> str:
+    """Get a boolean string that works in neo4j data files."""
     return "true" if b else "false"  # type:ignore
 
 
-ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")
-ANNOTATED_SOURCE = Reference(prefix="owl", identifier="annotatedSource")
-ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
-
-
-#: The predicate used in the graph data model connecting a mapping node to an evidence node
-#: The predicate used in the graph data model connecting an evidence node to a mapping set node
-#: The predicate used in the graph data model connecting a reasoned evidence
-#: node to the mapping node(s) from which it was derived
-
-HAS_EVIDENCE_PREDICATE = "hasEvidence"
-FROM_SET_PREDICATE = "fromSet"
-DERIVED_PREDICATE = "derivedFromMapping"
-HAS_AUTHOR_PREDICATE = "hasAuthor"
-
-
-def _write_tsv_gz(path, header, rows) -> None:
+def _write_tsv_gz(path: str | Path, header: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
     click.echo(f"writing to {path}")
     with gzip.open(path, "wt") as file:
         writer = csv.writer(file, delimiter="\t")

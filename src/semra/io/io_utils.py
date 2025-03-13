@@ -9,7 +9,7 @@ import bioregistry
 import pyobo
 import requests
 
-from ..struct import Evidence
+from ..struct import ConfidenceMixin
 
 __all__ = [
     "get_confidence_str",
@@ -63,7 +63,7 @@ def get_orcid_name(orcid: str) -> str | None:
 CONFIDENCE_PRECISION = 5
 
 
-def get_confidence_str(x: Evidence) -> str:
+def get_confidence_str(x: ConfidenceMixin) -> str:
     """Safely get a confidence from an evidence."""
     confidence = x.get_confidence()
     return str(round(confidence, CONFIDENCE_PRECISION))

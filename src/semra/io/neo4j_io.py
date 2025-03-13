@@ -125,14 +125,11 @@ def write_neo4j(
         to wrap building and running the Docker image
     :param sort: Should the output nodes files be sorted?
 
-    :raises NotADirectoryError: If the directory given does not already exist. It's
-        suggested to use :mod:`pystow` to create deterministic directories.
-
     You can use this function to build your own database like in
 
     .. code-block:: python
 
-        from semra.io import from_pyobo
+        from semra.io import from_pyobo, write_neo4j
 
         mappings = [*from_pyobo("doid"), *from_pyobo("mesh")]
         path = "~/Desktop/disease_output/"  # assume this exist already
@@ -149,9 +146,8 @@ def write_neo4j(
     SeMRA web frontend at http://localhost:8773, or to the SeMRA JSON API at
     http://localhost:8773/api.
     """
-    directory = Path(directory).resolve()
-    if not directory.is_dir():
-        raise NotADirectoryError
+    directory = Path(directory).expanduser().resolve()
+    directory.mkdir(exist_ok=True)
 
     if docker_name is None:
         docker_name = "semra"

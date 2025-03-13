@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -x  # Enable command printing
+
 neo4j start
 
 # Get the port

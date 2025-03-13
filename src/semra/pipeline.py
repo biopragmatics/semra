@@ -330,6 +330,28 @@ class Configuration(BaseModel):
         res = update_zenodo(str(self.zenodo_record), paths=paths, **kwargs)
         return res
 
+    def _build_docker(self) -> None:
+        # this is mostly for testing purposes - normally, the neo4j export
+        # will get called with `sh run_on_startup.sh`, which also includes
+        # the build command. Adding --build-docker is useful for making sure
+        # that the data all works properly
+        import subprocess
+
+        if self.processed_neo4j_name is None:
+            click.secho("you should set the processed_neo4j_name", fg="red")
+            name = "semra"
+        else:
+            name = self.processed_neo4j_name
+
+        args = ["docker", "build", "--tag", name, "."]
+        click.secho("Building dockerfile (automated)", fg="green")
+        res = subprocess.run(  # noqa:S603
+            args,
+            check=True,
+            cwd=str(self.processed_neo4j_path),
+        )
+        click.echo(f"Result: {res}")
+
     def cli(self) -> None:
         """Get and run a command line interface for this configuration."""
         self.get_cli()()
@@ -348,6 +370,8 @@ class Configuration(BaseModel):
         def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
             """Build the mapping database terms."""
             self.get_mappings(refresh_raw=refresh_raw, refresh_processed=refresh_processed)
+            if build_docker and self.processed_neo4j_path:
+                self._build_docker()
             if upload:
                 self._safe_upload()
             if build_docker and self.processed_neo4j_path:

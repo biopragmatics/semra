@@ -11,7 +11,7 @@ from semra.pipeline import (
     UPLOAD_OPTION,
 )
 
-from . import anatomy, cells, complexes, diseases, genes
+from . import anatomy, cells, complexes, diseases, genes, taxrank
 
 __all__ = [
     "FUNCTIONS",
@@ -19,6 +19,7 @@ __all__ = [
 ]
 
 FUNCTIONS: list[tuple[str, click.Command]] = [
+    ("Taxonomical Ranks", taxrank.CONFIGURATION.get_cli()),
     ("Complexes", complexes.CONFIGURATION.get_cli()),
     ("Anatomy", anatomy.CONFIGURATION.get_cli()),
     ("Cells and Cell Lines", cells.main),

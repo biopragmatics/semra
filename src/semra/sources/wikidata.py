@@ -4,9 +4,10 @@ import json
 from collections.abc import Iterable
 
 import bioregistry
+import curies
+import pyobo
 import pystow
 import requests
-from curies import Reference
 from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
@@ -25,7 +26,7 @@ WIKIDATA_MAPPING_DIRECTORY = pystow.module("wikidata", "mappings")
 
 
 def get_all_wikidata_mappings(
-    *, use_tqdm: bool = True, predicate: Reference | None = None
+    *, use_tqdm: bool = True, predicate: curies.Reference | None = None
 ) -> list[Mapping]:
     """Iterate over WikiData xref dataframes."""
     if predicate is None:
@@ -43,7 +44,7 @@ def get_all_wikidata_mappings(
     return rv
 
 
-def get_wikidata_mappings(*, prop: str, predicate: Reference | None = None) -> list[Mapping]:
+def get_wikidata_mappings(*, prop: str, predicate: curies.Reference | None = None) -> list[Mapping]:
     """Get mappings from Wikidata."""
     prop_to_prefix = bioregistry.get_registry_invmap("wikidata")
     target_prefix = prop_to_prefix[prop]
@@ -52,7 +53,7 @@ def get_wikidata_mappings(*, prop: str, predicate: Reference | None = None) -> l
 
 
 def get_wikidata_mappings_by_prefix(
-    prefix: str, predicate: Reference | None = None
+    prefix: str, predicate: curies.Reference | None = None
 ) -> list[Mapping]:
     """Get mappings from Wikidata."""
     prefix_to_prop = bioregistry.get_registry_map("wikidata")
@@ -62,7 +63,7 @@ def get_wikidata_mappings_by_prefix(
 
 
 def _help(
-    target_prefix: str, prop: str, *, predicate: Reference | None = None, cache: bool = True
+    target_prefix: str, prop: str, *, predicate: curies.Reference | None = None, cache: bool = True
 ) -> list[Mapping]:
     """Get mappings from Wikidata."""
     if predicate is None:
@@ -71,9 +72,11 @@ def _help(
     mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
     return [
         Mapping(
-            s=Reference(prefix="wikidata", identifier=wikidata_id),
+            s=pyobo.Reference(prefix="wikidata", identifier=wikidata_id),
             p=predicate,
-            o=Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)),
+            o=pyobo.Reference(
+                prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)
+            ),
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )
         for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache)

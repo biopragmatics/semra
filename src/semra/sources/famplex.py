@@ -6,7 +6,7 @@ import logging
 
 import bioregistry
 import pandas as pd
-from curies import Reference
+from pyobo import Reference
 
 from semra.api import validate_mappings
 from semra.rules import BEN_ORCID, EXACT_MATCH, MANUAL_MAPPING

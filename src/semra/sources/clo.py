@@ -5,7 +5,7 @@ from __future__ import annotations
 import bioontologies
 import bioregistry
 import click
-from curies import Reference
+from pyobo import Reference
 from tqdm.auto import tqdm
 
 from semra.rules import DB_XREF, UNSPECIFIED_MAPPING

@@ -76,17 +76,22 @@ SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResol
     ]
 )
 
-# Add synonyms for short name
-for func in SOURCE_RESOLVER:
+
+def _normalize_name(func):
     if not func.__name__.startswith("get_"):
         raise NameError(f"Custom source function name does not start with `_get`: {func.__name__}")
     if not func.__name__.endswith("_mappings"):
         raise NameError(
             f"Custom source function name does not end with `_mappings`: {func.__name__}"
         )
-    key = func.__name__[len("get_") : -len("_mappings")]
+    return func.__name__[len("get_") : -len("_mappings")]
+
+
+# Add synonyms for short name
+for func_ in SOURCE_RESOLVER:
+    key = _normalize_name(func_)
     norm_key = SOURCE_RESOLVER.normalize(key)
-    SOURCE_RESOLVER.synonyms[norm_key] = func
+    SOURCE_RESOLVER.synonyms[norm_key] = func_
 
 
 def get_custom() -> t.Iterable[Mapping]:

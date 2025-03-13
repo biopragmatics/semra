@@ -6,7 +6,7 @@
 """
 
 import pandas as pd
-from curies import Reference
+from pyobo import Reference
 
 from semra.rules import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import bioregistry
-from curies import Reference
+from pyobo import Reference
+from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
@@ -23,7 +24,9 @@ def get_chembl_compound_mappings(version: str | None = None) -> list[Mapping]:
     license = bioregistry.get_license("chembl.compound")
     df = chembl_downloader.get_chemreps_df(version=version)
     rows = []
-    for chembl, _smiles, _inchi, inchi_key in df.values:
+    for chembl, _smiles, _inchi, inchi_key in tqdm(
+        df.values, desc="Get ChEMBL compound mappings", unit="chemical", unit_scale=True
+    ):
         s = Reference(prefix="chembl.compound", identifier=chembl)
         rows.append(
             Mapping(
@@ -66,7 +69,9 @@ def get_chembl_protein_mappings(version: str | None = None) -> list[Mapping]:
                 )
             ],
         )
-        for uniprot, chembl_id, _name, _type in df.values
+        for uniprot, chembl_id, _name, _type in tqdm(
+            df.values, desc="Get ChEMBL protein mappings", unit="protein", unit_scale=True
+        )
     ]
 
 

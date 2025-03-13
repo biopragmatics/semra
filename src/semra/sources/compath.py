@@ -3,7 +3,7 @@
 from collections.abc import Iterable
 
 import pandas as pd
-from curies import Reference
+from pyobo import Reference
 from pystow.utils import get_commit
 
 from semra.rules import EXACT_MATCH, MANUAL_MAPPING

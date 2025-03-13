@@ -62,6 +62,7 @@ __all__ = [
     "get_priority_reference",
     "get_test_evidence",
     "get_test_reference",
+    "hydrate_subsets",
     "infer_chains",
     "infer_dbxref_mutations",
     "infer_mutations",

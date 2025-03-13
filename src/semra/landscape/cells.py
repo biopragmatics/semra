@@ -20,6 +20,7 @@ from curies.vocabulary import charlie
 from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import (
+    BUILD_DOCKER_OPTION,
     REFRESH_PROCESSED_OPTION,
     REFRESH_RAW_OPTION,
     UPLOAD_OPTION,
@@ -116,11 +117,14 @@ CONFIGURATION = Configuration(
 @UPLOAD_OPTION
 @REFRESH_RAW_OPTION
 @REFRESH_PROCESSED_OPTION
-def main(upload: bool, refresh_raw: bool, refresh_processed: bool):
+@BUILD_DOCKER_OPTION
+def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
     """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(
         CONFIGURATION, refresh_raw=refresh_raw, refresh_processed=refresh_processed
     )
+    if build_docker and CONFIGURATION.processed_neo4j_path:
+        CONFIGURATION._build_docker()
     if upload:
         CONFIGURATION._safe_upload()
 

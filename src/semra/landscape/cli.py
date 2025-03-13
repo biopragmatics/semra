@@ -4,7 +4,12 @@ import click
 from more_click import verbose_option
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from semra.pipeline import REFRESH_PROCESSED_OPTION, REFRESH_RAW_OPTION, UPLOAD_OPTION
+from semra.pipeline import (
+    BUILD_DOCKER_OPTION,
+    REFRESH_PROCESSED_OPTION,
+    REFRESH_RAW_OPTION,
+    UPLOAD_OPTION,
+)
 
 from . import anatomy, cells, complexes, diseases, genes
 
@@ -26,15 +31,22 @@ FUNCTIONS: list[tuple[str, click.Command]] = [
 @REFRESH_RAW_OPTION
 @REFRESH_PROCESSED_OPTION
 @UPLOAD_OPTION
+@BUILD_DOCKER_OPTION
 @verbose_option
 @click.pass_context
-def landscape(ctx: click.Context, upload: bool, refresh_raw: bool, refresh_processed: bool):
+def landscape(
+    ctx: click.Context, upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker
+):
     """Run all landscape builds."""
     with logging_redirect_tqdm():
         for label, func in FUNCTIONS:
             click.secho(label, bold=True, fg="green")
             ctx.invoke(
-                func, upload=upload, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+                func,
+                upload=upload,
+                refresh_raw=refresh_raw,
+                refresh_processed=refresh_processed,
+                build_docker=build_docker,
             )
 
 

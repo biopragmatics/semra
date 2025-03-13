@@ -374,27 +374,6 @@ class Configuration(BaseModel):
                 self._build_docker()
             if upload:
                 self._safe_upload()
-            if build_docker and self.processed_neo4j_path:
-                # this is mostly for testing purposes - normally, the neo4j export
-                # will get called with `sh run_on_startup.sh`, which also includes
-                # the build command. Adding --build-docker is useful for making sure
-                # that the data all works properly
-                import subprocess
-
-                if self.processed_neo4j_name is None:
-                    click.secho("you should set the processed_neo4j_name", fg="red")
-                    name = "semra"
-                else:
-                    name = self.processed_neo4j_name
-
-                args = ["docker", "build", "--tag", name, "."]
-                click.secho("Building dockerfile (automated)", fg="green")
-                res = subprocess.run(  # noqa:S603
-                    args,
-                    check=True,
-                    cwd=str(self.processed_neo4j_path),
-                )
-                click.echo(f"Result: {res}")
 
         return main
 

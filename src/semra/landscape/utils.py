@@ -26,7 +26,7 @@ from semra.api import (
     get_index,
     hydrate_subsets,
 )
-from semra.io import _safe_get_version
+from semra.io.io import _safe_get_version
 from semra.pipeline import Configuration, SubsetConfiguration
 from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping

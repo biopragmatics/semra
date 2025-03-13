@@ -24,6 +24,7 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
+from semra.pipeline import UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 
@@ -56,6 +57,7 @@ skip = {
     "edam.topic",
     "gwascentral.phenotype",  # added on 2024-04-24, service down
     "gwascentral.study",  # added on 2024-04-24, service down
+    "conso",
 }
 #: A set of prefixes whose obo files need to be parsed without ROBOT checks
 loose = {
@@ -67,7 +69,8 @@ loose = {
 
 @click.command()
 @click.option("--include-wikidata", is_flag=True)
-def build(include_wikidata: bool):
+@UPLOAD_OPTION
+def build(include_wikidata: bool, upload: bool) -> None:
     """Construct the full SeMRA database."""
     ontology_resources = []
     pyobo_resources = []
@@ -179,30 +182,31 @@ def build(include_wikidata: bool):
     click.echo(f"Writing Neo4j folder to {NEO4J_DIR}")
     write_neo4j(mappings, NEO4J_DIR)
 
-    # Define the metadata that will be used on initial upload
-    zenodo_metadata = Metadata(
-        title="SeMRA Mapping Database",
-        upload_type="dataset",
-        description=f"A compendium of mappings extracted from {len(summaries)} database/ontologies. "
-        f"Note that primary mappings are marked with the license of their source (when available). "
-        f"Inferred mappings are distributed under the CC0 license.",
-        creators=[
-            Creator(name=charlie.name, orcid=charlie.identifier),
-        ],
-    )
-    res = ensure_zenodo(
-        key="semra-database-test-1",
-        data=zenodo_metadata,
-        paths=[
-            SSSOM_PATH,
-            WARNINGS_PATH,
-            ERRORS_PATH,
-            SUMMARY_PATH,
-            *NEO4J_DIR.iterdir(),
-        ],
-        sandbox=True,
-    )
-    click.echo(res.json()["links"]["html"])
+    if upload:
+        # Define the metadata that will be used on initial upload
+        zenodo_metadata = Metadata(
+            title="SeMRA Mapping Database",
+            upload_type="dataset",
+            description=f"A compendium of mappings extracted from {len(summaries)} database/ontologies. "
+            f"Note that primary mappings are marked with the license of their source (when available). "
+            f"Inferred mappings are distributed under the CC0 license.",
+            creators=[
+                Creator(name="Hoyt, Charles Tapley", orcid=charlie.identifier),
+            ],
+        )
+        res = ensure_zenodo(
+            key="semra-database-test-1",
+            data=zenodo_metadata,
+            paths=[
+                SSSOM_PATH,
+                WARNINGS_PATH,
+                ERRORS_PATH,
+                SUMMARY_PATH,
+                *NEO4J_DIR.iterdir(),
+            ],
+            sandbox=True,
+        )
+        click.echo(res.json()["links"]["html"])
 
 
 def _write_source(mappings: list[Mapping], key: str) -> None:

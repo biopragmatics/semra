@@ -123,6 +123,7 @@ def write_neo4j(
     :param startup_script_name: The name of the startup script that the Dockerfile calls
     :param run_script_name: The name of the run script that you as the user should call
         to wrap building and running the Docker image
+    :param dockerfile_name: The name of the Dockerfile produced
     :param sort: Should the output nodes files be sorted?
 
     You can use this function to build your own database like in

@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/cthoyt/cookiecutter-snekpack",
-  "commit": "bc56b27a6c12e229d9d01151847e4f5276bc5111",
+  "commit": "eb27d1b87c67b842cb1adf73846c617af849d10b",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -23,7 +23,8 @@
       "__runner_install_pip": "python3 -m pip install tox tox-uv",
       "__runner_tests": "py",
       "__gh_slug": "biopragmatics/semra",
-      "_template": "https://github.com/cthoyt/cookiecutter-snekpack"
+      "_template": "https://github.com/cthoyt/cookiecutter-snekpack",
+      "_commit": "eb27d1b87c67b842cb1adf73846c617af849d10b"
     }
   },
   "directory": null

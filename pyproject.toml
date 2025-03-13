@@ -94,6 +94,7 @@ landscape-notebooks = [
     "upsetplot",
     "seaborn",
     "matplotlib",
+    "pygraphviz",
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls

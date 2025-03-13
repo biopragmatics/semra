@@ -219,19 +219,31 @@ class Configuration(BaseModel):
 
     def read_raw_mappings(self) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
-        if self.raw_pickle_path is None:
-            raise ValueError("no raw pickle file given")
-        if not self.raw_pickle_path.is_file():
+        if self.raw_pickle_path and self.raw_pickle_path.is_file():
+            return from_pickle(self.raw_pickle_path)
+        if self.raw_sssom_path and self.raw_sssom_path.is_file():
+            return from_sssom(self.raw_sssom_path)
+        if self.raw_pickle_path and not self.raw_pickle_path.is_file():
             raise FileNotFoundError(f"raw mappings pickle file not found: {self.raw_pickle_path}")
-        return from_pickle(self.raw_pickle_path)
+        if self.raw_sssom_path and not self.raw_sssom_path.is_file():
+            raise FileNotFoundError(f"raw mappings SSSOM file not found: {self.raw_sssom_path}")
+        raise ValueError("no raw pickle nor SSSOM file given")
 
     def read_processed_mappings(self) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
-        if self.processed_pickle_path is None:
-            raise ValueError("no processed pickle file given")
-        if not self.processed_pickle_path.is_file():
-            raise FileNotFoundError(f"processed mappings pickle file not found: {self.processed_pickle_path}")
-        return from_pickle(self.processed_pickle_path)
+        if self.processed_pickle_path and self.processed_pickle_path.is_file():
+            return from_pickle(self.processed_pickle_path)
+        if self.processed_sssom_path and self.processed_sssom_path.is_file():
+            return from_sssom(self.processed_sssom_path)
+        if self.processed_pickle_path and not self.processed_pickle_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings pickle file not found: {self.processed_pickle_path}"
+            )
+        if self.processed_sssom_path and not self.processed_sssom_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings SSSOM file not found: {self.processed_sssom_path}"
+            )
+        raise ValueError("no processed pickle nor SSSOM file given")
 
     def get_hydrated_subsets(self) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""

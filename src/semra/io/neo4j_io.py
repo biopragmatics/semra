@@ -296,7 +296,7 @@ def write_neo4j(
             )
             for evidence in tqdm(
                 sorted_evidences,
-                desc="Writing evidence nodes",
+                desc="writing evidence nodes",
                 leave=False,
                 unit_scale=True,
                 unit="evidence",

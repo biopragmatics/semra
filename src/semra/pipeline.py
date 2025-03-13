@@ -67,6 +67,7 @@ logger = logging.getLogger(__name__)
 UPLOAD_OPTION = click.option("--upload", is_flag=True)
 REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
 REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
+BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
 
 
 class Input(BaseModel):
@@ -336,16 +337,40 @@ class Configuration(BaseModel):
     def get_cli(self):
         """Get a command line interface for this configuration."""
         import click
+        from more_click import verbose_option
 
         @click.command()
         @UPLOAD_OPTION
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
-        def main(upload: bool, refresh_raw: bool, refresh_processed: bool):
+        @BUILD_DOCKER_OPTION
+        @verbose_option
+        def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
             """Build the mapping database terms."""
             self.get_mappings(refresh_raw=refresh_raw, refresh_processed=refresh_processed)
             if upload:
                 self._safe_upload()
+            if build_docker and self.processed_neo4j_path:
+                # this is mostly for testing purposes - normally, the neo4j export
+                # will get called with `sh run_on_startup.sh`, which also includes
+                # the build command. Adding --build-docker is useful for making sure
+                # that the data all works properly
+                import subprocess
+
+                if self.processed_neo4j_name is None:
+                    click.secho("you should set the processed_neo4j_name", fg="red")
+                    name = "semra"
+                else:
+                    name = self.processed_neo4j_name
+
+                args = ["docker", "build", "--tag", name, "."]
+                click.secho("Building dockerfile (automated)", fg="green")
+                res = subprocess.run(  # noqa:S603
+                    args,
+                    check=True,
+                    cwd=str(self.processed_neo4j_path),
+                )
+                click.echo(f"Result: {res}")
 
         return main
 
@@ -394,14 +419,18 @@ def get_mappings_from_config(
             )
 
         raw_mappings = get_raw_mappings(configuration)
+        if not raw_mappings:
+            raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
         if configuration.validate_raw:
             validate_mappings(raw_mappings)
         if configuration.raw_pickle_path:
             write_pickle(raw_mappings, configuration.raw_pickle_path)
         if configuration.raw_sssom_path:
             write_sssom(
-                raw_mappings, configuration.raw_sssom_path
-            )  # , add_labels=configuration.add_labels)
+                raw_mappings,
+                configuration.raw_sssom_path,
+                # add_labels=configuration.add_labels
+            )
         if configuration.raw_neo4j_path:
             write_neo4j(
                 raw_mappings,

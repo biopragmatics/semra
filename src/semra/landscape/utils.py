@@ -268,7 +268,7 @@ def notebook(
         "distribution": landscape_results.distribution,
     }
     stats_path = output_directory.joinpath("stats.json")
-    stats_path.write_text(json.dumps(stats, indent=2))
+    stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
 
     return overlap_results, landscape_results
 

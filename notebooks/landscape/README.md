@@ -43,3 +43,16 @@ A summary chart over all landscapes can be generated with `landscape.py`.
 | complex |         15,869 |             7,775 |  0.510051 | [zenodo.record:11091422](https://bioregistry.io/zenodo.record:11091422) |
 | gene    |     49,457,767 |           207,019 |  0.013529 | [zenodo.record:11092013](https://bioregistry.io/zenodo.record:11092013) |
 | cell    |        207,019 |           166,274 |  0.196818 | [zenodo.record:11091581](https://bioregistry.io/zenodo.record:11091581) |
+
+
+## Rebuild
+
+Run all notebooks after installing semra with the `landscape-notebook` extra,
+then running the following
+
+```console
+$ git clone https://github.com/biopragmatics/semra.git
+$ cd semra
+$ uv pip install .[landscape-notebooks]
+$ sh run.sh
+```

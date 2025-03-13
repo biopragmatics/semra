@@ -29,12 +29,12 @@ COPY edges.tsv.gz /sw/edges.tsv.gz
 RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
     sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \
     neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \
-        --relationships /sw/mapping_edges.tsv \
-        --relationships /sw/edges.tsv \
-        --nodes=concept=/sw/concept_nodes.tsv \
-        --nodes=mapping=/sw/mapping_nodes.tsv \
-        --nodes=mappingset=/sw/mapping_set_nodes.tsv \
-        --nodes=evidence=/sw/evidence_nodes.tsv
+        --relationships /sw/mapping_edges.tsv.gz \
+        --relationships /sw/edges.tsv.gz \
+        --nodes=concept=/sw/concept_nodes.tsv.gz \
+        --nodes=mapping=/sw/mapping_nodes.tsv.gz \
+        --nodes=mappingset=/sw/mapping_set_nodes.tsv.gz \
+        --nodes=evidence=/sw/evidence_nodes.tsv.gz
 
 RUN rm /sw/concept_nodes.tsv.gz
 RUN rm /sw/mapping_nodes.tsv.gz

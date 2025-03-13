@@ -13,8 +13,8 @@ from ..struct import Evidence
 
 __all__ = [
     "get_confidence_str",
-    "get_orcid_name",
     "get_name_by_curie",
+    "get_orcid_name",
 ]
 
 SKIP_PREFIXES = {

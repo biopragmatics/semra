@@ -12,8 +12,8 @@ import click
 from curies import Reference
 from tqdm import tqdm
 
-from ..struct import Mapping, ReasonedEvidence
 from .io_utils import get_confidence_str, get_name_by_curie
+from ..struct import Mapping, ReasonedEvidence
 
 __all__ = [
     "write_neo4j",

@@ -220,17 +220,17 @@ class Configuration(BaseModel):
     def read_raw_mappings(self) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
         if self.raw_pickle_path is None:
-            raise ValueError
+            raise ValueError("no raw pickle file given")
         if not self.raw_pickle_path.is_file():
-            raise FileNotFoundError
+            raise FileNotFoundError(f"raw mappings pickle file not found: {self.raw_pickle_path}")
         return from_pickle(self.raw_pickle_path)
 
     def read_processed_mappings(self) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
         if self.processed_pickle_path is None:
-            raise ValueError
+            raise ValueError("no processed pickle file given")
         if not self.processed_pickle_path.is_file():
-            raise FileNotFoundError
+            raise FileNotFoundError(f"processed mappings pickle file not found: {self.processed_pickle_path}")
         return from_pickle(self.processed_pickle_path)
 
     def get_hydrated_subsets(self) -> SubsetConfiguration:

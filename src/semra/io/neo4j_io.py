@@ -174,7 +174,7 @@ def write_neo4j(
         edge_writer = csv.writer(file2, delimiter="\t")
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
 
-        for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="Preparing Neo4j"):
+        for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="preparing Neo4j"):
             concepts.add(mapping.s)
             concepts.add(mapping.o)
 

@@ -3,8 +3,9 @@
   "description": "Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, this configuration imports several different cell and cell line resources and identifies mappings between them.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -120,16 +121,28 @@
   ],
   "subsets": {
     "mesh": [
-      "mesh:D002477"
+      {
+        "prefix": "mesh",
+        "identifier": "D002477"
+      }
     ],
     "efo": [
-      "efo:0000324"
+      {
+        "prefix": "efo",
+        "identifier": "0000324"
+      }
     ],
     "ncit": [
-      "ncit:C12508"
+      {
+        "prefix": "ncit",
+        "identifier": "C12508"
+      }
     ],
     "umls": [
-      "sty:T025"
+      {
+        "prefix": "sty",
+        "identifier": "T025"
+      }
     ]
   },
   "keep_prefixes": [

@@ -640,7 +640,7 @@ def infer_dbxref_mutations(
     if confidence is None:
         confidence = 0.7
     if not isinstance(pairs, dict):
-        pairs = {pair: confidence for pair in pairs}
+        pairs = dict.fromkeys(pairs, confidence)
     return infer_mutations(
         mappings,
         pairs=pairs,

@@ -158,15 +158,15 @@
     "umls"
   ],
   "remove_imprecise": false,
-  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/raw.pkl",
-  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/raw.sssom.tsv",
-  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/processed.pkl",
-  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/processed.sssom.tsv",
-  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/cells/neo4j",
+  "raw_pickle_path": "/Users/ben/.data/semra/case-studies/cells/raw.pkl",
+  "raw_sssom_path": "/Users/ben/.data/semra/case-studies/cells/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/ben/.data/semra/case-studies/cells/processed.pkl",
+  "processed_sssom_path": "/Users/ben/.data/semra/case-studies/cells/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/ben/.data/semra/case-studies/cells/neo4j",
   "processed_neo4j_name": "semra-cell",
-  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/priority.pkl",
-  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/priority.sssom.tsv",
+  "priority_pickle_path": "/Users/ben/.data/semra/case-studies/cells/priority.pkl",
+  "priority_sssom_path": "/Users/ben/.data/semra/case-studies/cells/priority.sssom.tsv",
   "add_labels": true,
-  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/cells/configuration.json",
+  "configuration_path": "/Users/ben/.data/semra/case-studies/cells/configuration.json",
   "zenodo_record": 11091581
 }

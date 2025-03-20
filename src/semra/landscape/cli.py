@@ -8,6 +8,7 @@ from semra.pipeline import (
     BUILD_DOCKER_OPTION,
     REFRESH_PROCESSED_OPTION,
     REFRESH_RAW_OPTION,
+    REFRESH_SOURCE_OPTION,
     UPLOAD_OPTION,
 )
 
@@ -29,6 +30,7 @@ FUNCTIONS: list[tuple[str, click.Command]] = [
 
 
 @click.command()
+@REFRESH_SOURCE_OPTION
 @REFRESH_RAW_OPTION
 @REFRESH_PROCESSED_OPTION
 @UPLOAD_OPTION
@@ -36,7 +38,12 @@ FUNCTIONS: list[tuple[str, click.Command]] = [
 @verbose_option
 @click.pass_context
 def landscape(
-    ctx: click.Context, upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker
+    ctx: click.Context,
+    upload: bool,
+    refresh_source: bool,
+    refresh_raw: bool,
+    refresh_processed: bool,
+    build_docker: bool,
 ):
     """Run all landscape builds."""
     with logging_redirect_tqdm():
@@ -45,6 +52,7 @@ def landscape(
             ctx.invoke(
                 func,
                 upload=upload,
+                refresh_source=refresh_source,
                 refresh_raw=refresh_raw,
                 refresh_processed=refresh_processed,
                 build_docker=build_docker,

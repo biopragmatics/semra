@@ -110,6 +110,7 @@ def from_pyobo(
     license: str | None = None,
     confidence: float | None = None,
     justification: Reference | None = None,
+    force_process: bool = False,
 ) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`pyobo`.
 
@@ -126,10 +127,13 @@ def from_pyobo(
         try and look up with :func:`bioregistry.get_license`.
     :param justification: The justification from the SEMAPV vocabulary (given as a
         Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
+    :param force_process: force re-processing of the source data, e.g., the OBO
+        file for external ontologies or the locally cached data for PyOBO custom
+        sources
 
     :returns: A list of semantic mapping objects
     """
-    df: pd.DataFrame = pyobo.get_mappings_df(prefix, names=False)  # type:ignore
+    df: pd.DataFrame = pyobo.get_mappings_df(prefix, force_process=force_process, names=False)  # type:ignore
     return _from_pyobo_sssom_df(
         df,
         prefix=prefix,

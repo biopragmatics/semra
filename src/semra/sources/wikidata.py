@@ -70,17 +70,22 @@ def _help(
         predicate = EXACT_MATCH
 
     mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
-    return [
-        Mapping(
+    rv = []
+    for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
+        try:
+            o = pyobo.Reference(
+                prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)
+            )
+        except ValueError:
+            continue
+        mapping = Mapping(
             s=pyobo.Reference(prefix="wikidata", identifier=wikidata_id),
             p=predicate,
-            o=pyobo.Reference(
-                prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)
-            ),
+            o=o,
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )
-        for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache)
-    ]
+        rv.append(mapping)
+    return rv
 
 
 def _clean_xref_id(prefix: str, identifier: str) -> str:

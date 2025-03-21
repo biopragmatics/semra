@@ -335,6 +335,7 @@ class Configuration(BaseModel):
         # will get called with `sh run_on_startup.sh`, which also includes
         # the build command. Adding --build-docker is useful for making sure
         # that the data all works properly
+        import os
         import subprocess
 
         if self.processed_neo4j_name is None:
@@ -349,6 +350,7 @@ class Configuration(BaseModel):
             args,
             check=True,
             cwd=str(self.processed_neo4j_path),
+            env=dict(os.environ, DOCKER_CLI_HINTS="false"),
         )
         click.echo(f"Result: {res}")
 

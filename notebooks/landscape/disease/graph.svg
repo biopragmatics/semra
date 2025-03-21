@@ -34,7 +34,7 @@
 14,220&#45;&#45;umls
 187,376</title>
 <path fill="none" stroke="black" d="M65.46,-272.18C91.16,-291.65 129.93,-321.02 156.07,-340.83"/>
-<text text-anchor="middle" x="109.04" y="-316.79" font-family="Times,serif" font-size="14.00">3,489</text>
+<text text-anchor="middle" x="109.04" y="-316.79" font-family="Times,serif" font-size="14.00">3,040</text>
 </g>
 <!-- efo
 2,121 -->
@@ -53,26 +53,26 @@
 14,220&#45;&#45;efo
 2,121</title>
 <path fill="none" stroke="black" d="M50.54,-279.46C76.37,-336.25 144.09,-466.13 245.62,-524 260.18,-532.3 278.49,-535.71 293.99,-536.98"/>
-<text text-anchor="middle" x="185.01" y="-513.59" font-family="Times,serif" font-size="14.00">1,056</text>
+<text text-anchor="middle" x="185.01" y="-513.59" font-family="Times,serif" font-size="14.00">1,055</text>
 </g>
 <!-- mesh
-3,142 -->
+3,178 -->
 <g id="node4" class="node">
 <title>mesh
-3,142</title>
+3,178</title>
 <ellipse fill="none" stroke="black" cx="467.04" cy="-374" rx="33.06" ry="28.99"/>
 <text text-anchor="middle" x="467.04" y="-377.2" font-family="Times,serif" font-size="14.00">mesh</text>
-<text text-anchor="middle" x="467.04" y="-360.7" font-family="Times,serif" font-size="14.00">3,142</text>
+<text text-anchor="middle" x="467.04" y="-360.7" font-family="Times,serif" font-size="14.00">3,178</text>
 </g>
 <!-- doid
 14,220&#45;&#45;mesh
-3,142 -->
+3,178 -->
 <g id="edge3" class="edge">
 <title>doid
 14,220&#45;&#45;mesh
-3,142</title>
+3,178</title>
 <path fill="none" stroke="black" d="M73.79,-261.98C155.49,-285.32 357.87,-343.11 435.27,-365.21"/>
-<text text-anchor="middle" x="260.99" y="-321.82" font-family="Times,serif" font-size="14.00">341</text>
+<text text-anchor="middle" x="260.99" y="-321.82" font-family="Times,serif" font-size="14.00">296</text>
 </g>
 <!-- ncit
 20,522 -->
@@ -91,7 +91,7 @@
 14,220&#45;&#45;ncit
 20,522</title>
 <path fill="none" stroke="black" d="M75.07,-245.55C124.45,-237.11 215.76,-222.78 294.37,-217.5 408.08,-209.86 455.21,-184.04 548.85,-249 571.85,-264.96 586.51,-293.91 594.83,-315.68"/>
-<text text-anchor="middle" x="327.42" y="-220.7" font-family="Times,serif" font-size="14.00">1,929</text>
+<text text-anchor="middle" x="327.42" y="-220.7" font-family="Times,serif" font-size="14.00">1,746</text>
 </g>
 <!-- mondo
 29,826 -->
@@ -110,7 +110,7 @@
 14,220&#45;&#45;mondo
 29,826</title>
 <path fill="none" stroke="black" d="M41.19,-281.17C47.34,-337.75 68.95,-462.81 142.41,-531 305.21,-682.11 612.07,-582.56 713.29,-543.62"/>
-<text text-anchor="middle" x="397.23" y="-615.14" font-family="Times,serif" font-size="14.00">11,539</text>
+<text text-anchor="middle" x="397.23" y="-615.14" font-family="Times,serif" font-size="14.00">11,536</text>
 </g>
 <!-- orphanet.ordo
 15,507 -->
@@ -129,7 +129,7 @@
 14,220&#45;&#45;orphanet.ordo
 15,507</title>
 <path fill="none" stroke="black" d="M53.28,-225.29C70.29,-197.1 101.49,-154.51 142.41,-138 189.01,-119.19 435.98,-106.03 642.51,-173 737.42,-203.78 763.01,-219.63 834.73,-289 864.35,-317.66 888.6,-358.94 902.82,-386.34"/>
-<text text-anchor="middle" x="467.04" y="-142.01" font-family="Times,serif" font-size="14.00">562</text>
+<text text-anchor="middle" x="467.04" y="-142.01" font-family="Times,serif" font-size="14.00">440</text>
 </g>
 <!-- gard
 6,132 -->
@@ -151,42 +151,42 @@
 <text text-anchor="middle" x="109.04" y="-205.7" font-family="Times,serif" font-size="14.00">51</text>
 </g>
 <!-- omim
-14,741 -->
+20,576 -->
 <g id="node9" class="node">
 <title>omim
-14,741</title>
+20,576</title>
 <ellipse fill="none" stroke="black" cx="1095.02" cy="-310" rx="37.83" ry="28.99"/>
 <text text-anchor="middle" x="1095.02" y="-313.2" font-family="Times,serif" font-size="14.00">omim</text>
-<text text-anchor="middle" x="1095.02" y="-296.7" font-family="Times,serif" font-size="14.00">14,741</text>
+<text text-anchor="middle" x="1095.02" y="-296.7" font-family="Times,serif" font-size="14.00">20,576</text>
 </g>
 <!-- doid
 14,220&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge8" class="edge">
 <title>doid
 14,220&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M47.12,-223.68C55.45,-199.53 70.42,-165.28 93.66,-143 110.82,-126.55 119.44,-127.12 142.41,-121 310.71,-76.13 358.29,-83 532.47,-83 532.47,-83 532.47,-83 918.6,-83 1017.72,-83 1068.74,-220.17 1086.54,-281.25"/>
-<text text-anchor="middle" x="533.47" y="-86.2" font-family="Times,serif" font-size="14.00">663</text>
+<text text-anchor="middle" x="533.47" y="-86.2" font-family="Times,serif" font-size="14.00">523</text>
 </g>
 <!-- icd10cm
-2,830 -->
+21,714 -->
 <g id="node10" class="node">
 <title>icd10cm
-2,830</title>
+21,714</title>
 <ellipse fill="none" stroke="black" cx="1235.03" cy="-252" rx="44.72" ry="28.99"/>
 <text text-anchor="middle" x="1235.03" y="-255.2" font-family="Times,serif" font-size="14.00">icd10cm</text>
-<text text-anchor="middle" x="1235.03" y="-238.7" font-family="Times,serif" font-size="14.00">2,830</text>
+<text text-anchor="middle" x="1235.03" y="-238.7" font-family="Times,serif" font-size="14.00">21,714</text>
 </g>
 <!-- doid
 14,220&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge9" class="edge">
 <title>doid
 14,220&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M41.87,-223.09C50.59,-156.9 82.02,0 184.01,0 184.01,0 184.01,0 1096.02,0 1196.53,0 1224.31,-156.12 1231.59,-222.6"/>
-<text text-anchor="middle" x="604.68" y="-3.2" font-family="Times,serif" font-size="14.00">436</text>
+<text text-anchor="middle" x="604.68" y="-3.2" font-family="Times,serif" font-size="14.00">384</text>
 </g>
 <!-- omim.ps
 588 -->
@@ -205,7 +205,7 @@
 14,220&#45;&#45;omim.ps
 588</title>
 <path fill="none" stroke="black" d="M40.37,-281.2C47.04,-393.05 78.08,-788 184.01,-788 184.01,-788 184.01,-788 534.47,-788 734.06,-788 788.51,-804.04 982.48,-757 1005.41,-751.44 1011.05,-748.22 1031.23,-736 1044.08,-728.22 1057.16,-718.03 1068.03,-708.81"/>
-<text text-anchor="middle" x="533.47" y="-791.2" font-family="Times,serif" font-size="14.00">83</text>
+<text text-anchor="middle" x="533.47" y="-791.2" font-family="Times,serif" font-size="14.00">49</text>
 </g>
 <!-- umls
 187,376&#45;&#45;efo
@@ -215,17 +215,17 @@
 187,376&#45;&#45;efo
 2,121</title>
 <path fill="none" stroke="black" d="M195.06,-390.67C204.49,-417.14 221.3,-456.41 245.62,-484 253.77,-493.25 279.2,-509.35 299.38,-521.39"/>
-<text text-anchor="middle" x="260.99" y="-509.99" font-family="Times,serif" font-size="14.00">1,325</text>
+<text text-anchor="middle" x="260.99" y="-509.99" font-family="Times,serif" font-size="14.00">1,322</text>
 </g>
 <!-- umls
 187,376&#45;&#45;mesh
-3,142 -->
+3,178 -->
 <g id="edge12" class="edge">
 <title>umls
 187,376&#45;&#45;mesh
-3,142</title>
+3,178</title>
 <path fill="none" stroke="black" d="M225.22,-372.56C231.98,-373.99 238.96,-375.23 245.62,-376 312.14,-383.71 390.72,-379.94 433.78,-376.79"/>
-<text text-anchor="middle" x="327.42" y="-383.74" font-family="Times,serif" font-size="14.00">665</text>
+<text text-anchor="middle" x="327.42" y="-383.74" font-family="Times,serif" font-size="14.00">303</text>
 </g>
 <!-- umls
 187,376&#45;&#45;ncit
@@ -235,7 +235,7 @@
 187,376&#45;&#45;ncit
 20,522</title>
 <path fill="none" stroke="black" d="M226.85,-355.45C286.71,-346.56 401.82,-332.21 500.1,-336 522.26,-336.85 547.04,-338.73 566.8,-340.46"/>
-<text text-anchor="middle" x="397.23" y="-341.73" font-family="Times,serif" font-size="14.00">4,423</text>
+<text text-anchor="middle" x="397.23" y="-341.73" font-family="Times,serif" font-size="14.00">2,200</text>
 </g>
 <!-- umls
 187,376&#45;&#45;mondo
@@ -245,7 +245,7 @@
 187,376&#45;&#45;mondo
 29,826</title>
 <path fill="none" stroke="black" d="M217.53,-381.26C254.72,-403.17 319.04,-438.56 378.48,-459 495.43,-499.22 641.57,-518.85 709.15,-526.3"/>
-<text text-anchor="middle" x="467.04" y="-495.17" font-family="Times,serif" font-size="14.00">19,288</text>
+<text text-anchor="middle" x="467.04" y="-495.17" font-family="Times,serif" font-size="14.00">19,286</text>
 </g>
 <!-- umls
 187,376&#45;&#45;orphanet.ordo
@@ -255,27 +255,27 @@
 187,376&#45;&#45;orphanet.ordo
 15,507</title>
 <path fill="none" stroke="black" d="M221.48,-346.65C323.31,-305.06 622.87,-200.17 834.73,-306 867.97,-322.61 891.23,-359.84 904.25,-386.15"/>
-<text text-anchor="middle" x="533.47" y="-269.7" font-family="Times,serif" font-size="14.00">870</text>
+<text text-anchor="middle" x="533.47" y="-269.7" font-family="Times,serif" font-size="14.00">694</text>
 </g>
 <!-- umls
 187,376&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge16" class="edge">
 <title>umls
 187,376&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M213.86,-340.57C234.86,-325.5 264.99,-306.09 294.37,-295 523.82,-208.36 595.79,-127.63 834.73,-183 925.06,-203.94 1020.25,-260.94 1066.09,-290.94"/>
-<text text-anchor="middle" x="604.68" y="-186.69" font-family="Times,serif" font-size="14.00">2,590</text>
+<text text-anchor="middle" x="604.68" y="-186.69" font-family="Times,serif" font-size="14.00">1,063</text>
 </g>
 <!-- umls
 187,376&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge17" class="edge">
 <title>umls
 187,376&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M209.29,-338C232.7,-313.47 266.68,-276.67 276.37,-260 288.86,-238.49 279.3,-226.8 294.37,-207 371.87,-105.13 404.48,-45 532.47,-45 532.47,-45 532.47,-45 1096.02,-45 1180.67,-45 1216.6,-166.34 1228.79,-223.22"/>
-<text text-anchor="middle" x="675.88" y="-48.2" font-family="Times,serif" font-size="14.00">772</text>
+<text text-anchor="middle" x="675.88" y="-48.2" font-family="Times,serif" font-size="14.00">368</text>
 </g>
 <!-- umls
 187,376&#45;&#45;omim.ps
@@ -285,17 +285,17 @@
 187,376&#45;&#45;omim.ps
 588</title>
 <path fill="none" stroke="black" d="M205.47,-387.74C213.46,-399.46 222.11,-413.86 227.62,-428 243.84,-469.68 227.43,-486.14 245.62,-527 301.39,-652.31 328.88,-743 466.04,-743 466.04,-743 466.04,-743 918.6,-743 969.6,-743 1024.92,-720.63 1059.52,-703.67"/>
-<text text-anchor="middle" x="604.68" y="-746.2" font-family="Times,serif" font-size="14.00">93</text>
+<text text-anchor="middle" x="604.68" y="-746.2" font-family="Times,serif" font-size="14.00">53</text>
 </g>
 <!-- efo
 2,121&#45;&#45;mesh
-3,142 -->
+3,178 -->
 <g id="edge19" class="edge">
 <title>efo
 2,121&#45;&#45;mesh
-3,142</title>
+3,178</title>
 <path fill="none" stroke="black" d="M345.06,-512.3C354.46,-498.76 366.67,-481.85 378.48,-467.5 399.67,-441.74 426.09,-414.07 444.34,-395.57"/>
-<text text-anchor="middle" x="397.23" y="-470.7" font-family="Times,serif" font-size="14.00">402</text>
+<text text-anchor="middle" x="397.23" y="-470.7" font-family="Times,serif" font-size="14.00">400</text>
 </g>
 <!-- efo
 2,121&#45;&#45;ncit
@@ -305,7 +305,7 @@
 2,121&#45;&#45;ncit
 20,522</title>
 <path fill="none" stroke="black" d="M357.31,-524.1C375.69,-514.86 399.11,-501.06 415.98,-484 427.05,-472.81 422.95,-464.73 433.98,-453.5 439.23,-448.16 542.6,-387.13 548.85,-383 558,-376.94 567.83,-370.07 576.6,-363.81"/>
-<text text-anchor="middle" x="467.04" y="-456.7" font-family="Times,serif" font-size="14.00">922</text>
+<text text-anchor="middle" x="467.04" y="-456.7" font-family="Times,serif" font-size="14.00">924</text>
 </g>
 <!-- efo
 2,121&#45;&#45;mondo
@@ -315,7 +315,7 @@
 2,121&#45;&#45;mondo
 29,826</title>
 <path fill="none" stroke="black" d="M360.89,-536.46C437.17,-535.18 627.5,-531.99 708.82,-530.63"/>
-<text text-anchor="middle" x="533.47" y="-537.02" font-family="Times,serif" font-size="14.00">1,408</text>
+<text text-anchor="middle" x="533.47" y="-537.02" font-family="Times,serif" font-size="14.00">1,399</text>
 </g>
 <!-- efo
 2,121&#45;&#45;orphanet.ordo
@@ -325,27 +325,27 @@
 2,121&#45;&#45;orphanet.ordo
 15,507</title>
 <path fill="none" stroke="black" d="M357.39,-549.96C434.44,-582.31 647.98,-657.74 785.98,-568 819.93,-545.92 815.86,-526.84 834.73,-491 844.19,-473.03 838.98,-463.95 852.73,-449 857.66,-443.64 863.63,-438.96 869.93,-434.93"/>
-<text text-anchor="middle" x="604.68" y="-613.65" font-family="Times,serif" font-size="14.00">271</text>
+<text text-anchor="middle" x="604.68" y="-613.65" font-family="Times,serif" font-size="14.00">268</text>
 </g>
 <!-- efo
 2,121&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge23" class="edge">
 <title>efo
 2,121&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M348.07,-560.09C352.63,-566.27 357.12,-573.14 360.48,-580 373.67,-606.92 354.62,-626.85 378.48,-645 451.03,-700.19 698.52,-623.69 785.98,-598 874.65,-571.96 913.9,-591.95 982.48,-530 1020.66,-495.51 1014.72,-473.73 1031.23,-425 1043.07,-390.07 1029.33,-375.05 1049.23,-344 1053.24,-337.75 1058.81,-332.22 1064.67,-327.53"/>
 <text text-anchor="middle" x="675.88" y="-635.94" font-family="Times,serif" font-size="14.00">101</text>
 </g>
 <!-- efo
 2,121&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge24" class="edge">
 <title>efo
 2,121&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M332.08,-566.2C337.53,-600.52 350.33,-657.99 378.48,-699 423.19,-764.13 444.26,-780.91 518.1,-809 643.04,-856.54 684.67,-827 818.35,-827 818.35,-827 818.35,-827 1096.02,-827 1209.46,-827 1229.89,-398.48 1233.35,-281.3"/>
-<text text-anchor="middle" x="747.62" y="-835.94" font-family="Times,serif" font-size="14.00">280</text>
+<text text-anchor="middle" x="747.62" y="-835.94" font-family="Times,serif" font-size="14.00">279</text>
 </g>
 <!-- efo
 2,121&#45;&#45;omim.ps
@@ -358,44 +358,44 @@
 <text text-anchor="middle" x="675.88" y="-700.2" font-family="Times,serif" font-size="14.00">22</text>
 </g>
 <!-- mesh
-3,142&#45;&#45;ncit
+3,178&#45;&#45;ncit
 20,522 -->
 <g id="edge26" class="edge">
 <title>mesh
-3,142&#45;&#45;ncit
+3,178&#45;&#45;ncit
 20,522</title>
 <path fill="none" stroke="black" d="M499.5,-367.04C520,-362.51 546.8,-356.58 568.08,-351.87"/>
-<text text-anchor="middle" x="533.47" y="-365.77" font-family="Times,serif" font-size="14.00">401</text>
+<text text-anchor="middle" x="533.47" y="-365.77" font-family="Times,serif" font-size="14.00">355</text>
 </g>
 <!-- mesh
-3,142&#45;&#45;mondo
+3,178&#45;&#45;mondo
 29,826 -->
 <g id="edge27" class="edge">
 <title>mesh
-3,142&#45;&#45;mondo
+3,178&#45;&#45;mondo
 29,826</title>
 <path fill="none" stroke="black" d="M490.3,-394.88C498.59,-401.92 508.36,-409.4 518.1,-415 569.26,-444.43 589.18,-436.18 642.51,-461.5 665.18,-472.27 670.23,-476.3 691.26,-490 700.69,-496.15 710.75,-503.24 719.67,-509.73"/>
-<text text-anchor="middle" x="604.68" y="-464.7" font-family="Times,serif" font-size="14.00">878</text>
+<text text-anchor="middle" x="604.68" y="-464.7" font-family="Times,serif" font-size="14.00">868</text>
 </g>
 <!-- mesh
-3,142&#45;&#45;orphanet.ordo
+3,178&#45;&#45;orphanet.ordo
 15,507 -->
 <g id="edge28" class="edge">
 <title>mesh
-3,142&#45;&#45;orphanet.ordo
+3,178&#45;&#45;orphanet.ordo
 15,507</title>
 <path fill="none" stroke="black" d="M499.76,-380.06C505.83,-381.12 512.15,-382.15 518.1,-383 594.71,-393.97 615.05,-387.97 691.26,-401.5 699.38,-402.94 701.1,-404.82 709.26,-406 756.86,-412.91 811.2,-415.06 852.31,-415.54"/>
-<text text-anchor="middle" x="675.88" y="-404.7" font-family="Times,serif" font-size="14.00">137</text>
+<text text-anchor="middle" x="675.88" y="-404.7" font-family="Times,serif" font-size="14.00">123</text>
 </g>
 <!-- mesh
-3,142&#45;&#45;icd10cm
-2,830 -->
+3,178&#45;&#45;icd10cm
+21,714 -->
 <g id="edge29" class="edge">
 <title>mesh
-3,142&#45;&#45;icd10cm
-2,830</title>
+3,178&#45;&#45;icd10cm
+21,714</title>
 <path fill="none" stroke="black" d="M470.16,-344.98C476.75,-278.52 503,-121 603.68,-121 603.68,-121 603.68,-121 1096.02,-121 1155.48,-121 1199.55,-185.76 1220.48,-224.22"/>
-<text text-anchor="middle" x="819.35" y="-124.2" font-family="Times,serif" font-size="14.00">214</text>
+<text text-anchor="middle" x="819.35" y="-124.2" font-family="Times,serif" font-size="14.00">187</text>
 </g>
 <!-- ncit
 20,522&#45;&#45;mondo
@@ -415,27 +415,27 @@
 20,522&#45;&#45;orphanet.ordo
 15,507</title>
 <path fill="none" stroke="black" d="M641.35,-352.51C647.73,-354.02 654.31,-355.56 660.51,-357 728.56,-372.77 806.91,-390.45 858.85,-402.09"/>
-<text text-anchor="middle" x="747.62" y="-388.66" font-family="Times,serif" font-size="14.00">567</text>
+<text text-anchor="middle" x="747.62" y="-388.66" font-family="Times,serif" font-size="14.00">429</text>
 </g>
 <!-- ncit
 20,522&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge32" class="edge">
 <title>ncit
 20,522&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M641.29,-335.81C647.67,-334.45 654.27,-333.13 660.51,-332 723.89,-320.55 739.74,-316.23 803.98,-311.5 894.62,-304.82 1001.63,-306.81 1056.87,-308.57"/>
-<text text-anchor="middle" x="819.35" y="-314.7" font-family="Times,serif" font-size="14.00">198</text>
+<text text-anchor="middle" x="819.35" y="-314.7" font-family="Times,serif" font-size="14.00">127</text>
 </g>
 <!-- ncit
 20,522&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge33" class="edge">
 <title>ncit
 20,522&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M638.74,-330.78C658.83,-323.27 685.16,-314.33 709.26,-309 884.64,-270.22 1099.08,-257.41 1189.96,-253.54"/>
-<text text-anchor="middle" x="917.6" y="-286.22" font-family="Times,serif" font-size="14.00">493</text>
+<text text-anchor="middle" x="917.6" y="-286.22" font-family="Times,serif" font-size="14.00">420</text>
 </g>
 <!-- ncit
 20,522&#45;&#45;omim.ps
@@ -445,7 +445,7 @@
 20,522&#45;&#45;omim.ps
 588</title>
 <path fill="none" stroke="black" d="M642.94,-343.17C741.27,-341.35 1002.23,-338.95 1031.23,-364 1053.42,-383.16 1080.66,-580.27 1090.37,-655.79"/>
-<text text-anchor="middle" x="819.35" y="-346.02" font-family="Times,serif" font-size="14.00">48</text>
+<text text-anchor="middle" x="819.35" y="-346.02" font-family="Times,serif" font-size="14.00">23</text>
 </g>
 <!-- mondo
 29,826&#45;&#45;orphanet.ordo
@@ -459,23 +459,23 @@
 </g>
 <!-- mondo
 29,826&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge36" class="edge">
 <title>mondo
 29,826&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M785.88,-524.99C834.94,-516.87 922.03,-497.07 982.48,-453 1012.24,-431.31 1013.03,-418.01 1031.23,-386 1041.27,-368.35 1036.73,-360 1049.23,-344 1053.8,-338.15 1059.6,-332.78 1065.5,-328.12"/>
-<text text-anchor="middle" x="917.6" y="-513.05" font-family="Times,serif" font-size="14.00">9,872</text>
+<text text-anchor="middle" x="917.6" y="-513.05" font-family="Times,serif" font-size="14.00">9,870</text>
 </g>
 <!-- mondo
 29,826&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge37" class="edge">
 <title>mondo
 29,826&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M785.12,-537.29C832.23,-545.07 916.03,-553.39 982.48,-530 1066.28,-500.51 1081.8,-474.41 1140.8,-408 1176.22,-368.14 1205.5,-312.92 1221.31,-279.99"/>
-<text text-anchor="middle" x="1015.86" y="-526.43" font-family="Times,serif" font-size="14.00">1,145</text>
+<text text-anchor="middle" x="1015.86" y="-526.43" font-family="Times,serif" font-size="14.00">1,143</text>
 </g>
 <!-- mondo
 29,826&#45;&#45;omim.ps
@@ -489,23 +489,23 @@
 </g>
 <!-- orphanet.ordo
 15,507&#45;&#45;omim
-14,741 -->
+20,576 -->
 <g id="edge39" class="edge">
 <title>orphanet.ordo
 15,507&#45;&#45;omim
-14,741</title>
+20,576</title>
 <path fill="none" stroke="black" d="M957.53,-391.7C989.83,-372.36 1035.07,-345.28 1064.46,-327.69"/>
-<text text-anchor="middle" x="1015.86" y="-368.85" font-family="Times,serif" font-size="14.00">144</text>
+<text text-anchor="middle" x="1015.86" y="-368.85" font-family="Times,serif" font-size="14.00">104</text>
 </g>
 <!-- orphanet.ordo
 15,507&#45;&#45;icd10cm
-2,830 -->
+21,714 -->
 <g id="edge40" class="edge">
 <title>orphanet.ordo
 15,507&#45;&#45;icd10cm
-2,830</title>
+21,714</title>
 <path fill="none" stroke="black" d="M979.42,-405.93C1026.33,-396.82 1091.35,-379.48 1140.8,-348 1170.2,-329.28 1197.15,-299.54 1214.43,-278.12"/>
-<text text-anchor="middle" x="1095.02" y="-391.16" font-family="Times,serif" font-size="14.00">177</text>
+<text text-anchor="middle" x="1095.02" y="-391.16" font-family="Times,serif" font-size="14.00">155</text>
 </g>
 <!-- orphanet.ordo
 15,507&#45;&#45;omim.ps
@@ -515,17 +515,17 @@
 15,507&#45;&#45;omim.ps
 588</title>
 <path fill="none" stroke="black" d="M944.32,-441.91C957.85,-457.63 973.47,-478.56 982.48,-500 1003.04,-548.91 972.74,-572.78 1000.48,-618 1002.52,-621.32 1036.81,-645.47 1063.28,-663.84"/>
-<text text-anchor="middle" x="1015.86" y="-643.41" font-family="Times,serif" font-size="14.00">57</text>
+<text text-anchor="middle" x="1015.86" y="-643.41" font-family="Times,serif" font-size="14.00">32</text>
 </g>
 <!-- omim
-14,741&#45;&#45;icd10cm
-2,830 -->
+20,576&#45;&#45;icd10cm
+21,714 -->
 <g id="edge42" class="edge">
 <title>omim
-14,741&#45;&#45;icd10cm
-2,830</title>
+20,576&#45;&#45;icd10cm
+21,714</title>
 <path fill="none" stroke="black" d="M1128.72,-296.25C1149.29,-287.61 1175.87,-276.44 1197.18,-267.49"/>
-<text text-anchor="middle" x="1165.55" y="-285.94" font-family="Times,serif" font-size="14.00">49</text>
+<text text-anchor="middle" x="1165.55" y="-285.94" font-family="Times,serif" font-size="14.00">41</text>
 </g>
 </g>
 </svg>

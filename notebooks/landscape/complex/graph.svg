@@ -94,42 +94,42 @@
 <text text-anchor="middle" x="320.05" y="-419.2" font-family="Times,serif" font-size="14.00">66</text>
 </g>
 <!-- intact
-3,315 -->
+3,326 -->
 <g id="node6" class="node">
 <title>intact
-3,315</title>
+3,326</title>
 <ellipse fill="none" stroke="black" cx="695.81" cy="-174" rx="33.06" ry="28.99"/>
 <text text-anchor="middle" x="695.81" y="-177.2" font-family="Times,serif" font-size="14.00">intact</text>
-<text text-anchor="middle" x="695.81" y="-160.7" font-family="Times,serif" font-size="14.00">3,315</text>
+<text text-anchor="middle" x="695.81" y="-160.7" font-family="Times,serif" font-size="14.00">3,326</text>
 </g>
 <!-- fplx
 782&#45;&#45;intact
-3,315 -->
+3,326 -->
 <g id="edge5" class="edge">
 <title>fplx
 782&#45;&#45;intact
-3,315</title>
+3,326</title>
 <path fill="none" stroke="black" d="M54.22,-224.02C98.69,-218.73 191.62,-206.68 269,-190 315.06,-180.07 325.32,-172.6 371.11,-161.5 385,-158.13 388.43,-156.77 402.61,-155 441.62,-150.12 451.67,-151.89 490.97,-151 559.37,-149.45 578.71,-140.14 644.76,-158 651.19,-159.74 658.02,-161.79 664.5,-163.83"/>
-<text text-anchor="middle" x="377.86" y="-164.7" font-family="Times,serif" font-size="14.00">6</text>
+<text text-anchor="middle" x="377.86" y="-164.7" font-family="Times,serif" font-size="14.00">5</text>
 </g>
 <!-- wikidata
-5,176 -->
+5,164 -->
 <g id="node7" class="node">
 <title>wikidata
-5,176</title>
+5,164</title>
 <ellipse fill="none" stroke="black" cx="839.82" cy="-224" rx="44.19" ry="28.99"/>
 <text text-anchor="middle" x="839.82" y="-227.2" font-family="Times,serif" font-size="14.00">wikidata</text>
-<text text-anchor="middle" x="839.82" y="-210.7" font-family="Times,serif" font-size="14.00">5,176</text>
+<text text-anchor="middle" x="839.82" y="-210.7" font-family="Times,serif" font-size="14.00">5,164</text>
 </g>
 <!-- fplx
 782&#45;&#45;wikidata
-5,176 -->
+5,164 -->
 <g id="edge6" class="edge">
 <title>fplx
 782&#45;&#45;wikidata
-5,176</title>
+5,164</title>
 <path fill="none" stroke="black" d="M31.5,-198.25C40.71,-137.17 71.55,0 162.75,0 162.75,0 162.75,0 696.81,0 788.21,0 823.25,-134.68 834.38,-195.17"/>
-<text text-anchor="middle" x="437.79" y="-3.2" font-family="Times,serif" font-size="14.00">424</text>
+<text text-anchor="middle" x="437.79" y="-3.2" font-family="Times,serif" font-size="14.00">411</text>
 </g>
 <!-- complexportal
 4,921&#45;&#45;go
@@ -139,7 +139,7 @@
 4,921&#45;&#45;go
 2,064</title>
 <path fill="none" stroke="black" d="M199.38,-163.91C228.17,-184.62 268.44,-213.59 294.14,-232.08"/>
-<text text-anchor="middle" x="258.87" y="-214.13" font-family="Times,serif" font-size="14.00">3</text>
+<text text-anchor="middle" x="258.87" y="-214.13" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- complexportal
 4,921&#45;&#45;scomp
@@ -153,21 +153,21 @@
 </g>
 <!-- complexportal
 4,921&#45;&#45;intact
-3,315 -->
+3,326 -->
 <g id="edge9" class="edge">
 <title>complexportal
 4,921&#45;&#45;intact
-3,315</title>
+3,326</title>
 <path fill="none" stroke="black" d="M209.19,-117.39C239.43,-104.65 280.76,-91 319.05,-91 319.05,-91 319.05,-91 577.49,-91 618.66,-91 655.5,-125.48 676.48,-149.99"/>
 <text text-anchor="middle" x="437.79" y="-94.2" font-family="Times,serif" font-size="14.00">3,315</text>
 </g>
 <!-- complexportal
 4,921&#45;&#45;wikidata
-5,176 -->
+5,164 -->
 <g id="edge10" class="edge">
 <title>complexportal
 4,921&#45;&#45;wikidata
-5,176</title>
+5,164</title>
 <path fill="none" stroke="black" d="M189.76,-111.81C218.16,-84.05 267.3,-45 319.05,-45 319.05,-45 319.05,-45 696.81,-45 772.58,-45 814.34,-144.64 830.65,-195.24"/>
 <text text-anchor="middle" x="506.34" y="-48.2" font-family="Times,serif" font-size="14.00">4,761</text>
 </g>
@@ -189,27 +189,27 @@
 2,064&#45;&#45;scomp
 135</title>
 <path fill="none" stroke="black" d="M351.93,-259.05C358.25,-260.79 364.88,-262.52 371.11,-264 430.03,-277.98 499.35,-290.79 540.23,-297.98"/>
-<text text-anchor="middle" x="437.79" y="-288.24" font-family="Times,serif" font-size="14.00">27</text>
+<text text-anchor="middle" x="437.79" y="-288.24" font-family="Times,serif" font-size="14.00">25</text>
 </g>
 <!-- go
 2,064&#45;&#45;intact
-3,315 -->
+3,326 -->
 <g id="edge13" class="edge">
 <title>go
 2,064&#45;&#45;intact
-3,315</title>
+3,326</title>
 <path fill="none" stroke="black" d="M337.74,-225.4C348.73,-210.02 362.61,-192.35 371.11,-188 467.76,-138.55 602.67,-155.71 663.21,-167.14"/>
-<text text-anchor="middle" x="506.34" y="-159.51" font-family="Times,serif" font-size="14.00">3</text>
+<text text-anchor="middle" x="506.34" y="-159.51" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- go
 2,064&#45;&#45;wikidata
-5,176 -->
+5,164 -->
 <g id="edge14" class="edge">
 <title>go
 2,064&#45;&#45;wikidata
-5,176</title>
+5,164</title>
 <path fill="none" stroke="black" d="M353.44,-248.37C442.99,-243.88 694,-231.27 795.45,-226.18"/>
-<text text-anchor="middle" x="576.49" y="-242.03" font-family="Times,serif" font-size="14.00">45</text>
+<text text-anchor="middle" x="576.49" y="-242.03" font-family="Times,serif" font-size="14.00">43</text>
 </g>
 <!-- signor
 852&#45;&#45;scomp
@@ -219,47 +219,47 @@
 852&#45;&#45;scomp
 135</title>
 <path fill="none" stroke="black" d="M467,-342.28C474.63,-338.13 482.99,-333.89 490.97,-330.5 507.1,-323.64 525.63,-317.64 541.21,-313.09"/>
-<text text-anchor="middle" x="506.34" y="-333.7" font-family="Times,serif" font-size="14.00">16</text>
+<text text-anchor="middle" x="506.34" y="-333.7" font-family="Times,serif" font-size="14.00">14</text>
 </g>
 <!-- signor
 852&#45;&#45;wikidata
-5,176 -->
+5,164 -->
 <g id="edge16" class="edge">
 <title>signor
 852&#45;&#45;wikidata
-5,176</title>
+5,164</title>
 <path fill="none" stroke="black" d="M473.22,-358.87C529.46,-357.38 643.36,-349.05 728.87,-308 761.14,-292.51 793.09,-266.6 814.16,-247.64"/>
-<text text-anchor="middle" x="638.01" y="-343.41" font-family="Times,serif" font-size="14.00">97</text>
+<text text-anchor="middle" x="638.01" y="-343.41" font-family="Times,serif" font-size="14.00">86</text>
 </g>
 <!-- scomp
 135&#45;&#45;intact
-3,315 -->
+3,326 -->
 <g id="edge17" class="edge">
 <title>scomp
 135&#45;&#45;intact
-3,315</title>
+3,326</title>
 <path fill="none" stroke="black" d="M598.73,-280.46C620.26,-256.6 653.33,-219.97 674.51,-196.5"/>
 <text text-anchor="middle" x="638.01" y="-246.1" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- scomp
 135&#45;&#45;wikidata
-5,176 -->
+5,164 -->
 <g id="edge18" class="edge">
 <title>scomp
 135&#45;&#45;wikidata
-5,176</title>
+5,164</title>
 <path fill="none" stroke="black" d="M612.92,-297.87C653.5,-290.27 721.6,-275.74 777.62,-255 786.89,-251.57 796.58,-247.1 805.45,-242.64"/>
-<text text-anchor="middle" x="695.81" y="-290.47" font-family="Times,serif" font-size="14.00">72</text>
+<text text-anchor="middle" x="695.81" y="-290.47" font-family="Times,serif" font-size="14.00">60</text>
 </g>
 <!-- intact
-3,315&#45;&#45;wikidata
-5,176 -->
+3,326&#45;&#45;wikidata
+5,164 -->
 <g id="edge19" class="edge">
 <title>intact
-3,315&#45;&#45;wikidata
-5,176</title>
+3,326&#45;&#45;wikidata
+5,164</title>
 <path fill="none" stroke="black" d="M726.93,-184.6C748.34,-192.14 777.28,-202.33 800.36,-210.46"/>
-<text text-anchor="middle" x="762.25" y="-205.19" font-family="Times,serif" font-size="14.00">3,046</text>
+<text text-anchor="middle" x="762.25" y="-205.19" font-family="Times,serif" font-size="14.00">2,042</text>
 </g>
 </g>
 </svg>

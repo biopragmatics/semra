@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from typing import cast, overload
 
+import bioregistry
 import networkx as nx
 import pandas as pd
 import ssslm
@@ -138,11 +139,11 @@ def get_test_reference(n: int, prefix: str) -> list[Reference]: ...
 def get_test_reference(n: None, prefix: str) -> Reference: ...
 
 
-def get_test_reference(n: int | None = None, prefix: str = "test") -> Reference | list[Reference]:
+def get_test_reference(n: int | None = None, prefix: str = "go") -> Reference | list[Reference]:
     """Get test reference(s)."""
     if isinstance(n, int):
-        return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
-    return Reference(prefix=prefix, identifier="1")
+        return [Reference(prefix=prefix, identifier=str(i + 1).zfill(7)) for i in range(n)]
+    return Reference(prefix=prefix, identifier="0000001")
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]:
@@ -717,8 +718,20 @@ def infer_mutations(
     return rv
 
 
+def _cleanup_prefixes(x: str | Iterable[str]) -> set[str]:
+    if isinstance(x, str):
+        x = [x]
+    rv = set()
+    for prefix in x:
+        norm_prefix = bioregistry.normalize_prefix(prefix)
+        if norm_prefix is None:
+            raise ValueError
+        rv.add(norm_prefix)
+    return rv
+
+
 def keep_prefixes(
-    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes.
 
@@ -735,7 +748,7 @@ def keep_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_prefixes([m1, m2, m3], {"DOID", "mesh"}) == [m1]
     """
-    prefixes = set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(
@@ -763,7 +776,7 @@ def keep_subject_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_subject_prefixes([m1, m2, m3], {"DOID"})
     """
-    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
@@ -789,7 +802,7 @@ def keep_object_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_object_prefixes([m1, m2, m3], {"mesh"}) == [m1]
     """
-    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc="Filtering object prefixes", progress=progress)
@@ -798,10 +811,10 @@ def keep_object_prefixes(
 
 
 def filter_prefixes(
-    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
-    prefixes = set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(

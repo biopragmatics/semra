@@ -659,6 +659,7 @@ def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], f
         rv[p1_norm, p2_norm] = v
     return rv
 
+
 def infer_mutations(
     mappings: Iterable[Mapping],
     pairs: dict[tuple[str, str], float],
@@ -1022,6 +1023,7 @@ def _clean_priority_prefixes(priority: list[str]) -> list[str]:
             raise ValueError
         rv.append(np)
     return rv
+
 
 def get_priority_reference(
     component: t.Iterable[Reference], priority: list[str]

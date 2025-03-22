@@ -219,8 +219,7 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_evidence, get_test_reference
-    >>> r1 = get_test_reference(prefix="p1")
-    >>> r2 = get_test_reference(prefix="p2")
+    >>> r1, r2 = get_test_reference(2)
     >>> e1, e2 = get_test_evidence(2)
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
     >>> m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
@@ -253,8 +252,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 
     >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
     >>> from semra.api import get_test_evidence, get_test_reference
-    >>> r1 = get_test_reference(prefix="p1")
-    >>> r2 = get_test_reference(prefix="p2")
+    >>> r1, r2 = get_test_reference(2)
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
     >>> mappings = list(infer_reversible([m1]))
@@ -271,8 +269,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> from semra import Mapping, Reference, EXACT_MATCH
         >>> from semra.api import get_test_evidence
         >>> from semra.api import get_test_evidence, get_test_reference
-        >>> r1 = get_test_reference(prefix="p1")
-        >>> r2 = get_test_reference(prefix="p2")
+        >>> r1, r2 = get_test_reference(2)
         >>> e1, e2 = get_test_evidence(2)
         >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
@@ -586,6 +583,7 @@ def infer_mutual_dbxref_mutations(
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
     is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
     """
+    prefixes = _cleanup_prefixes(prefixes)
     pairs = {
         (subject_prefix, object_prefix)
         for subject_prefix, object_prefix in itt.product(prefixes, repeat=2)
@@ -650,6 +648,18 @@ def infer_dbxref_mutations(
     )
 
 
+def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], float]:
+    rv = {}
+    for (p1, p2), v in pairs.items():
+        p1_norm = bioregistry.normalize_prefix(p1)
+        if p1_norm is None:
+            raise ValueError
+        p2_norm = bioregistry.normalize_prefix(p2)
+        if p2_norm is None:
+            raise ValueError
+        rv[p1, p2] = v
+    return rv
+
 def infer_mutations(
     mappings: Iterable[Mapping],
     pairs: dict[tuple[str, str], float],
@@ -676,6 +686,7 @@ def infer_mutations(
     so the example mapping ``m2`` comes along for the ride.
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.rules import KNOWLEDGE_MAPPING
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
@@ -689,8 +700,10 @@ def infer_mutations(
     ...         )
     ...     ],
     ... )  # this is what we are inferring  # this is what we are inferring
-    >>> assert infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
+    >>> mappings = infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH)
+    >>> assert mappings == [m1, m3, m2], mappings
     """
+    pairs = _clean_pairs(pairs)
     rv = []
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
@@ -972,6 +985,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.p == EXACT_MATCH]
     exact_mappings = len(mappings)
+    priority = _clean_priority_prefixes(priority)
 
     graph = to_digraph(mappings).to_undirected()
     rv: list[Mapping] = []
@@ -1001,6 +1015,15 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     return rv
 
 
+def _clean_priority_prefixes(priority: list[str]) -> list[str]:
+    rv = []
+    for p in priority:
+        np = bioregistry.normalize_prefix(p)
+        if np is None:
+            raise ValueError
+        rv.append(np)
+    return rv
+
 def get_priority_reference(
     component: t.Iterable[Reference], priority: list[str]
 ) -> Reference | None:
@@ -1013,24 +1036,20 @@ def get_priority_reference(
         If multiple references have the highest priority prefix, returns the first one encountered.
         If none have a priority prefix, return None.
 
-    >>> from curies import Reference
+    >>> from semra import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
     >>> references = [Reference.from_curie(curie) for curie in curies]
     >>> get_priority_reference(references, ["mesh", "umls"]).curie
     'mesh:C562966'
     >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
-    'DOID:0050577'
+    'doid:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
 
     """
     prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
     for reference in component:
         prefix_to_references[reference.prefix].append(reference)
-    for prefix in priority:
-        norm_prefix = bioregistry.normalize_prefix(prefix)
-        if norm_prefix is None:
-            raise ValueError
-        prefix = norm_prefix
+    for prefix in _clean_priority_prefixes(priority):
         references = prefix_to_references.get(prefix, [])
         if not references:
             continue
@@ -1159,7 +1178,7 @@ def hydrate_subsets(
 
     .. code-block:: python
 
-        from curies import Reference
+        from semra import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         configuration = {
@@ -1220,7 +1239,7 @@ def filter_subsets(
 
     .. code-block:: python
 
-        from curies import Reference
+        from semra import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         mappings = [...]

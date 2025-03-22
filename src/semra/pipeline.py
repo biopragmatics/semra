@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 import time
 import typing as t
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal
 
 import click
 import requests
-from curies import NamedReference
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
 
@@ -100,7 +100,7 @@ class Configuration(BaseModel):
     description: str | None = Field(
         None, description="An explanation of the purpose of the mapping set configuration"
     )
-    creators: list[NamedReference] = Field(
+    creators: list[Reference] = Field(
         default_factory=list, description="A list of the ORCID identifiers for creators"
     )
     inputs: list[Input] = Field(..., description="A list of sources of mappings")
@@ -527,7 +527,9 @@ def get_mappings_from_config(
     return prioritized_mappings
 
 
-def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, bool]:
+def _get_equivalence_classes(
+    mappings: Iterable[Mapping], prioritized_mappings: Iterable[Mapping]
+) -> dict[Reference, bool]:
     priority_references = {mapping.o for mapping in prioritized_mappings}
     rv = {}
     for mapping in mappings:
@@ -589,6 +591,8 @@ def get_raw_mappings(
             func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
             mappings.extend(func())
         elif inp.source == "wikidata":
+            if inp.prefix is None:
+                raise ValueError("prefix is required to be set when wikidata is used as a source")
             mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
         elif inp.source == "sssom":
             mappings.extend(from_sssom(inp.prefix, **inp.extras))

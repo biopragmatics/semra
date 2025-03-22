@@ -11,10 +11,10 @@ from itertools import islice
 from typing import Annotated, ClassVar, Literal
 
 import pydantic
-from curies import Reference
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pydantic.types import UUID4
+from pyobo import Reference
 
 __all__ = [
     "Evidence",

@@ -14,11 +14,11 @@ import pandas as pd
 import pyobo
 import seaborn as sns
 import upsetplot
-from curies import Reference
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 from pyobo.sources.mesh import get_mesh_category_curies
 
+from semra import Reference
 from semra.api import (
     aggregate_components,
     count_component_sizes,
@@ -742,4 +742,4 @@ class LandscapeResult:
         # since we're in a log scale, pad half of the max value to the top to make sure
         # the counts fit in the box
         a, b = ax.get_ylim()
-        ax.set_ylim([a, b + top_ratio * max(self.distribution.values())])
+        ax.set_ylim((a, b + top_ratio * max(self.distribution.values())))

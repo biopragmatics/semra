@@ -106,14 +106,14 @@ def build(include_wikidata: bool, upload: bool) -> None:
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
 
-    it = tqdm(list(SOURCE_RESOLVER), unit="source", desc="Custom sources")
-    for func in it:
+    funcs = tqdm(list(SOURCE_RESOLVER), unit="source", desc="Custom sources")
+    for func in funcs:
         start = time.time()
         resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
         if resource_name == "wikidata":
             # this one needs extra informatzi
             continue
-        it.set_postfix(source=resource_name)
+        funcs.set_postfix(source=resource_name)
         with logging_redirect_tqdm():
             resource_mappings = func()
             _write_source(resource_mappings, resource_name)

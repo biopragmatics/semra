@@ -5,18 +5,24 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TypeAlias
 
-from curies import Reference
+import curies
 from curies import vocabulary as v
+from pyobo import Reference
 
-EXACT_MATCH = v.exact_match
-BROAD_MATCH = v.broad_match
-NARROW_MATCH = v.narrow_match
-CLOSE_MATCH = v.close_match
-DB_XREF = v.has_dbxref
+
+def _f(r: curies.NamedReference) -> Reference:
+    return Reference(prefix=r.prefix, identifier=r.identifier, name=r.name)
+
+
+EXACT_MATCH = _f(v.exact_match)
+BROAD_MATCH = _f(v.broad_match)
+NARROW_MATCH = _f(v.narrow_match)
+CLOSE_MATCH = _f(v.close_match)
+DB_XREF = _f(v.has_dbxref)
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
-REPLACED_BY = v.term_replaced_by
+REPLACED_BY = _f(v.term_replaced_by)
 
-RELATIONS = [
+RELATIONS: list[Reference] = [
     EXACT_MATCH,
     DB_XREF,
     BROAD_MATCH,
@@ -26,7 +32,7 @@ RELATIONS = [
     REPLACED_BY,
 ]
 
-IMPRECISE = {DB_XREF, CLOSE_MATCH}
+IMPRECISE: set[Reference] = {DB_XREF, CLOSE_MATCH}
 FLIP = {
     BROAD_MATCH: NARROW_MATCH,
     NARROW_MATCH: BROAD_MATCH,
@@ -36,9 +42,9 @@ FLIP = {
     EQUIVALENT_TO: EQUIVALENT_TO,
 }
 #: Which predicates are transitive? This excludes the imprecise onces
-TRANSITIVE = {BROAD_MATCH, NARROW_MATCH, EXACT_MATCH, EQUIVALENT_TO}
+TRANSITIVE: set[Reference] = {BROAD_MATCH, NARROW_MATCH, EXACT_MATCH, EQUIVALENT_TO}
 #: Which predicates are directionless
-DIRECTIONLESS = {EXACT_MATCH, CLOSE_MATCH, DB_XREF, EQUIVALENT_TO}
+DIRECTIONLESS: set[Reference] = {EXACT_MATCH, CLOSE_MATCH, DB_XREF, EQUIVALENT_TO}
 
 #: Two step chain inference rules
 TWO_STEP: dict[tuple[Reference, Reference], Reference] = {
@@ -48,13 +54,13 @@ TWO_STEP: dict[tuple[Reference, Reference], Reference] = {
     (EXACT_MATCH, NARROW_MATCH): NARROW_MATCH,
 }
 
-MANUAL_MAPPING = v.manual_mapping_curation
-LEXICAL_MAPPING = v.lexical_matching_process
-UNSPECIFIED_MAPPING = v.unspecified_matching_process
-INVERSION_MAPPING = v.mapping_inversion
-CHAIN_MAPPING = v.mapping_chaining
-KNOWLEDGE_MAPPING = v.background_knowledge_based_matching_process
+MANUAL_MAPPING = _f(v.manual_mapping_curation)
+LEXICAL_MAPPING = _f(v.lexical_matching_process)
+UNSPECIFIED_MAPPING = _f(v.unspecified_matching_process)
+INVERSION_MAPPING = _f(v.mapping_inversion)
+CHAIN_MAPPING = _f(v.mapping_chaining)
+KNOWLEDGE_MAPPING = _f(v.background_knowledge_based_matching_process)
 
-BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346")
+BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. Gyori")
 
 SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]

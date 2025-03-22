@@ -1,9 +1,9 @@
 """A configuration for assembling mappings for gene terms."""
 
 import pystow
-from curies import Reference
 from curies.vocabulary import charlie
 
+from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [

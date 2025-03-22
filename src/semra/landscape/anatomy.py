@@ -1,11 +1,11 @@
 """A configuration for assembling mappings for anatomical terms."""
 
 import pystow
-from curies import Reference
 from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
 import semra
+from semra import Reference
 
 __all__ = [
     "CONFIGURATION",

@@ -360,10 +360,12 @@ def _parse_sssom_row(
 
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
-    if p.curie == 'oboinowl:hasDbXref':
-        p = NamedReference(prefix='oboInOwl', identifier='hasDbXref', name='has database cross-reference')
-    elif p.curie == 'skos:exactMatch':
-        p = NamedReference(prefix='skos', identifier='exactMatch', name='exact match')
+    if p.curie == "oboinowl:hasDbXref":
+        p = NamedReference(
+            prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
+        )
+    elif p.curie == "skos:exactMatch":
+        p = NamedReference(prefix="skos", identifier="exactMatch", name="exact match")
     o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     e: dict[str, t.Any] = {
         "justification": justification,

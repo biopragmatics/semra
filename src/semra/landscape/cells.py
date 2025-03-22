@@ -14,9 +14,9 @@ doing the following:
 
 import click
 import pystow
-from curies import Reference
 from curies.vocabulary import charlie
 
+from semra import Reference
 from semra.api import project, str_source_target_counts
 from semra.io import write_sssom
 from semra.pipeline import (

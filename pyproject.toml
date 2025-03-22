@@ -57,13 +57,13 @@ dependencies = [
     "tqdm",
     "more_itertools",
     "networkx",
-    "bioregistry",
+    "bioregistry>=0.12.5",
     "bioontologies",
     "pyobo @ git+https://github.com/biopragmatics/pyobo",
     "typing_extensions",
     "zenodo_client",
     "ssslm",
-    "curies>=0.10.6",
+    "curies>=0.10.9",
     "jinja2",  # used in neo4j generation
 ]
 

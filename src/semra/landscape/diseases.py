@@ -2,10 +2,10 @@
 
 import bioregistry
 import pystow
-from curies import Reference
 from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
+from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
 
 __all__ = [

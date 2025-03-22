@@ -88,6 +88,14 @@ web = [
     "neo4j",
     "biomappings",
 ]
+landscape-notebooks = [
+    "IPython",
+    "jupyter",
+    "upsetplot",
+    "seaborn",
+    "matplotlib",
+    "pygraphviz",
+]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 # and also https://packaging.python.org/en/latest/specifications/well-known-project-urls/

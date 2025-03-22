@@ -3,8 +3,9 @@
   "description": "Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -68,7 +69,10 @@
   ],
   "subsets": {
     "go": [
-      "go:0032991"
+      {
+        "prefix": "go",
+        "identifier": "0032991"
+      }
     ]
   },
   "post_keep_prefixes": [

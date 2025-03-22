@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.metadata
 
 import bioregistry
+from curies import NamedReference
 import pandas as pd
 from pyobo import Reference
 from tqdm.asyncio import tqdm
@@ -74,6 +75,12 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         source_prefix = mapping_dict["source prefix"]
         target_prefix = mapping_dict["target prefix"]
         author = Reference.from_curie(mapping_dict["source"])
+        p = Reference.from_curie(mapping_dict["relation"])
+        if p.curie == 'oboinowl:hasDbXref':
+            p = NamedReference(prefix='oboInOwl', identifier='hasDbXref', name='has database cross-reference')
+        elif p.curie == 'skos:exactMatch':
+            p = NamedReference(prefix='skos', identifier='exactMatch', name='exact match')
+
         mm = Mapping(
             s=Reference(
                 prefix=source_prefix,
@@ -81,7 +88,7 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
                     source_prefix, mapping_dict["source identifier"]
                 ),
             ),
-            p=Reference.from_curie(mapping_dict["relation"]),
+            p=p,
             o=Reference(
                 prefix=target_prefix,
                 identifier=bioregistry.standardize_identifier(

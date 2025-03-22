@@ -23,6 +23,7 @@ from semra.pipeline import (
     BUILD_DOCKER_OPTION,
     REFRESH_PROCESSED_OPTION,
     REFRESH_RAW_OPTION,
+    REFRESH_SOURCE_OPTION,
     UPLOAD_OPTION,
     Configuration,
     Input,
@@ -117,11 +118,21 @@ CONFIGURATION = Configuration(
 @UPLOAD_OPTION
 @REFRESH_RAW_OPTION
 @REFRESH_PROCESSED_OPTION
+@REFRESH_SOURCE_OPTION
 @BUILD_DOCKER_OPTION
-def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
+def main(
+    upload: bool,
+    refresh_source: bool,
+    refresh_raw: bool,
+    refresh_processed: bool,
+    build_docker: bool,
+) -> None:
     """Build the mapping database for cell and cell line terms."""
     mappings = get_mappings_from_config(
-        CONFIGURATION, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+        CONFIGURATION,
+        refresh_raw=refresh_raw,
+        refresh_processed=refresh_processed,
+        refresh_source=refresh_source,
     )
     if build_docker and CONFIGURATION.processed_neo4j_path:
         CONFIGURATION._build_docker()

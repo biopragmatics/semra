@@ -67,6 +67,11 @@ logger = logging.getLogger(__name__)
 UPLOAD_OPTION = click.option("--upload", is_flag=True)
 REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
 REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
+REFRESH_SOURCE_OPTION = click.option(
+    "--refresh-source",
+    is_flag=True,
+    help="Enable this to fully re-process source data, e.g., parse source OBO files and re-build mapping caches",
+)
 BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
 
 
@@ -211,27 +216,43 @@ class Configuration(BaseModel):
         *,
         refresh_raw: bool = False,
         refresh_processed: bool = False,
+        refresh_source: bool = False,
     ) -> list[Mapping]:
         """Run assembly based on this configuration."""
         return get_mappings_from_config(
-            self, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+            self,
+            refresh_source=refresh_source,
+            refresh_raw=refresh_raw,
+            refresh_processed=refresh_processed,
         )
 
     def read_raw_mappings(self) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
-        if self.raw_pickle_path is None:
-            raise ValueError
-        if not self.raw_pickle_path.is_file():
-            raise FileNotFoundError
-        return from_pickle(self.raw_pickle_path)
+        if self.raw_pickle_path and self.raw_pickle_path.is_file():
+            return from_pickle(self.raw_pickle_path)
+        if self.raw_sssom_path and self.raw_sssom_path.is_file():
+            return from_sssom(self.raw_sssom_path)
+        if self.raw_pickle_path and not self.raw_pickle_path.is_file():
+            raise FileNotFoundError(f"raw mappings pickle file not found: {self.raw_pickle_path}")
+        if self.raw_sssom_path and not self.raw_sssom_path.is_file():
+            raise FileNotFoundError(f"raw mappings SSSOM file not found: {self.raw_sssom_path}")
+        raise ValueError("no raw pickle nor SSSOM file given")
 
     def read_processed_mappings(self) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
-        if self.processed_pickle_path is None:
-            raise ValueError
-        if not self.processed_pickle_path.is_file():
-            raise FileNotFoundError
-        return from_pickle(self.processed_pickle_path)
+        if self.processed_pickle_path and self.processed_pickle_path.is_file():
+            return from_pickle(self.processed_pickle_path)
+        if self.processed_sssom_path and self.processed_sssom_path.is_file():
+            return from_sssom(self.processed_sssom_path)
+        if self.processed_pickle_path and not self.processed_pickle_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings pickle file not found: {self.processed_pickle_path}"
+            )
+        if self.processed_sssom_path and not self.processed_sssom_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings SSSOM file not found: {self.processed_sssom_path}"
+            )
+        raise ValueError("no processed pickle nor SSSOM file given")
 
     def get_hydrated_subsets(self) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
@@ -365,13 +386,24 @@ class Configuration(BaseModel):
 
         @click.command()
         @UPLOAD_OPTION
+        @REFRESH_SOURCE_OPTION
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
         @verbose_option
-        def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
+        def main(
+            upload: bool,
+            refresh_source: bool,
+            refresh_raw: bool,
+            refresh_processed: bool,
+            build_docker: bool,
+        ) -> None:
             """Build the mapping database terms."""
-            self.get_mappings(refresh_raw=refresh_raw, refresh_processed=refresh_processed)
+            self.get_mappings(
+                refresh_source=refresh_source,
+                refresh_raw=refresh_raw,
+                refresh_processed=refresh_processed,
+            )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
             if upload:
@@ -391,10 +423,16 @@ class Configuration(BaseModel):
 def get_mappings_from_config(
     configuration: Configuration,
     *,
+    refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
 ) -> list[Mapping]:
     """Run assembly based on a configuration."""
+    if refresh_source:
+        refresh_raw = True
+    if refresh_raw:
+        refresh_processed = True
+
     if (
         configuration.priority_pickle_path
         and configuration.priority_pickle_path.is_file()
@@ -423,7 +461,7 @@ def get_mappings_from_config(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
 
-        raw_mappings = get_raw_mappings(configuration)
+        raw_mappings = get_raw_mappings(configuration, refresh_source=refresh_source)
         if not raw_mappings:
             raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
         if configuration.validate_raw:
@@ -498,7 +536,11 @@ def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, 
     return rv
 
 
-def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -> list[Mapping]:
+def get_raw_mappings(
+    configuration: Configuration,
+    show_progress: bool = True,
+    refresh_source: bool = False,
+) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
     for i, inp in enumerate(
@@ -524,7 +566,14 @@ def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -
         elif inp.source == "pyobo":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence, **inp.extras))
+            mappings.extend(
+                from_pyobo(
+                    inp.prefix,
+                    confidence=inp.confidence,
+                    force_process=refresh_source,
+                    **inp.extras,
+                )
+            )
         elif inp.source == "biomappings":
             if inp.prefix in {None, "positive"}:
                 mappings.extend(get_biomappings_positive_mappings())

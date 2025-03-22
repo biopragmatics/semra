@@ -3,8 +3,9 @@
   "description": "Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in the Biomappings paper, this configuration imports several different cell and cell line resources and identifies mappings between them.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -120,16 +121,28 @@
   ],
   "subsets": {
     "mesh": [
-      "mesh:D002477"
+      {
+        "prefix": "mesh",
+        "identifier": "D002477"
+      }
     ],
     "efo": [
-      "efo:0000324"
+      {
+        "prefix": "efo",
+        "identifier": "0000324"
+      }
     ],
     "ncit": [
-      "ncit:C12508"
+      {
+        "prefix": "ncit",
+        "identifier": "C12508"
+      }
     ],
     "umls": [
-      "sty:T025"
+      {
+        "prefix": "sty",
+        "identifier": "T025"
+      }
     ]
   },
   "keep_prefixes": [
@@ -145,15 +158,15 @@
     "umls"
   ],
   "remove_imprecise": false,
-  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/raw.pkl",
-  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/raw.sssom.tsv",
-  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/processed.pkl",
-  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/processed.sssom.tsv",
-  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/cells/neo4j",
+  "raw_pickle_path": "/Users/ben/.data/semra/case-studies/cells/raw.pkl",
+  "raw_sssom_path": "/Users/ben/.data/semra/case-studies/cells/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/ben/.data/semra/case-studies/cells/processed.pkl",
+  "processed_sssom_path": "/Users/ben/.data/semra/case-studies/cells/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/ben/.data/semra/case-studies/cells/neo4j",
   "processed_neo4j_name": "semra-cell",
-  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/cells/priority.pkl",
-  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/cells/priority.sssom.tsv",
+  "priority_pickle_path": "/Users/ben/.data/semra/case-studies/cells/priority.pkl",
+  "priority_sssom_path": "/Users/ben/.data/semra/case-studies/cells/priority.sssom.tsv",
   "add_labels": true,
-  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/cells/configuration.json",
+  "configuration_path": "/Users/ben/.data/semra/case-studies/cells/configuration.json",
   "zenodo_record": 11091581
 }

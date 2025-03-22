@@ -1265,7 +1265,9 @@ def filter_subsets(
     return rv
 
 
-def _clean_subset_configuration(prefix_to_references: SubsetConfiguration) -> SubsetConfiguration:
+def _clean_subset_configuration(
+    prefix_to_references: SubsetConfiguration,
+) -> dict[str, set[Reference]]:
     clean_prefix_to_identifiers = {}
     for prefix, references in prefix_to_references.items():
         if not references:  # skip empty lists

@@ -3,7 +3,7 @@
 import pystow
 
 import semra
-from semra.rules import CHARLIE
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -20,7 +20,7 @@ PRIORITY = [
 CONFIGURATION = semra.Configuration(
     name="SeMRA Taxonomical Ranks Mappings Database",
     description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
-    creators=[CHARLIE],
+    creators=[charlie],
     inputs=[
         semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
     ],

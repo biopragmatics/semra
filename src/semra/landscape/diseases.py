@@ -6,7 +6,7 @@ from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import CHARLIE
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -48,7 +48,7 @@ SUBSETS = {
 CONFIGURATION = Configuration(
     name="SeMRA Disease Mappings Database",
     description="Supports the analysis of the landscape of disease nomenclature resources.",
-    creators=[CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

@@ -4,7 +4,7 @@ import pystow
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import CHARLIE
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -33,7 +33,7 @@ PREFIXES = PRIORITY = [
 CONFIGURATION = Configuration(
     name="SeMRA Gene Mapping Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
-    creators=[CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(prefix="hgnc", source="pyobo", confidence=0.99),
         Input(prefix="mgi", source="pyobo", confidence=0.99),

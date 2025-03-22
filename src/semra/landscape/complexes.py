@@ -4,7 +4,7 @@ import pystow
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import CHARLIE
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -31,7 +31,7 @@ CONFIGURATION = Configuration(
     name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature "
     "resources, species-agnostic.",
-    creators=[CHARLIE],
+    creators=[charlie],
     inputs=[
         Input(source="gilda"),
         Input(source="biomappings"),

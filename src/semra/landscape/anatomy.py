@@ -5,7 +5,7 @@ from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-
 
 import semra
 from semra import Reference
-from semra.rules import CHARLIE
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -35,7 +35,7 @@ SUBSETS = {
 CONFIGURATION = semra.Configuration(
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
-    creators=[CHARLIE],
+    creators=[charlie],
     inputs=[
         semra.Input(source="biomappings"),
         semra.Input(source="gilda"),
@@ -73,4 +73,4 @@ CONFIGURATION = semra.Configuration(
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli(["--help"])
+    CONFIGURATION.cli()

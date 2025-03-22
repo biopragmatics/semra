@@ -5,7 +5,6 @@ from collections.abc import Iterable
 
 import bioregistry
 import curies
-import pyobo
 import pystow
 import requests
 from tqdm import tqdm
@@ -75,13 +74,11 @@ def _help(
     rv = []
     for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
         try:
-            o = pyobo.Reference(
-                prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)
-            )
+            o = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
         except ValueError:
             continue
         mapping = Mapping(
-            s=pyobo.Reference(prefix="wikidata", identifier=wikidata_id),
+            s=Reference(prefix="wikidata", identifier=wikidata_id),
             p=_predicate,
             o=o,
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],

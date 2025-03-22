@@ -86,7 +86,6 @@ __all__ = [
     "validate_mappings",
 ]
 
-
 logger = logging.getLogger(__name__)
 
 DATA_KEY = "data"
@@ -1028,6 +1027,10 @@ def get_priority_reference(
     for reference in component:
         prefix_to_references[reference.prefix].append(reference)
     for prefix in priority:
+        norm_prefix = bioregistry.normalize_prefix(prefix)
+        if norm_prefix is None:
+            raise ValueError
+        prefix = norm_prefix
         references = prefix_to_references.get(prefix, [])
         if not references:
             continue
@@ -1225,11 +1228,7 @@ def filter_subsets(
         prefix_to_identifiers = hydrate_subsets(configuration)
         filter_subsets(mappings, prefix_to_identifiers)
     """
-    clean_prefix_to_identifiers = {
-        prefix: set(references)
-        for prefix, references in prefix_to_references.items()
-        if references  # skip empty lists
-    }
+    clean_prefix_to_identifiers = _clean_subset_configuration(prefix_to_references)
     rv = []
     for mapping in mappings:
         if (
@@ -1246,9 +1245,21 @@ def filter_subsets(
     return rv
 
 
+def _clean_subset_configuration(prefix_to_references: SubsetConfiguration) -> SubsetConfiguration:
+    clean_prefix_to_identifiers = {}
+    for prefix, references in prefix_to_references.items():
+        if not references:  # skip empty lists
+            continue
+        norm_prefix = bioregistry.normalize_prefix(prefix)
+        if norm_prefix:
+            raise ValueError
+        clean_prefix_to_identifiers[norm_prefix] = set(references)
+    return clean_prefix_to_identifiers
+
+
 def aggregate_components(
     mappings: t.Iterable[Mapping],
-    prefix_allowlist: t.Collection[str] | None = None,
+    prefix_allowlist: str | t.Collection[str] | None = None,
 ) -> t.Mapping[frozenset[str], set[frozenset[Reference]]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component.
 
@@ -1260,7 +1271,7 @@ def aggregate_components(
     components = iter_components(mappings)
 
     if prefix_allowlist is not None:
-        prefix_set = set(prefix_allowlist)
+        prefix_set = _cleanup_prefixes(prefix_allowlist)
         for component in components:
             # subset to the priority prefixes
             subcomponent: frozenset[Reference] = frozenset(
@@ -1278,7 +1289,7 @@ def aggregate_components(
 
 
 def count_component_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
+    mappings: t.Iterable[Mapping], prefix_allowlist: str | t.Collection[str] | None = None
 ) -> t.Counter[frozenset[str]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
     xx = aggregate_components(mappings, prefix_allowlist)
@@ -1286,7 +1297,7 @@ def count_component_sizes(
 
 
 def count_coverage_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
+    mappings: t.Iterable[Mapping], prefix_allowlist: str | t.Collection[str] | None = None
 ) -> t.Counter[int]:
     """Get a counter of the number of prefixes in which each entity appears based on the mappings."""
     xx = count_component_sizes(mappings, prefix_allowlist=prefix_allowlist)

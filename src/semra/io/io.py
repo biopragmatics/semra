@@ -16,13 +16,12 @@ import bioversions
 import pandas as pd
 import pyobo
 import pyobo.utils
-from curies import NamedReference, Reference
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from .io_utils import get_confidence_str, get_name_by_curie
 from ..rules import UNSPECIFIED_MAPPING
-from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
+from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "from_bioontologies",
@@ -361,11 +360,11 @@ def _parse_sssom_row(
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
     if p.curie == "oboinowl:hasDbXref":
-        p = NamedReference(
+        p = Reference(
             prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
         )
     elif p.curie == "skos:exactMatch":
-        p = NamedReference(prefix="skos", identifier="exactMatch", name="exact match")
+        p = Reference(prefix="skos", identifier="exactMatch", name="exact match")
     o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     e: dict[str, t.Any] = {
         "justification": justification,
@@ -382,7 +381,7 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
     has_name = pd.notna(name) and name
     if not standardize:
         if has_name:
-            return NamedReference.from_curie(curie, name=cast(str, name))
+            return Reference.from_curie(curie, name=cast(str, name))
         else:
             return Reference.from_curie(curie)
 
@@ -391,7 +390,7 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
         raise ValueError(f"could not standardize curie: {curie}")
 
     if has_name:
-        return NamedReference(prefix=prefix, identifier=identifier, name=name)
+        return Reference(prefix=prefix, identifier=identifier, name=name)
     else:
         return Reference(prefix=prefix, identifier=identifier)
 

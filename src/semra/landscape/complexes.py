@@ -1,10 +1,10 @@
 """A configuration for assembling mappings for protein complex terms."""
 
 import pystow
-from curies.vocabulary import charlie
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
+from semra.rules import CHARLIE
 
 __all__ = [
     "CONFIGURATION",
@@ -31,7 +31,7 @@ CONFIGURATION = Configuration(
     name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature "
     "resources, species-agnostic.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(source="gilda"),
         Input(source="biomappings"),

@@ -375,9 +375,9 @@ class Configuration(BaseModel):
         )
         click.echo(f"Result: {res}")
 
-    def cli(self) -> None:
+    def cli(self, *args: Any) -> None:
         """Get and run a command line interface for this configuration."""
-        self.get_cli()()
+        self.get_cli()(*args)
 
     def get_cli(self):
         """Get a command line interface for this configuration."""

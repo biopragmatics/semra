@@ -61,6 +61,7 @@ INVERSION_MAPPING = _f(v.mapping_inversion)
 CHAIN_MAPPING = _f(v.mapping_chaining)
 KNOWLEDGE_MAPPING = _f(v.background_knowledge_based_matching_process)
 
+CHARLIE = _f(v.charlie)
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. Gyori")
 
 SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]

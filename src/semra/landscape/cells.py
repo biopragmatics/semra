@@ -14,7 +14,6 @@ doing the following:
 
 import click
 import pystow
-from curies.vocabulary import charlie
 
 from semra import Reference
 from semra.api import project, str_source_target_counts
@@ -30,6 +29,7 @@ from semra.pipeline import (
     Mutation,
     get_mappings_from_config,
 )
+from semra.rules import CHARLIE
 
 __all__ = [
     "CONFIGURATION",
@@ -65,7 +65,7 @@ CONFIGURATION = Configuration(
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
     "the Biomappings paper, this configuration imports several different cell and cell line "
     "resources and identifies mappings between them.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

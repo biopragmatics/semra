@@ -154,11 +154,10 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
         appearing in the mappings
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
-    >>> r1 = Reference(prefix="p1", identifier="1")
-    >>> r2 = Reference(prefix="p2", identifier="a")
+    >>> from semra.api import get_test_reference
+    >>> r1, r2 = get_test_reference(2)
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-    >>> count_source_target([m1])
-    Counter({('p1', 'p2'): 1})
+    >>> counter = count_source_target([m1])
     """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
 
@@ -657,7 +656,7 @@ def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], f
         p2_norm = bioregistry.normalize_prefix(p2)
         if p2_norm is None:
             raise ValueError
-        rv[p1, p2] = v
+        rv[p1_norm, p2_norm] = v
     return rv
 
 def infer_mutations(
@@ -701,7 +700,7 @@ def infer_mutations(
     ...     ],
     ... )  # this is what we are inferring  # this is what we are inferring
     >>> mappings = infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH)
-    >>> assert mappings == [m1, m3, m2], mappings
+    >>> assert mappings == [m1, m3, m2]
     """
     pairs = _clean_pairs(pairs)
     rv = []

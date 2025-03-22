@@ -652,10 +652,10 @@ def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], f
     for (p1, p2), v in pairs.items():
         p1_norm = bioregistry.normalize_prefix(p1)
         if p1_norm is None:
-            raise ValueError
+            raise ValueError(f"non-standardizable prefix as left in pair: {p1}")
         p2_norm = bioregistry.normalize_prefix(p2)
         if p2_norm is None:
-            raise ValueError
+            raise ValueError(f"non-standardizable prefix as right in pair: {p2}")
         rv[p1_norm, p2_norm] = v
     return rv
 
@@ -737,7 +737,7 @@ def _cleanup_prefixes(x: str | Iterable[str]) -> set[str]:
     for prefix in x:
         norm_prefix = bioregistry.normalize_prefix(prefix)
         if norm_prefix is None:
-            raise ValueError
+            raise ValueError(f'non-standardizable prefix: {prefix}')
         rv.add(norm_prefix)
     return rv
 
@@ -1020,7 +1020,7 @@ def _clean_priority_prefixes(priority: list[str]) -> list[str]:
     for p in priority:
         np = bioregistry.normalize_prefix(p)
         if np is None:
-            raise ValueError
+            raise ValueError(f"non-standardizable prefix in priority list: {p}")
         rv.append(np)
     return rv
 
@@ -1271,8 +1271,8 @@ def _clean_subset_configuration(prefix_to_references: SubsetConfiguration) -> Su
         if not references:  # skip empty lists
             continue
         norm_prefix = bioregistry.normalize_prefix(prefix)
-        if norm_prefix:
-            raise ValueError
+        if norm_prefix is None:
+            raise ValueError(f"non-standardizable prefix in subset configuration: {prefix}")
         clean_prefix_to_identifiers[norm_prefix] = set(references)
     return clean_prefix_to_identifiers
 

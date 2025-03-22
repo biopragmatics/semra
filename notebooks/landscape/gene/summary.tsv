@@ -7,7 +7,7 @@ cgnc	Chicken Gene Nomenclature Consortium	CC-BY-4.0		26075	full
 wormbase	WormBase	CC0-1.0		0	observed
 flybase	FlyBase Gene	CC-BY-4.0	2025_01	17870	full
 sgd	Saccharomyces Genome Database	CC-BY-4.0	R64-5-1	6600	full
-omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-03-19	27198	observed
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-03-21	27201	observed
 civic.gid	CIViC gene	CC0-1.0	2025-03-01	890	full
 umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2024AB	1	subset
 ncit	NCI Thesaurus	CC-BY-4.0	24.11d	12711	subset

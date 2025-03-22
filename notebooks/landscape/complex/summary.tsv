@@ -1,7 +1,7 @@
 prefix	name	license	version	terms	status
 complexportal	Complex Portal	CC0-1.0	2024-11-29	4921	full
 fplx	FamPlex	CC0-1.0		782	full
-go	Gene Ontology	CC-BY-4.0	2025-02-06	2064	subset
+go	Gene Ontology	CC-BY-4.0	2025-03-16	2058	subset
 chembl.target	ChEMBL target	CC-BY-SA-3.0	35	16030	full
 wikidata	Wikidata	CC0-1.0		5164	observed
 scomp	Selventa Complexes	Apache-2.0		135	full

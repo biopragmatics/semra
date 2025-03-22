@@ -227,7 +227,7 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
         node.standardize()
     br_license = bioregistry.get_license(prefix)
     mappings = []
-    # revert after updating semra to rely on https://github.com/biopragmatics/bioontologies
+    # FIXME revert after updating semra to rely on https://github.com/biopragmatics/bioontologies
     for s, p, t in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False):
         if p.curie == "oboinowl:hasDbXref":
             p = NamedReference(prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference")

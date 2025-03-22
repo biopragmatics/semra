@@ -737,7 +737,7 @@ def _cleanup_prefixes(x: str | Iterable[str]) -> set[str]:
     for prefix in x:
         norm_prefix = bioregistry.normalize_prefix(prefix)
         if norm_prefix is None:
-            raise ValueError(f'non-standardizable prefix: {prefix}')
+            raise ValueError(f"non-standardizable prefix: {prefix}")
         rv.add(norm_prefix)
     return rv
 

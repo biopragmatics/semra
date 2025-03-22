@@ -412,7 +412,7 @@ class TestOperations(unittest.TestCase):
 
     def test_count_component_sizes(self):
         """Test counting component sizes."""
-        priority = "abc"
+        priority = [PREFIX_A, PREFIX_B, PREFIX_C]
         a1, a2 = _get_references(2, prefix=PREFIX_A)
         b1, b2 = _get_references(2, prefix=PREFIX_B)
         c1, _ = _get_references(2, prefix=PREFIX_C)

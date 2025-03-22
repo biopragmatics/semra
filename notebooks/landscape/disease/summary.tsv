@@ -1,20 +1,20 @@
 prefix	name	license	version	terms	status
-doid	Human Disease Ontology	CC0-1.0	2025-03-03	14220	full
-mondo	Mondo Disease Ontology	CC-BY-4.0	2025-02-04	29826	full
-efo	Experimental Factor Ontology	Apache-2.0	3.75.0	2121	subset
+doid	Human Disease Ontology	CC0-1.0	2025-03-03	13333	full
+mondo	Mondo Disease Ontology	CC-BY-4.0	2025-02-04	24645	full
+efo	Experimental Factor Ontology	Apache-2.0	3.75.0	813	subset
 mesh	Medical Subject Headings	CC0-1.0	2025	3178	subset
 ncit	NCI Thesaurus	CC-BY-4.0	25.03c	20522	subset
-orphanet	Orphanet	CC-BY-4.0		8481	observed
-orphanet.ordo	Orphanet Rare Disease Ontology	CC-BY-4.0	4.6	15507	full
+orphanet	Orphanet	CC-BY-4.0		15590	full
+orphanet.ordo	Orphanet Rare Disease Ontology	CC-BY-4.0	4.6	14618	observed
 umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2024AB	187376	subset
-omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-03-19	20576	observed
-omim.ps	OMIM Phenotypic Series	https://www.omim.org/help/agreement	2025-03-19	588	full
-gard	Genetic and Rare Diseases Information Center			6132	full
-icd10	International Classification of Diseases, 10th Revision	https://cdn.who.int/media/docs/default-source/publishing-policies/copyright/who-faq-licensing-icd-10.pdf	2019	2345	full
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-03-21	20592	observed
+omim.ps	OMIM Phenotypic Series	https://www.omim.org/help/agreement	2025-03-21	588	full
+gard	Genetic and Rare Diseases Information Center			6116	full
+icd10	International Classification of Diseases, 10th Revision	https://cdn.who.int/media/docs/default-source/publishing-policies/copyright/who-faq-licensing-icd-10.pdf	2019	7006	observed
 icd10cm	International Classification of Diseases, 10th Revision, Clinical Modification			21714	observed
 icd10pcs	International Classification of Diseases, 10th Revision, Procedure Coding System			0	observed
-icd11	International Classification of Diseases, 11th Revision (Foundation Component)	CC-BY-ND-3.0-IGO	2025-01	71175	full
+icd11	International Classification of Diseases, 11th Revision (Foundation Component)	CC-BY-ND-3.0-IGO	2025-01	6501	observed
 icd11.code	ICD 11 Codes	http://www.who.int/about/licensing/copyright_form/en		0	observed
-icd9	International Classification of Diseases, 9th Revision			3985	observed
+icd9	International Classification of Diseases, 9th Revision			3976	observed
 icd9cm	International Classification of Diseases, 9th Revision, Clinical Modification			9236	observed
 icdo	International Classification of Diseases for Oncology			804	observed

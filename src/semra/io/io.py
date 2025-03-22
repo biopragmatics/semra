@@ -226,9 +226,14 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
     ):
         node.standardize()
     br_license = bioregistry.get_license(prefix)
-    return [
-        Mapping.from_triple(
-            triple,
+    mappings = []
+    for s, p, t in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False):
+        if p.curie == "oboinowl:hasDbXref":
+            p = NamedReference(prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference")
+        elif p.curie == "skos:exactMatch":
+            p = NamedReference(prefix="skos", identifier="exactMatch", name="exact match")
+        mapping = Mapping.from_triple(
+            (s, p, t),
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
@@ -238,9 +243,8 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
                 )
             ],
         )
-        for triple in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False)
-        if triple[0].prefix == prefix
-    ]
+        mappings.append(mapping)
+    return mappings
 
 
 def from_sssom(

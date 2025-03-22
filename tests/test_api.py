@@ -40,13 +40,17 @@ from semra.struct import (
 PREFIX_A = "go"
 PREFIX_B = "mondo"
 PREFIX_C = "ido"
+PREFIX_D = "obi"
+PREFIXES = [PREFIX_A, PREFIX_B, PREFIX_C, PREFIX_D]
 
 
 def _get_references(
     n: int, *, prefix: str = PREFIX_A, different_prefixes: bool = False
 ) -> list[Reference]:
     if different_prefixes:
-        prefixes = [f"{prefix}{i + 1}" for i in range(n)]
+        if n > len(PREFIXES):
+            raise ValueError("need to add more default prefixes")
+        prefixes = PREFIXES[:n]
     else:
         prefixes = [prefix for _ in range(n)]
     identifiers = [str(i + 1).zfill(7) for i in range(n)]
@@ -332,15 +336,15 @@ class TestOperations(unittest.TestCase):
 
     def test_project(self):
         """Test projecting into a given source/target pair."""
-        r11, r12 = _get_references(2, prefix="p1")
-        r21, r22 = _get_references(2, prefix="p2")
-        (r31,) = _get_references(1, prefix="p3")
+        r11, r12 = _get_references(2, prefix=PREFIX_A)
+        r21, r22 = _get_references(2, prefix=PREFIX_B)
+        (r31,) = _get_references(1, prefix=PREFIX_C)
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m2_i, m3]
-        self.assert_same_triples([m1, m2], project(mappings, "p1", "p2", progress=False))
+        self.assert_same_triples([m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False))
 
     def test_get_many_to_many(self):
         """Test getting many-to-many mappings."""

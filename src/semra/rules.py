@@ -8,6 +8,7 @@ from typing import TypeAlias
 import curies
 from curies import vocabulary as v
 from pyobo import Reference
+import bioregistry
 
 
 def _f(r: curies.NamedReference) -> Reference:
@@ -65,3 +66,16 @@ charlie = _f(v.charlie)
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. Gyori")
 
 SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]
+
+SEMRA_MAPPING_PREFIX = "semra.mapping"
+SEMRA_MAPPING = bioregistry.Resource(prefix=SEMRA_MAPPING_PREFIX, name="SeMRA Mapping")
+
+SEMRA_EVIDENCE_PREFIX = "semra.evidence"
+SEMRA_EVIDENCE = bioregistry.Resource(prefix=SEMRA_EVIDENCE_PREFIX, name="SeMRA Evidence")
+
+SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
+SEMRA_MAPPING_SET = bioregistry.Resource(prefix=SEMRA_MAPPING_SET_PREFIX, name="SeMRA Mapping Set")
+
+for r in [SEMRA_MAPPING, SEMRA_EVIDENCE, SEMRA_MAPPING_SET]:
+    bioregistry.manager.synonyms[r.prefix] = r.prefix
+    bioregistry.manager.registry[r.prefix] = r

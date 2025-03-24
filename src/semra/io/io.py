@@ -227,14 +227,17 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
         node.standardize()
     br_license = bioregistry.get_license(prefix)
     mappings = []
-    # FIXME revert after updating semra to rely on https://github.com/biopragmatics/bioontologies/pull/35
-    for s, p, t in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False):
-        if p.curie == "oboinowl:hasDbXref":
-            p = NamedReference(prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference")
-        elif p.curie == "skos:exactMatch":
-            p = NamedReference(prefix="skos", identifier="exactMatch", name="exact match")
+    for subject, predicate, obj in tqdm(
+        g.get_xrefs(), unit="mapping", unit_scale=True, leave=False
+    ):
+        if predicate.curie == "oboinowl:hasDbXref":
+            predicate = Reference(
+                prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
+            )
+        elif predicate.curie == "skos:exactMatch":
+            predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
         mapping = Mapping.from_triple(
-            (s, p, t),
+            (subject, predicate, obj),
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,

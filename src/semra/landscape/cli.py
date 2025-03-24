@@ -48,9 +48,8 @@ def landscape(
 ) -> None:
     """Run all landscape builds."""
     with logging_redirect_tqdm():
-        it = tqdm(FUNCTIONS, unit="configuration")
+        it = tqdm(FUNCTIONS, unit="configuration", desc="landscape analysis")
         for label, func in it:
-            it.set_description(label)
             tqdm.write(click.style(label, bold=True, fg="green"))
             ctx.invoke(
                 func,

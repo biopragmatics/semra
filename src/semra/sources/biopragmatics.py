@@ -71,31 +71,31 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
     for mapping_dict in tqdm(
         mapping_dicts, unit_scale=True, unit="mapping", desc="Loading biomappings", leave=False
     ):
-        source_prefix = mapping_dict["source prefix"]
-        target_prefix = mapping_dict["target prefix"]
-        author = Reference.from_curie(mapping_dict["source"])
-        p = Reference.from_curie(mapping_dict["relation"])
-        if p.curie == "oboinowl:hasDbXref":
-            p = Reference(
+        if (source := mapping_dict["source"]).startswith("orcid"):
+            author = Reference.from_curie(source)
+        else:
+            author = None
+        subject = Reference(
+            prefix=mapping_dict["source prefix"],
+            identifier=mapping_dict["source identifier"],
+        )
+        obj = Reference(
+            prefix=mapping_dict["target prefix"],
+            identifier=mapping_dict["target identifier"],
+        )
+        predicate = Reference.from_curie(mapping_dict["relation"])
+        # TODO remove below?
+        if predicate.curie == "oboinowl:hasDbXref":
+            predicate = Reference(
                 prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
             )
-        elif p.curie == "skos:exactMatch":
-            p = Reference(prefix="skos", identifier="exactMatch", name="exact match")
+        elif predicate.curie == "skos:exactMatch":
+            predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
 
         mm = Mapping(
-            s=Reference(
-                prefix=source_prefix,
-                identifier=bioregistry.standardize_identifier(
-                    source_prefix, mapping_dict["source identifier"]
-                ),
-            ),
-            p=p,
-            o=Reference(
-                prefix=target_prefix,
-                identifier=bioregistry.standardize_identifier(
-                    target_prefix, mapping_dict["target identifier"]
-                ),
-            ),
+            s=subject,
+            p=predicate,
+            o=obj,
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),
@@ -108,3 +108,8 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         )
         rv.append(mm)
     return rv
+
+if __name__ == '__main__':
+    get_biomappings_positive_mappings()
+    from_biomappings_negative()
+    from_biomappings_predicted()

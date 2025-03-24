@@ -389,9 +389,9 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
     has_name = pd.notna(name) and name
     if not standardize:
         if has_name:
-            return Reference.from_curie(curie, name=cast(str, name))
+            return cast(Reference, Reference.from_curie(curie, name=cast(str, name)))
         else:
-            return Reference.from_curie(curie)
+            return cast(Reference, Reference.from_curie(curie))
 
     prefix, identifier = bioregistry.parse_curie(curie)
     if not prefix or not identifier:

@@ -96,7 +96,10 @@ class Mutation(BaseModel):
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
-    name: str = Field(description="The name of the mapping set configuration")
+    name: str = Field(..., description="The name of the mapping set configuration")
+    key: str = Field(
+        ..., description="A short key describing the configuration used for logging purposes"
+    )
     description: str | None = Field(
         None, description="An explanation of the purpose of the mapping set configuration"
     )
@@ -198,6 +201,7 @@ class Configuration(BaseModel):
     def from_prefixes(
         cls,
         *,
+        key: str,
         name: str,
         prefixes: t.Iterable[str],
         include_biomappings: bool = True,
@@ -209,7 +213,7 @@ class Configuration(BaseModel):
             inputs.append(Input(source="biomappings"))
         if include_gilda:
             inputs.append(Input(source="gilda"))
-        return cls(name=name, inputs=inputs)
+        return cls(key=key, name=name, inputs=inputs)
 
     def get_mappings(
         self,
@@ -548,14 +552,14 @@ def get_raw_mappings(
     for i, inp in enumerate(
         tqdm(
             configuration.inputs,
-            desc="Getting raw mappings",
+            desc=f"[{configuration.key}] getting raw mappings",
             unit="source",
             disable=not show_progress,
         ),
         start=1,
     ):
         tqdm.write(
-            f"{i}/{len(configuration.inputs)} "
+            f"[{configuration.key}] {i}/{len(configuration.inputs)} "
             + click.style(f"Loading mappings from {inp.source}", fg="green")
             + (f" ({inp.prefix})" if inp.prefix else "")
         )

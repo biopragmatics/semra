@@ -28,6 +28,7 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
+    key="complex",
     name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature "
     "resources, species-agnostic.",

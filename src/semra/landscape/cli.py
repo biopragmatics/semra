@@ -2,6 +2,7 @@
 
 import click
 from more_click import verbose_option
+from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from semra.pipeline import (
@@ -20,12 +21,12 @@ __all__ = [
 ]
 
 FUNCTIONS: list[tuple[str, click.Command]] = [
-    ("Taxonomical Ranks", taxrank.CONFIGURATION.get_cli()),
-    ("Complexes", complexes.CONFIGURATION.get_cli()),
-    ("Anatomy", anatomy.CONFIGURATION.get_cli()),
-    ("Cells and Cell Lines", cells.main),
-    ("Diseases", diseases.CONFIGURATION.get_cli()),
-    ("Genes", genes.CONFIGURATION.get_cli()),
+    (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli()),
+    (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli()),
+    (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli()),
+    (cells.CONFIGURATION.key, cells.main),
+    (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli()),
+    (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli()),
 ]
 
 
@@ -44,11 +45,13 @@ def landscape(
     refresh_raw: bool,
     refresh_processed: bool,
     build_docker: bool,
-):
+) -> None:
     """Run all landscape builds."""
     with logging_redirect_tqdm():
-        for label, func in FUNCTIONS:
-            click.secho(label, bold=True, fg="green")
+        it = tqdm(FUNCTIONS, unit="configuration")
+        for label, func in it:
+            it.set_description(label)
+            tqdm.write(click.style(label, bold=True, fg="green"))
             ctx.invoke(
                 func,
                 upload=upload,

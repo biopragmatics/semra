@@ -61,6 +61,7 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
+    key="cell",
     name="SeMRA Cell and Cell Line Mappings Database",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
     "the Biomappings paper, this configuration imports several different cell and cell line "

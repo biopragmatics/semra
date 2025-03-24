@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TypeAlias
 
+import bioregistry
 import curies
 from curies import vocabulary as v
 from pyobo import Reference
-import bioregistry
 
 
 def _f(r: curies.NamedReference) -> Reference:
@@ -76,6 +76,6 @@ SEMRA_EVIDENCE = bioregistry.Resource(prefix=SEMRA_EVIDENCE_PREFIX, name="SeMRA 
 SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
 SEMRA_MAPPING_SET = bioregistry.Resource(prefix=SEMRA_MAPPING_SET_PREFIX, name="SeMRA Mapping Set")
 
-for r in [SEMRA_MAPPING, SEMRA_EVIDENCE, SEMRA_MAPPING_SET]:
-    bioregistry.manager.synonyms[r.prefix] = r.prefix
-    bioregistry.manager.registry[r.prefix] = r
+for resource in [SEMRA_MAPPING, SEMRA_EVIDENCE, SEMRA_MAPPING_SET]:
+    bioregistry.manager.synonyms[resource.prefix] = resource.prefix
+    bioregistry.manager.registry[resource.prefix] = resource

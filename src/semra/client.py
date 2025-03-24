@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import typing as t
 from collections import Counter
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -296,7 +296,7 @@ as label, count UNION ALL
             RETURN b.curie, b.name
         """
         return {
-            Reference.from_curie(n_curie): name
+            cast(Reference, Reference.from_curie(n_curie)): name
             for n_curie, name in self.read_query(query, curie=curie)
         }
 

@@ -33,6 +33,7 @@ SUBSETS = {
 }
 
 CONFIGURATION = semra.Configuration(
+    key="anatomy",
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
     creators=[charlie],

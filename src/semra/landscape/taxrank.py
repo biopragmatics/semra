@@ -18,6 +18,7 @@ PRIORITY = [
 ]
 
 CONFIGURATION = semra.Configuration(
+    key="taxrank",
     name="SeMRA Taxonomical Ranks Mappings Database",
     description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
     creators=[charlie],

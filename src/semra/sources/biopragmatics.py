@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.metadata
 
-import bioregistry
 import pandas as pd
 from pyobo import Reference
 from tqdm.asyncio import tqdm
@@ -84,6 +83,8 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
             identifier=mapping_dict["target identifier"],
         )
         predicate = Reference.from_curie(mapping_dict["relation"])
+        if predicate is None:
+            continue
         # TODO remove below?
         if predicate.curie == "oboinowl:hasDbXref":
             predicate = Reference(
@@ -109,7 +110,8 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         rv.append(mm)
     return rv
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     get_biomappings_positive_mappings()
     from_biomappings_negative()
     from_biomappings_predicted()

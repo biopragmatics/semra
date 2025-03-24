@@ -16,7 +16,7 @@ from pydantic import ConfigDict, Field
 from pydantic.types import UUID4
 from pyobo import Reference
 
-from semra.rules import SEMRA_MAPPING_SET_PREFIX, SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX
+from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 
 __all__ = [
     "Evidence",

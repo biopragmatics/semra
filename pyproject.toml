@@ -57,7 +57,7 @@ dependencies = [
     "tqdm",
     "more_itertools",
     "networkx",
-    "bioregistry>=0.12.6",
+    "bioregistry>=0.12.7",
     "pyobo @ git+https://github.com/biopragmatics/pyobo",
     "bioontologies>=0.7.0",
     "typing_extensions",

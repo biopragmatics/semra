@@ -53,5 +53,6 @@ then running the following
 $ git clone https://github.com/biopragmatics/semra.git
 $ cd semra
 $ uv pip install .[landscape-notebooks]
+$ cd notebooks/landscape
 $ sh run.sh
 ```

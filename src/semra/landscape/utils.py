@@ -137,7 +137,7 @@ def notebook(
         configuration,
         terms,
         minimum_count=minimum_count,
-        mappings=processed_mappings,
+        processed_mappings=processed_mappings,
         raw_mappings=raw_mappings,
         terms_observed=terms_observed,
         show_progress=show_progress,
@@ -152,7 +152,7 @@ def notebook(
         "Next, we summarize the processed mappings, which include inference, reasoning, and "
         "confidence filtering."
     )
-    display(overlap_results.counts_df)
+    display(overlap_results.processed_counts_df)
     _markdown("Below is an graph-based view on the processed mappings.")
     display(SVG(overlap_results.counts_drawing))
     _markdown(
@@ -191,26 +191,27 @@ def notebook(
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = landscape_analysis(
-        overlap_results.mappings,
+        configuration=configuration,
+        processed_mappings=overlap_results.processed_mappings,
         prefix_to_identifiers=terms,
-        priority=overlap_results.counts_df.index,
+        priority=overlap_results.processed_counts_df.index,
         prefix_to_observed_identifiers=terms_observed,
     )
 
     _markdown(landscape_results.get_description_markdown())
 
-    n_prefixes = len(overlap_results.counts_df.index)
+    n_prefixes = len(overlap_results.processed_counts_df.index)
     number_overlaps = 2**n_prefixes - 1
     _markdown(
         f"""\
-    Because there are {n_prefixes}, there are {number_overlaps} possible overlaps to consider.
+    Because there are {n_prefixes} prefixes, there are {number_overlaps:,} possible overlaps to consider.
     Therefore, a Venn diagram is not possible, so we
     we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
     (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
     """
     )
     with warnings.catch_warnings():
-        warnings.simplefilter(action='ignore', category=FutureWarning)
+        warnings.simplefilter(action="ignore", category=FutureWarning)
         # we have to wrap the upset plot functionality with the future
         # warning catching because it uses deprecated matplotlib and
         # pandas functionality. unfortunataely, it appears the upstream
@@ -287,9 +288,9 @@ class OverlapResults:
 
     raw_mappings: list[Mapping]
     raw_counts_df: pd.DataFrame
-    mappings: list[Mapping]
+    processed_mappings: list[Mapping]
     counts: XXCounter
-    counts_df: pd.DataFrame
+    processed_counts_df: pd.DataFrame
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
     minimum_count: int | None = None
@@ -306,7 +307,7 @@ class OverlapResults:
     def write(self, directory: str | Path) -> None:
         """Write the tables and charts to a directory."""
         directory = Path(directory).resolve()
-        self.counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
+        self.processed_counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
         self.raw_counts_df.to_csv(directory / "raw_counts.tsv", sep="\t", index=True)
         directory.joinpath("graph.svg").write_bytes(self.counts_drawing)
 
@@ -316,7 +317,7 @@ def overlap_analysis(
     terms: XXTerms,
     *,
     terms_observed: XXObservedTerms,
-    mappings: list[Mapping],
+    processed_mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
     show_progress: bool = True,
@@ -329,20 +330,20 @@ def overlap_analysis(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    directed = _get_summary_index(mappings, show_progress=show_progress)
-    counts, counts_df = get_symmetric_counts_df(
-        directed, terms, priority=configuration.priority, terms_observed=terms_observed
+    processed_index = _get_summary_index(processed_mappings, show_progress=show_progress)
+    processed_counts, processed_counts_df = get_symmetric_counts_df(
+        processed_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    gains_df = counts_df - raw_counts_df
-    percent_gains_df = 100.0 * (counts_df - raw_counts_df) / raw_counts_df
+    gains_df = processed_counts_df - raw_counts_df
+    percent_gains_df = 100.0 * (processed_counts_df - raw_counts_df) / raw_counts_df
 
     return OverlapResults(
         raw_mappings=raw_mappings,
         raw_counts_df=raw_counts_df,
-        mappings=mappings,
-        counts=counts,
-        counts_df=counts_df,
+        processed_mappings=processed_mappings,
+        counts=processed_counts,
+        processed_counts_df=processed_counts_df,
         gains_df=gains_df,
         percent_gains_df=percent_gains_df,
         minimum_count=minimum_count,
@@ -605,14 +606,15 @@ def count_unobserved(
 
 
 def landscape_analysis(
-    mappings: list[Mapping],
+    configuration: Configuration,
+    processed_mappings: list[Mapping],
     prefix_to_identifiers: XXTerms,
     priority: list[str],
     *,
     prefix_to_observed_identifiers: XXObservedTerms,
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
-    mapped_counter = count_component_sizes(mappings=mappings, prefix_allowlist=priority)
+    mapped_counter = count_component_sizes(mappings=processed_mappings, prefix_allowlist=priority)
 
     #: A count of the number of entities that have at least mapping.
     #: This is calculated by the appearance of a weakly connected component
@@ -640,6 +642,7 @@ def landscape_analysis(
     total_entity_estimate = sum(counter.values())
 
     return LandscapeResult(
+        configuration=configuration,
         at_least_1_mapping=at_least_1_mapping,
         only_1_mapping=only_1_mapping,
         total_entity_estimate=total_entity_estimate,
@@ -654,6 +657,7 @@ def landscape_analysis(
 class LandscapeResult:
     """Describes results of landscape analysis."""
 
+    configuration: Configuration
     priority: list[str]
     at_least_1_mapping: int
     only_1_mapping: int
@@ -748,9 +752,11 @@ class LandscapeResult:
                 va="bottom",
             )
 
-        ax.set_xlabel("# Resources a Concept Appears in")
+        ax.set_xlabel(f"# {self.configuration.key.title()} Resources a Concept Appears in")
         ax.set_ylabel("Count")
-        ax.set_title(f"Landscape of {self.total_entity_estimate:,} Unique Concepts")
+        ax.set_title(
+            f"{self.configuration.key.title()} Landscape of {self.total_entity_estimate:,} Unique Concepts"
+        )
         ax.set_yscale("log")
         # since we're in a log scale, pad half of the max value to the top to make sure
         # the counts fit in the box

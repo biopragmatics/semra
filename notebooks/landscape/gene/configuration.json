@@ -1,5 +1,6 @@
 {
   "name": "SeMRA Gene Mapping Database",
+  "key": "gene",
   "description": "Analyze the landscape of gene nomenclature resources, species-agnostic.",
   "creators": [
     {
@@ -125,15 +126,15 @@
     ]
   },
   "remove_imprecise": false,
-  "raw_pickle_path": "/Users/ben/.data/semra/case-studies/gene/raw.pkl.gz",
-  "raw_sssom_path": "/Users/ben/.data/semra/case-studies/gene/raw.sssom.tsv.gz",
-  "processed_pickle_path": "/Users/ben/.data/semra/case-studies/gene/processed.pkl.gz",
-  "processed_sssom_path": "/Users/ben/.data/semra/case-studies/gene/processed.sssom.tsv.gz",
-  "processed_neo4j_path": "/Users/ben/.data/semra/case-studies/gene/neo4j",
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/raw.pkl.gz",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/raw.sssom.tsv.gz",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/processed.pkl.gz",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/processed.sssom.tsv.gz",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/gene/neo4j",
   "processed_neo4j_name": "semra-gene",
-  "priority_pickle_path": "/Users/ben/.data/semra/case-studies/gene/priority.pkl.gz",
-  "priority_sssom_path": "/Users/ben/.data/semra/case-studies/gene/priority.sssom.tsv.gz",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/gene/priority.pkl.gz",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/gene/priority.sssom.tsv.gz",
   "add_labels": true,
-  "configuration_path": "/Users/ben/.data/semra/case-studies/gene/configuration.json",
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/gene/configuration.json",
   "zenodo_record": 11092013
 }

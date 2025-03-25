@@ -1,5 +1,6 @@
 {
   "name": "SeMRA Disease Mappings Database",
+  "key": "disease",
   "description": "Supports the analysis of the landscape of disease nomenclature resources.",
   "creators": [
     {
@@ -182,15 +183,15 @@
     "icdo"
   ],
   "remove_imprecise": false,
-  "raw_pickle_path": "/Users/ben/.data/semra/case-studies/disease/raw.pkl",
-  "raw_sssom_path": "/Users/ben/.data/semra/case-studies/disease/raw.sssom.tsv",
-  "processed_pickle_path": "/Users/ben/.data/semra/case-studies/disease/processed.pkl",
-  "processed_sssom_path": "/Users/ben/.data/semra/case-studies/disease/processed.sssom.tsv",
-  "processed_neo4j_path": "/Users/ben/.data/semra/case-studies/disease/neo4j",
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/disease/raw.pkl",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/disease/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/disease/processed.pkl",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/disease/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/disease/neo4j",
   "processed_neo4j_name": "semra-disease",
-  "priority_pickle_path": "/Users/ben/.data/semra/case-studies/disease/priority.pkl",
-  "priority_sssom_path": "/Users/ben/.data/semra/case-studies/disease/priority.sssom.tsv",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/disease/priority.pkl",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/disease/priority.sssom.tsv",
   "add_labels": true,
-  "configuration_path": "/Users/ben/.data/semra/case-studies/disease/configuration.json",
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/disease/configuration.json",
   "zenodo_record": 11091886
 }

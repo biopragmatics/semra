@@ -74,6 +74,20 @@
         "prefix": "go",
         "identifier": "0032991"
       }
+    ],
+    "chembl.target": [
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-complex"
+      },
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-complex-group"
+      },
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-nucleic-acid-complex"
+      }
     ]
   },
   "post_keep_prefixes": [

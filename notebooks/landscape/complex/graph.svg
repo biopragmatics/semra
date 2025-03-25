@@ -262,23 +262,23 @@
 <text text-anchor="middle" x="727.1" y="-282.29" font-family="Times,serif" font-size="14.00">4,761</text>
 </g>
 <!-- chembl.target
-16,030 -->
+689 -->
 <g id="node8" class="node">
 <title>chembl.target
-16,030</title>
+689</title>
 <ellipse fill="none" stroke="black" cx="727.1" cy="-152" rx="64.35" ry="28.99"/>
 <text text-anchor="middle" x="727.1" y="-155.2" font-family="Times,serif" font-size="14.00">chembl.target</text>
-<text text-anchor="middle" x="727.1" y="-138.7" font-family="Times,serif" font-size="14.00">16,030</text>
+<text text-anchor="middle" x="727.1" y="-138.7" font-family="Times,serif" font-size="14.00">689</text>
 </g>
 <!-- complexportal
 4,921&#45;&#45;chembl.target
-16,030 -->
+689 -->
 <g id="edge19" class="edge">
 <title>complexportal
 4,921&#45;&#45;chembl.target
-16,030</title>
+689</title>
 <path fill="none" stroke="black" d="M586.2,-190.53C613.02,-183.14 644.99,-174.34 671.59,-167.01"/>
-<text text-anchor="middle" x="629.38" y="-185.43" font-family="Times,serif" font-size="14.00">210</text>
+<text text-anchor="middle" x="629.38" y="-185.43" font-family="Times,serif" font-size="14.00">203</text>
 </g>
 <!-- intact
 3,325&#45;&#45;wikidata

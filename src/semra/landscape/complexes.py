@@ -1,6 +1,7 @@
 """A configuration for assembling mappings for protein complex terms."""
 
 import pystow
+from pyobo.struct import default_reference
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
@@ -25,6 +26,11 @@ PREFIXES = PRIORITY = [
 ]
 SUBSETS = {
     "go": [Reference.from_curie("go:0032991")],
+    "chembl.target": [
+        default_reference("chembl.target", "protein-complex"),
+        default_reference("chembl.target", "protein-complex-group"),
+        default_reference("chembl.target", "protein-nucleic-acid-complex"),
+    ],
 }
 
 CONFIGURATION = Configuration(

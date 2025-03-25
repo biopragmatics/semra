@@ -2,7 +2,7 @@
 
 set -x
 
-for file in */*.ipynb; do
+for file in */*-landscape.ipynb; do
     # you can add --debug to this command to get all of the output
-    jupyter nbconvert --execute --to notebook --output $file $file
+    python -m nbconvert --execute --to notebook --output $(basename $file) $file
 done

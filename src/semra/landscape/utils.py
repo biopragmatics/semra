@@ -2,6 +2,7 @@
 
 import json
 import typing as t
+import warnings
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -208,7 +209,13 @@ def notebook(
     (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
     """
     )
-    landscape_results.plot_upset()
+    with warnings.catch_warnings():
+        warnings.simplefilter(action='ignore', category=FutureWarning)
+        # we have to wrap the upset plot functionality with the future
+        # warning catching because it uses deprecated matplotlib and
+        # pandas functionality. unfortunataely, it appears the upstream
+        # https://github.com/jnothman/UpSetPlot is inactive
+        landscape_results.plot_upset()
     plt.savefig(output_directory.joinpath("landscape_upset.svg"))
     if show:
         plt.show()

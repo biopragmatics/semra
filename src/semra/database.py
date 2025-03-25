@@ -96,6 +96,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
 
     it = tqdm(pyobo_resources, unit="prefix", desc="PyOBO sources")
     for resource in it:
+        tqdm.write(click.style("\n" + resource.prefix, fg="green"))
         it.set_postfix(prefix=resource.prefix)
         start = time.time()
         try:
@@ -113,6 +114,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
     for func in funcs:
         start = time.time()
         resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
+        tqdm.write(click.style("\n" + resource_name, fg="green"))
         if resource_name == "wikidata":
             # this one needs extra informatzi
             continue
@@ -135,6 +137,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
             bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"
         ):
             it.set_postfix(prefix=prefix)
+            tqdm.write(click.style("\n" + prefix, fg="green"))
             if prefix in skip_wikidata_prefixes:
                 continue
             start = time.time()
@@ -154,6 +157,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
     for resource in it:
         it.set_postfix(prefix=resource.prefix)
+        tqdm.write(click.style("\n" + resource.prefix, fg="green"))
         path = SOURCES.join(name=f"{resource.prefix}.pkl.gz")
         if path.is_file():
             resource_mappings = from_pickle(path)

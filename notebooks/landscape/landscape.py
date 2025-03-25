@@ -19,7 +19,7 @@ def main() -> None:
         if not directory.is_dir():
             continue
 
-        row = {"name": directory.name}
+        row = {"name": directory.name.title()}
 
         statistics_path = directory.joinpath("stats.json")
         if not statistics_path.is_file():
@@ -30,14 +30,21 @@ def main() -> None:
         configuration = Configuration.model_validate_json(configuration_path.read_text())
         row["zenodo"] = configuration.zenodo_url()
         rows.append(row)
-    df = pd.DataFrame(rows).set_index("name")
-    df = df[["raw_term_count", "unique_term_count", "reduction", "zenodo"]]
+    df = pd.DataFrame(rows)
+    df = df[["name", "raw_term_count", "unique_term_count", "reduction", "zenodo"]]
     df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
+    df = df.rename(columns={
+        "name": "Domain",
+        "raw_term_count": "Raw Concepts",
+        "unique_term_count": "Unique Concepts",
+        "reduction": "Reduction Ratio",
+        "zenodo": "Download Link",
+    })
     df = df.astype(str)
     click.echo("\nTable as LaTeX for paper\n")
-    click.echo(df.to_latex(label="landscape-summary-table", caption=""))
+    click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
     click.echo("\nTable as markdown for repo\n")
-    click.echo(df.to_markdown())
+    click.echo(df.to_markdown(index=False, floatfmt=(",d", ",.2f")))
 
 
 if __name__ == "__main__":

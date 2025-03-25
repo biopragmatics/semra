@@ -36,13 +36,13 @@ and how many show up in a few
 
 A summary chart over all landscapes can be generated with `landscape.py`.
 
-| name    | raw_term_count | unique_term_count |  reduction | zenodo                                        |
-|:--------|---------------:|------------------:|-----------:|:----------------------------------------------|
-| disease |        377,250 |           275,044 |      27.1% | https://bioregistry.io/zenodo.record:11091886 |
-| anatomy |         39,362 |            33,877 |      13.9% | https://bioregistry.io/zenodo.record:11091803 |
-| complex |         17,932 |             9,011 |      49.7% | https://bioregistry.io/zenodo.record:11091422 |
-| gene    |     58,382,593 |        57,660,624 |       1.2% | https://bioregistry.io/zenodo.record:11092013 |
-| cell    |        218,557 |           172,299 |      21.2% | https://bioregistry.io/zenodo.record:11091581 |
+| Domain  | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
+| :------ | -----------: | --------------: | --------------: | :-------------------------------------------- |
+| Disease |      377,250 |         275,044 |           27.1% | https://bioregistry.io/zenodo.record:11091886 |
+| Anatomy |       39,362 |          33,877 |           13.9% | https://bioregistry.io/zenodo.record:11091803 |
+| Complex |       17,932 |           9,011 |           49.7% | https://bioregistry.io/zenodo.record:11091422 |
+| Gene    |   58,382,593 |      57,660,624 |            1.2% | https://bioregistry.io/zenodo.record:11092013 |
+| Cell    |      218,557 |         172,299 |           21.2% | https://bioregistry.io/zenodo.record:11091581 |
 
 ## Rebuild
 

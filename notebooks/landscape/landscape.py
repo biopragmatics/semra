@@ -33,13 +33,15 @@ def main() -> None:
     df = pd.DataFrame(rows)
     df = df[["name", "raw_term_count", "unique_term_count", "reduction", "zenodo"]]
     df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
-    df = df.rename(columns={
-        "name": "Domain",
-        "raw_term_count": "Raw Concepts",
-        "unique_term_count": "Unique Concepts",
-        "reduction": "Reduction Ratio",
-        "zenodo": "Download Link",
-    })
+    df = df.rename(
+        columns={
+            "name": "Domain",
+            "raw_term_count": "Raw Concepts",
+            "unique_term_count": "Unique Concepts",
+            "reduction": "Reduction Ratio",
+            "zenodo": "Download Link",
+        }
+    )
     df = df.astype(str)
     click.echo("\nTable as LaTeX for paper\n")
     click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))

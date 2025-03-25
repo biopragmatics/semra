@@ -1142,10 +1142,13 @@ def filter_minimum_confidence(
 
 def hydrate_subsets(
     subset_configuration: SubsetConfiguration,
+    *,
+    show_progress: bool = True,
 ) -> SubsetConfiguration:
     """Convert a subset configuration dictionary into a subset artifact.
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
+    :param show_progress: Should progress bars be shown?
     :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
     :raises ValueError: If a prefix can't be looked up with PyOBO
 
@@ -1187,7 +1190,9 @@ def hydrate_subsets(
     # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
     for prefix, parents in subset_configuration.items():
         try:
-            hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
+            hierarchy = pyobo.get_hierarchy(
+                prefix, include_part_of=False, include_has_member=False, use_tqdm=show_progress
+            )
         except RuntimeError:  # e.g., no build
             rv[prefix] = set()
         except Exception as e:

@@ -258,11 +258,11 @@ class Configuration(BaseModel):
             )
         raise ValueError("no processed pickle nor SSSOM file given")
 
-    def get_hydrated_subsets(self) -> SubsetConfiguration:
+    def get_hydrated_subsets(self, *, show_progress: bool = True) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
         if not self.subsets:
             return {}
-        return hydrate_subsets(self.subsets)
+        return hydrate_subsets(self.subsets, show_progress=show_progress)
 
     def _get_zenodo_metadata(self) -> zenodo_client.Metadata:
         if not self.creators:

@@ -60,6 +60,7 @@ def notebook(
     matplotlib_formats: str | None = "svg",
     show: bool = True,
     minimum_count: int | None = None,
+    show_progress: bool = False,
 ) -> tuple["OverlapResults", "LandscapeResult"]:
     """Run the landscape analysis inside a Jupyter notebook."""
     if not configuration.raw_pickle_path:
@@ -74,9 +75,9 @@ def notebook(
         configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
     )
 
-    terms = get_terms(configuration.priority, configuration.subsets)
+    terms = get_terms(configuration.priority, configuration.subsets, show_progress=show_progress)
 
-    hydrated_subsets = configuration.get_hydrated_subsets()
+    hydrated_subsets = configuration.get_hydrated_subsets(show_progress=show_progress)
 
     raw_mappings = configuration.read_raw_mappings()
     if configuration.subsets:
@@ -139,6 +140,7 @@ def notebook(
         mappings=processed_mappings,
         raw_mappings=raw_mappings,
         terms_observed=terms_observed,
+        show_progress=show_progress,
     )
     overlap_results.write(output_directory)
     _markdown(
@@ -311,16 +313,17 @@ def overlap_analysis(
     mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
+    show_progress: bool = True,
 ) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
         raise ValueError("No raw pickle path available")
-    raw_index = _get_summary_index(raw_mappings)
+    raw_index = _get_summary_index(raw_mappings, show_progress=show_progress)
     _, raw_counts_df = get_symmetric_counts_df(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    directed = _get_summary_index(mappings)
+    directed = _get_summary_index(mappings, show_progress=show_progress)
     counts, counts_df = get_symmetric_counts_df(
         directed, terms, priority=configuration.priority, terms_observed=terms_observed
     )
@@ -341,16 +344,21 @@ def overlap_analysis(
 
 
 def get_terms(
-    prefixes: list[str], subset_configuration: SubsetConfiguration | None = None
+    prefixes: list[str],
+    subset_configuration: SubsetConfiguration | None = None,
+    *,
+    show_progress: bool = True,
 ) -> XXTerms:
     """Get the set of identifiers for each of the resources."""
     prefix_to_identifier_to_name = {}
     if subset_configuration is None:
         hydrated_subset_configuration: SubsetConfiguration = {}
     else:
-        hydrated_subset_configuration = hydrate_subsets(subset_configuration)
+        hydrated_subset_configuration = hydrate_subsets(
+            subset_configuration, show_progress=show_progress
+        )
     for prefix in prefixes:
-        id_to_name = pyobo.get_id_name_mapping(prefix)
+        id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
             prefix_to_identifier_to_name[prefix] = {
@@ -430,7 +438,9 @@ def get_summary_df(
     return df
 
 
-def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
+def _get_summary_index(
+    mappings: t.Iterable[Mapping], *, show_progress: bool = True
+) -> DirectedIndex:
     """Index which entities in each vocabulary have been mapped.
 
     :param mappings: An iterable of mappings to be indexed
@@ -448,7 +458,7 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
            ("P3", "P1"): {"X"},
         }
     """
-    index = get_index(mappings, progress=True, leave=False)
+    index = get_index(mappings, progress=show_progress, leave=False)
     directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
     for s, p, o in index:

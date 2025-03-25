@@ -1,5 +1,6 @@
 {
   "name": "SeMRA Anatomy Mappings Database",
+  "key": "anatomy",
   "description": "Supports the analysis of the landscape of anatomy nomenclature resources.",
   "creators": [
     {
@@ -185,15 +186,15 @@
     "umls"
   ],
   "remove_imprecise": false,
-  "raw_pickle_path": "/Users/ben/.data/semra/case-studies/anatomy/raw.pkl",
-  "raw_sssom_path": "/Users/ben/.data/semra/case-studies/anatomy/raw.sssom.tsv",
-  "processed_pickle_path": "/Users/ben/.data/semra/case-studies/anatomy/processed.pkl",
-  "processed_sssom_path": "/Users/ben/.data/semra/case-studies/anatomy/processed.sssom.tsv",
-  "processed_neo4j_path": "/Users/ben/.data/semra/case-studies/anatomy/neo4j",
+  "raw_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/raw.pkl",
+  "raw_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/raw.sssom.tsv",
+  "processed_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/processed.pkl",
+  "processed_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/processed.sssom.tsv",
+  "processed_neo4j_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/neo4j",
   "processed_neo4j_name": "semra-anatomy",
-  "priority_pickle_path": "/Users/ben/.data/semra/case-studies/anatomy/priority.pkl",
-  "priority_sssom_path": "/Users/ben/.data/semra/case-studies/anatomy/priority.sssom.tsv",
+  "priority_pickle_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.pkl",
+  "priority_sssom_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/priority.sssom.tsv",
   "add_labels": false,
-  "configuration_path": "/Users/ben/.data/semra/case-studies/anatomy/configuration.json",
+  "configuration_path": "/Users/cthoyt/.data/semra/case-studies/anatomy/configuration.json",
   "zenodo_record": 11091803
 }

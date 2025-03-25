@@ -24,7 +24,7 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.pipeline import UPLOAD_OPTION
+from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 
@@ -45,10 +45,8 @@ summaries = []
 skip = {
     "ado",  # trash
     "epio",  # trash
-    "chebi",  # too big
     "pr",  # too big
     "ncbitaxon",  # too big
-    "ncit",  # too big
     "ncbigene",  # too big
     # duplicates of EDAM
     "edam.data",
@@ -58,6 +56,10 @@ skip = {
     "gwascentral.phenotype",  # added on 2024-04-24, service down
     "gwascentral.study",  # added on 2024-04-24, service down
     "conso",
+}
+skip_prefixes = {
+    "kegg",
+    "pubchem",
 }
 #: A set of prefixes whose obo files need to be parsed without ROBOT checks
 loose = {
@@ -70,7 +72,8 @@ loose = {
 @click.command()
 @click.option("--include-wikidata", is_flag=True)
 @UPLOAD_OPTION
-def build(include_wikidata: bool, upload: bool) -> None:
+@REFRESH_SOURCE_OPTION
+def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
     """Construct the full SeMRA database."""
     ontology_resources = []
     pyobo_resources = []
@@ -82,7 +85,7 @@ def build(include_wikidata: bool, upload: bool) -> None:
             or resource.proprietary
         ):
             continue
-        if resource.prefix.startswith("kegg") or resource.prefix.startswith("pubchem"):
+        if any(resource.prefix.startswith(p) for p in skip_prefixes):
             continue
         if pyobo.has_nomenclature_plugin(resource.prefix):
             pyobo_resources.append(resource)
@@ -97,7 +100,7 @@ def build(include_wikidata: bool, upload: bool) -> None:
         start = time.time()
         try:
             with logging_redirect_tqdm():
-                resource_mappings = from_pyobo(resource.prefix)
+                resource_mappings = from_pyobo(resource.prefix, force_process=refresh_source)
         except Exception as e:
             tqdm.write(f"failed PyOBO parsing on {resource.prefix}: {e}")
             continue

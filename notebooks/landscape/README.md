@@ -47,7 +47,7 @@ A summary chart over all landscapes can be generated with `landscape.py`.
 ## Rebuild
 
 Run all notebooks after installing semra with the `landscape-notebook` extra,
-then running the following
+then running the following:
 
 ```console
 $ git clone https://github.com/biopragmatics/semra.git
@@ -55,4 +55,8 @@ $ cd semra
 $ uv pip install .[landscape-notebooks]
 $ cd notebooks/landscape
 $ sh run.sh
+$ python landscape.py
 ```
+
+`landscape.py` quickly compiles the statistics into a markdown (for the summary
+table above) and latex-ready string (for the manuscript)

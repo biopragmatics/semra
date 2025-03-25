@@ -36,13 +36,13 @@ and how many show up in a few
 
 A summary chart over all landscapes can be generated with `landscape.py`.
 
-| name    | raw_term_count | unique_term_count | reduction |                                                                download |
-| ------- | -------------: | ----------------: | --------: | ----------------------------------------------------------------------: |
-| disease |        410,173 |           243,730 |  0.405787 | [zenodo.record:11091886](https://bioregistry.io/zenodo.record:11091886) |
-| anatomy |         37,917 |            32,108 |  0.153203 | [zenodo.record:11091803](https://bioregistry.io/zenodo.record:11091803) |
-| complex |         15,869 |             7,775 |  0.510051 | [zenodo.record:11091422](https://bioregistry.io/zenodo.record:11091422) |
-| gene    |     49,457,767 |           207,019 |  0.013529 | [zenodo.record:11092013](https://bioregistry.io/zenodo.record:11092013) |
-| cell    |        207,019 |           166,274 |  0.196818 | [zenodo.record:11091581](https://bioregistry.io/zenodo.record:11091581) |
+| name    | raw_term_count | unique_term_count |  reduction | zenodo                                        |
+|:--------|---------------:|------------------:|-----------:|:----------------------------------------------|
+| disease |        377,250 |           275,044 |      27.1% | https://bioregistry.io/zenodo.record:11091886 |
+| anatomy |         39,362 |            33,877 |      13.9% | https://bioregistry.io/zenodo.record:11091803 |
+| complex |         17,932 |             9,011 |      49.7% | https://bioregistry.io/zenodo.record:11091422 |
+| gene    |     58,382,593 |        57,660,624 |       1.2% | https://bioregistry.io/zenodo.record:11092013 |
+| cell    |        218,557 |           172,299 |      21.2% | https://bioregistry.io/zenodo.record:11091581 |
 
 ## Rebuild
 

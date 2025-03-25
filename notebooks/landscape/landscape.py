@@ -27,14 +27,17 @@ def main() -> None:
         row.update(json.loads(statistics_path.read_text()))
 
         configuration_path = directory.joinpath("configuration.json")
-        configuration = Configuration.parse_file(configuration_path)
+        configuration = Configuration.model_validate_json(configuration_path.read_text())
         row["zenodo"] = configuration.zenodo_url()
         rows.append(row)
     df = pd.DataFrame(rows).set_index("name")
     df = df[["raw_term_count", "unique_term_count", "reduction", "zenodo"]]
     df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
     df = df.astype(str)
+    click.echo("\nTable as LaTeX for paper\n")
     click.echo(df.to_latex(label="landscape-summary-table", caption=""))
+    click.echo("\nTable as markdown for repo\n")
+    click.echo(df.to_markdown())
 
 
 if __name__ == "__main__":

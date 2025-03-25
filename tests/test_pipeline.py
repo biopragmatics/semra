@@ -65,6 +65,7 @@ class TestPipeline(unittest.TestCase):
         config = Configuration(
             inputs=[inp],
             priority=["chebi", "mesh"],
+            key="test",
             name="Test Configuration",
             description="Tests using custom sources",
         )
@@ -81,6 +82,7 @@ class TestPipeline(unittest.TestCase):
             config = Configuration(
                 inputs=[inp],
                 priority=["a", "b"],
+                key="test",
                 name="Test Configuration",
                 description="Tests using SSSOM sources",
             )

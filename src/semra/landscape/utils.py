@@ -20,7 +20,6 @@ from pyobo.sources.mesh import get_mesh_category_curies
 
 from semra import Reference
 from semra.api import (
-    aggregate_components,
     count_component_sizes,
     filter_subsets,
     get_index,
@@ -607,9 +606,6 @@ def landscape_analysis(
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
     mapped_counter = count_component_sizes(mappings=mappings, prefix_allowlist=priority)
-
-    xx = aggregate_components(mappings, priority)
-    mapped_counter = Counter({k: len(v) for k, v in xx.items()})
 
     #: A count of the number of entities that have at least mapping.
     #: This is calculated by the appearance of a weakly connected component

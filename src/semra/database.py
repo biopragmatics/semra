@@ -101,7 +101,9 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         start = time.time()
         try:
             with logging_redirect_tqdm():
-                resource_mappings = from_pyobo(resource.prefix, force_process=refresh_source)
+                resource_mappings = from_pyobo(
+                    resource.prefix, force_process=refresh_source, cache=False
+                )
         except Exception as e:
             tqdm.write(f"failed PyOBO parsing on {resource.prefix}: {e}")
             continue

@@ -37,7 +37,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 #: The default confidence for ontology-based mappings
 DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
 
@@ -110,6 +109,7 @@ def from_pyobo(
     confidence: float | None = None,
     justification: Reference | None = None,
     force_process: bool = False,
+    cache: bool = True,
 ) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`pyobo`.
 
@@ -129,10 +129,13 @@ def from_pyobo(
     :param force_process: force re-processing of the source data, e.g., the OBO
         file for external ontologies or the locally cached data for PyOBO custom
         sources
+    :param cache: Should the ontology be automatically cached? Turn off to
 
     :returns: A list of semantic mapping objects
     """
-    df: pd.DataFrame = pyobo.get_mappings_df(prefix, force_process=force_process, names=False)  # type:ignore
+    df: pd.DataFrame = pyobo.get_mappings_df(  # type:ignore
+        prefix, force_process=force_process, names=False, cache=cache
+    )
     return _from_pyobo_sssom_df(
         df,
         prefix=prefix,

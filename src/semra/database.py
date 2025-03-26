@@ -67,6 +67,12 @@ loose = {
     "foodon",
     "cellosaurus",
 }
+skip_wikidata_prefixes = {
+    "pubmed",  # too big! need paging?
+    "doi",  # too big! need paging?
+    "inchi",  # too many funny characters
+    "smiles",  # too many funny characters
+}
 
 
 @click.command()
@@ -94,6 +100,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
 
     mappings = []
 
+    click.secho("PyOBO Sources", fg="cyan", bold=True)
     it = tqdm(pyobo_resources, unit="prefix", desc="PyOBO sources")
     for resource in it:
         tqdm.write(click.style("\n" + resource.prefix, fg="green"))
@@ -112,6 +119,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
 
+    click.secho("\nCustom SeMRA Sources", fg="cyan", bold=True)
     funcs = tqdm(list(SOURCE_RESOLVER), unit="source", desc="Custom sources")
     for func in funcs:
         start = time.time()
@@ -128,13 +136,8 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
         _write_summary()
 
-    skip_wikidata_prefixes = {
-        "pubmed",  # too big! need paging?
-        "doi",  # too big! need paging?
-        "inchi",  # too many funny characters
-        "smiles",  # too many funny characters
-    }
     if include_wikidata:
+        click.secho("\nWikidata Sources", fg="cyan", bold=True)
         for prefix in tqdm(
             bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"
         ):
@@ -156,6 +159,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
             )
             _write_summary()
 
+    click.secho("\nOntology Sources", fg="cyan", bold=True)
     it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
     for resource in it:
         it.set_postfix(prefix=resource.prefix)

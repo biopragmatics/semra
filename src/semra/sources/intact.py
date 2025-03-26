@@ -5,7 +5,9 @@ from __future__ import annotations
 import bioregistry
 import bioversions
 import pandas as pd
+from pydantic import ValidationError
 from pyobo import Reference
+from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
@@ -31,22 +33,28 @@ def _get_mappings(url: str, target_prefix: str) -> list[Mapping]:
         v = None
     license = bioregistry.get_license("intact")
     df = pd.read_csv(url, sep="\t", header=None, usecols=[0, 1])
-    return [
-        Mapping(
+    evidence = SimpleEvidence(
+        justification=UNSPECIFIED_MAPPING,
+        mapping_set=MappingSet(
+            name="intact", version=v, license=license, confidence=INTACT_CONFIDENCE
+        ),
+    )
+    rv = []
+    for intact_id, target_identifier in df.values:
+        try:
+            o = Reference(prefix=target_prefix, identifier=target_identifier)
+        except ValidationError:
+            tqdm.write(f"[intact:{intact_id}] invalid xref: {target_prefix}:{target_identifier}")
+            continue
+        mapping = Mapping(
             s=Reference(prefix="intact", identifier=intact_id),
             p=EXACT_MATCH,
-            o=Reference(prefix=target_prefix, identifier=target_identifier),
-            evidence=[
-                SimpleEvidence(
-                    justification=UNSPECIFIED_MAPPING,
-                    mapping_set=MappingSet(
-                        name="intact", version=v, license=license, confidence=INTACT_CONFIDENCE
-                    ),
-                )
-            ],
+            o=o,
+            evidence=[evidence],
         )
-        for intact_id, target_identifier in df.values
-    ]
+        rv.append(mapping)
+
+    return rv
 
 
 def get_intact_complexportal_mappings() -> list[Mapping]:
@@ -57,3 +65,8 @@ def get_intact_complexportal_mappings() -> list[Mapping]:
 def get_intact_reactome_mappings() -> list[Mapping]:
     """Get IntAct-Reactome xrefs."""
     return _get_mappings(REACTOME_MAPPINGS_UNVERSIONED, "reactome")
+
+
+if __name__ == "__main__":
+    get_intact_reactome_mappings()
+    get_intact_complexportal_mappings()

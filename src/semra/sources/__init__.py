@@ -51,7 +51,6 @@ __all__ = [
 
 SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResolver(
     [
-        get_chembl_compound_mappings,
         get_intact_reactome_mappings,
         get_intact_complexportal_mappings,
         get_fplx_mappings,

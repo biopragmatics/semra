@@ -1,7 +1,9 @@
 """Assemble a database."""
 
 import csv
+import subprocess
 import time
+from operator import attrgetter
 
 import bioregistry
 import click
@@ -11,13 +13,13 @@ import requests
 from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
 from curies.vocabulary import charlie
+from pyobo.getters import NoBuildError
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from zenodo_client import Creator, Metadata, ensure_zenodo
 
 from semra import Mapping
 from semra.io import (
-    from_bioontologies,
     from_pickle,
     from_pyobo,
     write_neo4j,
@@ -61,12 +63,6 @@ skip_prefixes = {
     "kegg",
     "pubchem",
 }
-#: A set of prefixes whose obo files need to be parsed without ROBOT checks
-loose = {
-    "caloha",
-    "foodon",
-    "cellosaurus",
-}
 skip_wikidata_prefixes = {
     "pubmed",  # too big! need paging?
     "doi",  # too big! need paging?
@@ -77,9 +73,10 @@ skip_wikidata_prefixes = {
 
 @click.command()
 @click.option("--include-wikidata", is_flag=True)
+@click.option("--write-labels", is_flag=True)
 @UPLOAD_OPTION
 @REFRESH_SOURCE_OPTION
-def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
+def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labels: bool) -> None:
     """Construct the full SeMRA database."""
     ontology_resources = []
     pyobo_resources = []
@@ -114,13 +111,15 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         except Exception as e:
             tqdm.write(f"failed PyOBO parsing on {resource.prefix}: {e}")
             continue
-        _write_source(resource_mappings, resource.prefix)
+        _write_source(resource_mappings, "pyobo", resource.prefix, write_labels=write_labels)
         mappings.extend(resource_mappings)
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
 
     click.secho("\nCustom SeMRA Sources", fg="cyan", bold=True)
-    funcs = tqdm(list(SOURCE_RESOLVER), unit="source", desc="Custom sources")
+    funcs = tqdm(
+        sorted(SOURCE_RESOLVER, key=lambda f: f.__name__), unit="source", desc="Custom sources"
+    )
     for func in funcs:
         start = time.time()
         resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
@@ -131,18 +130,19 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         funcs.set_postfix(source=resource_name)
         with logging_redirect_tqdm():
             resource_mappings = func()
-            _write_source(resource_mappings, resource_name)
+            _write_source(resource_mappings, "custom", resource_name, write_labels=write_labels)
             mappings.extend(resource_mappings)
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
         _write_summary()
 
     if include_wikidata:
         click.secho("\nWikidata Sources", fg="cyan", bold=True)
-        for prefix in tqdm(
-            bioregistry.get_registry_map("wikidata"), unit="property", desc="Wikidata"
-        ):
-            it.set_postfix(prefix=prefix)
-            tqdm.write(click.style("\n" + prefix, fg="green"))
+        wikidata_prefix_it = tqdm(
+            bioregistry.get_registry_map("wikidata").items(), unit="property", desc="Wikidata"
+        )
+        for prefix, wikidata_property in wikidata_prefix_it:
+            wikidata_prefix_it.set_postfix(prefix=prefix)
+            tqdm.write(click.style(f"\n{prefix} ({wikidata_property})", fg="green"))
             if prefix in skip_wikidata_prefixes:
                 continue
             start = time.time()
@@ -152,7 +152,7 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
             except requests.exceptions.JSONDecodeError as e:
                 tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
                 continue
-            _write_source(resource_mappings, resource_name)
+            _write_source(resource_mappings, "wikidata", resource_name, write_labels=write_labels)
             mappings.extend(resource_mappings)
             summaries.append(
                 (resource_name, len(resource_mappings), time.time() - start, "wikidata")
@@ -160,32 +160,34 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
             _write_summary()
 
     click.secho("\nOntology Sources", fg="cyan", bold=True)
-    it = tqdm(ontology_resources, unit="ontology", desc="Ontology sources")
+    it = tqdm(
+        sorted(ontology_resources, key=attrgetter("prefix")),
+        unit="ontology",
+        desc="Ontology sources",
+    )
     for resource in it:
         it.set_postfix(prefix=resource.prefix)
         tqdm.write(click.style("\n" + resource.prefix, fg="green"))
-        path = SOURCES.join(name=f"{resource.prefix}.pkl.gz")
+        path = SOURCES.join("ontology", name=f"{resource.prefix}.pkl.gz")
+        start = time.time()
         if path.is_file():
             resource_mappings = from_pickle(path)
+            click.echo(f"loaded {len(resource_mappings):,} from cache at {path}")
         else:
-            start = time.time()
             try:
                 with logging_redirect_tqdm():
-                    resource_mappings = from_bioontologies(
-                        resource.prefix, check=resource.prefix not in loose
+                    resource_mappings = from_pyobo(
+                        resource.prefix, force_process=refresh_source, cache=False
                     )
-            except ValueError as e:
+            except (ValueError, NoBuildError, subprocess.SubprocessError) as e:
                 tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
                 continue
-            _write_source(resource_mappings, resource.prefix)
+            _write_source(resource_mappings, "ontology", resource.prefix, write_labels=write_labels)
             # this outputs on each iteration to get faster insight
             write_warned(WARNINGS_PATH)
             write_getter_warnings(ERRORS_PATH)
-            summaries.append(
-                (resource.prefix, len(resource_mappings), time.time() - start, "bioontologies")
-            )
-            _write_summary()
-
+        summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
+        _write_summary()
         mappings.extend(resource_mappings)
 
     click.echo(f"Writing SSSOM to {SSSOM_PATH}")
@@ -222,10 +224,15 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool) -> None:
         click.echo(res.json()["links"]["html"])
 
 
-def _write_source(mappings: list[Mapping], key: str) -> None:
+def _write_source(
+    mappings: list[Mapping], subdirectory: str, key: str, write_labels: bool = True
+) -> None:
     if mappings:
-        write_pickle(mappings, SOURCES.join(name=f"{key}.pkl.gz"))
-        write_sssom(mappings, SOURCES.join(name=f"{key}.sssom.tsv"), add_labels=True)
+        tqdm.write(f"produced {len(mappings):,} mappings")
+        write_pickle(mappings, SOURCES.join(subdirectory, name=f"{key}.pkl.gz"))
+        write_sssom(
+            mappings, SOURCES.join(subdirectory, name=f"{key}.sssom.tsv"), add_labels=write_labels
+        )
     else:
         EMPTY.append(key)
         EMPTY_PATH.write_text("\n".join(EMPTY))

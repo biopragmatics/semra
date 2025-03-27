@@ -121,12 +121,12 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
         sorted(SOURCE_RESOLVER, key=lambda f: f.__name__), unit="source", desc="Custom sources"
     )
     for func in funcs:
-        start = time.time()
-        resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
-        tqdm.write(click.style("\n" + resource_name, fg="green"))
         if resource_name == "wikidata":
             # this one needs extra informatzi
             continue
+        start = time.time()
+        resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
+        tqdm.write(click.style("\n" + resource_name, fg="green"))
         funcs.set_postfix(source=resource_name)
         with logging_redirect_tqdm():
             resource_mappings = func()
@@ -141,10 +141,10 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
             bioregistry.get_registry_map("wikidata").items(), unit="property", desc="Wikidata"
         )
         for prefix, wikidata_property in wikidata_prefix_it:
-            wikidata_prefix_it.set_postfix(prefix=prefix)
-            tqdm.write(click.style(f"\n{prefix} ({wikidata_property})", fg="green"))
             if prefix in skip_wikidata_prefixes:
                 continue
+            wikidata_prefix_it.set_postfix(prefix=prefix)
+            tqdm.write(click.style(f"\n{prefix} ({wikidata_property})", fg="green"))
             start = time.time()
             resource_name = f"wikidata_{prefix}"
             try:

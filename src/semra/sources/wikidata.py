@@ -73,6 +73,8 @@ def _help(
     mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
     rv = []
     for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
+        if not wikidata_id.startswith("Q"):
+            continue
         try:
             o = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
         except ValueError:

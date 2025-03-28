@@ -4,6 +4,7 @@ import csv
 import subprocess
 import time
 from operator import attrgetter
+from pathlib import Path
 
 import bioregistry
 import click
@@ -102,16 +103,22 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
     for resource in it:
         tqdm.write(click.style("\n" + resource.prefix, fg="green"))
         it.set_postfix(prefix=resource.prefix)
+        pickle_gz_path = _get_pickle_path("pyobo", resource.prefix)
         start = time.time()
-        try:
-            with logging_redirect_tqdm():
-                resource_mappings = from_pyobo(
-                    resource.prefix, force_process=refresh_source, cache=False
-                )
-        except Exception as e:
-            tqdm.write(f"failed PyOBO parsing on {resource.prefix}: {e}")
-            continue
-        _write_source(resource_mappings, "pyobo", resource.prefix, write_labels=write_labels)
+        if pickle_gz_path.is_file():
+            resource_mappings = from_pickle(pickle_gz_path)
+            tqdm.write(f"loaded {len(resource_mappings):,} from cache at {pickle_gz_path}")
+        else:
+            try:
+                with logging_redirect_tqdm():
+                    resource_mappings = from_pyobo(
+                        resource.prefix, force_process=refresh_source, cache=False
+                    )
+            except Exception as e:
+                tqdm.write(f"failed PyOBO parsing on {resource.prefix}: {e}")
+                continue
+            _write_source(resource_mappings, "pyobo", resource.prefix, write_labels=write_labels)
+
         mappings.extend(resource_mappings)
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
@@ -121,17 +128,23 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
         sorted(SOURCE_RESOLVER, key=lambda f: f.__name__), unit="source", desc="Custom sources"
     )
     for func in funcs:
+        resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
         if resource_name == "wikidata":
             # this one needs extra informatzi
             continue
+        pickle_gz_path = _get_pickle_path("custom", resource_name)
         start = time.time()
-        resource_name = func.__name__.removeprefix("get_").removesuffix("_mappings")
-        tqdm.write(click.style("\n" + resource_name, fg="green"))
-        funcs.set_postfix(source=resource_name)
-        with logging_redirect_tqdm():
-            resource_mappings = func()
-            _write_source(resource_mappings, "custom", resource_name, write_labels=write_labels)
-            mappings.extend(resource_mappings)
+        if pickle_gz_path.is_file():
+            resource_mappings = from_pickle(pickle_gz_path)
+            tqdm.write(f"loaded {len(resource_mappings):,} from cache at {pickle_gz_path}")
+        else:
+            tqdm.write(click.style("\n" + resource_name, fg="green"))
+            funcs.set_postfix(source=resource_name)
+            with logging_redirect_tqdm():
+                resource_mappings = func()
+                _write_source(resource_mappings, "custom", resource_name, write_labels=write_labels)
+
+        mappings.extend(resource_mappings)
         summaries.append((resource_name, len(resource_mappings), time.time() - start, "custom"))
         _write_summary()
 
@@ -145,14 +158,22 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
                 continue
             wikidata_prefix_it.set_postfix(prefix=prefix)
             tqdm.write(click.style(f"\n{prefix} ({wikidata_property})", fg="green"))
-            start = time.time()
             resource_name = f"wikidata_{prefix}"
-            try:
-                resource_mappings = get_wikidata_mappings_by_prefix(prefix)
-            except requests.exceptions.JSONDecodeError as e:
-                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
-                continue
-            _write_source(resource_mappings, "wikidata", resource_name, write_labels=write_labels)
+            pickle_gz_path = _get_pickle_path("wikidata", resource_name)
+            start = time.time()
+            if pickle_gz_path.is_file():
+                resource_mappings = from_pickle(pickle_gz_path)
+                tqdm.write(f"loaded {len(resource_mappings):,} from cache at {pickle_gz_path}")
+            else:
+                try:
+                    resource_mappings = get_wikidata_mappings_by_prefix(prefix)
+                except requests.exceptions.JSONDecodeError as e:
+                    tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+                    continue
+                _write_source(
+                    resource_mappings, "wikidata", resource_name, write_labels=write_labels
+                )
+
             mappings.extend(resource_mappings)
             summaries.append(
                 (resource_name, len(resource_mappings), time.time() - start, "wikidata")
@@ -168,11 +189,11 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
     for resource in it:
         it.set_postfix(prefix=resource.prefix)
         tqdm.write(click.style("\n" + resource.prefix, fg="green"))
-        path = SOURCES.join("ontology", name=f"{resource.prefix}.pkl.gz")
+        pickle_gz_path = _get_pickle_path("ontology", resource.prefix)
         start = time.time()
-        if path.is_file():
-            resource_mappings = from_pickle(path)
-            click.echo(f"loaded {len(resource_mappings):,} from cache at {path}")
+        if pickle_gz_path.is_file():
+            resource_mappings = from_pickle(pickle_gz_path)
+            tqdm.write(f"loaded {len(resource_mappings):,} from cache at {pickle_gz_path}")
         else:
             try:
                 with logging_redirect_tqdm():
@@ -186,14 +207,15 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
             # this outputs on each iteration to get faster insight
             write_warned(WARNINGS_PATH)
             write_getter_warnings(ERRORS_PATH)
+
+        mappings.extend(resource_mappings)
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
-        mappings.extend(resource_mappings)
 
-    click.echo(f"Writing SSSOM to {SSSOM_PATH}")
-    write_sssom(mappings, SSSOM_PATH)
     click.echo(f"Writing Pickle to {PICKLE_PATH}")
     write_pickle(mappings, PICKLE_PATH)
+    click.echo(f"Writing SSSOM to {SSSOM_PATH}")
+    write_sssom(mappings, SSSOM_PATH)
     click.echo(f"Writing Neo4j folder to {NEO4J_DIR}")
     write_neo4j(mappings, NEO4J_DIR)
 
@@ -229,13 +251,19 @@ def _write_source(
 ) -> None:
     if mappings:
         tqdm.write(f"produced {len(mappings):,} mappings")
-        write_pickle(mappings, SOURCES.join(subdirectory, name=f"{key}.pkl.gz"))
+        write_pickle(mappings, _get_pickle_path(subdirectory, key))
         write_sssom(
-            mappings, SOURCES.join(subdirectory, name=f"{key}.sssom.tsv"), add_labels=write_labels
+            mappings,
+            SOURCES.join(subdirectory, name=f"{key}.sssom.tsv.gz"),
+            add_labels=write_labels,
         )
     else:
         EMPTY.append(key)
         EMPTY_PATH.write_text("\n".join(EMPTY))
+
+
+def _get_pickle_path(subdirectory: str, key: str) -> Path:
+    return SOURCES.join(subdirectory, name=f"{key}.pkl.gz")
 
 
 def _write_summary() -> None:

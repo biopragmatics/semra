@@ -88,3 +88,9 @@ class TestPipeline(unittest.TestCase):
             )
             mappings = get_raw_mappings(config, show_progress=False)
             self.assert_test_mappings(mappings)
+
+    def test_sssom_stream(self) -> None:
+        """Test writing SSSOM with a stream."""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d).resolve().joinpath("test.sssom.tsv")
+            write_sssom(TEST_MAPPINGS, path, prune=False, add_labels=False)

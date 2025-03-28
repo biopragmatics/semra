@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import csv
 import gzip
 import logging
 import pickle
 import typing as t
 import uuid
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -406,7 +409,23 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
         return Reference(prefix=prefix, identifier=identifier)
 
 
-def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:
+SSSOM_DEFAULT_COLUMNS = [
+    "subject_id",
+    "predicate_id",
+    "object_id",
+    "mapping_justification",
+    "mapping_set",
+    "mapping_set_version",
+    "mapping_set_license",
+    "mapping_set_confidence",
+    "author_id",
+    "comment",
+]
+
+
+def get_sssom_df(
+    mappings: list[Mapping], *, add_labels: bool = False, prune: bool = True
+) -> pd.DataFrame:
     """Get a SSSOM dataframe.
 
     Automatically prunes columns that aren't filled out.
@@ -424,19 +443,7 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
         )
         for e in m.evidence
     ]
-    columns = [
-        "subject_id",
-        "predicate_id",
-        "object_id",
-        "mapping_justification",
-        "mapping_set",
-        "mapping_set_version",
-        "mapping_set_license",
-        "mapping_set_confidence",
-        "author_id",
-        "comment",
-    ]
-    df = pd.DataFrame(rows, columns=columns)
+    df = pd.DataFrame(rows, columns=SSSOM_DEFAULT_COLUMNS)
     if add_labels:
         with logging_redirect_tqdm():
             for label_column, id_column in [
@@ -461,10 +468,11 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
             ]
         ]
 
-    # remove empty columns
-    for column in df.columns:
-        if not df[column].map(bool).any():
-            del df[column]
+    if prune:
+        # remove empty columns
+        for column in df.columns:
+            if not df[column].map(bool).any():
+                del df[column]
 
     return df
 
@@ -494,11 +502,43 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
 
 
 def write_sssom(
-    mappings: list[Mapping], file: str | Path | TextIO, *, add_labels: bool = False
+    mappings: list[Mapping],
+    file: str | Path | TextIO,
+    *,
+    add_labels: bool = False,
+    prune: bool = True,
 ) -> None:
     """Export mappings as an SSSOM file (could be lossy)."""
+    if not add_labels and not prune:
+        _write_sssom_stream(mappings, file)
     df = get_sssom_df(mappings, add_labels=add_labels)
     df.to_csv(file, sep="\t", index=False)
+
+
+@contextlib.contextmanager
+def _safe_writer(f: str | Path | TextIO):
+    if isinstance(f, str | Path):
+        path = Path(f)
+        if path.suffix.endswith(".gz"):
+            with gzip.open(path, mode="wt") as file:
+                yield csv.writer(file, delimiter="\t")
+        else:
+            with open(f, "w") as file:
+                yield csv.writer(file, delimiter="\t")
+    else:
+        yield csv.writer(f, delimiter="\t")
+
+
+def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
+    with _safe_writer(file) as writer:
+        writer.writerow(SSSOM_DEFAULT_COLUMNS)
+        writer.writerows(
+            _get_sssom_row(m, e)
+            for m in tqdm(
+                mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True
+            )
+            for e in m.evidence
+        )
 
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:

@@ -73,7 +73,9 @@ skip_wikidata_prefixes = {
 
 
 @click.command()
-@click.option("--include-wikidata", is_flag=True)
+@click.option(
+    "--include-wikidata/--no-include-wikidata", is_flag=True, show_default=True, default=True
+)
 @click.option("--write-labels", is_flag=True)
 @UPLOAD_OPTION
 @REFRESH_SOURCE_OPTION

@@ -98,7 +98,7 @@
                     {% for mapping_set in mapping_sets %}
                     <tr>
                         <td class="text-break">
-                            <a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">
+                            <a href="{{ url_for('view_mapping_set', mapping_set_id=mapping_set.curie) }}">
                                 {{ mapping_set.name }}
                             </a>
                         </td>

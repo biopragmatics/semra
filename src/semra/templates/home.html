@@ -106,8 +106,7 @@
                         <td class="text-break">
                             {% if mapping_set.license %}
                                 {% if mapping_set.license.startswith('http') %}
-                                    <a href="{{ mapping_set.license }}"
-                                       target="_blank">See link</a>
+                                    See <a href="{{ mapping_set.license }}" target="_blank">homepage</a>
                                 {% else %}
                                     {{ mapping_set.license }}
                                 {% endif %}

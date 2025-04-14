@@ -97,10 +97,15 @@
                     </tr>
                     {% for mapping_set in mapping_sets %}
                     <tr>
-                        <td><a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">{{ mapping_set.name
-                            }}</a></td>
-                        <td>{{ mapping_set.version }}</td>
-                        <td>{% if mapping_set.license %}{{ mapping_set.license }}{% endif %}</td>
+                        <td class="text-break">
+                            <a href="{{ url_for('view_mapping_set', curie=mapping_set.curie) }}">
+                                {{ mapping_set.name }}
+                            </a>
+                        </td>
+                        <td class="text-nowrap">{{ mapping_set.version }}</td>
+                        <td class="text-break">
+                            {% if mapping_set.license %}{{ mapping_set.license }}{% endif %}
+                        </td>
                         <td>{{ mapping_set.confidence }}</td>
                         <td align="right">{{ "{:,}".format(mapping_set_counter[mapping_set.curie]) }}</td>
                     </tr>

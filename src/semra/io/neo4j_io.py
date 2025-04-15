@@ -165,6 +165,18 @@ def write_neo4j(
     mapping_edges_path = directory.joinpath("mapping_edges.tsv")
     edges_path = directory.joinpath("edges.tsv")
 
+    node_paths = [
+        ("concept", concept_nodes_path),
+        ("mapping", mapping_nodes_path),
+        ("evidence", evidence_nodes_path),
+        ("mappingset", mapping_set_nodes_path),
+    ]
+    node_names = [
+        (a, n.relative_to(directory)) for a, n in node_paths
+    ]
+    edge_paths = [mapping_edges_path, edges_path]
+    edge_names = [n.relative_to(directory) for n in edge_paths]
+
     with (
         safe_open_writer(mapping_edges_path) as mapping_edges_writer,
         safe_open_writer(edges_path) as edge_writer,
@@ -247,7 +259,10 @@ def write_neo4j(
 
     # TODO flag for swapping on version of semra / git installation
     docker_path = directory.joinpath(dockerfile_name)
-    docker_path.write_text(DOCKERFILE_TEMPLATE.render())
+    docker_path.write_text(DOCKERFILE_TEMPLATE.render(
+        node_names=node_names,
+        edge_names=edge_names,
+    ))
 
     run_path = directory.joinpath(run_script_name)
     run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))

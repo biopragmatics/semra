@@ -16,7 +16,12 @@ from neo4j import unit_of_work
 
 import semra
 from semra import Evidence, MappingSet, Reference
-from semra.rules import RELATIONS
+from semra.rules import (
+    RELATIONS,
+    SEMRA_EVIDENCE_PREFIX,
+    SEMRA_MAPPING_PREFIX,
+    SEMRA_MAPPING_SET_PREFIX,
+)
 
 __all__ = [
     "Neo4jClient",
@@ -143,7 +148,7 @@ class Neo4jClient:
 
         :returns: A semantic mapping object
         """
-        curie = _safe_curie(curie, "semra.mapping")
+        curie = _safe_curie(curie, SEMRA_MAPPING_PREFIX)
         query = """\
         MATCH
             (mapping:mapping {curie: $curie}) ,
@@ -198,7 +203,7 @@ class Neo4jClient:
 
         :returns: A mapping set object
         """
-        curie = _safe_curie(curie, "semra.mappingset")
+        curie = _safe_curie(curie, SEMRA_MAPPING_SET_PREFIX)
         node = self._get_node_by_curie(curie, "mappingset")
         return MappingSet.model_validate(node)
 
@@ -209,7 +214,7 @@ class Neo4jClient:
 
         :returns: An evidence object
         """
-        curie = _safe_curie(curie, "semra.evidence")
+        curie = _safe_curie(curie, SEMRA_EVIDENCE_PREFIX)
         query = "MATCH (n:evidence {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
         return res[0][0]

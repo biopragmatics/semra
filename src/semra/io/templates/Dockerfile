@@ -15,7 +15,7 @@ RUN apt-get update && \
     apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \
     curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
-RUN python3.11 -m pip install "semra[web] @ git+https://github.com/biopragmatics/semra.git"
+RUN python3.11 -m pip install "{{ pip_install }}"
 
 # Add nodes files to the docker image
 {%- for node_type, name in node_names %}

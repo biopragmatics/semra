@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
 from tqdm import tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie
+from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
 
 __all__ = [
@@ -103,9 +103,9 @@ def _concept_to_row(
     )
 
 
-def _mapping_to_node_row(mapping: Mapping) -> Sequence[str]:
+def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
     return (
-        mapping.curie,
+        mapping_curie,
         SEMRA_MAPPING_PREFIX,
         mapping.p.curie,
         get_confidence_str(mapping),
@@ -115,9 +115,9 @@ def _mapping_to_node_row(mapping: Mapping) -> Sequence[str]:
     )
 
 
-def _evidence_to_row(evidence: Evidence) -> Sequence[str]:
+def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
     return (
-        evidence.curie,
+        evidence_curie,
         SEMRA_EVIDENCE_PREFIX,
         evidence.evidence_type,
         evidence.justification.curie,
@@ -140,6 +140,21 @@ def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
             )
         ),
     )
+
+
+def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequence[str]:
+    return (
+        mapping_set_curie,
+        SEMRA_MAPPING_SET_PREFIX,
+        mapping_set.name,
+        mapping_set.license or "",
+        mapping_set.version or "",
+        get_confidence_str(mapping_set),
+    )
+
+
+ANNOTATED_SOURCE_CURIE = ANNOTATED_SOURCE.curie
+ANNOTATED_TARGET_CURIE = ANNOTATED_TARGET.curie
 
 
 def write_neo4j(
@@ -212,7 +227,7 @@ def write_neo4j(
 
     # aggregate mapping sets that are seen over the whole
     # mapping iterable, write them all once at the end
-    mapping_sets: dict[str, MappingSet] = {}
+    mapping_set_curies: set[MappingSet] = set()
 
     concept_nodes_path = directory.joinpath("concept_nodes.tsv")
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
@@ -222,30 +237,25 @@ def write_neo4j(
     edges_path = directory.joinpath("edges.tsv")
 
     with (
-        open(mapping_edges_path, "w") as mapping_edges_file,
-        open(edges_path, "w") as edges_file,
-        open(concept_nodes_path, "w") as concept_nodes_file,
-        open(mapping_nodes_path, "w") as mapping_nodes_file,
-        open(evidence_nodes_path, "w") as evidence_nodes_file,
+        safe_open_writer(mapping_edges_path) as mapping_edges_writer,
+        safe_open_writer(edges_path) as edge_writer,
+        safe_open_writer(concept_nodes_path) as concept_nodes_writer,
+        safe_open_writer(mapping_nodes_path) as mapping_nodes_writer,
+        safe_open_writer(evidence_nodes_path) as evidence_nodes_writer,
+        safe_open_writer(mapping_set_nodes_path) as mapping_set_writer,
     ):
-        mapping_edges_writer = csv.writer(mapping_edges_file, delimiter="\t")
         mapping_edges_writer.writerow(EDGES_HEADER)
-
-        edge_writer = csv.writer(edges_file, delimiter="\t")
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
-
-        concept_nodes_writer = csv.writer(concept_nodes_file, delimiter="\t")
         concept_nodes_writer.writerow(CONCEPT_NODES_HEADER)
-
-        mapping_nodes_writer = csv.writer(mapping_nodes_file, delimiter="\t")
         mapping_nodes_writer.writerow(MAPPING_NODES_HEADER)
-
-        evidence_nodes_writer = csv.writer(evidence_nodes_file, delimiter="\t")
         evidence_nodes_writer.writerow(EVIDENCE_NODES_HEADER)
+        mapping_set_writer.writerow(MAPPING_SET_NODES_HEADER)
 
         for mapping in tqdm(
             mappings, unit="mapping", unit_scale=True, desc="streaming writing to Neo4j"
         ):
+            mapping_curie = mapping.curie
+
             if mapping.s not in seen_concepts:
                 concept_nodes_writer.writerow(
                     _concept_to_row(mapping.s, add_labels, equivalence_classes)
@@ -257,54 +267,51 @@ def write_neo4j(
                 )
                 seen_concepts.add(mapping.o)
 
-            mapping_nodes_writer.writerow(_mapping_to_node_row(mapping))
+            mapping_nodes_writer.writerow(_mapping_to_node_row(mapping_curie, mapping))
             mapping_edges_writer.writerow(_mapping_to_edge_row(mapping))
-            edge_writer.writerow((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-            edge_writer.writerow((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+
+            # these connect the node representing the mappings to the
+            # subject and object using the RDF reified edge data model
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.s.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.o.curie))
 
             for evidence in mapping.evidence:
-                edge_writer.writerow((mapping.curie, HAS_EVIDENCE_PREDICATE, evidence.curie))
-                evidence_nodes_writer.writerow(_evidence_to_row(evidence))
+                evidence_curie = evidence.curie
+
+                # this connects the mapping to its evidence
+                edge_writer.writerow((mapping_curie, HAS_EVIDENCE_PREDICATE, evidence_curie))
+
+                # this creates a node for the evidence
+                evidence_nodes_writer.writerow(_evidence_to_row(evidence_curie, evidence))
 
                 match evidence:
                     case SimpleEvidence():
                         if evidence.mapping_set:
-                            mapping_sets[evidence.mapping_set.name] = evidence.mapping_set
+                            mapping_set_curie = evidence.mapping_set.curie
+                            if mapping_set_curie not in mapping_set_curies:
+                                mapping_set_writer.writerow(
+                                    _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
+                                )
+                                mapping_set_curies.add(mapping_set_curie)
+
                             edge_writer.writerow(
-                                (evidence.curie, FROM_SET_PREDICATE, evidence.mapping_set.curie)
+                                (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
                             )
                     case ReasonedEvidence():
                         for mmm in evidence.mappings:
-                            edge_writer.writerow((evidence.curie, DERIVED_PREDICATE, mmm.curie))
+                            edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
 
                 # Add authorship information for the evidence, if available
                 if evidence.author:
-                    seen_concepts.add(evidence.author)
-                    edge_writer.writerow(
-                        (evidence.curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
-                    )
+                    if evidence.author not in seen_concepts:
+                        concept_nodes_writer.writerow(
+                            _concept_to_row(evidence.author, add_labels, equivalence_classes)
+                        )
+                        seen_concepts.add(evidence.author)
 
-    # mapping sets is a relatively small thing
-    sorted_mapping_sets = (
-        sorted(mapping_sets.values(), key=lambda n: n.curie)
-        if sort
-        else list(mapping_sets.values())
-    )
-    _write_tsv_gz(
-        mapping_set_nodes_path,
-        MAPPING_SET_NODES_HEADER,
-        (
-            (
-                mapping_set.curie,
-                SEMRA_MAPPING_SET_PREFIX,
-                mapping_set.name,
-                mapping_set.license or "",
-                mapping_set.version or "",
-                get_confidence_str(mapping_set),
-            )
-            for mapping_set in sorted_mapping_sets
-        ),
-    )
+                    edge_writer.writerow(
+                        (evidence_curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
+                    )
 
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render())
@@ -336,11 +343,3 @@ def write_neo4j(
 def _neo4j_bool(b: bool, /) -> str:
     """Get a boolean string that works in neo4j data files."""
     return "true" if b else "false"  # type:ignore
-
-
-def _write_tsv_gz(path: str | Path, header: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
-    click.echo(f"writing to {path}")
-    with gzip.open(path, "wt") as file:
-        writer = csv.writer(file, delimiter="\t")
-        writer.writerow(header)
-        writer.writerows(rows)

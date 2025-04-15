@@ -130,7 +130,7 @@ class Neo4jClient:
     def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
         if isinstance(curie, Reference):
             curie = curie.curie
-        query = "MATCH (n%s {curie: $curie}) RETURN n" % (':' + node_type if node_type else "")
+        query = "MATCH (n%s {curie: $curie}) RETURN n" % (":" + node_type if node_type else "")
         res = self.read_query(query, curie=curie)
         return res[0][0]
 
@@ -187,7 +187,7 @@ class Neo4jClient:
         """Get all mappings sets."""
         query = "MATCH (m:mappingset) RETURN m"
         records = self.read_query(query)
-        return [MappingSet.parse_obj(record) for (record,) in records]
+        return [MappingSet.model_validate(record) for (record,) in records]
 
     def get_mapping_set(self, curie: ReferenceHint) -> MappingSet:
         """Get a mappings set.

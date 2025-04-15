@@ -97,7 +97,6 @@ def write_neo4j(
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
-    sort: bool = False,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -119,7 +118,6 @@ def write_neo4j(
     :param run_script_name: The name of the run script that you as the user should call
         to wrap building and running the Docker image
     :param dockerfile_name: The name of the Dockerfile produced
-    :param sort: Should the output nodes files be sorted?
 
     You can use this function to build your own database like in
 

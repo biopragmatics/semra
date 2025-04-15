@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import csv
-import gzip
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
@@ -22,15 +20,10 @@ __all__ = [
 HERE = Path(__file__).parent.resolve()
 
 TEMPLATES = HERE.joinpath("templates")
-# STARTUP_PATH = TEMPLATES.joinpath("startup.sh")
-# DOCKERFILE_PATH = TEMPLATES.joinpath("Dockerfile")
-# RUN_ON_STARTUP_PATH = TEMPLATES.joinpath("run_on_startup.sh")
-
-env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
-
-STARTUP_TEMPLATE = env.get_template("startup.sh")
-DOCKERFILE_TEMPLATE = env.get_template("Dockerfile")
-RUN_ON_STARTUP_TEMPLATE = env.get_template("run_on_startup.sh")
+JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
+STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
+DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
+RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
 SEMRA_MAPPING_PREFIX = "semra.mapping"
 SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
@@ -78,9 +71,11 @@ EDGES_SUPPLEMENT_HEADER = [
     ":END_ID",
 ]
 
-ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")
 ANNOTATED_SOURCE = Reference(prefix="owl", identifier="annotatedSource")
+ANNOTATED_SOURCE_CURIE = ANNOTATED_SOURCE.curie
+
 ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
+ANNOTATED_TARGET_CURIE = ANNOTATED_TARGET.curie
 
 #: The predicate used in the graph data model connecting a mapping node to an evidence node
 HAS_EVIDENCE_PREDICATE = "hasEvidence"
@@ -90,71 +85,6 @@ FROM_SET_PREDICATE = "fromSet"
 DERIVED_PREDICATE = "derivedFromMapping"
 #: node to the mapping node(s) from which it was derived
 HAS_AUTHOR_PREDICATE = "hasAuthor"
-
-
-def _concept_to_row(
-    concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
-) -> Sequence[str]:
-    return (
-        concept.curie,
-        concept.prefix,
-        get_name_by_curie(concept.curie) or "" if add_labels else "",
-        _neo4j_bool(equivalence_classes.get(concept, False)),
-    )
-
-
-def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
-    return (
-        mapping_curie,
-        SEMRA_MAPPING_PREFIX,
-        mapping.p.curie,
-        get_confidence_str(mapping),
-        _neo4j_bool(mapping.has_primary),
-        _neo4j_bool(mapping.has_secondary),
-        _neo4j_bool(mapping.has_tertiary),
-    )
-
-
-def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
-    return (
-        evidence_curie,
-        SEMRA_EVIDENCE_PREFIX,
-        evidence.evidence_type,
-        evidence.justification.curie,
-        get_confidence_str(evidence),
-    )
-
-
-def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
-    return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
-        get_confidence_str(mapping),
-        _neo4j_bool(mapping.has_primary),
-        _neo4j_bool(mapping.has_secondary),
-        _neo4j_bool(mapping.has_tertiary),
-        "|".join(
-            sorted(
-                {evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set}
-            )
-        ),
-    )
-
-
-def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequence[str]:
-    return (
-        mapping_set_curie,
-        SEMRA_MAPPING_SET_PREFIX,
-        mapping_set.name,
-        mapping_set.license or "",
-        mapping_set.version or "",
-        get_confidence_str(mapping_set),
-    )
-
-
-ANNOTATED_SOURCE_CURIE = ANNOTATED_SOURCE.curie
-ANNOTATED_TARGET_CURIE = ANNOTATED_TARGET.curie
 
 
 def write_neo4j(
@@ -225,9 +155,8 @@ def write_neo4j(
     # duplicates
     seen_concepts: set[Reference] = set()
 
-    # aggregate mapping sets that are seen over the whole
-    # mapping iterable, write them all once at the end
-    mapping_set_curies: set[MappingSet] = set()
+    # keep track of the CURIEs for mapping sets
+    mapping_set_curies: set[str] = set()
 
     concept_nodes_path = directory.joinpath("concept_nodes.tsv")
     mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
@@ -343,3 +272,64 @@ def write_neo4j(
 def _neo4j_bool(b: bool, /) -> str:
     """Get a boolean string that works in neo4j data files."""
     return "true" if b else "false"  # type:ignore
+
+
+def _concept_to_row(
+    concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
+) -> Sequence[str]:
+    return (
+        concept.curie,
+        concept.prefix,
+        get_name_by_curie(concept.curie) or "" if add_labels else "",
+        _neo4j_bool(equivalence_classes.get(concept, False)),
+    )
+
+
+def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
+    return (
+        mapping_curie,
+        SEMRA_MAPPING_PREFIX,
+        mapping.p.curie,
+        get_confidence_str(mapping),
+        _neo4j_bool(mapping.has_primary),
+        _neo4j_bool(mapping.has_secondary),
+        _neo4j_bool(mapping.has_tertiary),
+    )
+
+
+def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
+    return (
+        evidence_curie,
+        SEMRA_EVIDENCE_PREFIX,
+        evidence.evidence_type,
+        evidence.justification.curie,
+        get_confidence_str(evidence),
+    )
+
+
+def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
+    return (
+        mapping.s.curie,
+        mapping.p.curie,
+        mapping.o.curie,
+        get_confidence_str(mapping),
+        _neo4j_bool(mapping.has_primary),
+        _neo4j_bool(mapping.has_secondary),
+        _neo4j_bool(mapping.has_tertiary),
+        "|".join(
+            sorted(
+                {evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set}
+            )
+        ),
+    )
+
+
+def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequence[str]:
+    return (
+        mapping_set_curie,
+        SEMRA_MAPPING_SET_PREFIX,
+        mapping_set.name,
+        mapping_set.license or "",
+        mapping_set.version or "",
+        get_confidence_str(mapping_set),
+    )

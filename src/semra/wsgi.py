@@ -180,7 +180,7 @@ def mark_exact_incorrect(source: str, target: str):
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
 
-@flask_app.get("/mapping_set/{mapping_set_id}")
+@flask_app.get("/mapping_set/<mapping_set_id>")
 def view_mapping_set(mapping_set_id: str):
     """View a mapping set by its ID."""
     mapping_set = client.get_mapping_set(mapping_set_id)

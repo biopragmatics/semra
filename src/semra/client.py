@@ -127,10 +127,10 @@ class Neo4jClient:
 
         self.write_query(query)
 
-    def _get_node_by_curie(self, curie: ReferenceHint) -> Node:
+    def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
         if isinstance(curie, Reference):
             curie = curie.curie
-        query = "MATCH (n {curie: $curie}) RETURN n"
+        query = "MATCH (n%s {curie: $curie}) RETURN n" % (':' + node_type if node_type else "")
         res = self.read_query(query, curie=curie)
         return res[0][0]
 
@@ -146,12 +146,12 @@ class Neo4jClient:
         curie = _safe_curie(curie, "semra.mapping")
         query = """\
         MATCH
-            (mapping {curie: $curie}) ,
-            (mapping)-[:`owl:annotatedSource`]->(source) ,
-            (mapping)-[:`owl:annotatedTarget`]->(target) ,
-            (mapping)-[:hasEvidence]->(evidence)
+            (mapping:mapping {curie: $curie}) ,
+            (mapping)-[:`owl:annotatedSource`]->(source:concept) ,
+            (mapping)-[:`owl:annotatedTarget`]->(target:concept) ,
+            (mapping)-[:hasEvidence]->(evidence:evidence)
         OPTIONAL MATCH
-            (evidence)-[:fromSet]->(mset)
+            (evidence)-[:fromSet]->(mset:mappingset)
         OPTIONAL MATCH
             (evidence)-[:hasAuthor]->(author)
         RETURN mapping, source.curie, target.curie, collect([evidence, mset, author.curie])
@@ -199,8 +199,8 @@ class Neo4jClient:
         :returns: A mapping set object
         """
         curie = _safe_curie(curie, "semra.mappingset")
-        node = self._get_node_by_curie(curie)
-        return MappingSet.parse_obj(node)
+        node = self._get_node_by_curie(curie, "mappingset")
+        return MappingSet.model_validate(node)
 
     def get_evidence(self, curie: ReferenceHint) -> Evidence:
         """Get an evidence.
@@ -210,7 +210,7 @@ class Neo4jClient:
         :returns: An evidence object
         """
         curie = _safe_curie(curie, "semra.evidence")
-        query = "MATCH (n {curie: $curie}) RETURN n"
+        query = "MATCH (n:evidence {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
         return res[0][0]
 
@@ -378,7 +378,7 @@ as label, count UNION ALL
             curie = curie.curie
         query = f"""\
         MATCH
-            (:mappingset {{curie: $curie}})<-[:fromSet]-()<-[:hasEvidence]-(n:mapping)
+            (:mappingset {{curie: $curie}})<-[:fromSet]-(:evidence)<-[:hasEvidence]-(n:mapping)
         MATCH
             (n)-[:`owl:annotatedSource`]->(s:concept)
         MATCH

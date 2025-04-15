@@ -162,7 +162,7 @@ class Neo4jClient:
         for evidence_node, mapping_set_node, author_curie in evidence_pairs:
             evidence_dict = dict(evidence_node)
             if mapping_set_node:
-                evidence_dict["mapping_set"] = MappingSet.parse_obj(mapping_set_node)
+                evidence_dict["mapping_set"] = MappingSet.model_validate(mapping_set_node)
             if author_curie:
                 evidence_dict["author"] = Reference.from_curie(author_curie)
             evidence_dict["evidence_type"] = evidence_dict.pop("type")

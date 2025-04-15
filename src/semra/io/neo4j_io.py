@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import csv
-import gzip
+import json
 from collections.abc import Hashable, Iterable, Sequence
 from pathlib import Path
 
@@ -91,6 +91,193 @@ DERIVED_PREDICATE = "derivedFromMapping"
 #: node to the mapping node(s) from which it was derived
 HAS_AUTHOR_PREDICATE = "hasAuthor"
 
+mapping_nodes_filename = "mapping_nodes.tsv"
+evidence_nodes_filename = "evidence_nodes.tsv"
+mapping_set_nodes_filename = "mapping_set_nodes.tsv"
+mapping_edges_filename = "mapping_edges.tsv"
+edges_filename = "edges.tsv"
+concept_nodes_filename = "concept_nodes.tsv"
+
+
+def _concept_to_row(concept, add_labels, equivalence_classes):
+    return (
+        concept.curie,
+        concept.prefix,
+        get_name_by_curie(concept.curie) or "" if add_labels else "",
+        _neo4j_bool(equivalence_classes.get(concept, False)),
+    )
+
+
+def stream_to_neo4j(
+    directory,
+    mappings_jsonl_path,
+    equivalence_classes,
+    add_labels: bool = False,
+    startup_script_name: str = "startup.sh",
+    run_script_name: str = "run_on_docker.sh",
+    dockerfile_name: str = "Dockerfile",
+    docker_name: str | None = None,
+):
+    """Stream a SeMRA JSONL file to Neo4j.
+
+    :param mappings_jsonl_path: The path to the SeMRA JSONL file
+    """
+    if docker_name is None:
+        docker_name = "semra"
+    mapping_edges_path = directory.joinpath(mapping_edges_file)
+    edges_path = directory.joinpath(edges_file)
+    evidence_nodes_path = directory.joinpath(evidence_nodes_file)
+    concept_nodes_path = directory.joinpath(concept_nodes_file)
+    mapping_sets: dict[str, MappingSet] = {}
+
+    with (
+        open(mappings_jsonl_path) as file,
+        open(mapping_edges_path, "w") as file1,
+        open(edges_path, "w") as file2,
+        open(evidence_nodes_path, "w") as file3,
+        open(mapping_nodes_file, "w") as file4,
+        open(concept_nodes_path, "w") as file5,
+    ):
+        mapping_edge_writer = csv.writer(file1, delimiter="\t")
+        mapping_edge_writer.writerow(EDGES_HEADER)
+
+        edge_writer = csv.writer(file2, delimiter="\t")
+        edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
+
+        evidence_writer = csv.writer(file3, delimiter="\t")
+        evidence_writer.writerow(EVIDENCE_NODES_HEADER)
+
+        mapping_nodes_writer = csv.writer(file4, delimiter="\t")
+        mapping_nodes_writer.writerow(MAPPING_NODES_HEADER)
+
+        concept_nodes_writer = csv.writer(file5, delimiter="\t")
+        concept_nodes_writer.writerow(CONCEPT_NODES_HEADER)
+
+        seen_concepts = set()
+
+        for line in tqdm(
+            file,
+            unit="mapping",
+            unit_scale=True,
+            desc="Streaming mappings into neo4j",
+            total=43000000,
+        ):
+            mapping = Mapping.model_validate(json.loads(line), strict=False)
+
+            if mapping.s.curie not in seen_concepts:
+                concept_nodes_writer.writerow(
+                    _concept_to_row(mapping.s, add_labels, equivalence_classes)
+                )
+                seen_concepts.add(mapping.s.curie)
+            if mapping.o.curie not in seen_concepts:
+                concept_nodes_writer.writerow(
+                    _concept_to_row(mapping.o, add_labels, equivalence_classes)
+                )
+                seen_concepts.add(mapping.o.curie)
+
+            mapping_edge_writer.writerow(
+                (
+                    mapping.s.curie,
+                    mapping.p.curie,
+                    mapping.o.curie,
+                    get_confidence_str(mapping),
+                    _neo4j_bool(mapping.has_primary),
+                    _neo4j_bool(mapping.has_secondary),
+                    _neo4j_bool(mapping.has_tertiary),
+                    "|".join(
+                        sorted(
+                            {
+                                evidence.mapping_set.name
+                                for evidence in mapping.evidence
+                                if evidence.mapping_set
+                            }
+                        )
+                    ),
+                )
+            )
+            edge_writer.writerow((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
+            edge_writer.writerow((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+
+            mapping_nodes_writer.writerow(
+                (
+                    mapping.curie,
+                    SEMRA_MAPPING_PREFIX,
+                    mapping.p.curie,
+                    get_confidence_str(mapping),
+                    _neo4j_bool(mapping.has_primary),
+                    _neo4j_bool(mapping.has_secondary),
+                    _neo4j_bool(mapping.has_tertiary),
+                )
+            )
+
+            for evidence in mapping.evidence:
+                evidence_curie = evidence.get_curie_with_mapping(mapping)
+                edge_writer.writerow((mapping.curie, HAS_EVIDENCE_PREDICATE, evidence_curie))
+                if evidence.mapping_set:
+                    mapping_sets[evidence.mapping_set.name] = evidence.mapping_set
+                    edge_writer.writerow(
+                        (evidence_curie, FROM_SET_PREDICATE, evidence.mapping_set.curie)
+                    )
+                elif isinstance(evidence, ReasonedEvidence):
+                    for mmm in evidence.mappings:
+                        edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
+                # elif isinstance(evidence, SimpleEvidence):
+                #     pass
+                # else:
+                #     raise TypeError
+
+                # Add authorship information for the evidence, if available
+                if evidence.author:
+                    if evidence.author.curie not in seen_concepts:
+                        concept_nodes_writer.writerow(
+                            _concept_to_row(evidence.author, add_labels, equivalence_classes)
+                        )
+                        seen_concepts.add(evidence.author.curie)
+                    edge_writer.writerow(
+                        (evidence_curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
+                    )
+                evidence_writer.writerow(
+                    (
+                        evidence_curie,
+                        SEMRA_EVIDENCE_PREFIX,
+                        evidence.evidence_type,
+                        evidence.justification.curie,
+                        get_confidence_str(evidence),
+                    )
+                )
+
+    # Dump all mapping set nodes
+    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_file)
+    _write_tsv_gz(
+        mapping_set_nodes_path,
+        MAPPING_SET_NODES_HEADER,
+        (
+            (
+                mapping_set.curie,
+                SEMRA_MAPPING_SET_PREFIX,
+                mapping_set.name,
+                mapping_set.license or "",
+                mapping_set.version or "",
+                get_confidence_str(mapping_set),
+            )
+            for mapping_set in mapping_sets.values()
+        ),
+    )
+
+    startup_path = directory.joinpath(startup_script_name)
+    startup_path.write_text(STARTUP_TEMPLATE.render())
+
+    # TODO flag for swapping on version of semra / git installation
+    docker_path = directory.joinpath(dockerfile_name)
+    docker_path.write_text(DOCKERFILE_TEMPLATE.render())
+
+    run_path = directory.joinpath(run_script_name)
+    run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))
+
+    click.secho("Run Neo4j with the following:", fg="green")
+    click.secho(f"  cd {run_path.parent.absolute()}")
+    click.secho(f"  sh {run_script_name}")
+
 
 def write_neo4j(
     mappings: list[Mapping],
@@ -155,19 +342,19 @@ def write_neo4j(
     if equivalence_classes is None:
         equivalence_classes = {}
 
-    concept_nodes_path = directory.joinpath("concept_nodes.tsv.gz")
+    concept_nodes_path = directory.joinpath(concept_nodes_file)
     concepts: set[Reference] = set()
 
     evidences: dict[Hashable, Evidence] = {}
     mapping_sets: dict[str, MappingSet] = {}
 
-    mapping_nodes_path = directory.joinpath("mapping_nodes.tsv.gz")
-    evidence_nodes_path = directory.joinpath("evidence_nodes.tsv.gz")
-    mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv.gz")
-    mapping_edges_path = directory.joinpath("mapping_edges.tsv.gz")
-    edges_path = directory.joinpath("edges.tsv.gz")
+    mapping_nodes_path = directory.joinpath(mapping_nodes_file)
+    evidence_nodes_path = directory.joinpath(evidence_nodes_file)
+    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_file)
+    mapping_edges_path = directory.joinpath(mapping_edges_file)
+    edges_path = directory.joinpath(edges_file)
 
-    with gzip.open(mapping_edges_path, "wt") as file1, gzip.open(edges_path, "wt") as file2:
+    with open(mapping_edges_path, "w") as file1, open(edges_path, "w") as file2:
         mapping_writer = csv.writer(file1, delimiter="\t")
         mapping_writer.writerow(EDGES_HEADER)
 
@@ -305,6 +492,8 @@ def write_neo4j(
         ),
     )
 
+    # TODO: Gzip all the dumped files
+
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render())
 
@@ -339,7 +528,7 @@ def _neo4j_bool(b: bool, /) -> str:
 
 def _write_tsv_gz(path: str | Path, header: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
     click.echo(f"writing to {path}")
-    with gzip.open(path, "wt") as file:
+    with open(path, "w") as file:
         writer = csv.writer(file, delimiter="\t")
         writer.writerow(header)
         writer.writerows(rows)

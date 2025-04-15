@@ -8,6 +8,8 @@ from .io import (
     from_sssom,
     from_sssom_df,
     get_sssom_df,
+    read_mappings_jsonl,
+    write_jsonl,
     write_pickle,
     write_sssom,
 )
@@ -21,6 +23,8 @@ __all__ = [
     "from_sssom",
     "from_sssom_df",
     "get_sssom_df",
+    "read_mappings_jsonl",
+    "write_jsonl",
     "write_neo4j",
     "write_pickle",
     "write_sssom",

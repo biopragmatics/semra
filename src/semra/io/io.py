@@ -17,6 +17,7 @@ import bioontologies
 import bioregistry
 import bioversions
 import pandas as pd
+import pydantic
 import pyobo
 import pyobo.utils
 from tqdm.autonotebook import tqdm
@@ -34,6 +35,8 @@ __all__ = [
     "from_sssom",
     "from_sssom_df",
     "get_sssom_df",
+    "read_mappings_jsonl",
+    "write_jsonl",
     "write_pickle",
     "write_sssom",
 ]
@@ -558,6 +561,33 @@ def from_pickle(path: str | Path) -> list[Mapping]:
         with gzip.open(path, "rb") as file:
             return pickle.load(file)
     return pickle.loads(path.read_bytes())
+
+
+def write_jsonl(objects: list[pydantic.BaseModel], path: str | Path) -> None:
+    """Write a list of Pydantic objects into a JSONL file."""
+    path = Path(path).resolve()
+    with path.open("w") as file:
+        for obj in tqdm(objects, desc="Writing JSONL", leave=False, unit="object", unit_scale=True):
+            file.write(f"{obj.model_dump_json(exclude_none=True)}\n")
+
+
+def read_mappings_jsonl(path: str | Path) -> list[Mapping]:
+    """Read a list of Mapping objects from a JSONL file."""
+    path = Path(path).resolve()
+    # count = 0
+    with path.open("r") as file:
+        for line in tqdm(
+            file,
+            desc="Reading mappings",
+            leave=False,
+            unit="mapping",
+            unit_scale=True,
+            total=43891675,
+        ):
+            # count += 1
+            # if count == 1000000:
+            #    return
+            yield Mapping.model_validate_json(line.strip())
 
 
 def _edge_key(t):

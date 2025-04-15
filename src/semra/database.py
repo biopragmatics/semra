@@ -23,6 +23,7 @@ from semra import Mapping
 from semra.io import (
     from_pickle,
     from_pyobo,
+    write_jsonl,
     write_neo4j,
     write_pickle,
     write_sssom,
@@ -34,8 +35,8 @@ from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
 LOGS = MODULE.module("logs")
-SSSOM_PATH = MODULE.join(name="mappings.sssom.tsv.gz")
-PICKLE_PATH = MODULE.join(name="mappings.pkl.gz")
+SSSOM_PATH = MODULE.join(name="mappings.sssom.tsv")
+JSONL_PATH = MODULE.join(name="mappings.jsonl")
 WARNINGS_PATH = LOGS.join(name="warnings.tsv")
 ERRORS_PATH = LOGS.join(name="errors.tsv")
 SUMMARY_PATH = LOGS.join(name="summary.tsv")
@@ -212,8 +213,8 @@ def build(include_wikidata: bool, upload: bool, refresh_source: bool, write_labe
         summaries.append((resource.prefix, len(resource_mappings), time.time() - start, "pyobo"))
         _write_summary()
 
-    click.echo(f"Writing Pickle to {PICKLE_PATH}")
-    write_pickle(mappings, PICKLE_PATH)
+    click.echo(f"Writing JSONL to {JSONL_PATH}")
+    write_jsonl(mappings, JSONL_PATH)
     click.echo(f"Writing SSSOM to {SSSOM_PATH}")
     write_sssom(mappings, SSSOM_PATH)
     click.echo(f"Writing Neo4j folder to {NEO4J_DIR}")

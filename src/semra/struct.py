@@ -6,6 +6,7 @@ import math
 import pickle
 import uuid
 from collections.abc import Iterable
+from functools import cached_property
 from hashlib import md5
 from itertools import islice
 from typing import Annotated, ClassVar, Literal
@@ -67,7 +68,7 @@ class KeyedMixin:
         """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
         return Reference(prefix=self._prefix, identifier=self.hexdigest())
 
-    @property
+    @cached_property
     def curie(self) -> str:
         """Get a string representing the CURIE."""
         return self.get_reference().curie
@@ -168,8 +169,12 @@ class SimpleEvidence(
             self.justification,
             self.author,
             self.mapping_set.key(),
-            self.uuid,
         )
+
+    def get_curie_with_mapping(self, mapping: Mapping):
+        full_key = self.key() + mapping.key()
+        key_hex = _md5_hexdigest(full_key)
+        return Reference(prefix=self._prefix, identifier=key_hex).curie
 
     @property
     def mapping_set_names(self) -> set[str]:

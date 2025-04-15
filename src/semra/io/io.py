@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import contextlib
-import csv
 import gzip
 import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -22,7 +20,7 @@ import pyobo.utils
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie
+from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
 from ..rules import UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
@@ -515,28 +513,8 @@ def write_sssom(
     df.to_csv(file, sep="\t", index=False)
 
 
-@contextlib.contextmanager
-def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
-    path = Path(path).expanduser().resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, mode="rt" if read else "wt") as file:
-            yield file
-    else:
-        with open(path, mode="r" if read else "w") as file:
-            yield file
-
-
-@contextlib.contextmanager
-def _safe_writer(f: str | Path | TextIO):
-    if isinstance(f, str | Path):
-        with _safe_opener(f, read=False) as file:
-            yield csv.writer(file, delimiter="\t")
-    else:
-        yield csv.writer(f, delimiter="\t")
-
-
 def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
-    with _safe_writer(file) as writer:
+    with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         writer.writerows(
             _get_sssom_row(m, e)

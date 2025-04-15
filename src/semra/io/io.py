@@ -9,7 +9,7 @@ import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -516,15 +516,21 @@ def write_sssom(
 
 
 @contextlib.contextmanager
+def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
+    path = Path(path).expanduser().resolve()
+    if path.suffix.endswith(".gz"):
+        with gzip.open(path, mode="rt" if read else "wt") as file:
+            yield file
+    else:
+        with open(path, mode="r" if read else "w") as file:
+            yield file
+
+
+@contextlib.contextmanager
 def _safe_writer(f: str | Path | TextIO):
     if isinstance(f, str | Path):
-        path = Path(f)
-        if path.suffix.endswith(".gz"):
-            with gzip.open(path, mode="wt") as file:
-                yield csv.writer(file, delimiter="\t")
-        else:
-            with open(f, "w") as file:
-                yield csv.writer(file, delimiter="\t")
+        with _safe_opener(f, read=False) as file:
+            yield csv.writer(file, delimiter="\t")
     else:
         yield csv.writer(f, delimiter="\t")
 
@@ -548,7 +554,8 @@ def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
         with gzip.open(path, "wb") as file:
             pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
     else:
-        path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+        with path.open("wb") as file:
+            pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def from_pickle(path: str | Path) -> list[Mapping]:
@@ -557,9 +564,6 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     if path.suffix.endswith(".gz"):
         with gzip.open(path, "rb") as file:
             return pickle.load(file)
-    return pickle.loads(path.read_bytes())
-
-
-def _edge_key(t):
-    s, p, o, c, *_ = t
-    return s, p, o, 1 if isinstance(c, float) else 0, t
+    else:
+        with path.open("rb") as file:
+            return pickle.load(file)

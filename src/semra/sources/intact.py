@@ -65,8 +65,3 @@ def get_intact_complexportal_mappings() -> list[Mapping]:
 def get_intact_reactome_mappings() -> list[Mapping]:
     """Get IntAct-Reactome xrefs."""
     return _get_mappings(REACTOME_MAPPINGS_UNVERSIONED, "reactome")
-
-
-if __name__ == "__main__":
-    get_intact_reactome_mappings()
-    get_intact_complexportal_mappings()

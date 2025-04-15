@@ -11,6 +11,15 @@ from pyobo import Reference
 from tqdm import tqdm
 
 from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
+from ..rules import (
+    SEMRA_EVIDENCE_PREFIX,
+    SEMRA_MAPPING_PREFIX,
+    SEMRA_MAPPING_SET_PREFIX,
+    SEMRA_NEO4J_CONCEPT_LABEL,
+    SEMRA_NEO4J_EVIDENCE_LABEL,
+    SEMRA_NEO4J_MAPPING_LABEL,
+    SEMRA_NEO4J_MAPPING_SET_LABEL,
+)
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
 
 __all__ = [
@@ -24,10 +33,6 @@ JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_au
 STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
 DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
 RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
-
-SEMRA_MAPPING_PREFIX = "semra.mapping"
-SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
-SEMRA_EVIDENCE_PREFIX = "semra.evidence"
 
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
 MAPPING_NODES_HEADER = [
@@ -164,10 +169,10 @@ def write_neo4j(
     edges_path = directory.joinpath("edges.tsv")
 
     node_paths = [
-        ("concept", concept_nodes_path),
-        ("mapping", mapping_nodes_path),
-        ("evidence", evidence_nodes_path),
-        ("mappingset", mapping_set_nodes_path),
+        (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),
+        (SEMRA_NEO4J_MAPPING_LABEL, mapping_nodes_path),
+        (SEMRA_NEO4J_EVIDENCE_LABEL, evidence_nodes_path),
+        (SEMRA_NEO4J_MAPPING_SET_LABEL, mapping_set_nodes_path),
     ]
     node_names = [(a, n.relative_to(directory)) for a, n in node_paths]
     edge_paths = [mapping_edges_path, edges_path]

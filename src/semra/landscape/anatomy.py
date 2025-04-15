@@ -1,11 +1,11 @@
 """A configuration for assembling mappings for anatomical terms."""
 
 import pystow
-from curies import Reference
-from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
 import semra
+from semra import Reference
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -33,6 +33,7 @@ SUBSETS = {
 }
 
 CONFIGURATION = semra.Configuration(
+    key="anatomy",
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
     creators=[charlie],

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import csv
 import gzip
 import logging
 import pickle
 import typing as t
 import uuid
+from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -16,13 +19,12 @@ import bioversions
 import pandas as pd
 import pyobo
 import pyobo.utils
-from curies import NamedReference, Reference
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from .io_utils import get_confidence_str, get_name_by_curie
 from ..rules import UNSPECIFIED_MAPPING
-from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
+from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "from_bioontologies",
@@ -37,7 +39,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
 
 #: The default confidence for ontology-based mappings
 DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
@@ -110,6 +111,8 @@ def from_pyobo(
     license: str | None = None,
     confidence: float | None = None,
     justification: Reference | None = None,
+    force_process: bool = False,
+    cache: bool = True,
 ) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`pyobo`.
 
@@ -126,10 +129,16 @@ def from_pyobo(
         try and look up with :func:`bioregistry.get_license`.
     :param justification: The justification from the SEMAPV vocabulary (given as a
         Reference object). If not given, defaults to :data:`UNSPECIFIED_MAPPING`.
+    :param force_process: force re-processing of the source data, e.g., the OBO
+        file for external ontologies or the locally cached data for PyOBO custom
+        sources
+    :param cache: Should the ontology be automatically cached? Turn off to
 
     :returns: A list of semantic mapping objects
     """
-    df: pd.DataFrame = pyobo.get_mappings_df(prefix, names=False)  # type:ignore
+    df: pd.DataFrame = pyobo.get_mappings_df(  # type:ignore
+        prefix, force_process=force_process, names=False, cache=cache
+    )
     return _from_pyobo_sssom_df(
         df,
         prefix=prefix,
@@ -223,9 +232,18 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
     ):
         node.standardize()
     br_license = bioregistry.get_license(prefix)
-    return [
-        Mapping.from_triple(
-            triple,
+    mappings = []
+    for subject, predicate, obj in tqdm(
+        g.get_xrefs(), unit="mapping", unit_scale=True, leave=False
+    ):
+        if predicate.curie == "oboinowl:hasDbXref":
+            predicate = Reference(
+                prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
+            )
+        elif predicate.curie == "skos:exactMatch":
+            predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
+        mapping = Mapping.from_triple(
+            (subject, predicate, obj),
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,
@@ -235,9 +253,8 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
                 )
             ],
         )
-        for triple in tqdm(g.get_xrefs(), unit="mapping", unit_scale=True, leave=False)
-        if triple[0].prefix == prefix
-    ]
+        mappings.append(mapping)
+    return mappings
 
 
 def from_sssom(
@@ -356,6 +373,12 @@ def _parse_sssom_row(
 
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
+    if p.curie == "oboinowl:hasDbXref":
+        p = Reference(
+            prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
+        )
+    elif p.curie == "skos:exactMatch":
+        p = Reference(prefix="skos", identifier="exactMatch", name="exact match")
     o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     e: dict[str, t.Any] = {
         "justification": justification,
@@ -372,21 +395,37 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
     has_name = pd.notna(name) and name
     if not standardize:
         if has_name:
-            return NamedReference.from_curie(curie, name=cast(str, name))
+            return cast(Reference, Reference.from_curie(curie, name=cast(str, name)))
         else:
-            return Reference.from_curie(curie)
+            return cast(Reference, Reference.from_curie(curie))
 
     prefix, identifier = bioregistry.parse_curie(curie)
     if not prefix or not identifier:
         raise ValueError(f"could not standardize curie: {curie}")
 
     if has_name:
-        return NamedReference(prefix=prefix, identifier=identifier, name=name)
+        return Reference(prefix=prefix, identifier=identifier, name=name)
     else:
         return Reference(prefix=prefix, identifier=identifier)
 
 
-def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.DataFrame:
+SSSOM_DEFAULT_COLUMNS = [
+    "subject_id",
+    "predicate_id",
+    "object_id",
+    "mapping_justification",
+    "mapping_set",
+    "mapping_set_version",
+    "mapping_set_license",
+    "mapping_set_confidence",
+    "author_id",
+    "comment",
+]
+
+
+def get_sssom_df(
+    mappings: list[Mapping], *, add_labels: bool = False, prune: bool = True
+) -> pd.DataFrame:
     """Get a SSSOM dataframe.
 
     Automatically prunes columns that aren't filled out.
@@ -404,19 +443,7 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
         )
         for e in m.evidence
     ]
-    columns = [
-        "subject_id",
-        "predicate_id",
-        "object_id",
-        "mapping_justification",
-        "mapping_set",
-        "mapping_set_version",
-        "mapping_set_license",
-        "mapping_set_confidence",
-        "author_id",
-        "comment",
-    ]
-    df = pd.DataFrame(rows, columns=columns)
+    df = pd.DataFrame(rows, columns=SSSOM_DEFAULT_COLUMNS)
     if add_labels:
         with logging_redirect_tqdm():
             for label_column, id_column in [
@@ -441,10 +468,11 @@ def get_sssom_df(mappings: list[Mapping], *, add_labels: bool = False) -> pd.Dat
             ]
         ]
 
-    # remove empty columns
-    for column in df.columns:
-        if not df[column].map(bool).any():
-            del df[column]
+    if prune:
+        # remove empty columns
+        for column in df.columns:
+            if not df[column].map(bool).any():
+                del df[column]
 
     return df
 
@@ -474,11 +502,49 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
 
 
 def write_sssom(
-    mappings: list[Mapping], file: str | Path | TextIO, *, add_labels: bool = False
+    mappings: list[Mapping],
+    file: str | Path | TextIO,
+    *,
+    add_labels: bool = False,
+    prune: bool = True,
 ) -> None:
     """Export mappings as an SSSOM file (could be lossy)."""
+    if not add_labels and not prune:
+        _write_sssom_stream(mappings, file)
     df = get_sssom_df(mappings, add_labels=add_labels)
     df.to_csv(file, sep="\t", index=False)
+
+
+@contextlib.contextmanager
+def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
+    path = Path(path).expanduser().resolve()
+    if path.suffix.endswith(".gz"):
+        with gzip.open(path, mode="rt" if read else "wt") as file:
+            yield file
+    else:
+        with open(path, mode="r" if read else "w") as file:
+            yield file
+
+
+@contextlib.contextmanager
+def _safe_writer(f: str | Path | TextIO):
+    if isinstance(f, str | Path):
+        with _safe_opener(f, read=False) as file:
+            yield csv.writer(file, delimiter="\t")
+    else:
+        yield csv.writer(f, delimiter="\t")
+
+
+def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
+    with _safe_writer(file) as writer:
+        writer.writerow(SSSOM_DEFAULT_COLUMNS)
+        writer.writerows(
+            _get_sssom_row(m, e)
+            for m in tqdm(
+                mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True
+            )
+            for e in m.evidence
+        )
 
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
@@ -488,7 +554,8 @@ def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
         with gzip.open(path, "wb") as file:
             pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
     else:
-        path.write_bytes(pickle.dumps(mappings, protocol=pickle.HIGHEST_PROTOCOL))
+        with path.open("wb") as file:
+            pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def from_pickle(path: str | Path) -> list[Mapping]:
@@ -497,9 +564,6 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     if path.suffix.endswith(".gz"):
         with gzip.open(path, "rb") as file:
             return pickle.load(file)
-    return pickle.loads(path.read_bytes())
-
-
-def _edge_key(t):
-    s, p, o, c, *_ = t
-    return s, p, o, 1 if isinstance(c, float) else 0, t
+    else:
+        with path.open("rb") as file:
+            return pickle.load(file)

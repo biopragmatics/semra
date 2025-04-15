@@ -1,10 +1,10 @@
 """A configuration for assembling mappings for protein complex terms."""
 
 import pystow
-from curies import Reference
-from curies.vocabulary import charlie
 
+from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -25,9 +25,15 @@ PREFIXES = PRIORITY = [
 ]
 SUBSETS = {
     "go": [Reference.from_curie("go:0032991")],
+    "chembl.target": [
+        Reference(prefix="obo", identifier="chembl.target#protein-complex"),
+        Reference(prefix="obo", identifier="chembl.target#protein-complex-group"),
+        Reference(prefix="obo", identifier="chembl.target#protein-nucleic-acid-complex"),
+    ],
 }
 
 CONFIGURATION = Configuration(
+    key="complex",
     name="SeMRA Protein Complex Landscape Analysis",
     description="Analyze the landscape of protein complex nomenclature "
     "resources, species-agnostic.",

@@ -1,10 +1,10 @@
 """A configuration for assembling mappings for gene terms."""
 
 import pystow
-from curies import Reference
-from curies.vocabulary import charlie
 
+from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -31,6 +31,7 @@ PREFIXES = PRIORITY = [
 ]
 
 CONFIGURATION = Configuration(
+    key="gene",
     name="SeMRA Gene Mapping Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
     creators=[charlie],

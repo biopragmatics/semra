@@ -1,10 +1,12 @@
 {
   "name": "SeMRA Anatomy Mappings Database",
+  "key": "anatomy",
   "description": "Supports the analysis of the landscape of anatomy nomenclature resources.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -77,33 +79,102 @@
   ],
   "subsets": {
     "mesh": [
-      "mesh:D001829",
-      "mesh:D009141",
-      "mesh:D004064",
-      "mesh:D012137",
-      "mesh:D014566",
-      "mesh:D004703",
-      "mesh:D002319",
-      "mesh:D009420",
-      "mesh:D012679",
-      "mesh:D014024",
-      "mesh:D005441",
-      "mesh:D000825",
-      "mesh:D013284",
-      "mesh:D006424",
-      "mesh:D004628",
-      "mesh:D034582",
-      "mesh:D018514",
-      "mesh:D056229",
-      "mesh:D056226",
-      "mesh:D056224"
+      {
+        "prefix": "mesh",
+        "identifier": "D001829"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D009141"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D004064"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D012137"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D014566"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D004703"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D002319"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D009420"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D012679"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D014024"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D005441"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D000825"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D013284"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D006424"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D004628"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D034582"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D018514"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D056229"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D056226"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D056224"
+      }
     ],
     "ncit": [
-      "ncit:C12219"
+      {
+        "prefix": "ncit",
+        "identifier": "C12219"
+      }
     ],
     "umls": [
-      "sty:T024",
-      "sty:T017"
+      {
+        "prefix": "sty",
+        "identifier": "T024"
+      },
+      {
+        "prefix": "sty",
+        "identifier": "T017"
+      }
     ]
   },
   "keep_prefixes": [

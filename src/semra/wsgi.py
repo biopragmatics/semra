@@ -63,7 +63,6 @@ EXAMPLE_MAPPINGS = list(
     )
 )
 
-
 PREDICATE_COUNTER = client.summarize_predicates()
 MAPPING_SET_COUNTER = client.summarize_mapping_sets()
 NODE_COUNTER = client.summarize_nodes()
@@ -156,13 +155,11 @@ def mark_exact_incorrect(source: str, target: str):
     source_reference = Reference.from_curie(source)
     target_reference = Reference.from_curie(target)
 
-    mapping = {
+    mapping: dict[str, str] = {
         "source prefix": source_reference.prefix,
         "source identifier": source_reference.identifier,
-        "source name": client.get_concept_name(source),
         "target prefix": target_reference.prefix,
         "target identifier": target_reference.identifier,
-        "target name": client.get_concept_name(target),
         "relation": "skos:exactMatch",
         "type": "semapv:ManualMappingCuration",
         "source": _manual_source(),
@@ -170,6 +167,11 @@ def mark_exact_incorrect(source: str, target: str):
         "prediction_source": "semra",
         "prediction_confidence": "",
     }
+    if source_name := client.get_concept_name(source):
+        mapping["source name"] = source_name
+    if target_name := client.get_concept_name(target):
+        mapping["target name"] = target_name
+
     mapping = biomappings.resources._standardize_mapping(mapping)
     biomappings.resources.append_false_mappings([mapping])
     _index_mapping(false_mapping_index, mapping)
@@ -178,7 +180,7 @@ def mark_exact_incorrect(source: str, target: str):
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
 
-@flask_app.get("/mapping_set/{mapping_set_id}")
+@flask_app.get("/mapping_set/<mapping_set_id>")
 def view_mapping_set(mapping_set_id: str):
     """View a mapping set by its ID."""
     mapping_set = client.get_mapping_set(mapping_set_id)

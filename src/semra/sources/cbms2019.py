@@ -6,7 +6,9 @@
 """
 
 import pandas as pd
+from pydantic import ValidationError
 from pyobo import Reference
+from tqdm import tqdm
 
 from semra.rules import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
@@ -25,7 +27,6 @@ doid_to_all_2 = f"{base_url}/mesh_snomedct_via_do_not_mapped_umls.tsv"
 #: Columns: SNOMEDCT_ID, SNOMEDCIT_NAME, ICD10CM_ID, ICD10CM_NAME, MESH_ID
 all_to_all_2 = f"{base_url}/mesh_snomedct_via_icd10cm_not_mapped_umls.tsv"
 
-
 CONFIDENCE = 0.8
 NSM = {
     "MESH": "mesh",
@@ -36,20 +37,26 @@ NSM = {
 
 def _get_doid(url: str) -> list[Mapping]:
     df = pd.read_csv(url, sep="\t", usecols=["DO_ID", "resource", "resource_ID"])
-    return [
-        Mapping(
+    rv = []
+    evidence = SimpleEvidence(
+        mapping_set=MappingSet(name=url, confidence=CONFIDENCE),
+        justification=CHAIN_MAPPING,
+    )
+    for do_id, target_prefix, target_id in df.values:
+        try:
+            o = Reference(prefix=NSM[target_prefix], identifier=target_id)
+        except ValidationError:
+            tqdm.write(f"[doid:{do_id}] failed to parse xref {target_prefix}:{target_id}")
+            continue
+        mapping = Mapping(
             s=Reference(prefix="doid", identifier=do_id.removeprefix("DOID:")),
             p=EXACT_MATCH,
-            o=Reference(prefix=NSM[target_prefix], identifier=target_id),
-            evidence=[
-                SimpleEvidence(
-                    mapping_set=MappingSet(name=url, confidence=CONFIDENCE),
-                    justification=CHAIN_MAPPING,
-                )
-            ],
+            o=o,
+            evidence=[evidence],
         )
-        for do_id, target_prefix, target_id in df.values
-    ]
+        rv.append(mapping)
+
+    return rv
 
 
 def _get_mesh_to_icd_via_doid() -> list[Mapping]:
@@ -61,7 +68,6 @@ def _get_mesh_to_icd_via_snomedct() -> list[Mapping]:
     rows = []
     for snomedct_id, icd_id, mesh_id in df.values:
         snomed_ref = Reference(prefix="snomedct", identifier=str(int(snomedct_id)))
-        icd_ref = Reference(prefix="icd", identifier=icd_id)
         mesh_ref = Reference(prefix="mesh", identifier=mesh_id)
         rows.append(
             Mapping(
@@ -79,38 +85,45 @@ def _get_mesh_to_icd_via_snomedct() -> list[Mapping]:
                 ],
             )
         )
-        rows.append(
-            Mapping(
-                s=mesh_ref,
-                p=EXACT_MATCH,
-                o=icd_ref,
-                evidence=[
-                    SimpleEvidence(
-                        mapping_set=MappingSet(
-                            name=all_to_all_2,
-                            confidence=CONFIDENCE,
-                        ),
-                        justification=CHAIN_MAPPING,
-                    )
-                ],
+
+        try:
+            icd_ref = Reference(prefix="icd", identifier=icd_id)
+        except ValidationError:
+            pass
+            # tqdm.write(f"failed to parse ICD: {icd_id}")
+        else:
+            rows.append(
+                Mapping(
+                    s=mesh_ref,
+                    p=EXACT_MATCH,
+                    o=icd_ref,
+                    evidence=[
+                        SimpleEvidence(
+                            mapping_set=MappingSet(
+                                name=all_to_all_2,
+                                confidence=CONFIDENCE,
+                            ),
+                            justification=CHAIN_MAPPING,
+                        )
+                    ],
+                )
             )
-        )
-        rows.append(
-            Mapping(
-                s=icd_ref,
-                p=EXACT_MATCH,
-                o=snomed_ref,
-                evidence=[
-                    SimpleEvidence(
-                        mapping_set=MappingSet(
-                            name=all_to_all_2,
-                            confidence=CONFIDENCE,
-                        ),
-                        justification=UNSPECIFIED_MAPPING,
-                    )
-                ],
+            rows.append(
+                Mapping(
+                    s=icd_ref,
+                    p=EXACT_MATCH,
+                    o=snomed_ref,
+                    evidence=[
+                        SimpleEvidence(
+                            mapping_set=MappingSet(
+                                name=all_to_all_2,
+                                confidence=CONFIDENCE,
+                            ),
+                            justification=UNSPECIFIED_MAPPING,
+                        )
+                    ],
+                )
             )
-        )
     return rows
 
 
@@ -128,7 +141,6 @@ def _get_mesh_to_snomedct_via_icd() -> list[Mapping]:
     rows = []
     for snomedct_id, icd_id, mesh_id in df.values:
         snomed_ref = Reference(prefix="snomedct", identifier=str(int(snomedct_id)))
-        icd_ref = Reference(prefix="icd", identifier=icd_id)
         mesh_ref = Reference(prefix="mesh", identifier=mesh_id)
         rows.append(
             Mapping(
@@ -146,38 +158,45 @@ def _get_mesh_to_snomedct_via_icd() -> list[Mapping]:
                 ],
             )
         )
-        rows.append(
-            Mapping(
-                s=mesh_ref,
-                p=EXACT_MATCH,
-                o=icd_ref,
-                evidence=[
-                    SimpleEvidence(
-                        mapping_set=MappingSet(
-                            name=all_to_all_2,
-                            confidence=CONFIDENCE,
-                        ),
-                        justification=UNSPECIFIED_MAPPING,
-                    )
-                ],
+
+        try:
+            icd_ref = Reference(prefix="icd", identifier=icd_id)
+        except ValidationError:
+            # tqdm.write(f"failed to parse ICD {icd_id}")
+            pass
+        else:
+            rows.append(
+                Mapping(
+                    s=mesh_ref,
+                    p=EXACT_MATCH,
+                    o=icd_ref,
+                    evidence=[
+                        SimpleEvidence(
+                            mapping_set=MappingSet(
+                                name=all_to_all_2,
+                                confidence=CONFIDENCE,
+                            ),
+                            justification=UNSPECIFIED_MAPPING,
+                        )
+                    ],
+                )
             )
-        )
-        rows.append(
-            Mapping(
-                s=icd_ref,
-                p=EXACT_MATCH,
-                o=snomed_ref,
-                evidence=[
-                    SimpleEvidence(
-                        mapping_set=MappingSet(
-                            name=all_to_all_2,
-                            confidence=CONFIDENCE,
-                        ),
-                        justification=UNSPECIFIED_MAPPING,
-                    )
-                ],
+            rows.append(
+                Mapping(
+                    s=icd_ref,
+                    p=EXACT_MATCH,
+                    o=snomed_ref,
+                    evidence=[
+                        SimpleEvidence(
+                            mapping_set=MappingSet(
+                                name=all_to_all_2,
+                                confidence=CONFIDENCE,
+                            ),
+                            justification=UNSPECIFIED_MAPPING,
+                        )
+                    ],
+                )
             )
-        )
     return rows
 
 

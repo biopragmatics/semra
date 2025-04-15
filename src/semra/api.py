@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from typing import cast, overload
 
+import bioregistry
 import networkx as nx
 import pandas as pd
 import ssslm
@@ -85,7 +86,6 @@ __all__ = [
     "validate_mappings",
 ]
 
-
 logger = logging.getLogger(__name__)
 
 DATA_KEY = "data"
@@ -138,11 +138,11 @@ def get_test_reference(n: int, prefix: str) -> list[Reference]: ...
 def get_test_reference(n: None, prefix: str) -> Reference: ...
 
 
-def get_test_reference(n: int | None = None, prefix: str = "test") -> Reference | list[Reference]:
+def get_test_reference(n: int | None = None, prefix: str = "go") -> Reference | list[Reference]:
     """Get test reference(s)."""
     if isinstance(n, int):
-        return [Reference(prefix=prefix, identifier=str(i + 1)) for i in range(n)]
-    return Reference(prefix=prefix, identifier="1")
+        return [Reference(prefix=prefix, identifier=str(i + 1).zfill(7)) for i in range(n)]
+    return Reference(prefix=prefix, identifier="0000001")
 
 
 def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]:
@@ -154,11 +154,10 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
         appearing in the mappings
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
-    >>> r1 = Reference(prefix="p1", identifier="1")
-    >>> r2 = Reference(prefix="p2", identifier="a")
+    >>> from semra.api import get_test_reference
+    >>> r1, r2 = get_test_reference(2)
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-    >>> count_source_target([m1])
-    Counter({('p1', 'p2'): 1})
+    >>> counter = count_source_target([m1])
     """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
 
@@ -219,8 +218,7 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_evidence, get_test_reference
-    >>> r1 = get_test_reference(prefix="p1")
-    >>> r2 = get_test_reference(prefix="p2")
+    >>> r1, r2 = get_test_reference(2)
     >>> e1, e2 = get_test_evidence(2)
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
     >>> m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
@@ -253,8 +251,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 
     >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
     >>> from semra.api import get_test_evidence, get_test_reference
-    >>> r1 = get_test_reference(prefix="p1")
-    >>> r2 = get_test_reference(prefix="p2")
+    >>> r1, r2 = get_test_reference(2)
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
     >>> mappings = list(infer_reversible([m1]))
@@ -271,8 +268,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> from semra import Mapping, Reference, EXACT_MATCH
         >>> from semra.api import get_test_evidence
         >>> from semra.api import get_test_evidence, get_test_reference
-        >>> r1 = get_test_reference(prefix="p1")
-        >>> r2 = get_test_reference(prefix="p2")
+        >>> r1, r2 = get_test_reference(2)
         >>> e1, e2 = get_test_evidence(2)
         >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
         >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
@@ -586,6 +582,7 @@ def infer_mutual_dbxref_mutations(
     This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
     is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
     """
+    prefixes = _cleanup_prefixes(prefixes)
     pairs = {
         (subject_prefix, object_prefix)
         for subject_prefix, object_prefix in itt.product(prefixes, repeat=2)
@@ -650,6 +647,15 @@ def infer_dbxref_mutations(
     )
 
 
+def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], float]:
+    rv = {}
+    for (p1, p2), v in pairs.items():
+        p1_norm = bioregistry.normalize_prefix(p1, strict=True)
+        p2_norm = bioregistry.normalize_prefix(p2, strict=True)
+        rv[p1_norm, p2_norm] = v
+    return rv
+
+
 def infer_mutations(
     mappings: Iterable[Mapping],
     pairs: dict[tuple[str, str], float],
@@ -676,6 +682,7 @@ def infer_mutations(
     so the example mapping ``m2`` comes along for the ride.
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.rules import KNOWLEDGE_MAPPING
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
@@ -689,8 +696,10 @@ def infer_mutations(
     ...         )
     ...     ],
     ... )  # this is what we are inferring  # this is what we are inferring
-    >>> assert infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH) == [m1, m3, m2]
+    >>> mappings = infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH)
+    >>> assert mappings == [m1, m3, m2]
     """
+    pairs = _clean_pairs(pairs)
     rv = []
     for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
@@ -717,8 +726,14 @@ def infer_mutations(
     return rv
 
 
+def _cleanup_prefixes(prefixes: str | Iterable[str]) -> set[str]:
+    if isinstance(prefixes, str):
+        prefixes = [prefixes]
+    return {bioregistry.normalize_prefix(prefix, strict=True) for prefix in prefixes}
+
+
 def keep_prefixes(
-    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings whose subject or object are not in the given list of prefixes.
 
@@ -735,7 +750,7 @@ def keep_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_prefixes([m1, m2, m3], {"DOID", "mesh"}) == [m1]
     """
-    prefixes = set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(
@@ -763,7 +778,7 @@ def keep_subject_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_subject_prefixes([m1, m2, m3], {"DOID"})
     """
-    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
@@ -789,7 +804,7 @@ def keep_object_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_object_prefixes([m1, m2, m3], {"mesh"}) == [m1]
     """
-    prefixes = {prefixes} if isinstance(prefixes, str) else set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(mappings, desc="Filtering object prefixes", progress=progress)
@@ -798,10 +813,10 @@ def keep_object_prefixes(
 
 
 def filter_prefixes(
-    mappings: Iterable[Mapping], prefixes: Iterable[str], *, progress: bool = True
+    mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
-    prefixes = set(prefixes)
+    prefixes = _cleanup_prefixes(prefixes)
     return [
         mapping
         for mapping in _tqdm(
@@ -960,6 +975,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.p == EXACT_MATCH]
     exact_mappings = len(mappings)
+    priority = _clean_priority_prefixes(priority)
 
     graph = to_digraph(mappings).to_undirected()
     rv: list[Mapping] = []
@@ -989,6 +1005,10 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     return rv
 
 
+def _clean_priority_prefixes(priority: list[str]) -> list[str]:
+    return [bioregistry.normalize_prefix(prefix, strict=True) for prefix in priority]
+
+
 def get_priority_reference(
     component: t.Iterable[Reference], priority: list[str]
 ) -> Reference | None:
@@ -1001,20 +1021,20 @@ def get_priority_reference(
         If multiple references have the highest priority prefix, returns the first one encountered.
         If none have a priority prefix, return None.
 
-    >>> from curies import Reference
+    >>> from semra import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
     >>> references = [Reference.from_curie(curie) for curie in curies]
     >>> get_priority_reference(references, ["mesh", "umls"]).curie
     'mesh:C562966'
     >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
-    'DOID:0050577'
+    'doid:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
 
     """
     prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
     for reference in component:
         prefix_to_references[reference.prefix].append(reference)
-    for prefix in priority:
+    for prefix in _clean_priority_prefixes(priority):
         references = prefix_to_references.get(prefix, [])
         if not references:
             continue
@@ -1122,10 +1142,13 @@ def filter_minimum_confidence(
 
 def hydrate_subsets(
     subset_configuration: SubsetConfiguration,
+    *,
+    show_progress: bool = True,
 ) -> SubsetConfiguration:
     """Convert a subset configuration dictionary into a subset artifact.
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
+    :param show_progress: Should progress bars be shown?
     :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
     :raises ValueError: If a prefix can't be looked up with PyOBO
 
@@ -1143,7 +1166,7 @@ def hydrate_subsets(
 
     .. code-block:: python
 
-        from curies import Reference
+        from semra import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         configuration = {
@@ -1167,7 +1190,9 @@ def hydrate_subsets(
     # querying parents inside a resource that aren't defined by it (e.g., sty terms in umls)
     for prefix, parents in subset_configuration.items():
         try:
-            hierarchy = pyobo.get_hierarchy(prefix, include_part_of=False, include_has_member=False)
+            hierarchy = pyobo.get_hierarchy(
+                prefix, include_part_of=False, include_has_member=False, use_tqdm=show_progress
+            )
         except RuntimeError:  # e.g., no build
             rv[prefix] = set()
         except Exception as e:
@@ -1204,7 +1229,7 @@ def filter_subsets(
 
     .. code-block:: python
 
-        from curies import Reference
+        from semra import Reference
         from semra.api import hydrate_subsets, filter_subsets
 
         mappings = [...]
@@ -1212,11 +1237,7 @@ def filter_subsets(
         prefix_to_identifiers = hydrate_subsets(configuration)
         filter_subsets(mappings, prefix_to_identifiers)
     """
-    clean_prefix_to_identifiers = {
-        prefix: set(references)
-        for prefix, references in prefix_to_references.items()
-        if references  # skip empty lists
-    }
+    clean_prefix_to_identifiers = _clean_subset_configuration(prefix_to_references)
     rv = []
     for mapping in mappings:
         if (
@@ -1233,9 +1254,21 @@ def filter_subsets(
     return rv
 
 
+def _clean_subset_configuration(
+    prefix_to_references: SubsetConfiguration,
+) -> dict[str, set[Reference]]:
+    clean_prefix_to_identifiers = {}
+    for prefix, references in prefix_to_references.items():
+        if not references:  # skip empty lists
+            continue
+        norm_prefix = bioregistry.normalize_prefix(prefix, strict=True)
+        clean_prefix_to_identifiers[norm_prefix] = set(references)
+    return clean_prefix_to_identifiers
+
+
 def aggregate_components(
     mappings: t.Iterable[Mapping],
-    prefix_allowlist: t.Collection[str] | None = None,
+    prefix_allowlist: str | t.Collection[str] | None = None,
 ) -> t.Mapping[frozenset[str], set[frozenset[Reference]]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component.
 
@@ -1247,7 +1280,7 @@ def aggregate_components(
     components = iter_components(mappings)
 
     if prefix_allowlist is not None:
-        prefix_set = set(prefix_allowlist)
+        prefix_set = _cleanup_prefixes(prefix_allowlist)
         for component in components:
             # subset to the priority prefixes
             subcomponent: frozenset[Reference] = frozenset(
@@ -1265,7 +1298,7 @@ def aggregate_components(
 
 
 def count_component_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
+    mappings: t.Iterable[Mapping], prefix_allowlist: str | t.Collection[str] | None = None
 ) -> t.Counter[frozenset[str]]:
     """Get a counter where the keys are the set of all prefixes in a weakly connected component."""
     xx = aggregate_components(mappings, prefix_allowlist)
@@ -1273,7 +1306,7 @@ def count_component_sizes(
 
 
 def count_coverage_sizes(
-    mappings: t.Iterable[Mapping], prefix_allowlist: t.Collection[str] | None = None
+    mappings: t.Iterable[Mapping], prefix_allowlist: str | t.Collection[str] | None = None
 ) -> t.Counter[int]:
     """Get a counter of the number of prefixes in which each entity appears based on the mappings."""
     xx = count_component_sizes(mappings, prefix_allowlist=prefix_allowlist)

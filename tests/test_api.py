@@ -37,15 +37,23 @@ from semra.struct import (
     triple_key,
 )
 
+PREFIX_A = "go"
+PREFIX_B = "mondo"
+PREFIX_C = "ido"
+PREFIX_D = "obi"
+PREFIXES = [PREFIX_A, PREFIX_B, PREFIX_C, PREFIX_D]
+
 
 def _get_references(
-    n: int, *, prefix: str = "test", different_prefixes: bool = False
+    n: int, *, prefix: str = PREFIX_A, different_prefixes: bool = False
 ) -> list[Reference]:
     if different_prefixes:
-        prefixes = [f"{prefix}{i + 1}" for i in range(n)]
+        if n > len(PREFIXES):
+            raise ValueError("need to add more default prefixes")
+        prefixes = PREFIXES[:n]
     else:
         prefixes = [prefix for _ in range(n)]
-    identifiers = [str(i + 1) for i in range(n)]
+    identifiers = [str(i + 1).zfill(7) for i in range(n)]
     return [
         Reference(prefix=prefix, identifier=identifier)
         for prefix, identifier in zip(prefixes, identifiers, strict=False)
@@ -295,19 +303,21 @@ class TestOperations(unittest.TestCase):
 
     def test_filter_prefixes(self):
         """Test filtering out unwanted prefixes."""
-        r11, r12 = _get_references(2, prefix="p1")
-        r21, r22 = _get_references(2, prefix="p2")
-        (r31,) = _get_references(1, prefix="p3")
+        r11, r12 = _get_references(2, prefix=PREFIX_A)
+        r21, r22 = _get_references(2, prefix=PREFIX_B)
+        (r31,) = _get_references(1, prefix=PREFIX_C)
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m3]
-        self.assert_same_triples([m1, m2], keep_prefixes(mappings, {"p1", "p2"}, progress=False))
+        self.assert_same_triples(
+            [m1, m2], keep_prefixes(mappings, {PREFIX_A, PREFIX_B}, progress=False)
+        )
 
     def test_filter_self(self):
         """Test filtering out mappings within a given prefix."""
-        r11, r12, r13 = _get_references(3, prefix="p1")
-        r21, r22 = _get_references(2, prefix="p2")
+        r11, r12, r13 = _get_references(3, prefix=PREFIX_A)
+        r21, r22 = _get_references(2, prefix=PREFIX_B)
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r13)
@@ -316,8 +326,8 @@ class TestOperations(unittest.TestCase):
 
     def test_filter_negative(self):
         """Test filtering out mappings within a given prefix."""
-        r11, r12 = _get_references(2, prefix="p1")
-        r21, r22 = _get_references(2, prefix="p2")
+        r11, r12 = _get_references(2, prefix=PREFIX_A)
+        r21, r22 = _get_references(2, prefix=PREFIX_B)
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         mappings = [m1, m2]
@@ -326,20 +336,20 @@ class TestOperations(unittest.TestCase):
 
     def test_project(self):
         """Test projecting into a given source/target pair."""
-        r11, r12 = _get_references(2, prefix="p1")
-        r21, r22 = _get_references(2, prefix="p2")
-        (r31,) = _get_references(1, prefix="p3")
+        r11, r12 = _get_references(2, prefix=PREFIX_A)
+        r21, r22 = _get_references(2, prefix=PREFIX_B)
+        (r31,) = _get_references(1, prefix=PREFIX_C)
         m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
         m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
         m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m2_i, m3]
-        self.assert_same_triples([m1, m2], project(mappings, "p1", "p2", progress=False))
+        self.assert_same_triples([m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False))
 
     def test_get_many_to_many(self):
         """Test getting many-to-many mappings."""
-        a1, a2, a3 = _get_references(3, prefix="a")
-        b1, b2, b3 = _get_references(3, prefix="b")
+        a1, a2, a3 = _get_references(3, prefix=PREFIX_A)
+        b1, b2, b3 = _get_references(3, prefix=PREFIX_B)
 
         # Subject duplicate
         m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1)
@@ -352,8 +362,8 @@ class TestOperations(unittest.TestCase):
 
     def test_filter_confidence(self):
         """Test filtering by confidence."""
-        (a1, a2) = _get_references(2, prefix="a")
-        (b1, b2) = _get_references(2, prefix="b")
+        (a1, a2) = _get_references(2, prefix=PREFIX_A)
+        (b1, b2) = _get_references(2, prefix=PREFIX_B)
         m1 = Mapping(
             s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)]
         )
@@ -365,9 +375,9 @@ class TestOperations(unittest.TestCase):
 
     def test_filter_subsets(self):
         """Test filtering by subsets."""
-        a1, a2 = _get_references(2, prefix="a")
-        b1, b2 = _get_references(2, prefix="b")
-        c1, c2 = _get_references(2, prefix="c")
+        a1, a2 = _get_references(2, prefix=PREFIX_A)
+        b1, b2 = _get_references(2, prefix=PREFIX_B)
+        c1, c2 = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
         m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
         m2 = Mapping(s=b1, p=EXACT_MATCH, o=a1, evidence=[ev])
@@ -377,8 +387,8 @@ class TestOperations(unittest.TestCase):
         m6 = Mapping(s=c1, p=EXACT_MATCH, o=b1, evidence=[ev])
 
         terms = {
-            "a": [Reference.from_curie("a:1"), Reference.from_curie("a:2")],
-            "b": [Reference.from_curie("b:1")],
+            PREFIX_A: [a1, a2],
+            PREFIX_B: [b1],
         }
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
         self.assertEqual(
@@ -388,9 +398,9 @@ class TestOperations(unittest.TestCase):
         )
 
         terms = {
-            "a": [Reference.from_curie("a:1"), Reference.from_curie("a:2")],
-            "b": [Reference.from_curie("b:1")],
-            "c": [],
+            PREFIX_A: [a1, a2],
+            PREFIX_B: [b1],
+            PREFIX_C: [],
         }
         # the fact that c has an empty dictionary will get ignored
         mmm = list(api.filter_subsets([m1, m2, m3, m4, m5, m6], terms))
@@ -402,10 +412,10 @@ class TestOperations(unittest.TestCase):
 
     def test_count_component_sizes(self):
         """Test counting component sizes."""
-        priority = "abc"
-        a1, a2 = _get_references(2, prefix="a")
-        b1, b2 = _get_references(2, prefix="b")
-        c1, _ = _get_references(2, prefix="c")
+        priority = [PREFIX_A, PREFIX_B, PREFIX_C]
+        a1, a2 = _get_references(2, prefix=PREFIX_A)
+        b1, b2 = _get_references(2, prefix=PREFIX_B)
+        c1, _ = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
         m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
         m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
@@ -413,16 +423,16 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
         mappings = [m1, m2, m3, m4]
         self.assertEqual(
-            {frozenset("ab"): 1, frozenset("abc"): 1},
+            {frozenset([PREFIX_A, PREFIX_B]): 1, frozenset([PREFIX_A, PREFIX_B, PREFIX_C]): 1},
             dict(count_component_sizes(mappings, priority)),
         )
         self.assertEqual({1: 0, 2: 1, 3: 1}, dict(count_coverage_sizes(mappings, priority)))
 
     def test_digraph_roundtrip(self):
         """Test I/O roundtrip through a directed graph."""
-        a1, a2 = _get_references(2, prefix="a")
-        b1, b2 = _get_references(2, prefix="b")
-        c1, _ = _get_references(2, prefix="c")
+        a1, a2 = _get_references(2, prefix=PREFIX_A)
+        b1, b2 = _get_references(2, prefix=PREFIX_B)
+        c1, _ = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
         m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
         m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
@@ -437,8 +447,8 @@ class TestUpgrades(unittest.TestCase):
 
     def test_infer_mutations(self):
         """Test inferring mutations."""
-        (a1,) = _get_references(1, prefix="a")
-        (b1,) = _get_references(1, prefix="b")
+        (a1,) = _get_references(1, prefix=PREFIX_A)
+        (b1,) = _get_references(1, prefix=PREFIX_B)
         original_confidence = 0.95
         mutation_confidence = 0.80
         m1 = Mapping(
@@ -449,7 +459,7 @@ class TestUpgrades(unittest.TestCase):
         )
         new_mappings = infer_mutations(
             [m1],
-            {("a", "b"): mutation_confidence},
+            {(PREFIX_A, PREFIX_B): mutation_confidence},
             old_predicate=DB_XREF,
             new_predicate=EXACT_MATCH,
             progress=False,

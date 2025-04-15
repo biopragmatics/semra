@@ -1,10 +1,12 @@
 {
   "name": "SeMRA Gene Mapping Database",
+  "key": "gene",
   "description": "Analyze the landscape of gene nomenclature resources, species-agnostic.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -111,10 +113,16 @@
   ],
   "subsets": {
     "umls": [
-      "umls:C0017337"
+      {
+        "prefix": "umls",
+        "identifier": "C0017337"
+      }
     ],
     "ncit": [
-      "ncit:C16612"
+      {
+        "prefix": "ncit",
+        "identifier": "C16612"
+      }
     ]
   },
   "remove_imprecise": false,

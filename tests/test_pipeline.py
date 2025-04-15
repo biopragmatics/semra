@@ -4,12 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from curies.vocabulary import charlie
-
 from semra import EXACT_MATCH, Mapping, MappingSet, SimpleEvidence
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, get_raw_mappings
-from semra.rules import MANUAL_MAPPING
+from semra.rules import MANUAL_MAPPING, charlie
 from semra.sources import SOURCE_RESOLVER
 from tests.constants import a1, b1
 
@@ -67,6 +65,7 @@ class TestPipeline(unittest.TestCase):
         config = Configuration(
             inputs=[inp],
             priority=["chebi", "mesh"],
+            key="test",
             name="Test Configuration",
             description="Tests using custom sources",
         )
@@ -83,8 +82,15 @@ class TestPipeline(unittest.TestCase):
             config = Configuration(
                 inputs=[inp],
                 priority=["a", "b"],
+                key="test",
                 name="Test Configuration",
                 description="Tests using SSSOM sources",
             )
             mappings = get_raw_mappings(config, show_progress=False)
             self.assert_test_mappings(mappings)
+
+    def test_sssom_stream(self) -> None:
+        """Test writing SSSOM with a stream."""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d).resolve().joinpath("test.sssom.tsv")
+            write_sssom(TEST_MAPPINGS, path, prune=False, add_labels=False)

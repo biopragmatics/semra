@@ -1,6 +1,6 @@
 """Reusable assets for testing."""
 
-from curies import Reference
+from semra import Reference
 
 a1_curie = "CHEBI:10084"  # Xylopinine
 a2_curie = "CHEBI:10100"  # zafirlukast

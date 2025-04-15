@@ -11,10 +11,12 @@ from itertools import islice
 from typing import Annotated, ClassVar, Literal
 
 import pydantic
-from curies import Reference
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pydantic.types import UUID4
+from pyobo import Reference
+
+from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 
 __all__ = [
     "Evidence",
@@ -100,7 +102,7 @@ class EvidenceMixin:
         raise NotImplementedError
 
 
-class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.mappingset"):
+class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_SET_PREFIX):
     """Represents a set of semantic mappings.
 
     For example, this might correspond to:
@@ -127,7 +129,7 @@ class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.
 
 
 class SimpleEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix="semra.evidence"
+    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
 ):
     """Evidence for a mapping.
 
@@ -180,7 +182,7 @@ class SimpleEvidence(
 
 
 class ReasonedEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix="semra.evidence"
+    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
 ):
     """A complex evidence based on multiple mappings."""
 
@@ -252,7 +254,7 @@ Evidence = Annotated[
 ]
 
 
-class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix="semra.mapping"):
+class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_PREFIX):
     """A semantic mapping."""
 
     model_config = ConfigDict(frozen=True)

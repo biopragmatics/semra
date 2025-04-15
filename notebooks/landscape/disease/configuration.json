@@ -1,10 +1,12 @@
 {
   "name": "SeMRA Disease Mappings Database",
+  "key": "disease",
   "description": "Supports the analysis of the landscape of disease nomenclature resources.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -66,6 +68,7 @@
     "icd10cm",
     "icd10pcs",
     "icd11",
+    "icd11.code",
     "icd9",
     "icd9cm",
     "icdo"
@@ -102,24 +105,60 @@
   ],
   "subsets": {
     "mesh": [
-      "mesh:D007239",
-      "mesh:D001520",
-      "mesh:D011579",
-      "mesh:D001523",
-      "mesh:D004191"
+      {
+        "prefix": "mesh",
+        "identifier": "D007239"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D001520"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D011579"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D001523"
+      },
+      {
+        "prefix": "mesh",
+        "identifier": "D004191"
+      }
     ],
     "efo": [
-      "efo:0000408"
+      {
+        "prefix": "efo",
+        "identifier": "0000408"
+      }
     ],
     "ncit": [
-      "ncit:C2991"
+      {
+        "prefix": "ncit",
+        "identifier": "C2991"
+      }
     ],
     "umls": [
-      "sty:T049",
-      "sty:T047",
-      "sty:T191",
-      "sty:T050",
-      "sty:T048"
+      {
+        "prefix": "sty",
+        "identifier": "T049"
+      },
+      {
+        "prefix": "sty",
+        "identifier": "T047"
+      },
+      {
+        "prefix": "sty",
+        "identifier": "T191"
+      },
+      {
+        "prefix": "sty",
+        "identifier": "T050"
+      },
+      {
+        "prefix": "sty",
+        "identifier": "T048"
+      }
     ]
   },
   "keep_prefixes": [
@@ -138,6 +177,7 @@
     "icd10cm",
     "icd10pcs",
     "icd11",
+    "icd11.code",
     "icd9",
     "icd9cm",
     "icdo"

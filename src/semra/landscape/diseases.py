@@ -2,11 +2,11 @@
 
 import bioregistry
 import pystow
-from curies import Reference
-from curies.vocabulary import charlie
 from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
 
+from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
+from semra.rules import charlie
 
 __all__ = [
     "CONFIGURATION",
@@ -46,6 +46,7 @@ SUBSETS = {
 }
 
 CONFIGURATION = Configuration(
+    key="disease",
     name="SeMRA Disease Mappings Database",
     description="Supports the analysis of the landscape of disease nomenclature resources.",
     creators=[charlie],

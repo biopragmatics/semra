@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 import time
 import typing as t
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal
 
 import click
 import requests
-from curies import NamedReference
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
 
@@ -67,6 +67,11 @@ logger = logging.getLogger(__name__)
 UPLOAD_OPTION = click.option("--upload", is_flag=True)
 REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
 REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
+REFRESH_SOURCE_OPTION = click.option(
+    "--refresh-source",
+    is_flag=True,
+    help="Enable this to fully re-process source data, e.g., parse source OBO files and re-build mapping caches",
+)
 BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
 
 
@@ -91,11 +96,14 @@ class Mutation(BaseModel):
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
-    name: str = Field(description="The name of the mapping set configuration")
+    name: str = Field(..., description="The name of the mapping set configuration")
+    key: str = Field(
+        ..., description="A short key describing the configuration used for logging purposes"
+    )
     description: str | None = Field(
         None, description="An explanation of the purpose of the mapping set configuration"
     )
-    creators: list[NamedReference] = Field(
+    creators: list[Reference] = Field(
         default_factory=list, description="A list of the ORCID identifiers for creators"
     )
     inputs: list[Input] = Field(..., description="A list of sources of mappings")
@@ -193,6 +201,7 @@ class Configuration(BaseModel):
     def from_prefixes(
         cls,
         *,
+        key: str,
         name: str,
         prefixes: t.Iterable[str],
         include_biomappings: bool = True,
@@ -204,40 +213,56 @@ class Configuration(BaseModel):
             inputs.append(Input(source="biomappings"))
         if include_gilda:
             inputs.append(Input(source="gilda"))
-        return cls(name=name, inputs=inputs)
+        return cls(key=key, name=name, inputs=inputs)
 
     def get_mappings(
         self,
         *,
         refresh_raw: bool = False,
         refresh_processed: bool = False,
+        refresh_source: bool = False,
     ) -> list[Mapping]:
         """Run assembly based on this configuration."""
         return get_mappings_from_config(
-            self, refresh_raw=refresh_raw, refresh_processed=refresh_processed
+            self,
+            refresh_source=refresh_source,
+            refresh_raw=refresh_raw,
+            refresh_processed=refresh_processed,
         )
 
     def read_raw_mappings(self) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
-        if self.raw_pickle_path is None:
-            raise ValueError
-        if not self.raw_pickle_path.is_file():
-            raise FileNotFoundError
-        return from_pickle(self.raw_pickle_path)
+        if self.raw_pickle_path and self.raw_pickle_path.is_file():
+            return from_pickle(self.raw_pickle_path)
+        if self.raw_sssom_path and self.raw_sssom_path.is_file():
+            return from_sssom(self.raw_sssom_path)
+        if self.raw_pickle_path and not self.raw_pickle_path.is_file():
+            raise FileNotFoundError(f"raw mappings pickle file not found: {self.raw_pickle_path}")
+        if self.raw_sssom_path and not self.raw_sssom_path.is_file():
+            raise FileNotFoundError(f"raw mappings SSSOM file not found: {self.raw_sssom_path}")
+        raise ValueError("no raw pickle nor SSSOM file given")
 
     def read_processed_mappings(self) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
-        if self.processed_pickle_path is None:
-            raise ValueError
-        if not self.processed_pickle_path.is_file():
-            raise FileNotFoundError
-        return from_pickle(self.processed_pickle_path)
+        if self.processed_pickle_path and self.processed_pickle_path.is_file():
+            return from_pickle(self.processed_pickle_path)
+        if self.processed_sssom_path and self.processed_sssom_path.is_file():
+            return from_sssom(self.processed_sssom_path)
+        if self.processed_pickle_path and not self.processed_pickle_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings pickle file not found: {self.processed_pickle_path}"
+            )
+        if self.processed_sssom_path and not self.processed_sssom_path.is_file():
+            raise FileNotFoundError(
+                f"processed mappings SSSOM file not found: {self.processed_sssom_path}"
+            )
+        raise ValueError("no processed pickle nor SSSOM file given")
 
-    def get_hydrated_subsets(self) -> SubsetConfiguration:
+    def get_hydrated_subsets(self, *, show_progress: bool = True) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
         if not self.subsets:
             return {}
-        return hydrate_subsets(self.subsets)
+        return hydrate_subsets(self.subsets, show_progress=show_progress)
 
     def _get_zenodo_metadata(self) -> zenodo_client.Metadata:
         if not self.creators:
@@ -354,9 +379,9 @@ class Configuration(BaseModel):
         )
         click.echo(f"Result: {res}")
 
-    def cli(self) -> None:
+    def cli(self, *args: Any) -> None:
         """Get and run a command line interface for this configuration."""
-        self.get_cli()()
+        self.get_cli()(*args)
 
     def get_cli(self):
         """Get a command line interface for this configuration."""
@@ -365,13 +390,24 @@ class Configuration(BaseModel):
 
         @click.command()
         @UPLOAD_OPTION
+        @REFRESH_SOURCE_OPTION
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
         @verbose_option
-        def main(upload: bool, refresh_raw: bool, refresh_processed: bool, build_docker: bool):
+        def main(
+            upload: bool,
+            refresh_source: bool,
+            refresh_raw: bool,
+            refresh_processed: bool,
+            build_docker: bool,
+        ) -> None:
             """Build the mapping database terms."""
-            self.get_mappings(refresh_raw=refresh_raw, refresh_processed=refresh_processed)
+            self.get_mappings(
+                refresh_source=refresh_source,
+                refresh_raw=refresh_raw,
+                refresh_processed=refresh_processed,
+            )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
             if upload:
@@ -391,10 +427,16 @@ class Configuration(BaseModel):
 def get_mappings_from_config(
     configuration: Configuration,
     *,
+    refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
 ) -> list[Mapping]:
     """Run assembly based on a configuration."""
+    if refresh_source:
+        refresh_raw = True
+    if refresh_raw:
+        refresh_processed = True
+
     if (
         configuration.priority_pickle_path
         and configuration.priority_pickle_path.is_file()
@@ -423,7 +465,7 @@ def get_mappings_from_config(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
 
-        raw_mappings = get_raw_mappings(configuration)
+        raw_mappings = get_raw_mappings(configuration, refresh_source=refresh_source)
         if not raw_mappings:
             raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
         if configuration.validate_raw:
@@ -489,7 +531,9 @@ def get_mappings_from_config(
     return prioritized_mappings
 
 
-def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, bool]:
+def _get_equivalence_classes(
+    mappings: Iterable[Mapping], prioritized_mappings: Iterable[Mapping]
+) -> dict[Reference, bool]:
     priority_references = {mapping.o for mapping in prioritized_mappings}
     rv = {}
     for mapping in mappings:
@@ -498,20 +542,24 @@ def _get_equivalence_classes(mappings, prioritized_mappings) -> dict[Reference, 
     return rv
 
 
-def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -> list[Mapping]:
+def get_raw_mappings(
+    configuration: Configuration,
+    show_progress: bool = True,
+    refresh_source: bool = False,
+) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
     mappings = []
     for i, inp in enumerate(
         tqdm(
             configuration.inputs,
-            desc="Getting raw mappings",
+            desc=f"[{configuration.key}] getting raw mappings",
             unit="source",
             disable=not show_progress,
         ),
         start=1,
     ):
         tqdm.write(
-            f"{i}/{len(configuration.inputs)} "
+            f"[{configuration.key}] {i}/{len(configuration.inputs)} "
             + click.style(f"Loading mappings from {inp.source}", fg="green")
             + (f" ({inp.prefix})" if inp.prefix else "")
         )
@@ -524,7 +572,14 @@ def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -
         elif inp.source == "pyobo":
             if inp.prefix is None:
                 raise ValueError
-            mappings.extend(from_pyobo(inp.prefix, confidence=inp.confidence, **inp.extras))
+            mappings.extend(
+                from_pyobo(
+                    inp.prefix,
+                    confidence=inp.confidence,
+                    force_process=refresh_source,
+                    **inp.extras,
+                )
+            )
         elif inp.source == "biomappings":
             if inp.prefix in {None, "positive"}:
                 mappings.extend(get_biomappings_positive_mappings())
@@ -540,6 +595,8 @@ def get_raw_mappings(configuration: Configuration, show_progress: bool = True) -
             func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
             mappings.extend(func())
         elif inp.source == "wikidata":
+            if inp.prefix is None:
+                raise ValueError("prefix is required to be set when wikidata is used as a source")
             mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
         elif inp.source == "sssom":
             mappings.extend(from_sssom(inp.prefix, **inp.extras))

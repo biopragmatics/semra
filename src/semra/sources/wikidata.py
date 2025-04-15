@@ -5,13 +5,12 @@ from collections.abc import Iterable
 
 import bioregistry
 import curies
-import pyobo
 import pystow
 import requests
 from tqdm import tqdm
 
 from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
-from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
 from semra.version import get_version
 
 __all__ = [
@@ -69,18 +68,20 @@ def _help(
     if predicate is None:
         predicate = EXACT_MATCH
 
+    _predicate = Reference(prefix=predicate.prefix, identifier=predicate.identifier)
+
     mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
     rv = []
     for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
+        if not wikidata_id.startswith("Q"):
+            continue
         try:
-            o = pyobo.Reference(
-                prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id)
-            )
+            o = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
         except ValueError:
             continue
         mapping = Mapping(
-            s=pyobo.Reference(prefix="wikidata", identifier=wikidata_id),
-            p=predicate,
+            s=Reference(prefix="wikidata", identifier=wikidata_id),
+            p=_predicate,
             o=o,
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )

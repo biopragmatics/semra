@@ -8,8 +8,8 @@ from collections.abc import Hashable, Iterable, Sequence
 from pathlib import Path
 
 import click
-from curies import Reference
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from pyobo import Reference
 from tqdm import tqdm
 
 from .io_utils import get_confidence_str, get_name_by_curie

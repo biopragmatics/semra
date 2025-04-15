@@ -5,10 +5,10 @@ import unittest
 import uuid
 
 import pandas as pd
-from curies.vocabulary import exact_match, unspecified_matching_process
 
 from semra import Mapping, MappingSet, SimpleEvidence
 from semra.io import from_pyobo, from_sssom_df
+from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
@@ -45,12 +45,12 @@ class TestIO(unittest.TestCase):
                 name=mapping_set_name,
                 confidence=mapping_set_confidence,
             ),
-            justification=unspecified_matching_process,
+            justification=UNSPECIFIED_MAPPING,
             uuid=CONST_UUID,
         )
         expected_mappings = [
-            Mapping(s=a1, p=exact_match, o=b1, evidence=[expected_evidence]),
-            Mapping(s=a2, p=exact_match, o=b2, evidence=[expected_evidence]),
+            Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
+            Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[expected_evidence]),
         ]
 
         # Test 1 - from kwargs
@@ -135,12 +135,12 @@ class TestIO(unittest.TestCase):
                 license=test_license,
                 version=test_version,
             ),
-            justification=unspecified_matching_process,
+            justification=UNSPECIFIED_MAPPING,
             uuid=CONST_UUID,
         )
         expected_mappings = [
-            Mapping(s=a1, p=exact_match, o=b1, evidence=[expected_evidence]),
-            Mapping(s=a2, p=exact_match, o=b2, evidence=[expected_evidence]),
+            Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
+            Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[expected_evidence]),
         ]
 
         rows = [

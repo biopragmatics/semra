@@ -1,10 +1,12 @@
 {
   "name": "SeMRA Protein Complex Landscape Analysis",
+  "key": "complex",
   "description": "Analyze the landscape of protein complex nomenclature resources, species-agnostic.",
   "creators": [
     {
-      "name": "Charles Tapley Hoyt",
-      "orcid": "0000-0003-4423-4370"
+      "prefix": "orcid",
+      "identifier": "0000-0003-4423-4370",
+      "name": "Charles Tapley Hoyt"
     }
   ],
   "inputs": [
@@ -68,7 +70,24 @@
   ],
   "subsets": {
     "go": [
-      "go:0032991"
+      {
+        "prefix": "go",
+        "identifier": "0032991"
+      }
+    ],
+    "chembl.target": [
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-complex"
+      },
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-complex-group"
+      },
+      {
+        "prefix": "obo",
+        "identifier": "chembl.target#protein-nucleic-acid-complex"
+      }
     ]
   },
   "post_keep_prefixes": [

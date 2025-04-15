@@ -2,6 +2,7 @@
 
 import json
 import typing as t
+import warnings
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,13 +15,12 @@ import pandas as pd
 import pyobo
 import seaborn as sns
 import upsetplot
-from curies import Reference
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 from pyobo.sources.mesh import get_mesh_category_curies
 
+from semra import Reference
 from semra.api import (
-    aggregate_components,
     count_component_sizes,
     filter_subsets,
     get_index,
@@ -60,6 +60,7 @@ def notebook(
     matplotlib_formats: str | None = "svg",
     show: bool = True,
     minimum_count: int | None = None,
+    show_progress: bool = False,
 ) -> tuple["OverlapResults", "LandscapeResult"]:
     """Run the landscape analysis inside a Jupyter notebook."""
     if not configuration.raw_pickle_path:
@@ -74,9 +75,9 @@ def notebook(
         configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
     )
 
-    terms = get_terms(configuration.priority, configuration.subsets)
+    terms = get_terms(configuration.priority, configuration.subsets, show_progress=show_progress)
 
-    hydrated_subsets = configuration.get_hydrated_subsets()
+    hydrated_subsets = configuration.get_hydrated_subsets(show_progress=show_progress)
 
     raw_mappings = configuration.read_raw_mappings()
     if configuration.subsets:
@@ -136,9 +137,10 @@ def notebook(
         configuration,
         terms,
         minimum_count=minimum_count,
-        mappings=processed_mappings,
+        processed_mappings=processed_mappings,
         raw_mappings=raw_mappings,
         terms_observed=terms_observed,
+        show_progress=show_progress,
     )
     overlap_results.write(output_directory)
     _markdown(
@@ -150,7 +152,7 @@ def notebook(
         "Next, we summarize the processed mappings, which include inference, reasoning, and "
         "confidence filtering."
     )
-    display(overlap_results.counts_df)
+    display(overlap_results.processed_counts_df)
     _markdown("Below is an graph-based view on the processed mappings.")
     display(SVG(overlap_results.counts_drawing))
     _markdown(
@@ -189,25 +191,32 @@ def notebook(
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = landscape_analysis(
-        overlap_results.mappings,
+        configuration=configuration,
+        processed_mappings=overlap_results.processed_mappings,
         prefix_to_identifiers=terms,
-        priority=overlap_results.counts_df.index,
+        priority=overlap_results.processed_counts_df.index,
         prefix_to_observed_identifiers=terms_observed,
     )
 
     _markdown(landscape_results.get_description_markdown())
 
-    n_prefixes = len(overlap_results.counts_df.index)
+    n_prefixes = len(overlap_results.processed_counts_df.index)
     number_overlaps = 2**n_prefixes - 1
     _markdown(
         f"""\
-    Because there are {n_prefixes}, there are {number_overlaps} possible overlaps to consider.
+    Because there are {n_prefixes} prefixes, there are {number_overlaps:,} possible overlaps to consider.
     Therefore, a Venn diagram is not possible, so we
     we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
     (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
     """
     )
-    landscape_results.plot_upset()
+    with warnings.catch_warnings():
+        warnings.simplefilter(action="ignore", category=FutureWarning)
+        # we have to wrap the upset plot functionality with the future
+        # warning catching because it uses deprecated matplotlib and
+        # pandas functionality. unfortunataely, it appears the upstream
+        # https://github.com/jnothman/UpSetPlot is inactive
+        landscape_results.plot_upset()
     plt.savefig(output_directory.joinpath("landscape_upset.svg"))
     if show:
         plt.show()
@@ -268,7 +277,7 @@ def notebook(
         "distribution": landscape_results.distribution,
     }
     stats_path = output_directory.joinpath("stats.json")
-    stats_path.write_text(json.dumps(stats, indent=2))
+    stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
 
     return overlap_results, landscape_results
 
@@ -279,9 +288,9 @@ class OverlapResults:
 
     raw_mappings: list[Mapping]
     raw_counts_df: pd.DataFrame
-    mappings: list[Mapping]
+    processed_mappings: list[Mapping]
     counts: XXCounter
-    counts_df: pd.DataFrame
+    processed_counts_df: pd.DataFrame
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
     minimum_count: int | None = None
@@ -298,7 +307,7 @@ class OverlapResults:
     def write(self, directory: str | Path) -> None:
         """Write the tables and charts to a directory."""
         directory = Path(directory).resolve()
-        self.counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
+        self.processed_counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
         self.raw_counts_df.to_csv(directory / "raw_counts.tsv", sep="\t", index=True)
         directory.joinpath("graph.svg").write_bytes(self.counts_drawing)
 
@@ -308,32 +317,33 @@ def overlap_analysis(
     terms: XXTerms,
     *,
     terms_observed: XXObservedTerms,
-    mappings: list[Mapping],
+    processed_mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
+    show_progress: bool = True,
 ) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
         raise ValueError("No raw pickle path available")
-    raw_index = _get_summary_index(raw_mappings)
+    raw_index = _get_summary_index(raw_mappings, show_progress=show_progress)
     _, raw_counts_df = get_symmetric_counts_df(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    directed = _get_summary_index(mappings)
-    counts, counts_df = get_symmetric_counts_df(
-        directed, terms, priority=configuration.priority, terms_observed=terms_observed
+    processed_index = _get_summary_index(processed_mappings, show_progress=show_progress)
+    processed_counts, processed_counts_df = get_symmetric_counts_df(
+        processed_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    gains_df = counts_df - raw_counts_df
-    percent_gains_df = 100.0 * (counts_df - raw_counts_df) / raw_counts_df
+    gains_df = processed_counts_df - raw_counts_df
+    percent_gains_df = 100.0 * (processed_counts_df - raw_counts_df) / raw_counts_df
 
     return OverlapResults(
         raw_mappings=raw_mappings,
         raw_counts_df=raw_counts_df,
-        mappings=mappings,
-        counts=counts,
-        counts_df=counts_df,
+        processed_mappings=processed_mappings,
+        counts=processed_counts,
+        processed_counts_df=processed_counts_df,
         gains_df=gains_df,
         percent_gains_df=percent_gains_df,
         minimum_count=minimum_count,
@@ -341,26 +351,39 @@ def overlap_analysis(
 
 
 def get_terms(
-    prefixes: list[str], subset_configuration: SubsetConfiguration | None = None
+    prefixes: list[str],
+    subset_configuration: SubsetConfiguration | None = None,
+    *,
+    show_progress: bool = True,
 ) -> XXTerms:
     """Get the set of identifiers for each of the resources."""
     prefix_to_identifier_to_name = {}
     if subset_configuration is None:
         hydrated_subset_configuration: SubsetConfiguration = {}
     else:
-        hydrated_subset_configuration = hydrate_subsets(subset_configuration)
+        hydrated_subset_configuration = hydrate_subsets(
+            subset_configuration, show_progress=show_progress
+        )
     for prefix in prefixes:
-        id_to_name = pyobo.get_id_name_mapping(prefix)
+        # TODO need to exclude default references here
+        id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
             prefix_to_identifier_to_name[prefix] = {
                 identifier: name
                 for identifier, name in id_to_name.items()
-                if Reference(prefix=prefix, identifier=identifier) in subset
+                if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
             }
         else:
             prefix_to_identifier_to_name[prefix] = id_to_name
     return prefix_to_identifier_to_name
+
+
+def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> bool:
+    # check if the identifier is a "default" reference
+    if identifier.startswith(f"{prefix}#"):
+        return False
+    return Reference(prefix=prefix, identifier=identifier) in subset
 
 
 def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> tuple[int, bool]:
@@ -430,7 +453,9 @@ def get_summary_df(
     return df
 
 
-def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
+def _get_summary_index(
+    mappings: t.Iterable[Mapping], *, show_progress: bool = True
+) -> DirectedIndex:
     """Index which entities in each vocabulary have been mapped.
 
     :param mappings: An iterable of mappings to be indexed
@@ -448,7 +473,7 @@ def _get_summary_index(mappings: t.Iterable[Mapping]) -> DirectedIndex:
            ("P3", "P1"): {"X"},
         }
     """
-    index = get_index(mappings, progress=True, leave=False)
+    index = get_index(mappings, progress=show_progress, leave=False)
     directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
     for s, p, o in index:
@@ -589,17 +614,15 @@ def count_unobserved(
 
 
 def landscape_analysis(
-    mappings: list[Mapping],
+    configuration: Configuration,
+    processed_mappings: list[Mapping],
     prefix_to_identifiers: XXTerms,
     priority: list[str],
     *,
     prefix_to_observed_identifiers: XXObservedTerms,
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
-    mapped_counter = count_component_sizes(mappings=mappings, prefix_allowlist=priority)
-
-    xx = aggregate_components(mappings, priority)
-    mapped_counter = Counter({k: len(v) for k, v in xx.items()})
+    mapped_counter = count_component_sizes(mappings=processed_mappings, prefix_allowlist=priority)
 
     #: A count of the number of entities that have at least mapping.
     #: This is calculated by the appearance of a weakly connected component
@@ -627,6 +650,7 @@ def landscape_analysis(
     total_entity_estimate = sum(counter.values())
 
     return LandscapeResult(
+        configuration=configuration,
         at_least_1_mapping=at_least_1_mapping,
         only_1_mapping=only_1_mapping,
         total_entity_estimate=total_entity_estimate,
@@ -641,6 +665,7 @@ def landscape_analysis(
 class LandscapeResult:
     """Describes results of landscape analysis."""
 
+    configuration: Configuration
     priority: list[str]
     at_least_1_mapping: int
     only_1_mapping: int
@@ -735,11 +760,13 @@ class LandscapeResult:
                 va="bottom",
             )
 
-        ax.set_xlabel("# Resources a Concept Appears in")
+        ax.set_xlabel(f"# {self.configuration.key.title()} Resources a Concept Appears in")
         ax.set_ylabel("Count")
-        ax.set_title(f"Landscape of {self.total_entity_estimate:,} Unique Concepts")
+        ax.set_title(
+            f"{self.configuration.key.title()} Landscape of {self.total_entity_estimate:,} Unique Concepts"
+        )
         ax.set_yscale("log")
         # since we're in a log scale, pad half of the max value to the top to make sure
         # the counts fit in the box
         a, b = ax.get_ylim()
-        ax.set_ylim([a, b + top_ratio * max(self.distribution.values())])
+        ax.set_ylim((a, b + top_ratio * max(self.distribution.values())))

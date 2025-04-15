@@ -171,7 +171,8 @@ class SimpleEvidence(
             self.mapping_set.key(),
         )
 
-    def get_curie_with_mapping(self, mapping: Mapping):
+    def get_curie_with_mapping(self, mapping: Mapping) -> Reference:
+        """Get a CURIE based on a combination of this evidence with a mapping."""
         full_key = self.key() + mapping.key()
         key_hex = _md5_hexdigest(full_key)
         return Reference(prefix=self._prefix, identifier=key_hex).curie

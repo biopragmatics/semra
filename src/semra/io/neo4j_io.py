@@ -124,10 +124,11 @@ def stream_to_neo4j(
     """
     if docker_name is None:
         docker_name = "semra"
-    mapping_edges_path = directory.joinpath(mapping_edges_file)
-    edges_path = directory.joinpath(edges_file)
-    evidence_nodes_path = directory.joinpath(evidence_nodes_file)
-    concept_nodes_path = directory.joinpath(concept_nodes_file)
+    mapping_edges_path = directory.joinpath(mapping_edges_filename)
+    edges_path = directory.joinpath(edges_filename)
+    evidence_nodes_path = directory.joinpath(evidence_nodes_filename)
+    concept_nodes_path = directory.joinpath(concept_nodes_filename)
+    mapping_nodes_path = directory.joinpath(mapping_nodes_filename)
     mapping_sets: dict[str, MappingSet] = {}
 
     with (
@@ -135,7 +136,7 @@ def stream_to_neo4j(
         open(mapping_edges_path, "w") as file1,
         open(edges_path, "w") as file2,
         open(evidence_nodes_path, "w") as file3,
-        open(mapping_nodes_file, "w") as file4,
+        open(mapping_nodes_path, "w") as file4,
         open(concept_nodes_path, "w") as file5,
     ):
         mapping_edge_writer = csv.writer(file1, delimiter="\t")
@@ -247,7 +248,7 @@ def stream_to_neo4j(
                 )
 
     # Dump all mapping set nodes
-    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_file)
+    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_filename)
     _write_tsv_gz(
         mapping_set_nodes_path,
         MAPPING_SET_NODES_HEADER,
@@ -342,17 +343,17 @@ def write_neo4j(
     if equivalence_classes is None:
         equivalence_classes = {}
 
-    concept_nodes_path = directory.joinpath(concept_nodes_file)
+    concept_nodes_path = directory.joinpath(concept_nodes_filename)
     concepts: set[Reference] = set()
 
     evidences: dict[Hashable, Evidence] = {}
     mapping_sets: dict[str, MappingSet] = {}
 
-    mapping_nodes_path = directory.joinpath(mapping_nodes_file)
-    evidence_nodes_path = directory.joinpath(evidence_nodes_file)
-    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_file)
-    mapping_edges_path = directory.joinpath(mapping_edges_file)
-    edges_path = directory.joinpath(edges_file)
+    mapping_nodes_path = directory.joinpath(mapping_nodes_filename)
+    evidence_nodes_path = directory.joinpath(evidence_nodes_filename)
+    mapping_set_nodes_path = directory.joinpath(mapping_set_nodes_filename)
+    mapping_edges_path = directory.joinpath(mapping_edges_filename)
+    edges_path = directory.joinpath(edges_filename)
 
     with open(mapping_edges_path, "w") as file1, open(edges_path, "w") as file2:
         mapping_writer = csv.writer(file1, delimiter="\t")

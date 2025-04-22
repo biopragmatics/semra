@@ -2,15 +2,15 @@ cff-version: 1.2.0
 message: Please cite the SeMRA manuscript when using this software.
 type: article
 authors:
-- family-names: "Hoyt"
-  given-names: "Charles Tapley"
-  orcid: "https://orcid.org/0000-0003-4423-4370"
-- family-names: "Karis"
-  given-names: "Klas"
-  orcid: "https://orcid.org/0000-0003-1699-7776"
-- family-names: "Gyori"
-  given-names: "Benjamin M."
-  orcid: "https://orcid.org/0000-0001-9439-5346"
+  - family-names: "Hoyt"
+    given-names: "Charles Tapley"
+    orcid: "https://orcid.org/0000-0003-4423-4370"
+  - family-names: "Karis"
+    given-names: "Klas"
+    orcid: "https://orcid.org/0000-0003-1699-7776"
+  - family-names: "Gyori"
+    given-names: "Benjamin M."
+    orcid: "https://orcid.org/0000-0001-9439-5346"
 doi: 10.1101/2025.04.16.649126
 identifiers:
   - type: doi
@@ -19,5 +19,6 @@ keywords:
   - SSSOM
   - mappings
   - semantic mappings
-title: >-
-  Assembly and reasoning over semantic mappings at scale for biomedical data integration
+title:
+  Assembly and reasoning over semantic mappings at scale for biomedical data
+  integration

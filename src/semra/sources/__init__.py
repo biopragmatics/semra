@@ -49,7 +49,7 @@ __all__ = [
     "get_wikidata_mappings",
 ]
 
-SOURCE_RESOLVER: FunctionResolver[t.Callable[[], list[Mapping]]] = FunctionResolver(
+SOURCE_RESOLVER: FunctionResolver[[], list[Mapping]] = FunctionResolver(
     [
         get_intact_reactome_mappings,
         get_intact_complexportal_mappings,

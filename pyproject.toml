@@ -65,6 +65,7 @@ dependencies = [
     "ssslm",
     "curies>=0.10.9",
     "jinja2",  # used in neo4j generation
+    "class-resolver>=0.6.0",
 ]
 
 [project.optional-dependencies]

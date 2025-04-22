@@ -84,8 +84,9 @@ The code in this package is licensed under the MIT License.
 
 ### 📖 Citation
 
-> [Assembly and reasoning over semantic mappings at scale for biomedical data integration](https://www.biorxiv.org/content/10.1101/2025.04.16.649126)
-> <br/> Hoyt, C. T., Karis K., and Gyori, B. M. <br/> _bioRxiv_,
+> <a href="https://www.biorxiv.org/content/10.1101/2025.04.16.649126">Assembly
+> and reasoning over semantic mappings at scale for biomedical data
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_bioRxiv_,
 > 2025.04.16.649126
 
 ```bibtex

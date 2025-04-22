@@ -82,11 +82,23 @@ for more information on getting involved.
 
 The code in this package is licensed under the MIT License.
 
-<!--
 ### 📖 Citation
 
-Citation goes here!
--->
+> [Assembly and reasoning over semantic mappings at scale for biomedical data integration](https://www.biorxiv.org/content/10.1101/2025.04.16.649126)
+> <br/> Hoyt, C. T., Karis K., and Gyori, B. M. <br/> _bioRxiv_,
+> 2025.04.16.649126
+
+```bibtex
+@article {hoyt2025semra,
+    author = {Hoyt, Charles Tapley and Karis, Klas and Gyori, Benjamin M},
+    title = {Assembly and reasoning over semantic mappings at scale for biomedical data integration},
+    year = {2025},
+    doi = {10.1101/2025.04.16.649126},
+    publisher = {Cold Spring Harbor Laboratory},
+    URL = {https://www.biorxiv.org/content/early/2025/04/21/2025.04.16.649126},
+    journal = {bioRxiv}
+}
+```
 
 <!--
 ### 🎁 Support

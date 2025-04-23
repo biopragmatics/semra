@@ -40,7 +40,7 @@ This software provides:
    community feedback-level
 
 We also provide an accompanying raw semantic mapping database on Zenodo at
-https://zenodo.org/records/11082039.
+https://zenodo.org/records/15208251.
 
 ## 🚀 Installation
 

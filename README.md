@@ -133,7 +133,7 @@ These analyses are based on
 for sources, processing rules, and inference rules that can be found in the
 `semra.landscape` module of the source code.
 
-## Data Science Application
+## 🤖 Tools for Data Scientists
 
 SeMRA provides tools for data scientists to standardize references using
 semantic mappings.

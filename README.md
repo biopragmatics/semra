@@ -29,9 +29,8 @@
         <img src="https://zenodo.org/badge/10987909.svg" alt="DOI"></a>
 </p>
 
-Semantic mapping reasoner and assembler
-
-This software provides:
+The Semantic Mapping Reasoner and Assembler (SeMRA) is a Python package that
+provides:
 
 1. An object model for semantic mappings (based on SSSOM)
 2. Functionality for assembling and reasoning over semantic mappings at scale
@@ -82,6 +81,29 @@ go_mappings = semra.io.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
 uberon_mappings = semra.io.from_bioontologies("uberon")
+```
+
+Mappings can be processed, aggregated, and summarized using functions from the
+[`semra.api`]() submodule:
+
+```python
+from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
+
+mappings = ...
+mappings = filter_minimum_confidence(mappings, cutoff=0.7)
+
+# get one-to-one mappings between entities from the given prefixes
+chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
+
+# process the mappings using a graph algorithm that creates
+# a "star" graph for every equivalent entity, where the center
+# of the star is determined by the equivalent entity with the
+# highest priority based on the given list
+priority_mapping = prioritize(mappings, priority=[
+   "chebi", "chembl.compound", "pubchem.compound", "drugbank",
+])
+
+summary_df = summarize_prefixes(mappings)
 ```
 
 ## 🏞️ Landscape Analysis

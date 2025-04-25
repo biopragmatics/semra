@@ -160,6 +160,7 @@ df = chembl_downloader.query("SELECT DISTINCT drugind_id, efo_id FROM DRUG_INDIC
 url = "https://zenodo.org/records/15164180/files/priority.sssom.tsv?download=1"
 mappings = semra.io.from_sssom(url)
 
+# the dataframe will now have a new column with standardized references
 prioritize_df(mappings, df, column="efo_id", target_column="priority_indication_curie")
 ```
 

@@ -135,7 +135,8 @@ for sources, processing rules, and inference rules that can be found in the
 
 ## Data Science Application
 
-SeMRA is a tool for data scientists to upgrade referenc
+SeMRA provides tools for data scientists to standardize references using
+semantic mappings.
 
 For example, the drug indications table in ChEMBL contains a variety of
 references to EFO, MONDO, DOID, and other controlled vocabularies (described in

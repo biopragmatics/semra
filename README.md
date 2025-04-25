@@ -42,6 +42,64 @@ This software provides:
 We also provide an accompanying raw semantic mapping database on Zenodo at
 https://zenodo.org/records/15208251.
 
+## 💪 Getting Started
+
+Here's a demonstration of SeMRA's object, provenance, and cascading confidence
+model:
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
+
+mapping = Mapping(
+   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
+   p=EXACT_MATCH,
+   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
+   evidence=[
+      SimpleEvidence(
+         evidence_type=MANUAL_MAPPING,
+         confidence=0.99,
+         author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
+         mapping_set=MappingSet(
+            name="biomappings", license="CC0", confidence=0.90,
+         ),
+      )
+   ]
+)
+```
+
+Mappings can be assembled from many source formats using functions in the
+`semra.io` submodule:
+
+```python
+import semra.io
+
+# load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
+sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
+mappings = semra.io.from_sssom(sssom_url)
+
+# load mappings from the Gene Ontology (via OBO format)
+go_mappings = semra.io.from_pyobo("go")
+
+# load mappings from the Uber Anatomy Ontology (via OWL format)
+uberon_mappings = semra.io.from_bioontologies("uberon")
+```
+
+## 🏞️ Landscape Analysis
+
+We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
+five biomedical entity types:
+
+1. [Disease](notebooks/landscape/disease/disease-landscape.ipynb)
+2. [Cell & Cell Line](notebooks/landscape/cell/cell-landscape.ipynb)
+3. [Anatomy](notebooks/landscape/anatomy/anatomy-landscape.ipynb)
+4. [Protein Complex](notebooks/landscape/complex/complex-landscape.ipynb)
+5. [Gene](notebooks/landscape/gene/gene-landscape.ipynb)
+
+These analyses are based on
+[declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)
+for sources, processing rules, and inference rules that can be found in the
+`semra.landscape` module of the source code.
+
 ## 🚀 Installation
 
 The most recent release can be installed from

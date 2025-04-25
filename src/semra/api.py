@@ -1377,4 +1377,11 @@ def prioritize_df(
     curie_remapping = _prioritization_to_curie_dict(mappings)
     if target_column is None:
         target_column = f"{column}_prioritized"
-    df[target_column] = df[column].map(lambda curie: curie_remapping.get(curie, curie))
+
+    def _map_curie(curie: str) -> str:
+        norm_curie = bioregistry.normalize_curie(curie)
+        if norm_curie is None:
+            return curie
+        return curie_remapping.get(norm_curie, norm_curie)
+
+    df[target_column] = df[column].map(_map_curie)

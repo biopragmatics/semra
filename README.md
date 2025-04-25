@@ -83,6 +83,17 @@ go_mappings = semra.io.from_pyobo("go")
 uberon_mappings = semra.io.from_bioontologies("uberon")
 ```
 
+SeMRA also implements custom importers in the `semra.sources` submodule. It's
+based on a pluggable architecture (via
+[`class-resovler`](https://github.com/cthoyt/class-resolver)) so additional
+custom sources can be incorporated without modifying the SeMRA source code.
+
+```python
+from semra.sources import get_omim_gene_mappings
+
+omim_gene_mappings = get_omim_gene_mappings()
+```
+
 Mappings can be processed, aggregated, and summarized using functions from the
 [`semra.api`]() submodule:
 

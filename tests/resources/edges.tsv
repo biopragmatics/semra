@@ -1,0 +1,11 @@
+:START_ID	:TYPE	:END_ID
+semra.mapping:f74616d8502df5ad00b5b0064d859290	owl:annotatedSource	chebi:101854
+semra.mapping:f74616d8502df5ad00b5b0064d859290	owl:annotatedTarget	mesh:C406527
+semra.mapping:f74616d8502df5ad00b5b0064d859290	hasEvidence	semra.evidence:1f9614c61d85bc36937ab5b88014fdd8
+semra.evidence:1f9614c61d85bc36937ab5b88014fdd8	fromSet	semra.mappingset:5ced84ff35ef033ccc873d3cfc9810b8
+semra.evidence:1f9614c61d85bc36937ab5b88014fdd8	hasAuthor	orcid:0000-0003-4423-4370
+semra.mapping:f74616d8502df5ad00b5b0064d859290	hasEvidence	semra.evidence:8574d9760b5080182db7f95a921fcfef
+semra.evidence:8574d9760b5080182db7f95a921fcfef	fromSet	semra.mappingset:5ced84ff35ef033ccc873d3cfc9810b8
+semra.evidence:8574d9760b5080182db7f95a921fcfef	hasAuthor	orcid:0000-0001-9439-5346
+semra.mapping:f74616d8502df5ad00b5b0064d859290	hasEvidence	semra.evidence:bbf2078ed84d15af0b272c835c38ac75
+semra.evidence:bbf2078ed84d15af0b272c835c38ac75	fromSet	semra.mappingset:21d04f279fc6822d169e0d1ad717b4bb

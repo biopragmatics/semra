@@ -1,0 +1,3 @@
+curie:ID	prefix	name	license	version	confidence:float
+semra.mappingset:5ced84ff35ef033ccc873d3cfc9810b8	semra.mappingset	biomappings	CC0		0.9
+semra.mappingset:21d04f279fc6822d169e0d1ad717b4bb	semra.mappingset	lexical			0.9

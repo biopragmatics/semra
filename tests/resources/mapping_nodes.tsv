@@ -1,0 +1,2 @@
+curie:ID	prefix	predicate	confidence	primary:boolean	secondary:boolean	tertiary:boolean
+semra.mapping:f74616d8502df5ad00b5b0064d859290	semra.mapping	skos:exactMatch	0.99988	false	true	false

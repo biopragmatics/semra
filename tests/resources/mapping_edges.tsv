@@ -1,0 +1,2 @@
+:START_ID	:TYPE	:END_ID	confidence:float	primary:boolean	secondary:boolean	tertiary:boolean	mapping_sets:string[]
+chebi:101854	skos:exactMatch	mesh:C406527	0.99988	false	true	false	biomappings|lexical

@@ -25,7 +25,7 @@ COPY {{ name }} /sw/{{ name }}
 # Add edge files to the docker image
 {%- for name in edge_names %}
 COPY {{ name }} /sw/{{ name }}
-{%- endfor %} \
+{%- endfor %}
 
 # Ingest graph content into neo4j
 RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
@@ -33,7 +33,7 @@ RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/ne
     neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true \
         {%- for name in edge_names %}
         --relationships /sw/{{ name }} \
-        {%- endfor %} \
+        {%- endfor %}
         {%- for node_type, name in node_names %}
         --nodes={{ node_type }}=/sw/{{ name }} \
         {%- endfor %}

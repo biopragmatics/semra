@@ -109,9 +109,3 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
         )
         rv.append(mm)
     return rv
-
-
-if __name__ == "__main__":
-    get_biomappings_positive_mappings()
-    from_biomappings_negative()
-    from_biomappings_predicted()

@@ -30,12 +30,12 @@ from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference,
 __all__ = [
     "from_bioontologies",
     "from_cache_df",
+    "from_jsonl",
     "from_pickle",
     "from_pyobo",
     "from_sssom",
     "from_sssom_df",
     "get_sssom_df",
-    "read_mappings_jsonl",
     "write_jsonl",
     "write_pickle",
     "write_sssom",
@@ -580,10 +580,9 @@ def write_jsonl(objects: list[pydantic.BaseModel], path: str | Path) -> None:
             file.write(f"{obj.model_dump_json(exclude_none=True)}\n")
 
 
-def read_mappings_jsonl(path: str | Path) -> list[Mapping]:
+def from_jsonl(path: str | Path) -> list[Mapping]:
     """Read a list of Mapping objects from a JSONL file."""
     path = Path(path).resolve()
-    # count = 0
     with path.open("r") as file:
         for line in tqdm(
             file,
@@ -591,11 +590,7 @@ def read_mappings_jsonl(path: str | Path) -> list[Mapping]:
             leave=False,
             unit="mapping",
             unit_scale=True,
-            total=43891675,
         ):
-            # count += 1
-            # if count == 1000000:
-            #    return
             yield Mapping.model_validate_json(line.strip())
 
 

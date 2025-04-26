@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import unittest
 
+import pandas as pd
+
 from semra import api
 from semra.api import (
     BROAD_MATCH,
@@ -23,6 +25,7 @@ from semra.api import (
     infer_mutations,
     infer_reversible,
     keep_prefixes,
+    prioritize_df,
     project,
     to_digraph,
 )
@@ -440,6 +443,24 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
         mappings = [m1, m2, m3, m4]
         self.assertEqual(mappings, from_digraph(to_digraph(mappings)))
+
+    def test_prioritize_df(self) -> None:
+        """Test prioritizing entities in a column in a dataframe."""
+        a1, a2 = _get_references(2, prefix=PREFIX_A)
+        b1, b2 = _get_references(2, prefix=PREFIX_B)
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        m2 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
+
+        rows = [("r1", a1.curie), ("r2", a2.curie)]
+        df = pd.DataFrame(rows, columns=["label", "curie"])
+
+        prioritize_df([m1, m2], df, column="curie")
+
+        self.assertEqual(
+            [b1.curie, b2.curie],
+            list(df["curie_prioritized"]),
+        )
 
 
 class TestUpgrades(unittest.TestCase):

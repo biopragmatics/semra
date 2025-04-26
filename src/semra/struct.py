@@ -153,6 +153,20 @@ class SimpleEvidence(
             Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
         ],
     )
+    creator: Reference | None = Field(
+        default=None,
+        description="A reference to the creator of the mapping (e.g. with ORCID)",
+        examples=[
+            Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
+        ],
+    )
+    reviewer: Reference | None = Field(
+        default=None,
+        description="A reference to the reviewer of the mapping (e.g. with ORCID)",
+        examples=[
+            Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
+        ],
+    )
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 

@@ -74,6 +74,7 @@ __all__ = [
     "keep_subject_prefixes",
     "print_source_target_counts",
     "prioritize",
+    "prioritize_df",
     "project",
     "project_dict",
     "str_source_target_counts",
@@ -894,7 +895,7 @@ def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> li
 # docstr-coverage:excused `overload`
 @overload
 def project(
-    mappings: list[Mapping],
+    mappings: Iterable[Mapping],
     source_prefix: str,
     target_prefix: str,
     *,
@@ -906,7 +907,7 @@ def project(
 # docstr-coverage:excused `overload`
 @overload
 def project(
-    mappings: list[Mapping],
+    mappings: Iterable[Mapping],
     source_prefix: str,
     target_prefix: str,
     *,
@@ -916,7 +917,7 @@ def project(
 
 
 def project(
-    mappings: list[Mapping],
+    mappings: Iterable[Mapping],
     source_prefix: str,
     target_prefix: str,
     *,
@@ -926,12 +927,13 @@ def project(
     """Ensure that each identifier only appears as the subject of one mapping."""
     mappings = keep_subject_prefixes(mappings, source_prefix, progress=progress)
     mappings = keep_object_prefixes(mappings, target_prefix, progress=progress)
-    m2m_mappings = get_many_to_many(mappings)
-    mappings = filter_mappings(mappings, m2m_mappings, progress=progress)
-    mappings = assemble_evidences(mappings, progress=progress)
+    mappings_list = list(mappings)
+    m2m_mappings = get_many_to_many(mappings_list)
+    mappings_list = filter_mappings(mappings_list, m2m_mappings, progress=progress)
+    mappings_list = assemble_evidences(mappings_list, progress=progress)
     if return_sus:
-        return mappings, m2m_mappings
-    return mappings
+        return mappings_list, m2m_mappings
+    return mappings_list
 
 
 def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:
@@ -1360,3 +1362,26 @@ def update_literal_mappings(
         literal_mappings=literal_mappings,
         mappings=[(mapping.s, mapping.o) for mapping in mappings],
     )
+
+
+def _prioritization_to_curie_dict(mappings: Iterable[Mapping]) -> dict[str, str]:
+    rv = {mapping.s.curie: mapping.o.curie for mapping in mappings}
+    return rv
+
+
+def prioritize_df(
+    mappings: list[Mapping], df: pd.DataFrame, *, column: str, target_column: str | None = None
+) -> None:
+    """Remap a column of a dataframe based on priority mappings."""
+    assert_projection(mappings)
+    curie_remapping = _prioritization_to_curie_dict(mappings)
+    if target_column is None:
+        target_column = f"{column}_prioritized"
+
+    def _map_curie(curie: str) -> str:
+        norm_curie = bioregistry.normalize_curie(curie)
+        if norm_curie is None:
+            return curie
+        return curie_remapping.get(norm_curie, norm_curie)
+
+    df[target_column] = df[column].map(_map_curie)

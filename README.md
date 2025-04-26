@@ -29,9 +29,8 @@
         <img src="https://zenodo.org/badge/10987909.svg" alt="DOI"></a>
 </p>
 
-Semantic mapping reasoner and assembler
-
-This software provides:
+The Semantic Mapping Reasoner and Assembler (SeMRA) is a Python package that
+provides:
 
 1. An object model for semantic mappings (based on SSSOM)
 2. Functionality for assembling and reasoning over semantic mappings at scale
@@ -40,7 +39,130 @@ This software provides:
    community feedback-level
 
 We also provide an accompanying raw semantic mapping database on Zenodo at
-https://zenodo.org/records/11082039.
+https://zenodo.org/records/15208251.
+
+## 💪 Getting Started
+
+Here's a demonstration of SeMRA's object, provenance, and cascading confidence
+model:
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
+
+mapping = Mapping(
+   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
+   p=EXACT_MATCH,
+   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
+   evidence=[
+      SimpleEvidence(
+         evidence_type=MANUAL_MAPPING,
+         confidence=0.99,
+         author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
+         mapping_set=MappingSet(
+            name="biomappings", license="CC0", confidence=0.90,
+         ),
+      )
+   ]
+)
+```
+
+Mappings can be assembled from many source formats using functions in the
+`semra.io` submodule:
+
+```python
+import semra.io
+
+# load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
+sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
+mappings = semra.io.from_sssom(sssom_url)
+
+# load mappings from the Gene Ontology (via OBO format)
+go_mappings = semra.io.from_pyobo("go")
+
+# load mappings from the Uber Anatomy Ontology (via OWL format)
+uberon_mappings = semra.io.from_bioontologies("uberon")
+```
+
+SeMRA also implements custom importers in the `semra.sources` submodule. It's
+based on a pluggable architecture (via
+[`class-resovler`](https://github.com/cthoyt/class-resolver)) so additional
+custom sources can be incorporated without modifying the SeMRA source code.
+
+```python
+from semra.sources import get_omim_gene_mappings
+
+omim_gene_mappings = get_omim_gene_mappings()
+```
+
+Mappings can be processed, aggregated, and summarized using functions from the
+[`semra.api`]() submodule:
+
+```python
+from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
+
+mappings = ...
+mappings = filter_minimum_confidence(mappings, cutoff=0.7)
+
+# get one-to-one mappings between entities from the given prefixes
+chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
+
+# process the mappings using a graph algorithm that creates
+# a "star" graph for every equivalent entity, where the center
+# of the star is determined by the equivalent entity with the
+# highest priority based on the given list
+priority_mapping = prioritize(mappings, priority=[
+   "chebi", "chembl.compound", "pubchem.compound", "drugbank",
+])
+
+summary_df = summarize_prefixes(mappings)
+```
+
+## 🏞️ Landscape Analysis
+
+We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
+five biomedical entity types:
+
+1. [Disease](notebooks/landscape/disease/disease-landscape.ipynb)
+2. [Cell & Cell Line](notebooks/landscape/cell/cell-landscape.ipynb)
+3. [Anatomy](notebooks/landscape/anatomy/anatomy-landscape.ipynb)
+4. [Protein Complex](notebooks/landscape/complex/complex-landscape.ipynb)
+5. [Gene](notebooks/landscape/gene/gene-landscape.ipynb)
+
+These analyses are based on
+[declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)
+for sources, processing rules, and inference rules that can be found in the
+`semra.landscape` module of the source code.
+
+## 🤖 Tools for Data Scientists
+
+SeMRA provides tools for data scientists to standardize references using
+semantic mappings.
+
+For example, the drug indications table in ChEMBL contains a variety of
+references to EFO, MONDO, DOID, and other controlled vocabularies (described in
+detail in
+[this blog post](https://cthoyt.com/2025/04/17/chembl-indications-efo-exploration.html)).
+Using SeMRA's pre-constructed
+[disease and phenotype prioritization mapping](https://doi.org/10.5281/zenodo.11091885),
+these references can be standardized in a deterministic and principled way.
+
+```python
+import chembl_downloader
+import semra.io
+from semra.api import prioritize_df
+
+# A dataframe of indication-disease pairs, where the
+# "efo_id" column is actually an arbitrary disease or phenotype query
+df = chembl_downloader.query("SELECT DISTINCT drugind_id, efo_id FROM DRUG_INDICATION")
+
+# a pre-calculated prioritization of diseases and phenotypes from MONDO, DOID,
+# HPO, ICD, GARD, and more.
+url = "https://zenodo.org/records/15164180/files/priority.sssom.tsv?download=1"
+mappings = semra.io.from_sssom(url)
+
+# the dataframe will now have a new column with standardized references
+prioritize_df(mappings, df, column="efo_id", target_column="priority_indication_curie")
+```
 
 ## 🚀 Installation
 
@@ -82,11 +204,24 @@ for more information on getting involved.
 
 The code in this package is licensed under the MIT License.
 
-<!--
 ### 📖 Citation
 
-Citation goes here!
--->
+> <a href="https://www.biorxiv.org/content/10.1101/2025.04.16.649126">Assembly
+> and reasoning over semantic mappings at scale for biomedical data
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_bioRxiv_,
+> 2025.04.16.649126
+
+```bibtex
+@article {hoyt2025semra,
+    author = {Hoyt, Charles Tapley and Karis, Klas and Gyori, Benjamin M},
+    title = {Assembly and reasoning over semantic mappings at scale for biomedical data integration},
+    year = {2025},
+    doi = {10.1101/2025.04.16.649126},
+    publisher = {Cold Spring Harbor Laboratory},
+    URL = {https://www.biorxiv.org/content/early/2025/04/21/2025.04.16.649126},
+    journal = {bioRxiv}
+}
+```
 
 <!--
 ### 🎁 Support

@@ -103,6 +103,7 @@ def write_neo4j(
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
     pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
+    use_tqdm: bool = True,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -196,7 +197,11 @@ def write_neo4j(
         mapping_set_writer.writerow(MAPPING_SET_NODES_HEADER)
 
         for mapping in tqdm(
-            mappings, unit="mapping", unit_scale=True, desc="streaming writing to Neo4j"
+            mappings,
+            unit="mapping",
+            unit_scale=True,
+            desc="streaming writing to Neo4j",
+            disable=not use_tqdm,
         ):
             mapping_curie = mapping.curie
 

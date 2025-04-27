@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
 from more_itertools import triplewise
@@ -31,13 +31,24 @@ __all__ = [
     "triple_key",
 ]
 
+P = ParamSpec("P")
+X = TypeVar("X")
+
 #: A type annotation for a subject-predicate-object triple
 Triple = tuple[Reference, Reference, Reference]
 
 
-def triple_key(triple: Triple) -> tuple[str, str, str]:
+class StrTriple(NamedTuple):
+    """A triple of curies."""
+
+    subject: str
+    predicate: str
+    object: str
+
+
+def triple_key(triple: Triple) -> StrTriple:
     """Get a sortable key for a triple."""
-    return triple[0].curie, triple[2].curie, triple[1].curie
+    return StrTriple(triple[0].curie, triple[2].curie, triple[1].curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -46,7 +57,7 @@ def _md5_hexdigest(picklable: object) -> str:
     return hasher.hexdigest()
 
 
-class KeyedMixin(ABC):
+class KeyedMixin(ABC, Generic[P, X]):
     """A mixin for a class that can be hashed and CURIE-encoded."""
 
     #: The prefix for CURIEs for instances of this class
@@ -56,23 +67,23 @@ class KeyedMixin(ABC):
         cls._prefix = prefix
 
     @abstractmethod
-    def key(self) -> object:
+    def key(self, *args: P.args, **kwargs: P.kwargs) -> X:
         """Return a picklable key."""
         raise NotImplementedError
 
-    def hexdigest(self) -> str:
+    def hexdigest(self, *args: P.args, **kwargs: P.kwargs) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        key = self.key()
+        key = self.key(*args, **kwargs)
         return _md5_hexdigest(key)
 
-    def get_reference(self) -> Reference:
+    def get_reference(self, *args: P.args, **kwargs: P.kwargs) -> Reference:
         """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
-        return Reference(prefix=self._prefix, identifier=self.hexdigest())
+        return Reference(prefix=self._prefix, identifier=self.hexdigest(*args, **kwargs))
 
     @property
-    def curie(self) -> str:
+    def curie(self, *args: P.args, **kwargs: P.kwargs) -> str:
         """Get a string representing the CURIE."""
-        return self.get_reference().curie
+        return self.get_reference(*args, **kwargs).curie
 
 
 class ConfidenceMixin:
@@ -104,7 +115,20 @@ class EvidenceMixin:
         raise NotImplementedError
 
 
-class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_SET_PREFIX):
+class MappingSetKey(NamedTuple):
+    """The key used for a mapping set."""
+
+    name: str
+    version: str
+    license: str
+
+
+class MappingSet(
+    pydantic.BaseModel,
+    ConfidenceMixin,
+    KeyedMixin[[], MappingSetKey],
+    prefix=SEMRA_MAPPING_SET_PREFIX,
+):
     """Represents a set of semantic mappings.
 
     For example, this might correspond to:
@@ -121,17 +145,30 @@ class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_M
     license: str | None = Field(default=None, description="License name or URL for mapping set")
     confidence: float = Field(..., description="Mapping set level confidence")
 
-    def key(self) -> object:
+    def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""
-        return self.name, self.version or "", self.license or "", self.confidence
+        return MappingSetKey(self.name, self.version or "", self.license or "")
 
     def get_confidence(self) -> float:
         """Get the explicit confidence for the mapping set."""
         return self.confidence
 
 
+class SimpleEvidenceKey(NamedTuple):
+    """The key used for a simple evidence."""
+
+    evidence_type: str
+    justification: str
+    author: str
+    mapping_set: MappingSetKey
+
+
 class SimpleEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
+    pydantic.BaseModel,
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, SimpleEvidenceKey]],
+    EvidenceMixin,
+    ConfidenceMixin,
+    prefix=SEMRA_EVIDENCE_PREFIX,
 ):
     """Evidence for a mapping.
 
@@ -158,7 +195,15 @@ class SimpleEvidence(
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 
-    def key(self) -> object:
+    def _simple_key(self) -> SimpleEvidenceKey:
+        return SimpleEvidenceKey(
+            self.evidence_type,
+            self.justification.curie,
+            self.author.curie if self.author else "",
+            self.mapping_set.key(),
+        )
+
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -166,11 +211,8 @@ class SimpleEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
-            self.evidence_type,
-            self.justification,
-            self.author,
-            self.mapping_set.key(),
-            self.uuid,
+            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            self._simple_key(),
         )
 
     @property
@@ -183,8 +225,28 @@ class SimpleEvidence(
         return self.confidence if self.confidence is not None else self.mapping_set.confidence
 
 
+def _sort_evidence_key(ev: Evidence) -> tuple[Any, ...]:
+    # the first element of the simple key is the type of evidence,
+    # so they can be compared
+    return ev._simple_key()
+
+
+class ReasonedEvidenceKey(NamedTuple):
+    """The key used for a reasoned evidence."""
+
+    evidence_type: str
+    justification: str
+    rest: tuple[
+        tuple[tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey], ...], ...
+    ]
+
+
 class ReasonedEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
+    pydantic.BaseModel,
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, ReasonedEvidenceKey]],
+    EvidenceMixin,
+    ConfidenceMixin,
+    prefix=SEMRA_EVIDENCE_PREFIX,
 ):
     """A complex evidence based on multiple mappings."""
 
@@ -200,12 +262,29 @@ class ReasonedEvidence(
         1.0, description="The probability that the reasoning method is correct"
     )
 
-    def key(self) -> object:
-        """Get a key for reasoned evidence."""
-        return (
+    def _simple_key(self) -> ReasonedEvidenceKey:
+        return ReasonedEvidenceKey(
             self.evidence_type,
-            self.justification,
-            *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings),
+            self.justification.curie,
+            tuple(
+                tuple(
+                    evidence.key(mapping)
+                    for evidence in sorted(mapping.evidence, key=_sort_evidence_key)
+                )
+                for mapping in sorted(self.mappings, key=lambda m: triple_key(m.triple))
+            ),
+        )
+
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, ReasonedEvidenceKey]:
+        """Get a key suitable for hashing the evidence.
+
+        :returns: A key for deduplication based on the mapping set.
+
+        Note: this should be extended to include basically _all_ fields
+        """
+        return (
+            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            self._simple_key(),
         )
 
     def get_confidence(self) -> float:
@@ -256,7 +335,12 @@ Evidence = Annotated[
 ]
 
 
-class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_PREFIX):
+class Mapping(
+    pydantic.BaseModel,
+    ConfidenceMixin,
+    KeyedMixin[[], StrTriple],
+    prefix=SEMRA_MAPPING_PREFIX,
+):
     """A semantic mapping."""
 
     model_config = ConfigDict(frozen=True)
@@ -271,9 +355,9 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
         """Get the mapping's core triple as a tuple."""
         return self.s, self.p, self.o
 
-    def key(self) -> object:
+    def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.triple
+        return triple_key(self.triple)
 
     @classmethod
     def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:

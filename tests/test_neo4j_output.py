@@ -11,12 +11,12 @@ from semra import (
     MANUAL_MAPPING,
     Mapping,
     MappingSet,
+    ReasonedEvidence,
     Reference,
     SimpleEvidence,
-    ReasonedEvidence,
 )
 from semra.io import write_neo4j
-from semra.rules import BEN_ORCID, charlie, KNOWLEDGE_MAPPING, CHAIN_MAPPING, UNSPECIFIED_MAPPING
+from semra.rules import BEN_ORCID, CHAIN_MAPPING, UNSPECIFIED_MAPPING, charlie
 from tests import resources
 
 
@@ -97,10 +97,7 @@ class TestNeo4jOutput(unittest.TestCase):
         )
         m2 = Mapping.from_triple(t2, evidence=[m2_e1])
 
-        m3_e1 = ReasonedEvidence(
-            justification=CHAIN_MAPPING,
-            mappings=[m1, m2]
-        )
+        m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
 
         mappings: list[semra.Mapping] = [m1, m2, m3]

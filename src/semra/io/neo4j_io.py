@@ -111,8 +111,11 @@ def write_neo4j(
     :param directory: The directory to write nodes files, edge files, startup shell
         script (``startup.sh``), run script (``run_on_docker.sh``), and a Dockerfile
     :param docker_name: The name of the Docker image. Defaults to "semra"
-    :param equivalence_classes: A dictionary of equivalence classes, calculated from
-        processed and prioritized mappings. This argument is typically used internally.
+    :param equivalence_classes: A dictionary from references to booleans,
+        where having ``True`` as a value denotes that it is the "primary" reference
+        calculated from processed and prioritiized mappings.
+
+        This argument is typically used internally - you should not have to pass it yourself.
 
         .. code-block:: python
 
@@ -235,20 +238,21 @@ def write_neo4j(
 
                 match evidence:
                     case SimpleEvidence():
-                        if evidence.mapping_set:
-                            mapping_set_curie = evidence.mapping_set.curie
-                            if mapping_set_curie not in mapping_set_curies:
-                                mapping_set_writer.writerow(
-                                    _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
-                                )
-                                mapping_set_curies.add(mapping_set_curie)
-
-                            edge_writer.writerow(
-                                (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
+                        mapping_set_curie = evidence.mapping_set.curie
+                        if mapping_set_curie not in mapping_set_curies:
+                            mapping_set_writer.writerow(
+                                _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
                             )
+                            mapping_set_curies.add(mapping_set_curie)
+
+                        edge_writer.writerow(
+                            (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
+                        )
                     case ReasonedEvidence():
                         for mmm in evidence.mappings:
                             edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
+                    case _:
+                        raise RuntimeError  # this should never happen
 
                 # Add authorship information for the evidence, if available
                 if evidence.author:

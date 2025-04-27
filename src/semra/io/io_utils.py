@@ -89,7 +89,7 @@ def safe_open(path: str | Path, read: bool = False) -> Generator[TextIO, None, N
 
 
 @contextlib.contextmanager
-def safe_open_writer(f: str | Path | TextIO, *, delimiter: str = "\t"):
+def safe_open_writer(f: str | Path | TextIO, *, delimiter: str = "\t"):  # type:ignore
     """Open a CSV writer, wrapping :func:`csv.writer`."""
     if isinstance(f, str | Path):
         with safe_open(f, read=False) as file:

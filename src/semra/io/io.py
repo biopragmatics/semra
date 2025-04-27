@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import contextlib
-import csv
 import gzip
 import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -515,26 +513,6 @@ def write_sssom(
         _write_sssom_stream(mappings, file)
     df = get_sssom_df(mappings, add_labels=add_labels)
     df.to_csv(file, sep="\t", index=False)
-
-
-@contextlib.contextmanager
-def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
-    path = Path(path).expanduser().resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, mode="rt" if read else "wt") as file:
-            yield file
-    else:
-        with open(path, mode="r" if read else "w") as file:
-            yield file
-
-
-@contextlib.contextmanager
-def _safe_writer(f: str | Path | TextIO):  # type:ignore
-    if isinstance(f, str | Path):
-        with _safe_opener(f, read=False) as file:
-            yield csv.writer(file, delimiter="\t")
-    else:
-        yield csv.writer(f, delimiter="\t")
 
 
 def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:

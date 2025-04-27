@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Any, ClassVar, Generic, Literal, ParamSpec
+from typing import Annotated, Any, ClassVar, Generic, Literal, ParamSpec, Union
 
 import pydantic
 from more_itertools import triplewise
@@ -136,7 +136,7 @@ class MappingSet(
 
 class SimpleEvidence(
     pydantic.BaseModel,
-    KeyedMixin[["Mapping" | Triple]],
+    KeyedMixin[[Union[Triple, "Mapping"]]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -193,7 +193,7 @@ class SimpleEvidence(
 
 class ReasonedEvidence(
     pydantic.BaseModel,
-    KeyedMixin[["Mapping" | Triple]],
+    KeyedMixin[[Union[Triple, "Mapping"]]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,

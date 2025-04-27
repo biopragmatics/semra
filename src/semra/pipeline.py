@@ -7,7 +7,7 @@ import time
 import typing as t
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import click
 import requests
@@ -206,7 +206,7 @@ class Configuration(BaseModel):
         prefixes: t.Iterable[str],
         include_biomappings: bool = True,
         include_gilda: bool = True,
-    ):
+    ) -> Self:
         """Get a configuration from ontology prefixes."""
         inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
         if include_biomappings:
@@ -324,7 +324,7 @@ class Configuration(BaseModel):
         *,
         metadata: zenodo_client.Metadata | None = None,
         processed: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> requests.Response:
         """Ensure a zenodo record."""
         if self.zenodo_record is not None:
@@ -342,7 +342,7 @@ class Configuration(BaseModel):
         )
         return res
 
-    def upload_zenodo(self, processed: bool = True, **kwargs) -> requests.Response:
+    def upload_zenodo(self, processed: bool = True, **kwargs: Any) -> requests.Response:
         """Upload a Zenodo record."""
         if not self.zenodo_record:
             raise ValueError(
@@ -394,7 +394,7 @@ class Configuration(BaseModel):
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
-        @verbose_option
+        @verbose_option  # type:ignore
         def main(
             upload: bool,
             refresh_source: bool,
@@ -609,7 +609,7 @@ def get_raw_mappings(
 
 def process(
     mappings: list[Mapping],
-    upgrade_prefixes=None,
+    upgrade_prefixes: Iterable[str] | None = None,
     remove_prefix_set: t.Collection[str] | None = None,
     keep_prefix_set: t.Collection[str] | None = None,
     post_remove_prefixes: t.Collection[str] | None = None,
@@ -706,7 +706,7 @@ def process(
     return mappings
 
 
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> None:
+def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float) -> None:
     logger.info(
         f"{verb} from {before:,} to {len(mappings):,} mappings "
         f"(Δ={len(mappings) - before:,}) in %.2f seconds.",

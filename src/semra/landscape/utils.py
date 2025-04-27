@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
+from typing import cast
 
 import bioregistry
 import matplotlib.pyplot as plt
@@ -523,7 +524,7 @@ def get_symmetric_counts_df(
 def draw_counter(
     counter: XXCounter,
     scaling_factor: float = 3.0,
-    count_format=",",
+    count_format: str = ",",
     cls: type[nx.Graph] = nx.DiGraph,
     minimum_count: float = 0.0,
     prog: str = "dot",
@@ -559,7 +560,7 @@ def draw_counter(
         x = 1 + scaling_factor * (weight - bottom) / rr
         if agraph.has_edge(*edge):
             agraph.get_edge(*edge).attr["penwidth"] = x
-    return agraph.draw(prog=prog, format=output_format)
+    return cast(bytes, agraph.draw(prog=prog, format=output_format))
 
 
 def counter_to_df(

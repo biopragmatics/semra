@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.metadata
+from collections.abc import Iterable
+from typing import Any
 
 import pandas as pd
 from pyobo import Reference
@@ -58,7 +60,7 @@ def read_remote_tsv(name: str) -> list[Mapping]:
     return _process(mapping_dicts)
 
 
-def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
+def _process(mapping_dicts: Iterable[dict[str, Any]], confidence: float = 0.999) -> list[Mapping]:
     try:
         biomappings_version = importlib.metadata.version("biomappings")
     except Exception:

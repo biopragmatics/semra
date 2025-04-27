@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Iterable
+from typing import Any, cast
 
 import bioregistry
 import curies
@@ -121,8 +122,8 @@ HEADERS = {
 }
 
 
-def _run_query(query, base: str = URL):
+def _run_query(query: str, base: str = URL) -> list[dict[str, Any]]:
     res = requests.get(base, params={"query": query, "format": "json"}, headers=HEADERS, timeout=45)
     res.raise_for_status()
     res_json = res.json()
-    return res_json["results"]["bindings"]
+    return cast(list[dict[str, Any]], res_json["results"]["bindings"])

@@ -479,11 +479,11 @@ def get_sssom_df(
     return df
 
 
-def _get_sssom_row(mapping: Mapping, e: Evidence):
+def _get_sssom_row(mapping: Mapping, e: Evidence) -> tuple[str, ...]:
     # TODO increase this
     if isinstance(e, SimpleEvidence):
-        mapping_set_version = e.mapping_set.version
-        mapping_set_license = e.mapping_set.license
+        mapping_set_version = e.mapping_set.version or ""
+        mapping_set_license = e.mapping_set.license or ""
     elif isinstance(e, ReasonedEvidence):
         mapping_set_version = ""
         mapping_set_license = ""
@@ -529,7 +529,7 @@ def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None
 
 
 @contextlib.contextmanager
-def _safe_writer(f: str | Path | TextIO):
+def _safe_writer(f: str | Path | TextIO):  # type:ignore
     if isinstance(f, str | Path):
         with _safe_opener(f, read=False) as file:
             yield csv.writer(file, delimiter="\t")
@@ -565,7 +565,7 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     path = Path(path).resolve()
     if path.suffix.endswith(".gz"):
         with gzip.open(path, "rb") as file:
-            return pickle.load(file)
+            return cast(list[Mapping], pickle.load(file))
     else:
         with path.open("rb") as file:
-            return pickle.load(file)
+            return cast(list[Mapping], pickle.load(file))

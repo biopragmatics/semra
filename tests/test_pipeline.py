@@ -3,6 +3,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
+
+from curies import Reference
 
 from semra import EXACT_MATCH, Mapping, MappingSet, SimpleEvidence
 from semra.io import write_sssom
@@ -54,10 +57,12 @@ class TestPipeline(unittest.TestCase):
         ev = mapping.evidence[0]
         self.assertIsInstance(ev, SimpleEvidence)
         self.assertEqual(MANUAL_MAPPING, ev.justification)
-        self.assertEqual(charlie.pair, ev.author.pair)
+        self.assertIsNotNone(ev.author)
+        self.assertEqual(charlie.pair, cast(Reference, ev.author).pair)
         self.assertIsNotNone(ev.mapping_set)
-        self.assertEqual("test", ev.mapping_set.name)
-        self.assertEqual(1.0, ev.mapping_set.confidence)
+        mapping_set: MappingSet = cast(MappingSet, ev.mapping_set)
+        self.assertEqual("test", mapping_set.name)
+        self.assertEqual(1.0, mapping_set.confidence)
 
     def test_custom(self) -> None:
         """Test using custom sources in the configuration."""

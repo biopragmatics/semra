@@ -12,10 +12,10 @@ import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
-from neo4j import unit_of_work
+from neo4j import ManagedTransaction, unit_of_work
 
 import semra
-from semra import Evidence, MappingSet, Reference
+from semra import Evidence, MappingSet, Reference, SimpleEvidence
 from semra.rules import (
     RELATIONS,
     SEMRA_EVIDENCE_PREFIX,
@@ -27,6 +27,7 @@ __all__ = [
     "Neo4jClient",
     "Node",
 ]
+
 
 Node: TypeAlias = t.Mapping[str, Any]
 
@@ -62,7 +63,7 @@ class Neo4jClient:
         uri: str | None = None,
         user: str | None = None,
         password: str | None = None,
-    ):
+    ) -> None:
         """Initialize the client.
 
         :param uri: The URI of the Neo4j database.
@@ -72,10 +73,12 @@ class Neo4jClient:
         uri = uri or os.environ.get("NEO4J_URL") or "bolt://0.0.0.0:7687"
         user = user or os.environ.get("NEO4J_USER")
         password = password or os.environ.get("NEO4J_PASSWORD")
-
-        self.driver = neo4j.GraphDatabase.driver(
-            uri=uri, auth=(user, password), max_connection_lifetime=180
-        )
+        auth: tuple[str, str] | None
+        if user is not None and password is not None:
+            auth = user, password
+        else:
+            auth = None
+        self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=auth, max_connection_lifetime=180)
 
         self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
         self._rel_q = "|".join(
@@ -84,12 +87,12 @@ class Neo4jClient:
             if reference.curie in self._all_relations
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Ensure driver is shut down when client is destroyed."""
         if self.driver is not None:
             self.driver.close()
 
-    def read_query(self, query: str, **query_params) -> list[list]:
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
         """Run a read-only query.
 
         :param query: The cypher query to run
@@ -98,7 +101,7 @@ class Neo4jClient:
         :returns: The result of the query
         """
         with self.driver.session() as session:
-            values = session.execute_read(_do_cypher_tx, query, **query_params)
+            values = session.execute_read(_do_cypher_tx, query, **query_params)  # type:ignore
 
         return values
 
@@ -111,7 +114,7 @@ class Neo4jClient:
         :returns: The result of the write query
         """
         with self.driver.session() as session:
-            session.write_transaction(_do_cypher_tx, query, **query_params)
+            session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
 
     def create_single_property_node_index(
         self, index_name: str, label: str, property_name: str, *, exist_ok: bool = False
@@ -137,7 +140,7 @@ class Neo4jClient:
             curie = curie.curie
         query = "MATCH (n%s {curie: $curie}) RETURN n" % (":" + node_type if node_type else "")
         res = self.read_query(query, curie=curie)
-        return res[0][0]
+        return cast(Node, res[0][0])
 
     def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
         """Get a mapping.
@@ -217,7 +220,7 @@ class Neo4jClient:
         curie = _safe_curie(curie, SEMRA_EVIDENCE_PREFIX)
         query = "MATCH (n:evidence {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
-        return res[0][0]
+        return SimpleEvidence.model_validate(res[0][0])  # FIXME test this?
 
     def summarize_predicates(self) -> t.Counter[str]:
         """Get a counter of predicates."""
@@ -301,7 +304,7 @@ as label, count UNION ALL
             RETURN b.curie, b.name
         """
         return {
-            cast(Reference, Reference.from_curie(n_curie)): name
+            Reference.from_curie(n_curie, name=name): name
             for n_curie, name in self.read_query(query, curie=curie)
         }
 
@@ -375,7 +378,7 @@ as label, count UNION ALL
         except Exception:
             return None
         else:
-            return name
+            return cast(str, name)
 
     def sample_mappings_from_set(
         self, curie: ReferenceHint, n: int = 10
@@ -394,13 +397,13 @@ as label, count UNION ALL
         RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
         LIMIT {n}
         """
-        return list(self.read_query(query, curie=curie))
+        return list(self.read_query(query, curie=curie))  # type:ignore
 
 
 # Follows example here:
 # https://neo4j.com/docs/python-manual/current/session-api/#python-driver-simple-transaction-fn
 # and from the docstring of neo4j.Session.read_transaction
 @unit_of_work()
-def _do_cypher_tx(tx: Any, query: str, **query_params: Any) -> list[list]:
+def _do_cypher_tx(tx: ManagedTransaction, query: str, **query_params: Any) -> list[list[Any]]:
     result = tx.run(query, parameters=query_params)
     return [record.values() for record in result]

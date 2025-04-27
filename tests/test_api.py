@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
 import pandas as pd
 
@@ -100,8 +101,9 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(chebi_reference, new_mapping.o)
         self.assertEqual(1, len(new_mapping.evidence))
         self.assertIsInstance(new_mapping.evidence[0], ReasonedEvidence)
-        self.assertIsInstance(new_mapping.evidence[0].mappings[0].evidence[0], SimpleEvidence)
-        self.assertEqual(EV, new_mapping.evidence[0].mappings[0].evidence[0])
+        evidence: ReasonedEvidence = cast(ReasonedEvidence, new_mapping.evidence[0])
+        self.assertIsInstance(evidence.mappings[0].evidence[0], SimpleEvidence)
+        self.assertEqual(EV, evidence.mappings[0].evidence[0])
 
     def test_flip_asymmetric(self) -> None:
         """Test flipping asymmetric relations (e.g., narrow and broad match)."""
@@ -110,17 +112,17 @@ class TestOperations(unittest.TestCase):
         narrow_mapping = Mapping(s=docetaxel_mesh, p=NARROW_MATCH, o=docetaxel_anhydrous_chebi)
         broad_mapping = Mapping(o=docetaxel_mesh, p=BROAD_MATCH, s=docetaxel_anhydrous_chebi)
 
-        actual: Mapping = flip(narrow_mapping)
-        self.assertIsNotNone(actual)
-        self.assertEqual(docetaxel_anhydrous_chebi, actual.s)
-        self.assertEqual(BROAD_MATCH, actual.p)
-        self.assertEqual(docetaxel_mesh, actual.o)
+        actual_1: Mapping = flip(narrow_mapping)
+        self.assertIsNotNone(actual_1)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual_1.s)
+        self.assertEqual(BROAD_MATCH, actual_1.p)
+        self.assertEqual(docetaxel_mesh, actual_1.o)
 
-        actual: Mapping = flip(broad_mapping)
-        self.assertIsNotNone(actual)
-        self.assertEqual(docetaxel_mesh, actual.s)
-        self.assertEqual(NARROW_MATCH, actual.p)
-        self.assertEqual(docetaxel_anhydrous_chebi, actual.o)
+        actual_2: Mapping = flip(broad_mapping)
+        self.assertIsNotNone(actual_2)
+        self.assertEqual(docetaxel_mesh, actual_2.s)
+        self.assertEqual(NARROW_MATCH, actual_2.p)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual_2.o)
 
     def test_index(self) -> None:
         """Test indexing semantic mappings."""
@@ -192,8 +194,9 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(1, len(index[m4.triple]))
         m4_evidence = index[m4.triple][0]
         self.assertIsInstance(m4_evidence, ReasonedEvidence)
-        self.assertEqual(2, len(m4_evidence.mappings))
-        self.assertEqual([m1, m2], m4_evidence.mappings)
+        m4_evidence_narrowed = cast(ReasonedEvidence, m4_evidence)
+        self.assertEqual(2, len(m4_evidence_narrowed.mappings))
+        self.assertEqual([m1, m2], m4_evidence_narrowed.mappings)
 
     def test_no_infer(self) -> None:
         """Test no inference happens over mixed chains of broad/narrow."""
@@ -350,7 +353,9 @@ class TestOperations(unittest.TestCase):
         m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
         m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
         mappings = [m1, m2, m2_i, m3]
-        self.assert_same_triples([m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False))
+        self.assert_same_triples(
+            [m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False, return_sus=False)
+        )
 
     def test_get_many_to_many(self) -> None:
         """Test getting many-to-many mappings."""

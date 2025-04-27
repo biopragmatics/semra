@@ -106,7 +106,9 @@ class EvidenceMixin:
         raise NotImplementedError
 
 
-class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_SET_PREFIX):
+class MappingSet(
+    pydantic.BaseModel, ConfidenceMixin, KeyedMixin[[]], prefix=SEMRA_MAPPING_SET_PREFIX
+):
     """Represents a set of semantic mappings.
 
     For example, this might correspond to:
@@ -217,8 +219,8 @@ class ReasonedEvidence(
             self.evidence_type,
             self.justification,
             (
-                tuple(sorted(evidence.key(mapping) for evidence in mapping.evidence))
-                for mapping in sorted(self.mappings)
+                tuple(evidence.key(mapping) for evidence in mapping.evidence)
+                for mapping in sorted(self.mappings, key=lambda m: triple_key(m.triple))
             ),
         )
 
@@ -270,7 +272,7 @@ Evidence = Annotated[
 ]
 
 
-class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_PREFIX):
+class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin[[]], prefix=SEMRA_MAPPING_PREFIX):
     """A semantic mapping."""
 
     model_config = ConfigDict(frozen=True)
@@ -288,9 +290,6 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
     def key(self) -> object:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
-
-    def __lt__(self, other):
-        return self.s < other.s and self.p < other.p and self.o < other.o
 
     @classmethod
     def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:

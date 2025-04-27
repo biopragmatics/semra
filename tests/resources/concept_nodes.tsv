@@ -1,5 +1,6 @@
 curie:ID	prefix	name	priority:boolean
-chebi:101854	chebi		false
 mesh:C406527	mesh		false
+chebi:101854	chebi		false
 orcid:0000-0003-4423-4370	orcid		false
 orcid:0000-0001-9439-5346	orcid		false
+chembl.compound:CHEMBL459505	chembl.compound		false

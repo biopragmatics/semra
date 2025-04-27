@@ -1,2 +1,4 @@
 curie:ID	prefix	predicate	confidence	primary:boolean	secondary:boolean	tertiary:boolean
-semra.mapping:f74616d8502df5ad00b5b0064d859290	semra.mapping	skos:exactMatch	0.99988	false	true	false
+semra.mapping:f9705b214dbb3feb51ea49e973e0b8c3	semra.mapping	skos:exactMatch	0.99988	false	true	false
+semra.mapping:cac688acc19042e00600ce9c960d1afb	semra.mapping	skos:exactMatch	0.9	false	true	false
+semra.mapping:ecb8073a9acbd943ab32e6f95cabdff0	semra.mapping	skos:exactMatch	1.0	false	false	true

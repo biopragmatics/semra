@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import os
+import typing as t
 
 import bioregistry
 import fastapi
 import flask
 import networkx as nx
+import werkzeug
 from curies import Reference
 from fastapi import Path, Query
 from fastapi.responses import JSONResponse
@@ -19,7 +21,7 @@ from semra import Evidence, Mapping, MappingSet
 from semra.client import Neo4jClient
 
 
-def _index_mapping(mapping_index, mapping_dict) -> None:
+def _index_mapping(mapping_index: set[tuple[str, str]], mapping_dict: t.Mapping[str, str]) -> None:
     if mapping_dict["relation"] != "skos:exactMatch":
         return
     sp, si = mapping_dict["source prefix"], mapping_dict["source identifier"]
@@ -76,7 +78,7 @@ HIGH_MATCHES_COUNTER = client.get_highest_exact_matches()
 # TODO use replaced by relationship for rewiring
 
 
-def _figure_number(n: int):
+def _figure_number(n: int) -> tuple[int | float, str]:
     if n > 1_000_000:
         lead = n / 1_000_000
         if lead < 10:
@@ -94,7 +96,7 @@ def _figure_number(n: int):
 
 
 @flask_app.get("/")
-def home():
+def home() -> str:
     """View the homepage, with a dashboard for several statistics over the database."""
     # TODO
     #  1. Mapping with most evidences
@@ -116,14 +118,14 @@ def home():
 
 
 @flask_app.get("/mapping/<curie>")
-def view_mapping(curie: str):
+def view_mapping(curie: str) -> str:
     """View a mapping."""
     m = client.get_mapping(curie)
     return render_template("mapping.html", mapping=m)
 
 
 @flask_app.get("/concept/<curie>")
-def view_concept(curie: str):
+def view_concept(curie: str) -> str:
     """View a concept."""
     reference = Reference.from_curie(curie)
     name = client.get_concept_name(curie)
@@ -143,7 +145,7 @@ def view_concept(curie: str):
 
 
 @flask_app.get("/concept/<source>/invalidate/<target>")
-def mark_exact_incorrect(source: str, target: str):
+def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     """Add a negative relationship to biomappings."""
     if not BIOMAPPINGS_GIT_HASH:
         flask.flash("Can't interact with biomappings", category="error")
@@ -181,7 +183,7 @@ def mark_exact_incorrect(source: str, target: str):
 
 
 @flask_app.get("/mapping_set/<mapping_set_id>")
-def view_mapping_set(mapping_set_id: str):
+def view_mapping_set(mapping_set_id: str) -> str:
     """View a mapping set by its ID."""
     mapping_set = client.get_mapping_set(mapping_set_id)
     examples = client.sample_mappings_from_set(mapping_set_id, n=10)
@@ -193,7 +195,7 @@ def view_mapping_set(mapping_set_id: str):
 
 
 @api_router.get("/evidence/{evidence_id}", response_model=Evidence)
-def get_evidence(evidence_id: str = Path(description="An evidence's MD5 hex digest.")):
+def get_evidence(evidence_id: str = Path(description="An evidence's MD5 hex digest.")) -> Evidence:
     """Get an evidence by its MD5 hex digest."""
     return client.get_evidence(evidence_id)
 
@@ -203,7 +205,7 @@ def get_concept_cytoscape(
     curie: str = Path(
         description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS
     ),
-):
+) -> JSONResponse:
     """Get the mapping graph surrounding the concept as a Cytoscape.js JSON object."""
     graph = client.get_connected_component_graph(curie)
     cytoscape_json = nx.cytoscape_data(graph)["elements"]
@@ -218,7 +220,7 @@ def get_exact_matches(
     max_distance: int = Query(
         None, description="the distance in the mapping graph to traverse. Defaults to 7"
     ),
-):
+) -> list[Reference]:
     """Get the exact matches to the concept."""
     return list(client.get_exact_matches(curie, max_distance=max_distance))
 
@@ -228,7 +230,7 @@ def get_mapping(
     mapping_id: str = Path(
         description="A mapping's MD5 hex digest.", examples=[t[0] for t in EXAMPLE_MAPPINGS]
     ),
-):
+) -> Mapping:
     """Get the mapping by its MD5 hex digest."""
     return client.get_mapping(mapping_id)
 
@@ -238,18 +240,18 @@ def get_mapping_set(
     mapping_set_id: str = Path(
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
     ),
-):
+) -> MappingSet:
     """Get a mapping set by its MD5 hex digest."""
     return client.get_mapping_set(mapping_set_id)
 
 
 @api_router.get("/mapping_set/", response_model=list[MappingSet])
-def get_mapping_sets():
+def get_mapping_sets() -> list[MappingSet]:
     """Get all mapping sets."""
     return client.get_mapping_sets()
 
 
-def get_app():
+def get_app() -> fastapi.FastAPI:
     """Get the SeMRA FastAPI app."""
     app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",

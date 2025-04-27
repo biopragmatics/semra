@@ -56,21 +56,21 @@ def _get_evidence() -> SimpleEvidence:
 def get_ncit_hgnc_mappings() -> list[Mapping]:
     """Get NCIT to HGNC semantic mappings."""
     df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "hgnc"])
-    df["hgnc"] = df["hgnc"].map(lambda s: s.removeprefix("HGNC:"))  # type:ignore
+    df["hgnc"] = df["hgnc"].map(lambda s: s.removeprefix("HGNC:"))
     return _df_to_mappings(df, source_prefix="ncit", target_prefix="hgnc")
 
 
 def get_ncit_go_mappings() -> list[Mapping]:
     """Get NCIT to Gene Ontology (GO) semantic mappings."""
     df = pd.read_csv(GO_MAPPINGS_URL, sep="\t", header=None, names=["go", "ncit"])
-    df["go"] = df["go"].map(lambda s: s.removeprefix("GO:"))  # type:ignore
+    df["go"] = df["go"].map(lambda s: s.removeprefix("GO:"))
     return _df_to_mappings(df, source_prefix="ncit", target_prefix="go")
 
 
 def get_ncit_chebi_mappings() -> list[Mapping]:
     """Get NCIT to ChEBI semantic mappings."""
     df = pd.read_csv(CHEBI_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "chebi"])
-    df["chebi"] = df["chebi"].map(lambda s: s.removeprefix("CHEBI:"))  # type:ignore
+    df["chebi"] = df["chebi"].map(lambda s: s.removeprefix("CHEBI:"))
     return _df_to_mappings(df, source_prefix="ncit", target_prefix="chebi")
 
 
@@ -87,7 +87,7 @@ def get_ncit_uniprot_mappings() -> list[Mapping]:
 
 
 def _df_to_mappings(
-    df,
+    df: pd.DataFrame,
     *,
     source_prefix: str,
     target_prefix: str,

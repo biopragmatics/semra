@@ -2,6 +2,8 @@
 
 import itertools as itt
 import typing as t
+from collections.abc import Callable
+from typing import Any
 
 from class_resolver import FunctionResolver
 
@@ -72,7 +74,7 @@ SOURCE_RESOLVER: FunctionResolver[[], list[Mapping]] = FunctionResolver(
 )
 
 
-def _normalize_name(func):
+def _normalize_name(func: Callable[..., Any]) -> str:
     if not func.__name__.startswith("get_"):
         raise NameError(f"Custom source function name does not start with `_get`: {func.__name__}")
     if not func.__name__.endswith("_mappings"):

@@ -1,7 +1,7 @@
 """A configuration for assembling mappings for anatomical terms."""
 
 import pystow
-from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
+from pyobo.sources.mesh import get_mesh_category_references
 
 import semra
 from semra import Reference

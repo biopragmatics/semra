@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
+from typing import cast
 
 import bioregistry
 import matplotlib.pyplot as plt
@@ -49,8 +50,8 @@ XXObservedTerms = dict[str, set[str]]
 XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
-def _markdown(x):
-    return display(Markdown(dedent(x)))
+def _markdown(x: str) -> None:
+    display(Markdown(dedent(x)))
 
 
 def notebook(
@@ -401,7 +402,11 @@ def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -
 
 
 def get_summary_df(
-    prefixes: list[str], *, subsets=None, terms: XXTerms, terms_observed: XXObservedTerms
+    prefixes: list[str],
+    *,
+    subsets: SubsetConfiguration | None = None,
+    terms: XXTerms,
+    terms_observed: XXObservedTerms,
 ) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
@@ -519,7 +524,7 @@ def get_symmetric_counts_df(
 def draw_counter(
     counter: XXCounter,
     scaling_factor: float = 3.0,
-    count_format=",",
+    count_format: str = ",",
     cls: type[nx.Graph] = nx.DiGraph,
     minimum_count: float = 0.0,
     prog: str = "dot",
@@ -555,7 +560,7 @@ def draw_counter(
         x = 1 + scaling_factor * (weight - bottom) / rr
         if agraph.has_edge(*edge):
             agraph.get_edge(*edge).attr["penwidth"] = x
-    return agraph.draw(prog=prog, format=output_format)
+    return cast(bytes, agraph.draw(prog=prog, format=output_format))
 
 
 def counter_to_df(
@@ -676,7 +681,7 @@ class LandscapeResult:
     counter: t.Counter[frozenset[str]] = field(init=False)
     distribution: t.Counter[int] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Post initialize the landscape result object."""
         self.counter = self.mapped_counter + self.single_counter
         self.distribution = self.get_distribution()
@@ -704,7 +709,7 @@ class LandscapeResult:
         """Get an :mod:`upsetplot`-compatible dataframe for the result counter."""
         return upsetplot.from_memberships(*zip(*self.counter.most_common(), strict=False))
 
-    def plot_upset(self):
+    def plot_upset(self) -> None:
         """Plot the results with an UpSet plot."""
         upset_df = self.get_upset_df()
         """Here's what the output from upsetplot.plot looks like:

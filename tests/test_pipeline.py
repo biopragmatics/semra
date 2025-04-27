@@ -3,6 +3,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
+
+from curies import Reference
 
 from semra import EXACT_MATCH, Mapping, MappingSet, SimpleEvidence
 from semra.io import write_sssom
@@ -43,7 +46,7 @@ SOURCE_RESOLVER.register(get_test_mappings)
 class TestPipeline(unittest.TestCase):
     """Test case for the automated assembly pipeline."""
 
-    def assert_test_mappings(self, mappings):
+    def assert_test_mappings(self, mappings: list[Mapping]) -> None:
         """Check that the mappings are the test mappings."""
         self.assertEqual(1, len(mappings))
         mapping = mappings[0]
@@ -54,12 +57,14 @@ class TestPipeline(unittest.TestCase):
         ev = mapping.evidence[0]
         self.assertIsInstance(ev, SimpleEvidence)
         self.assertEqual(MANUAL_MAPPING, ev.justification)
-        self.assertEqual(charlie.pair, ev.author.pair)
+        self.assertIsNotNone(ev.author)
+        self.assertEqual(charlie.pair, cast(Reference, ev.author).pair)
         self.assertIsNotNone(ev.mapping_set)
-        self.assertEqual("test", ev.mapping_set.name)
-        self.assertEqual(1.0, ev.mapping_set.confidence)
+        mapping_set: MappingSet = cast(MappingSet, ev.mapping_set)
+        self.assertEqual("test", mapping_set.name)
+        self.assertEqual(1.0, mapping_set.confidence)
 
-    def test_custom(self):
+    def test_custom(self) -> None:
         """Test using custom sources in the configuration."""
         inp = Input(source="custom", prefix="get_test_mappings")
         config = Configuration(
@@ -72,7 +77,7 @@ class TestPipeline(unittest.TestCase):
         mappings = get_raw_mappings(config, show_progress=False)
         self.assert_test_mappings(mappings)
 
-    def test_sssom(self):
+    def test_sssom(self) -> None:
         """Test using SSSOM sources in the configuration."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d).resolve().joinpath("test.sssom.tsv")

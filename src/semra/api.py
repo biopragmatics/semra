@@ -303,10 +303,12 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 # TODO infer negative mappings for exact match from narrow/broad match
 
 
+# docstr-coverage:excused `overload`
 @overload
 def flip(mapping: Mapping, *, strict: Literal[True] = True) -> Mapping: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def flip(mapping: Mapping, *, strict: Literal[False] = False) -> Mapping | None: ...
 

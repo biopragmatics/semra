@@ -13,6 +13,7 @@ import click
 import requests
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
+from typing_extensions import Self
 
 from semra.api import (
     assemble_evidences,
@@ -182,7 +183,7 @@ class Configuration(BaseModel):
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
 
     @model_validator(mode="before")
-    def infer_priority(cls, values):  # noqa:N805
+    def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]
         if not priority:
@@ -206,7 +207,7 @@ class Configuration(BaseModel):
         prefixes: t.Iterable[str],
         include_biomappings: bool = True,
         include_gilda: bool = True,
-    ):
+    ) -> Self:
         """Get a configuration from ontology prefixes."""
         inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
         if include_biomappings:
@@ -324,7 +325,7 @@ class Configuration(BaseModel):
         *,
         metadata: zenodo_client.Metadata | None = None,
         processed: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> requests.Response:
         """Ensure a zenodo record."""
         if self.zenodo_record is not None:
@@ -342,7 +343,7 @@ class Configuration(BaseModel):
         )
         return res
 
-    def upload_zenodo(self, processed: bool = True, **kwargs) -> requests.Response:
+    def upload_zenodo(self, processed: bool = True, **kwargs: Any) -> requests.Response:
         """Upload a Zenodo record."""
         if not self.zenodo_record:
             raise ValueError(
@@ -383,7 +384,7 @@ class Configuration(BaseModel):
         """Get and run a command line interface for this configuration."""
         self.get_cli()(*args)
 
-    def get_cli(self):
+    def get_cli(self) -> click.Command:
         """Get a command line interface for this configuration."""
         import click
         from more_click import verbose_option
@@ -394,7 +395,7 @@ class Configuration(BaseModel):
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
-        @verbose_option
+        @verbose_option  # type:ignore
         def main(
             upload: bool,
             refresh_source: bool,
@@ -415,7 +416,7 @@ class Configuration(BaseModel):
 
         return main
 
-    def _safe_upload(self):
+    def _safe_upload(self) -> None:
         if not self.zenodo_record:
             click.secho("can't upload to Zenodo - no record configued", fg="red")
         else:
@@ -609,7 +610,7 @@ def get_raw_mappings(
 
 def process(
     mappings: list[Mapping],
-    upgrade_prefixes=None,
+    upgrade_prefixes: Iterable[str] | None = None,
     remove_prefix_set: t.Collection[str] | None = None,
     keep_prefix_set: t.Collection[str] | None = None,
     post_remove_prefixes: t.Collection[str] | None = None,
@@ -706,7 +707,7 @@ def process(
     return mappings
 
 
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed) -> None:
+def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float) -> None:
     logger.info(
         f"{verb} from {before:,} to {len(mappings):,} mappings "
         f"(Δ={len(mappings) - before:,}) in %.2f seconds.",

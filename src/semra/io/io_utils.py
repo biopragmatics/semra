@@ -60,7 +60,7 @@ def get_orcid_name(orcid: str) -> str | None:
     if name is None:
         return None
     if credit_name := name.get("credit-name"):
-        return credit_name["value"]
+        return cast(str, credit_name["value"])
     if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
         return f"{given_names['value']} {family_name['value']}"
     return None

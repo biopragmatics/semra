@@ -296,7 +296,7 @@ def write_neo4j(
 
 def _neo4j_bool(b: bool, /) -> str:
     """Get a boolean string that works in neo4j data files."""
-    return "true" if b else "false"  # type:ignore
+    return "true" if b else "false"
 
 
 def _concept_to_row(

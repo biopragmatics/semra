@@ -54,6 +54,15 @@ class TestNeo4jOutput(unittest.TestCase):
         )
         self.assertEqual("b6218d883b277224a0bc92746e829f64", m1_e1.hexdigest(t1))
 
+        # check that making an identical evidence gives the same hex digest
+        m1_e1_copy = SimpleEvidence(
+            mapping_set=biomappings,
+            justification=MANUAL_MAPPING,
+            author=charlie,
+            confidence=0.99,
+        )
+        self.assertEqual(m1_e1.hexdigest(t1), m1_e1_copy.hexdigest(t1))
+
         m1_e2 = SimpleEvidence(
             mapping_set=biomappings,
             justification=MANUAL_MAPPING,

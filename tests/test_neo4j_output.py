@@ -19,6 +19,8 @@ from semra.io import write_neo4j
 from semra.rules import BEN_ORCID, CHAIN_MAPPING, UNSPECIFIED_MAPPING, charlie
 from tests import resources
 
+# TODO test when concept name has problematic characters like tabs or newlines
+
 
 class TestNeo4jOutput(unittest.TestCase):
     """Test Neo4j output."""
@@ -107,7 +109,16 @@ class TestNeo4jOutput(unittest.TestCase):
         m2 = Mapping.from_triple(t2, evidence=[m2_e1])
 
         m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
+        m3_e1_rev = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m2, m1])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
+        m3_hexdigest = "ecb8073a9acbd943ab32e6f95cabdff0"
+        self.assertEqual(m3_hexdigest, m3.hexdigest())
+
+        # check that order of mappings in evidence doesn't change the hash
+        self.assertEqual(
+            m3_hexdigest,
+            Mapping.from_triple(t3, evidence=[m3_e1_rev]).hexdigest(),
+        )
 
         mappings: list[semra.Mapping] = [m1, m2, m3]
 

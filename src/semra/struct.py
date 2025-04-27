@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import pickle
 import uuid
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
@@ -39,13 +40,13 @@ def triple_key(triple: Triple) -> tuple[str, str, str]:
     return triple[0].curie, triple[2].curie, triple[1].curie
 
 
-def _md5_hexdigest(picklable) -> str:
+def _md5_hexdigest(picklable: object) -> str:
     hasher = md5()  # noqa: S324
     hasher.update(pickle.dumps(picklable))
     return hasher.hexdigest()
 
 
-class KeyedMixin:
+class KeyedMixin(ABC):
     """A mixin for a class that can be hashed and CURIE-encoded."""
 
     #: The prefix for CURIEs for instances of this class
@@ -54,7 +55,8 @@ class KeyedMixin:
     def __init_subclass__(cls, *, prefix: str, **kwargs):
         cls._prefix = prefix
 
-    def key(self):
+    @abstractmethod
+    def key(self) -> object:
         """Return a picklable key."""
         raise NotImplementedError
 
@@ -119,7 +121,7 @@ class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_M
     license: str | None = Field(default=None, description="License name or URL for mapping set")
     confidence: float = Field(..., description="Mapping set level confidence")
 
-    def key(self):
+    def key(self) -> object:
         """Get a picklable key representing the mapping set."""
         return self.name, self.version or "", self.license or "", self.confidence
 

@@ -77,7 +77,7 @@ MS = MappingSet(name="test", confidence=0.95)
 class TestOperations(unittest.TestCase):
     """Test mapping operations."""
 
-    def test_path(self):
+    def test_path(self) -> None:
         """Test quickly creating mapping lists."""
         r1, r2, r3 = _get_references(3)
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
@@ -85,7 +85,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual([m1], line(r1, EXACT_MATCH, r2))
         self.assertEqual([m1, m2], line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3))
 
-    def test_flip_symmetric(self):
+    def test_flip_symmetric(self) -> None:
         """Test flipping a symmetric relation (e.g., exact match)."""
         chebi_reference = Reference(prefix="chebi", identifier="10001")
         mesh_reference = Reference(prefix="mesh", identifier="C067604")
@@ -100,7 +100,7 @@ class TestOperations(unittest.TestCase):
         self.assertIsInstance(new_mapping.evidence[0].mappings[0].evidence[0], SimpleEvidence)
         self.assertEqual(EV, new_mapping.evidence[0].mappings[0].evidence[0])
 
-    def test_flip_asymmetric(self):
+    def test_flip_asymmetric(self) -> None:
         """Test flipping asymmetric relations (e.g., narrow and broad match)."""
         docetaxel_mesh = Reference(prefix="mesh", identifier="D000077143")
         docetaxel_anhydrous_chebi = Reference(prefix="chebi", identifier="4672")
@@ -119,7 +119,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(NARROW_MATCH, actual.p)
         self.assertEqual(docetaxel_anhydrous_chebi, actual.o)
 
-    def test_index(self):
+    def test_index(self) -> None:
         """Test indexing semantic mappings."""
         r1, r2 = _get_references(2)
         e1 = SimpleEvidence(
@@ -163,7 +163,7 @@ class TestOperations(unittest.TestCase):
         triples = sorted(set(index), key=triple_key)
         return ["<" + ", ".join(element.curie for element in triple) + ">" for triple in triples]
 
-    def test_infer_exact_match(self):
+    def test_infer_exact_match(self) -> None:
         """Test inference through the transitivity of SKOS exact matches."""
         r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, EXACT_MATCH, r3, EXACT_MATCH, r4)
@@ -192,7 +192,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(2, len(m4_evidence.mappings))
         self.assertEqual([m1, m2], m4_evidence.mappings)
 
-    def test_no_infer(self):
+    def test_no_infer(self) -> None:
         """Test no inference happens over mixed chains of broad/narrow."""
         r1, r2, r3 = _get_references(3)
 
@@ -211,7 +211,7 @@ class TestOperations(unittest.TestCase):
             msg="No inference between broad and narrow",
         )
 
-    def test_infer_broad_match_1(self):
+    def test_infer_broad_match_1(self) -> None:
         """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
@@ -245,7 +245,7 @@ class TestOperations(unittest.TestCase):
             msg="inference over multiple steps is broken",
         )
 
-    def test_infer_broad_match_2(self):
+    def test_infer_broad_match_2(self) -> None:
         """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
@@ -273,7 +273,7 @@ class TestOperations(unittest.TestCase):
             infer_chains([m1, m2, m3], backwards=True, progress=False),
         )
 
-    def test_infer_narrow_match(self):
+    def test_infer_narrow_match(self) -> None:
         """Test inferring narrow matches."""
         r1, r2, r3 = _get_references(3, different_prefixes=True)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
@@ -286,7 +286,7 @@ class TestOperations(unittest.TestCase):
             [m1, m2, m3, m3_i], infer_chains([m1, m2], backwards=True, progress=False)
         )
 
-    def test_mixed_inference_1(self):
+    def test_mixed_inference_1(self) -> None:
         """Test inferring over a mix of narrow, broad, and exact matches."""
         r1, r2, r3 = _get_references(3, different_prefixes=True)
         m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
@@ -304,7 +304,7 @@ class TestOperations(unittest.TestCase):
         mappings = infer_chains(mappings, progress=False)
         self.assert_same_triples([m1, m2, m3, m4, m5, m6], mappings)
 
-    def test_filter_prefixes(self):
+    def test_filter_prefixes(self) -> None:
         """Test filtering out unwanted prefixes."""
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
@@ -317,7 +317,7 @@ class TestOperations(unittest.TestCase):
             [m1, m2], keep_prefixes(mappings, {PREFIX_A, PREFIX_B}, progress=False)
         )
 
-    def test_filter_self(self):
+    def test_filter_self(self) -> None:
         """Test filtering out mappings within a given prefix."""
         r11, r12, r13 = _get_references(3, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
@@ -327,7 +327,7 @@ class TestOperations(unittest.TestCase):
         mappings = [m1, m2, m3]
         self.assert_same_triples([m1, m2], filter_self_matches(mappings, progress=False))
 
-    def test_filter_negative(self):
+    def test_filter_negative(self) -> None:
         """Test filtering out mappings within a given prefix."""
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
@@ -337,7 +337,7 @@ class TestOperations(unittest.TestCase):
         negative = [m2]
         self.assert_same_triples([m1], filter_mappings(mappings, negative, progress=False))
 
-    def test_project(self):
+    def test_project(self) -> None:
         """Test projecting into a given source/target pair."""
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
@@ -349,7 +349,7 @@ class TestOperations(unittest.TestCase):
         mappings = [m1, m2, m2_i, m3]
         self.assert_same_triples([m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False))
 
-    def test_get_many_to_many(self):
+    def test_get_many_to_many(self) -> None:
         """Test getting many-to-many mappings."""
         a1, a2, a3 = _get_references(3, prefix=PREFIX_A)
         b1, b2, b3 = _get_references(3, prefix=PREFIX_B)
@@ -363,7 +363,7 @@ class TestOperations(unittest.TestCase):
         m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
         self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))
 
-    def test_filter_confidence(self):
+    def test_filter_confidence(self) -> None:
         """Test filtering by confidence."""
         (a1, a2) = _get_references(2, prefix=PREFIX_A)
         (b1, b2) = _get_references(2, prefix=PREFIX_B)
@@ -376,7 +376,7 @@ class TestOperations(unittest.TestCase):
         mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
         self.assertEqual([m1], mmm)
 
-    def test_filter_subsets(self):
+    def test_filter_subsets(self) -> None:
         """Test filtering by subsets."""
         a1, a2 = _get_references(2, prefix=PREFIX_A)
         b1, b2 = _get_references(2, prefix=PREFIX_B)
@@ -413,7 +413,7 @@ class TestOperations(unittest.TestCase):
             msg="Mappings 3 and 4 should not pass since b2 is not in the term filter",
         )
 
-    def test_count_component_sizes(self):
+    def test_count_component_sizes(self) -> None:
         """Test counting component sizes."""
         priority = [PREFIX_A, PREFIX_B, PREFIX_C]
         a1, a2 = _get_references(2, prefix=PREFIX_A)
@@ -431,7 +431,7 @@ class TestOperations(unittest.TestCase):
         )
         self.assertEqual({1: 0, 2: 1, 3: 1}, dict(count_coverage_sizes(mappings, priority)))
 
-    def test_digraph_roundtrip(self):
+    def test_digraph_roundtrip(self) -> None:
         """Test I/O roundtrip through a directed graph."""
         a1, a2 = _get_references(2, prefix=PREFIX_A)
         b1, b2 = _get_references(2, prefix=PREFIX_B)
@@ -466,7 +466,7 @@ class TestOperations(unittest.TestCase):
 class TestUpgrades(unittest.TestCase):
     """Test inferring mutations."""
 
-    def test_infer_mutations(self):
+    def test_infer_mutations(self) -> None:
         """Test inferring mutations."""
         (a1,) = _get_references(1, prefix=PREFIX_A)
         (b1,) = _get_references(1, prefix=PREFIX_B)

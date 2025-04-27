@@ -102,7 +102,7 @@ class Neo4jClient:
 
         return values
 
-    def write_query(self, query: str, **query_params):
+    def write_query(self, query: str, **query_params: Any) -> None:
         """Run a write query.
 
         :param query: The cypher query to run
@@ -111,7 +111,7 @@ class Neo4jClient:
         :returns: The result of the write query
         """
         with self.driver.session() as session:
-            return session.write_transaction(_do_cypher_tx, query, **query_params)
+            session.write_transaction(_do_cypher_tx, query, **query_params)
 
     def create_single_property_node_index(
         self, index_name: str, label: str, property_name: str, *, exist_ok: bool = False
@@ -359,8 +359,8 @@ as label, count UNION ALL
         for path in paths:
             for relationship in path.relationships:
                 g.add_edge(
-                    path.start_node["curie"],  # type: ignore
-                    path.end_node["curie"],  # type: ignore
+                    path.start_node["curie"],
+                    path.end_node["curie"],
                     key=relationship.id,
                     type=relationship.type,
                 )
@@ -399,6 +399,6 @@ as label, count UNION ALL
 # https://neo4j.com/docs/python-manual/current/session-api/#python-driver-simple-transaction-fn
 # and from the docstring of neo4j.Session.read_transaction
 @unit_of_work()
-def _do_cypher_tx(tx, query, **query_params) -> list[list]:
+def _do_cypher_tx(tx: Any, query: str, **query_params: Any) -> list[list]:
     result = tx.run(query, parameters=query_params)
     return [record.values() for record in result]

@@ -383,7 +383,7 @@ class Configuration(BaseModel):
         """Get and run a command line interface for this configuration."""
         self.get_cli()(*args)
 
-    def get_cli(self):
+    def get_cli(self) -> click.Command:
         """Get a command line interface for this configuration."""
         import click
         from more_click import verbose_option
@@ -415,7 +415,7 @@ class Configuration(BaseModel):
 
         return main
 
-    def _safe_upload(self):
+    def _safe_upload(self) -> None:
         if not self.zenodo_record:
             click.secho("can't upload to Zenodo - no record configued", fg="red")
         else:

@@ -49,8 +49,8 @@ XXObservedTerms = dict[str, set[str]]
 XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
-def _markdown(x):
-    return display(Markdown(dedent(x)))
+def _markdown(x: str) -> None:
+    display(Markdown(dedent(x)))
 
 
 def notebook(
@@ -401,7 +401,11 @@ def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -
 
 
 def get_summary_df(
-    prefixes: list[str], *, subsets=None, terms: XXTerms, terms_observed: XXObservedTerms
+    prefixes: list[str],
+    *,
+    subsets: SubsetConfiguration | None = None,
+    terms: XXTerms,
+    terms_observed: XXObservedTerms,
 ) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
@@ -676,7 +680,7 @@ class LandscapeResult:
     counter: t.Counter[frozenset[str]] = field(init=False)
     distribution: t.Counter[int] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Post initialize the landscape result object."""
         self.counter = self.mapped_counter + self.single_counter
         self.distribution = self.get_distribution()
@@ -704,7 +708,7 @@ class LandscapeResult:
         """Get an :mod:`upsetplot`-compatible dataframe for the result counter."""
         return upsetplot.from_memberships(*zip(*self.counter.most_common(), strict=False))
 
-    def plot_upset(self):
+    def plot_upset(self) -> None:
         """Plot the results with an UpSet plot."""
         upset_df = self.get_upset_df()
         """Here's what the output from upsetplot.plot looks like:

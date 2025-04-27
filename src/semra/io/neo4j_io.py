@@ -258,8 +258,6 @@ def write_neo4j(
                     case ReasonedEvidence():
                         for mmm in evidence.mappings:
                             edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
-                    case _:
-                        raise RuntimeError  # this should never happen
 
                 # Add authorship information for the evidence, if available
                 if evidence.author:

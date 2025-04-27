@@ -313,10 +313,15 @@ def _neo4j_bool(b: bool, /) -> str:
 def _concept_to_row(
     concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
 ) -> Sequence[str]:
+    concept_curie = concept.curie
+    if add_labels:
+        name = concept.name or get_name_by_curie(concept_curie) or ""
+    else:
+        name = concept.name or ""
     return (
-        concept.curie,
+        concept_curie,
         concept.prefix,
-        get_name_by_curie(concept.curie) or "" if add_labels else "",
+        name,
         _neo4j_bool(equivalence_classes.get(concept, False)),
     )
 

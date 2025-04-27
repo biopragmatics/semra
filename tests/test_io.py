@@ -23,7 +23,7 @@ mapping_set_confidence = 0.6
 class TestIOLocal(unittest.TestCase):
     """Test I/O functions that only run if pyobo is available."""
 
-    def test_from_pyobo(self):
+    def test_from_pyobo(self) -> None:
         """Test loading content from PyOBO."""
         mappings = from_pyobo("doid")
         for mapping in mappings:

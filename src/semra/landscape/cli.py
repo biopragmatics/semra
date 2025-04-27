@@ -36,7 +36,7 @@ FUNCTIONS: list[tuple[str, click.Command]] = [
 @REFRESH_PROCESSED_OPTION
 @UPLOAD_OPTION
 @BUILD_DOCKER_OPTION
-@verbose_option
+@verbose_option  # type:ignore
 @click.pass_context
 def landscape(
     ctx: click.Context,

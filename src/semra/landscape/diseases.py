@@ -2,7 +2,7 @@
 
 import bioregistry
 import pystow
-from pyobo.sources.mesh import get_mesh_category_references  # type:ignore[attr-defined]
+from pyobo.sources.mesh import get_mesh_category_references
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation

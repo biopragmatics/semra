@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import cast, overload
+from typing import Literal, TypeVar, cast, overload
 
 import bioregistry
 import networkx as nx
@@ -96,15 +96,26 @@ EVIDENCE_KEY = "evidence"
 #: An index allows for the aggregation of evidences for each core triple
 Index = dict[Triple, list[Evidence]]
 
+X = TypeVar("X")
 
-def _tqdm(mappings, desc: str | None = None, *, progress: bool = True, leave: bool = True):
-    return tqdm(
-        mappings,
-        unit_scale=True,
-        unit="mapping",
-        desc=desc,
-        leave=leave,
-        disable=not progress,
+
+def _tqdm(
+    mappings: Iterable[X],
+    desc: str | None = None,
+    *,
+    progress: bool = True,
+    leave: bool = True,
+) -> Iterable[X]:
+    return cast(
+        Iterable[X],
+        tqdm(
+            mappings,
+            unit_scale=True,
+            unit="mapping",
+            desc=desc,
+            leave=leave,
+            disable=not progress,
+        ),
     )
 
 
@@ -292,7 +303,17 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 # TODO infer negative mappings for exact match from narrow/broad match
 
 
-def flip(mapping: Mapping) -> Mapping | None:
+# docstr-coverage:excused `overload`
+@overload
+def flip(mapping: Mapping, *, strict: Literal[True] = True) -> Mapping: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def flip(mapping: Mapping, *, strict: Literal[False] = False) -> Mapping | None: ...
+
+
+def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
     """Flip a mapping, if the relation is configured with an inversion.
 
     :param mapping: An input mapping
@@ -305,14 +326,17 @@ def flip(mapping: Mapping) -> Mapping | None:
         with an inversion (e.g., for practical purposes, regular dbrefs and
         close matches are not configured to invert), then None is returned
     """
-    if (p := FLIP.get(mapping.p)) is None:
+    if (p := FLIP.get(mapping.p)) is not None:
+        return Mapping(
+            s=mapping.o,
+            p=p,
+            o=mapping.s,
+            evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
+        )
+    elif strict:
+        raise ValueError
+    else:
         return None
-    return Mapping(
-        s=mapping.o,
-        p=p,
-        o=mapping.s,
-        evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
-    )
 
 
 def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
@@ -361,7 +385,7 @@ def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterabl
 def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[set[Reference]]:
     """Iterate over connected components in the multidigraph view over the mappings."""
     graph = to_digraph(mappings)
-    return nx.weakly_connected_components(graph)
+    return cast(t.Iterable[set[Reference]], nx.weakly_connected_components(graph))
 
 
 def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
@@ -499,9 +523,9 @@ def infer_chains(
     return [*mappings, *new_mappings]
 
 
-def _path_has_prefix_duplicates(path) -> bool:
+def _path_has_prefix_duplicates(path: Iterable[tuple[Reference, Reference, Reference]]) -> bool:
     """Return if the path has multiple unique."""
-    elements = set()
+    elements: set[Reference] = set()
     for u, v, _ in path:
         elements.add(u)
         elements.add(v)
@@ -899,7 +923,7 @@ def project(
     source_prefix: str,
     target_prefix: str,
     *,
-    return_sus: typing.Literal[True] = True,
+    return_sus: typing.Literal[True] = ...,
     progress: bool = False,
 ) -> tuple[list[Mapping], list[Mapping]]: ...
 
@@ -911,7 +935,7 @@ def project(
     source_prefix: str,
     target_prefix: str,
     *,
-    return_sus: typing.Literal[False] = False,
+    return_sus: typing.Literal[False] = ...,
     progress: bool = False,
 ) -> list[Mapping]: ...
 

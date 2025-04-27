@@ -7,12 +7,13 @@ import time
 import typing as t
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 import click
 import requests
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
+from typing_extensions import Self
 
 from semra.api import (
     assemble_evidences,

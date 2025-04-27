@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Generic, Literal, ParamSpec
 
 import pydantic
 from more_itertools import triplewise
@@ -30,6 +30,8 @@ __all__ = [
     "triple_key",
 ]
 
+P = ParamSpec("P")
+
 #: A type annotation for a subject-predicate-object triple
 Triple = tuple[Reference, Reference, Reference]
 
@@ -45,7 +47,7 @@ def _md5_hexdigest(picklable) -> str:
     return hasher.hexdigest()
 
 
-class KeyedMixin:
+class KeyedMixin(Generic[P]):
     """A mixin for a class that can be hashed and CURIE-encoded."""
 
     #: The prefix for CURIEs for instances of this class
@@ -54,23 +56,23 @@ class KeyedMixin:
     def __init_subclass__(cls, *, prefix: str, **kwargs):
         cls._prefix = prefix
 
-    def key(self):
+    def key(self, *args: P.args, **kwargs: P.kwargs):
         """Return a picklable key."""
         raise NotImplementedError
 
-    def hexdigest(self) -> str:
+    def hexdigest(self, *args: P.args, **kwargs: P.kwargs) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        key = self.key()
+        key = self.key(*args, **kwargs)
         return _md5_hexdigest(key)
 
-    def get_reference(self) -> Reference:
+    def get_reference(self, *args: P.args, **kwargs: P.kwargs) -> Reference:
         """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
-        return Reference(prefix=self._prefix, identifier=self.hexdigest())
+        return Reference(prefix=self._prefix, identifier=self.hexdigest(*args, **kwargs))
 
     @property
-    def curie(self) -> str:
+    def curie(self, *args: P.args, **kwargs: P.kwargs) -> str:
         """Get a string representing the CURIE."""
-        return self.get_reference().curie
+        return self.get_reference(*args, **kwargs).curie
 
 
 class ConfidenceMixin:
@@ -129,7 +131,11 @@ class MappingSet(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_M
 
 
 class SimpleEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
+    pydantic.BaseModel,
+    KeyedMixin[["Mapping" | Triple]],
+    EvidenceMixin,
+    ConfidenceMixin,
+    prefix=SEMRA_EVIDENCE_PREFIX,
 ):
     """Evidence for a mapping.
 
@@ -156,7 +162,7 @@ class SimpleEvidence(
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 
-    def key(self):
+    def key(self, triple: Triple | Mapping):
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -164,11 +170,11 @@ class SimpleEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
+            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
             self.evidence_type,
             self.justification,
             self.author,
             self.mapping_set.key(),
-            self.uuid,
         )
 
     @property
@@ -182,7 +188,11 @@ class SimpleEvidence(
 
 
 class ReasonedEvidence(
-    pydantic.BaseModel, KeyedMixin, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
+    pydantic.BaseModel,
+    KeyedMixin[["Mapping" | Triple]],
+    EvidenceMixin,
+    ConfidenceMixin,
+    prefix=SEMRA_EVIDENCE_PREFIX,
 ):
     """A complex evidence based on multiple mappings."""
 
@@ -198,12 +208,16 @@ class ReasonedEvidence(
         1.0, description="The probability that the reasoning method is correct"
     )
 
-    def key(self):
+    def key(self, triple: Triple | Mapping):
         """Get a key for reasoned evidence."""
         return (
+            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
             self.evidence_type,
             self.justification,
-            *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings),
+            (
+                tuple(sorted((evidence.key(mapping) for evidence in mapping.evidence)))
+                for mapping in sorted(self.mappings)
+            ),
         )
 
     def get_confidence(self) -> float:
@@ -271,7 +285,10 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
 
     def key(self):
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.triple
+        return triple_key(self.triple)
+
+    def __lt__(self, other):
+        return self.s < other.s and self.p < other.p and self.o < other.o
 
     @classmethod
     def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:

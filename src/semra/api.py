@@ -201,7 +201,7 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool
     dd: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
         dd[mapping.triple].extend(mapping.evidence)
-    return {triple: deduplicate_evidence(evidence) for triple, evidence in dd.items()}
+    return {triple: deduplicate_evidence(triple, evidence) for triple, evidence in dd.items()}
 
 
 def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
@@ -880,7 +880,7 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     # this is effectively the same as :func:`unindex` except the deduplicate_evidence is called
     # explicitly
     rv = [
-        Mapping.from_triple(triple, deduplicate_evidence(evidence))
+        Mapping.from_triple(triple, deduplicate_evidence(triple, evidence))
         for triple, evidence in index.items()
     ]
     return rv
@@ -1071,9 +1071,9 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     ]
 
 
-def deduplicate_evidence(evidence: list[Evidence]) -> list[Evidence]:
+def deduplicate_evidence(triple: Triple | Mapping, evidence: list[Evidence]) -> list[Evidence]:
     """Deduplicate a list of evidences based on their "key" function."""
-    d = {e.key(): e for e in evidence}
+    d = {e.key(triple): e for e in evidence}
     return list(d.values())
 
 

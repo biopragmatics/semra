@@ -27,12 +27,12 @@ class TestIOLocal(unittest.TestCase):
         """Test loading content from PyOBO."""
         mappings = from_pyobo("doid")
         for mapping in mappings:
-            self.assertEqual("doid", mapping.s.prefix)
+            self.assertEqual("doid", mapping.subject.prefix)
 
         mappings_2 = from_pyobo("doid", "mesh")
         for mapping in mappings_2:
-            self.assertEqual("doid", mapping.s.prefix)
-            self.assertEqual("mesh", mapping.o.prefix)
+            self.assertEqual("doid", mapping.subject.prefix)
+            self.assertEqual("mesh", mapping.object.prefix)
 
 
 class TestIO(unittest.TestCase):
@@ -49,8 +49,8 @@ class TestIO(unittest.TestCase):
             uuid=CONST_UUID,
         )
         expected_mappings = [
-            Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
-            Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[expected_evidence]),
+            Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[expected_evidence]),
+            Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[expected_evidence]),
         ]
 
         # Test 1 - from kwargs
@@ -139,8 +139,8 @@ class TestIO(unittest.TestCase):
             uuid=CONST_UUID,
         )
         expected_mappings = [
-            Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
-            Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[expected_evidence]),
+            Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[expected_evidence]),
+            Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[expected_evidence]),
         ]
 
         rows = [

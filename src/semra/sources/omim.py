@@ -20,9 +20,9 @@ def get_omim_gene_mappings() -> list[Mapping]:
         s = Reference(prefix="omim", identifier=identifier)
         if pd.notna(entrez_id):
             mapping = Mapping(
-                s=s,
-                p=EXACT_MATCH,
-                o=Reference(prefix="ncbigene", identifier=entrez_id),
+                subject=s,
+                predicate=EXACT_MATCH,
+                object=Reference(prefix="ncbigene", identifier=entrez_id),
                 evidence=[
                     SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
                 ],
@@ -31,9 +31,9 @@ def get_omim_gene_mappings() -> list[Mapping]:
         # TODO handle dependencies for mapping gene symbol
         if pd.notna(ensembl_id):
             mapping = Mapping(
-                s=s,
-                p=EXACT_MATCH,
-                o=Reference(prefix="ensembl", identifier=ensembl_id),
+                subject=s,
+                predicate=EXACT_MATCH,
+                object=Reference(prefix="ensembl", identifier=ensembl_id),
                 evidence=[
                     SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
                 ],

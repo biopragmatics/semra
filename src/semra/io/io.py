@@ -388,7 +388,7 @@ def _parse_sssom_row(
     if _uuid:
         e["uuid"] = _uuid
 
-    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
+    return Mapping(subject=s, predicate=p, object=o, evidence=[SimpleEvidence.model_validate(e)])
 
 
 def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:
@@ -488,9 +488,9 @@ def _get_sssom_row(mapping: Mapping, e: Evidence):
     else:
         raise TypeError
     return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
+        mapping.subject.curie,
+        mapping.predicate.curie,
+        mapping.object.curie,
         e.justification.curie,
         ",".join(sorted(e.mapping_set_names)),
         mapping_set_version,

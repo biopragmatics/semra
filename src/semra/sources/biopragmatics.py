@@ -94,9 +94,9 @@ def _process(mapping_dicts, confidence: float = 0.999) -> list[Mapping]:
             predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
 
         mm = Mapping(
-            s=subject,
-            p=predicate,
-            o=obj,
+            subject=subject,
+            predicate=predicate,
+            object=obj,
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),

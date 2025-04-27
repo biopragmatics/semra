@@ -50,9 +50,9 @@ model:
 from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
 
 mapping = Mapping(
-   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
-   p=EXACT_MATCH,
-   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
+   subject=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
+   predicate=EXACT_MATCH,
+   object=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
    evidence=[
       SimpleEvidence(
          evidence_type=MANUAL_MAPPING,

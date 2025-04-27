@@ -49,9 +49,9 @@ def _get_doid(url: str) -> list[Mapping]:
             tqdm.write(f"[doid:{do_id}] failed to parse xref {target_prefix}:{target_id}")
             continue
         mapping = Mapping(
-            s=Reference(prefix="doid", identifier=do_id.removeprefix("DOID:")),
-            p=EXACT_MATCH,
-            o=o,
+            subject=Reference(prefix="doid", identifier=do_id.removeprefix("DOID:")),
+            predicate=EXACT_MATCH,
+            object=o,
             evidence=[evidence],
         )
         rv.append(mapping)
@@ -71,9 +71,9 @@ def _get_mesh_to_icd_via_snomedct() -> list[Mapping]:
         mesh_ref = Reference(prefix="mesh", identifier=mesh_id)
         rows.append(
             Mapping(
-                s=mesh_ref,
-                p=EXACT_MATCH,
-                o=snomed_ref,
+                subject=mesh_ref,
+                predicate=EXACT_MATCH,
+                object=snomed_ref,
                 evidence=[
                     SimpleEvidence(
                         mapping_set=MappingSet(
@@ -94,9 +94,9 @@ def _get_mesh_to_icd_via_snomedct() -> list[Mapping]:
         else:
             rows.append(
                 Mapping(
-                    s=mesh_ref,
-                    p=EXACT_MATCH,
-                    o=icd_ref,
+                    subject=mesh_ref,
+                    predicate=EXACT_MATCH,
+                    object=icd_ref,
                     evidence=[
                         SimpleEvidence(
                             mapping_set=MappingSet(
@@ -110,9 +110,9 @@ def _get_mesh_to_icd_via_snomedct() -> list[Mapping]:
             )
             rows.append(
                 Mapping(
-                    s=icd_ref,
-                    p=EXACT_MATCH,
-                    o=snomed_ref,
+                    subject=icd_ref,
+                    predicate=EXACT_MATCH,
+                    object=snomed_ref,
                     evidence=[
                         SimpleEvidence(
                             mapping_set=MappingSet(
@@ -144,9 +144,9 @@ def _get_mesh_to_snomedct_via_icd() -> list[Mapping]:
         mesh_ref = Reference(prefix="mesh", identifier=mesh_id)
         rows.append(
             Mapping(
-                s=mesh_ref,
-                p=EXACT_MATCH,
-                o=snomed_ref,
+                subject=mesh_ref,
+                predicate=EXACT_MATCH,
+                object=snomed_ref,
                 evidence=[
                     SimpleEvidence(
                         mapping_set=MappingSet(
@@ -167,9 +167,9 @@ def _get_mesh_to_snomedct_via_icd() -> list[Mapping]:
         else:
             rows.append(
                 Mapping(
-                    s=mesh_ref,
-                    p=EXACT_MATCH,
-                    o=icd_ref,
+                    subject=mesh_ref,
+                    predicate=EXACT_MATCH,
+                    object=icd_ref,
                     evidence=[
                         SimpleEvidence(
                             mapping_set=MappingSet(
@@ -183,9 +183,9 @@ def _get_mesh_to_snomedct_via_icd() -> list[Mapping]:
             )
             rows.append(
                 Mapping(
-                    s=icd_ref,
-                    p=EXACT_MATCH,
-                    o=snomed_ref,
+                    subject=icd_ref,
+                    predicate=EXACT_MATCH,
+                    object=snomed_ref,
                     evidence=[
                         SimpleEvidence(
                             mapping_set=MappingSet(

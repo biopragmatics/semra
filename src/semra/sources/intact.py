@@ -47,9 +47,9 @@ def _get_mappings(url: str, target_prefix: str) -> list[Mapping]:
             tqdm.write(f"[intact:{intact_id}] invalid xref: {target_prefix}:{target_identifier}")
             continue
         mapping = Mapping(
-            s=Reference(prefix="intact", identifier=intact_id),
-            p=EXACT_MATCH,
-            o=o,
+            subject=Reference(prefix="intact", identifier=intact_id),
+            predicate=EXACT_MATCH,
+            object=o,
             evidence=[evidence],
         )
         rv.append(mapping)

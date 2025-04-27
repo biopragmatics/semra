@@ -175,14 +175,14 @@ def write_neo4j(
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
 
         for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="preparing Neo4j"):
-            concepts.add(mapping.s)
-            concepts.add(mapping.o)
+            concepts.add(mapping.subject)
+            concepts.add(mapping.object)
 
             mapping_writer.writerow(
                 (
-                    mapping.s.curie,
-                    mapping.p.curie,
-                    mapping.o.curie,
+                    mapping.subject.curie,
+                    mapping.predicate.curie,
+                    mapping.object.curie,
                     get_confidence_str(mapping),
                     _neo4j_bool(mapping.has_primary),
                     _neo4j_bool(mapping.has_secondary),
@@ -198,8 +198,8 @@ def write_neo4j(
                     ),
                 )
             )
-            edge_writer.writerow((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-            edge_writer.writerow((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+            edge_writer.writerow((mapping.curie, ANNOTATED_SOURCE.curie, mapping.subject.curie))
+            edge_writer.writerow((mapping.curie, ANNOTATED_TARGET.curie, mapping.object.curie))
             for evidence in mapping.evidence:
                 edge_writer.writerow((mapping.curie, HAS_EVIDENCE_PREDICATE, evidence.curie))
                 evidences[evidence.key()] = evidence
@@ -248,7 +248,7 @@ def write_neo4j(
             (
                 mapping.curie,
                 SEMRA_MAPPING_PREFIX,
-                mapping.p.curie,
+                mapping.predicate.curie,
                 get_confidence_str(mapping),
                 _neo4j_bool(mapping.has_primary),
                 _neo4j_bool(mapping.has_secondary),

@@ -476,10 +476,10 @@ def _get_summary_index(
     index = get_index(mappings, progress=show_progress, leave=False)
     directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
-    for s, p, o in index:
-        if p in target_predicates:
-            directed[s.prefix, o.prefix].add(s.identifier)
-            directed[o.prefix, s.prefix].add(o.identifier)
+    for triple in index:
+        if triple.predicate in target_predicates:
+            directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
+            directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
     return dict(directed)
 
 
@@ -577,7 +577,7 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> dict[str, set[str]]:
     """Get the set of terms appearing in each prefix."""
     entities: defaultdict[str, set[str]] = defaultdict(set)
     for mapping in mappings:
-        for reference in (mapping.s, mapping.o):
+        for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
 

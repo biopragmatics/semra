@@ -11,6 +11,7 @@ from itertools import islice
 from typing import Annotated, ClassVar, Literal
 
 import pydantic
+from curies import Triple
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pydantic.types import UUID4
@@ -27,16 +28,7 @@ __all__ = [
     "SimpleEvidence",
     "Triple",
     "line",
-    "triple_key",
 ]
-
-#: A type annotation for a subject-predicate-object triple
-Triple = tuple[Reference, Reference, Reference]
-
-
-def triple_key(triple: Triple) -> tuple[str, str, str]:
-    """Get a sortable key for a triple."""
-    return triple[0].curie, triple[2].curie, triple[1].curie
 
 
 def _md5_hexdigest(picklable) -> str:
@@ -203,7 +195,7 @@ class ReasonedEvidence(
         return (
             self.evidence_type,
             self.justification,
-            *((*m.triple, *(e.key() for e in m.evidence)) for m in self.mappings),
+            *((*m.as_curies(), *(e.key() for e in m.evidence)) for m in self.mappings),
         )
 
     def get_confidence(self) -> float:
@@ -244,7 +236,9 @@ class ReasonedEvidence(
             returns a space-delmited list of the CURIEs for these entities.
         """
         return (
-            " ".join(mapping.s.curie for mapping in self.mappings) + " " + self.mappings[-1].o.curie
+            " ".join(mapping.subject.curie for mapping in self.mappings)
+            + " "
+            + self.mappings[-1].object.curie
         )
 
 
@@ -254,30 +248,47 @@ Evidence = Annotated[
 ]
 
 
-class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_PREFIX):
-    """A semantic mapping."""
+class Mapping(Triple, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPPING_PREFIX):
+    """A semantic mapping.
+
+    The ``subject``, ``predicate``, and ``object`` fields are inherited from :class:`curies.Triple`.
+    """
 
     model_config = ConfigDict(frozen=True)
 
-    s: Reference = Field(..., title="subject")
-    p: Reference = Field(..., title="predicate")
-    o: Reference = Field(..., title="object")
+    subject: Reference = Field(..., title="subject")
+    predicate: Reference = Field(..., title="predicate")
+    object: Reference = Field(..., title="object")
     evidence: list[Evidence] = Field(default_factory=list)
 
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
-        return self.s, self.p, self.o
+        return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
-    def key(self):
+    def key(self) -> tuple[str, str, str]:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.triple
+        return self.as_curies()
 
     @classmethod
-    def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
+    def from_triple(
+        cls, triple: Triple | tuple[str, str, str], evidence: list[Evidence] | None = None
+    ) -> Mapping:
         """Instantiate a mapping from a triple."""
-        s, p, o = triple
-        return cls(s=s, p=p, o=o, evidence=evidence or [])
+        if isinstance(triple, tuple):
+            return cls(
+                subject=Reference.from_curie(triple[0]),
+                predicate=Reference.from_curie(triple[1]),
+                object=Reference.from_curie(triple[2]),
+                evidence=evidence or [],
+            )
+        else:
+            return cls(
+                subject=triple.subject,
+                predicate=triple.predicate,
+                object=triple.object,
+                evidence=evidence or [],
+            )
 
     def get_confidence(self) -> float:
         """Aggregate the mapping's evidences' confidences in a binomial model."""
@@ -289,7 +300,8 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
     def has_primary(self) -> bool:
         """Get if there is a primary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name == self.s.prefix
+            isinstance(evidence, SimpleEvidence)
+            and evidence.mapping_set.name == self.subject.prefix
             for evidence in self.evidence
         )
 
@@ -297,7 +309,8 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
     def has_secondary(self) -> bool:
         """Get if there is a secondary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name != self.s.prefix
+            isinstance(evidence, SimpleEvidence)
+            and evidence.mapping_set.name != self.subject.prefix
             for evidence in self.evidence
         )
 
@@ -311,7 +324,10 @@ def line(*references: Reference) -> list[Mapping]:
     """Create a list of mappings from a simple mappings path."""
     if not (3 <= len(references) and len(references) % 2):
         raise ValueError
-    return [Mapping(s=s, p=p, o=o) for s, p, o in islice(triplewise(references), None, None, 2)]
+    return [
+        Mapping(subject=s, predicate=p, object=o)
+        for s, p, o in islice(triplewise(references), None, None, 2)
+    ]
 
 
 ReasonedEvidence.model_rebuild()

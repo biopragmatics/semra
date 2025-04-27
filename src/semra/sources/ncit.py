@@ -113,9 +113,9 @@ def _df_to_mappings(
             tqdm.write(f"[ncit:{source_id} invalid xref: {target_prefix}:{target_id}")
             continue
         mapping = Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_id),
-            p=EXACT_MATCH,
-            o=o,
+            subject=Reference(prefix=source_prefix, identifier=source_id),
+            predicate=EXACT_MATCH,
+            object=o,
             evidence=[evidence_],
         )
         rv.append(mapping)

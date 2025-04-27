@@ -17,9 +17,9 @@ TEST_MAPPING_SET = MappingSet(
 )
 TEST_MAPPINGS = [
     Mapping(
-        s=a1,
-        p=EXACT_MATCH,
-        o=b1,
+        subject=a1,
+        predicate=EXACT_MATCH,
+        object=b1,
         evidence=[
             SimpleEvidence(
                 justification=MANUAL_MAPPING,
@@ -48,8 +48,8 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(1, len(mappings))
         mapping = mappings[0]
         self.assertIsInstance(mapping, Mapping)
-        self.assertEqual(a1, mapping.s)
-        self.assertEqual(b1, mapping.o)
+        self.assertEqual(a1, mapping.subject)
+        self.assertEqual(b1, mapping.object)
         self.assertEqual(1, len(mapping.evidence))
         ev = mapping.evidence[0]
         self.assertIsInstance(ev, SimpleEvidence)

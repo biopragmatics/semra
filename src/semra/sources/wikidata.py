@@ -80,9 +80,9 @@ def _help(
         except ValueError:
             continue
         mapping = Mapping(
-            s=Reference(prefix="wikidata", identifier=wikidata_id),
-            p=_predicate,
-            o=o,
+            subject=Reference(prefix="wikidata", identifier=wikidata_id),
+            predicate=_predicate,
+            object=o,
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )
         rv.append(mapping)

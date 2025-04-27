@@ -225,12 +225,10 @@ class SimpleEvidence(
         return self.confidence if self.confidence is not None else self.mapping_set.confidence
 
 
-def _sort_evidence_key(ev: Evidence) -> tuple[int, tuple[Any, ...]]:
-    match ev:
-        case SimpleEvidence():
-            return 0, ev._simple_key()
-        case ReasonedEvidence():
-            return 1, ev._simple_key()
+def _sort_evidence_key(ev: Evidence) -> tuple[Any, ...]:
+    # the first element of the simple key is the type of evidence,
+    # so they can be compared
+    return ev._simple_key()
 
 
 class ReasonedEvidenceKey(NamedTuple):

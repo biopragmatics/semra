@@ -9,3 +9,5 @@ Usage
 .. automodapi:: semra.rules
 
 .. automodapi:: semra.api
+
+.. automodapi:: semra.io

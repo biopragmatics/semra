@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Any, ClassVar, Generic, Literal, ParamSpec, Union
+from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, Union
 
 import pydantic
 from more_itertools import triplewise
@@ -106,8 +106,19 @@ class EvidenceMixin:
         raise NotImplementedError
 
 
+class MappingSetKey(NamedTuple):
+    """The key used for a mapping set."""
+
+    name: str
+    version: str
+    license: str
+
+
 class MappingSet(
-    pydantic.BaseModel, ConfidenceMixin, KeyedMixin[[]], prefix=SEMRA_MAPPING_SET_PREFIX
+    pydantic.BaseModel,
+    ConfidenceMixin,
+    KeyedMixin[[]],
+    prefix=SEMRA_MAPPING_SET_PREFIX,
 ):
     """Represents a set of semantic mappings.
 
@@ -125,13 +136,22 @@ class MappingSet(
     license: str | None = Field(default=None, description="License name or URL for mapping set")
     confidence: float = Field(..., description="Mapping set level confidence")
 
-    def key(self) -> object:
+    def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""
-        return self.name, self.version or "", self.license or "", self.confidence
+        return MappingSetKey(self.name, self.version or "", self.license or "")
 
     def get_confidence(self) -> float:
         """Get the explicit confidence for the mapping set."""
         return self.confidence
+
+
+class SimpleEvidenceKey(NamedTuple):
+    """The key used for a simple evidence."""
+
+    evidence_type: str
+    justification: str
+    author: str
+    mapping_set: MappingSetKey
 
 
 class SimpleEvidence(
@@ -166,7 +186,15 @@ class SimpleEvidence(
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 
-    def key(self, triple: Triple | Mapping) -> object:
+    def _simple_key(self) -> SimpleEvidenceKey:
+        return SimpleEvidenceKey(
+            self.evidence_type,
+            self.justification.curie,
+            self.author.curie if self.author else "",
+            self.mapping_set.key(),
+        )
+
+    def key(self, triple: Triple | Mapping) -> tuple[tuple[str, str, str], SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -175,10 +203,7 @@ class SimpleEvidence(
         """
         return (
             triple_key(triple.triple if isinstance(triple, Mapping) else triple),
-            self.evidence_type,
-            self.justification,
-            self.author,
-            self.mapping_set.key(),
+            self._simple_key(),
         )
 
     @property
@@ -189,6 +214,22 @@ class SimpleEvidence(
     def get_confidence(self) -> float:
         """Get the confidence from the mapping set."""
         return self.confidence if self.confidence is not None else self.mapping_set.confidence
+
+
+def _sort_evidence_key(ev: Evidence) -> tuple[int, tuple[Any, ...]]:
+    match ev:
+        case SimpleEvidence():
+            return 0, ev._simple_key()
+        case ReasonedEvidence():
+            return 1, ev._simple_key()
+
+
+class ReasonedEvidenceKey(NamedTuple):
+    """The key used for a reasoned evidence."""
+
+    evidence_type: str
+    justification: str
+    rest: tuple[tuple[tuple[Any, ...], ...], ...]
 
 
 class ReasonedEvidence(
@@ -212,16 +253,29 @@ class ReasonedEvidence(
         1.0, description="The probability that the reasoning method is correct"
     )
 
-    def key(self, triple: Triple | Mapping) -> object:
-        """Get a key for reasoned evidence."""
-        return (
-            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+    def _simple_key(self) -> ReasonedEvidenceKey:
+        return ReasonedEvidenceKey(
             self.evidence_type,
-            self.justification,
-            (
-                tuple(evidence.key(mapping) for evidence in mapping.evidence)
+            self.justification.curie,
+            tuple(
+                tuple(
+                    evidence.key(mapping)
+                    for evidence in sorted(mapping.evidence, key=_sort_evidence_key)
+                )
                 for mapping in sorted(self.mappings, key=lambda m: triple_key(m.triple))
             ),
+        )
+
+    def key(self, triple: Triple | Mapping) -> tuple[tuple[str, str, str], ReasonedEvidenceKey]:
+        """Get a key suitable for hashing the evidence.
+
+        :returns: A key for deduplication based on the mapping set.
+
+        Note: this should be extended to include basically _all_ fields
+        """
+        return (
+            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            self._simple_key(),
         )
 
     def get_confidence(self) -> float:
@@ -272,7 +326,12 @@ Evidence = Annotated[
 ]
 
 
-class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin[[]], prefix=SEMRA_MAPPING_PREFIX):
+class Mapping(
+    pydantic.BaseModel,
+    ConfidenceMixin,
+    KeyedMixin[[]],
+    prefix=SEMRA_MAPPING_PREFIX,
+):
     """A semantic mapping."""
 
     model_config = ConfigDict(frozen=True)
@@ -287,7 +346,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin[[]], prefix=SEMRA_
         """Get the mapping's core triple as a tuple."""
         return self.s, self.p, self.o
 
-    def key(self) -> object:
+    def key(self) -> tuple[str, str, str]:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
 

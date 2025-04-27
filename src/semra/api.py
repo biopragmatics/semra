@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from typing import cast, overload
+from typing import Literal, cast, overload
 
 import bioregistry
 import networkx as nx
@@ -97,7 +97,13 @@ EVIDENCE_KEY = "evidence"
 Index = dict[Triple, list[Evidence]]
 
 
-def _tqdm(mappings, desc: str | None = None, *, progress: bool = True, leave: bool = True):
+def _tqdm(
+    mappings: Iterable[Mapping],
+    desc: str | None = None,
+    *,
+    progress: bool = True,
+    leave: bool = True,
+) -> Iterable[Mapping]:
     return tqdm(
         mappings,
         unit_scale=True,
@@ -292,7 +298,15 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 # TODO infer negative mappings for exact match from narrow/broad match
 
 
-def flip(mapping: Mapping) -> Mapping | None:
+@overload
+def flip(mapping: Mapping, *, strict: Literal[True] = True) -> Mapping: ...
+
+
+@overload
+def flip(mapping: Mapping, *, strict: Literal[False] = False) -> Mapping | None: ...
+
+
+def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
     """Flip a mapping, if the relation is configured with an inversion.
 
     :param mapping: An input mapping
@@ -305,14 +319,17 @@ def flip(mapping: Mapping) -> Mapping | None:
         with an inversion (e.g., for practical purposes, regular dbrefs and
         close matches are not configured to invert), then None is returned
     """
-    if (p := FLIP.get(mapping.p)) is None:
+    if (p := FLIP.get(mapping.p)) is not None:
+        return Mapping(
+            s=mapping.o,
+            p=p,
+            o=mapping.s,
+            evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
+        )
+    elif strict:
+        raise ValueError
+    else:
         return None
-    return Mapping(
-        s=mapping.o,
-        p=p,
-        o=mapping.s,
-        evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
-    )
 
 
 def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
@@ -499,9 +516,9 @@ def infer_chains(
     return [*mappings, *new_mappings]
 
 
-def _path_has_prefix_duplicates(path) -> bool:
+def _path_has_prefix_duplicates(path: Iterable[tuple[Reference, Reference, Reference]]) -> bool:
     """Return if the path has multiple unique."""
-    elements = set()
+    elements: set[Reference] = set()
     for u, v, _ in path:
         elements.add(u)
         elements.add(v)

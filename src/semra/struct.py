@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import pydantic
 from more_itertools import triplewise
@@ -52,7 +52,7 @@ class KeyedMixin(ABC):
     #: The prefix for CURIEs for instances of this class
     _prefix: ClassVar[str]
 
-    def __init_subclass__(cls, *, prefix: str, **kwargs):
+    def __init_subclass__(cls, *, prefix: str, **kwargs: Any) -> None:
         cls._prefix = prefix
 
     @abstractmethod
@@ -158,7 +158,7 @@ class SimpleEvidence(
     uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 
-    def key(self):
+    def key(self) -> object:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -200,7 +200,7 @@ class ReasonedEvidence(
         1.0, description="The probability that the reasoning method is correct"
     )
 
-    def key(self):
+    def key(self) -> object:
         """Get a key for reasoned evidence."""
         return (
             self.evidence_type,
@@ -271,7 +271,7 @@ class Mapping(pydantic.BaseModel, ConfidenceMixin, KeyedMixin, prefix=SEMRA_MAPP
         """Get the mapping's core triple as a tuple."""
         return self.s, self.p, self.o
 
-    def key(self):
+    def key(self) -> object:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return self.triple
 

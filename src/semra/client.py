@@ -377,7 +377,9 @@ as label, count UNION ALL
         else:
             return name
 
-    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list:
+    def sample_mappings_from_set(
+        self, curie: ReferenceHint, n: int = 10
+    ) -> list[tuple[str, str, str, str, str, str]]:
         """Get n mappings from a given set (by CURIE)."""
         if isinstance(curie, Reference):
             curie = curie.curie

@@ -8,10 +8,6 @@ import pandas as pd
 
 from semra import api
 from semra.api import (
-    BROAD_MATCH,
-    DB_XREF,
-    EXACT_MATCH,
-    NARROW_MATCH,
     Index,
     count_component_sizes,
     count_coverage_sizes,
@@ -29,7 +25,14 @@ from semra.api import (
     project,
     to_digraph,
 )
-from semra.rules import KNOWLEDGE_MAPPING, MANUAL_MAPPING
+from semra.rules import (
+    BROAD_MATCH,
+    DB_XREF,
+    EXACT_MATCH,
+    KNOWLEDGE_MAPPING,
+    MANUAL_MAPPING,
+    NARROW_MATCH,
+)
 from semra.struct import (
     Mapping,
     MappingSet,
@@ -63,7 +66,7 @@ def _get_references(
     ]
 
 
-def _exact(s, o, evidence: list[SimpleEvidence] | None = None) -> Mapping:
+def _exact(s: Reference, o: Reference, evidence: list[SimpleEvidence] | None = None) -> Mapping:
     return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
 
 
@@ -107,13 +110,13 @@ class TestOperations(unittest.TestCase):
         narrow_mapping = Mapping(s=docetaxel_mesh, p=NARROW_MATCH, o=docetaxel_anhydrous_chebi)
         broad_mapping = Mapping(o=docetaxel_mesh, p=BROAD_MATCH, s=docetaxel_anhydrous_chebi)
 
-        actual = flip(narrow_mapping)
+        actual: Mapping = flip(narrow_mapping)
         self.assertIsNotNone(actual)
         self.assertEqual(docetaxel_anhydrous_chebi, actual.s)
         self.assertEqual(BROAD_MATCH, actual.p)
         self.assertEqual(docetaxel_mesh, actual.o)
 
-        actual = flip(broad_mapping)
+        actual: Mapping = flip(broad_mapping)
         self.assertIsNotNone(actual)
         self.assertEqual(docetaxel_mesh, actual.s)
         self.assertEqual(NARROW_MATCH, actual.p)
@@ -170,7 +173,7 @@ class TestOperations(unittest.TestCase):
         m4 = _exact(r1, r3)
         m5 = _exact(r1, r4)
         m6 = _exact(r2, r4)
-        m4_inv, m5_inv, m6_inv = (flip(m) for m in (m4, m5, m6))
+        m4_inv, m5_inv, m6_inv = (flip(m, strict=True) for m in (m4, m5, m6))
 
         backwards_msg = "backwards inference is not supposed to be done here"
 

@@ -182,7 +182,7 @@ class Configuration(BaseModel):
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
 
     @model_validator(mode="before")
-    def infer_priority(cls, values):  # noqa:N805
+    def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
         """Infer the priority from the input list of not given."""
         priority = values["priority"]
         if not priority:

@@ -91,6 +91,13 @@ DERIVED_PREDICATE = "derivedFromMapping"
 #: node to the mapping node(s) from which it was derived
 HAS_AUTHOR_PREDICATE = "hasAuthor"
 
+CONCEPT_NODES_FILENAME = "concept_nodes.tsv"
+MAPPING_NODES_FILENAME = "mapping_nodes.tsv"
+EVIDENCE_NODES_FILENAME = "evidence_nodes.tsv"
+MAPPING_SET_NODES_FILENAME = "mapping_set_nodes.tsv"
+MAPPING_EDGES_FILENAME = "mapping_edges.tsv"
+EDGES_FILENAME = "edges.tsv"
+
 
 def write_neo4j(
     mappings: Iterable[Mapping],
@@ -167,12 +174,12 @@ def write_neo4j(
     # keep track of the CURIEs for mapping sets
     mapping_set_curies: set[str] = set()
 
-    concept_nodes_path = directory.joinpath("concept_nodes.tsv")
-    mapping_nodes_path = directory.joinpath("mapping_nodes.tsv")
-    evidence_nodes_path = directory.joinpath("evidence_nodes.tsv")
-    mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv")
-    mapping_edges_path = directory.joinpath("mapping_edges.tsv")
-    edges_path = directory.joinpath("edges.tsv")
+    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
+    edges_path = directory.joinpath(EDGES_FILENAME)
 
     node_paths = [
         (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),

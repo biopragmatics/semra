@@ -136,7 +136,13 @@ def get_test_evidence(n: None) -> SimpleEvidence: ...
 def get_test_evidence(n: int | None = None) -> SimpleEvidence | list[SimpleEvidence]:
     """Get test evidence."""
     if isinstance(n, int):
-        return [SimpleEvidence(mapping_set=TEST_MAPPING_SET) for _ in range(n)]
+        return [
+            SimpleEvidence(
+                mapping_set=TEST_MAPPING_SET,
+                author=Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}"),
+            )
+            for n in range(n)
+        ]
     return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
 
 

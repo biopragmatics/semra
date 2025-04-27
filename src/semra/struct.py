@@ -238,7 +238,9 @@ class ReasonedEvidenceKey(NamedTuple):
 
     evidence_type: str
     justification: str
-    rest: tuple[tuple[tuple[Any, ...], ...], ...]
+    rest: tuple[
+        tuple[tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey], ...], ...
+    ]
 
 
 class ReasonedEvidence(

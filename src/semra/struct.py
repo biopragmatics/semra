@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, Union
+from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
 from more_itertools import triplewise
@@ -32,14 +32,23 @@ __all__ = [
 ]
 
 P = ParamSpec("P")
+X = TypeVar("X")
 
 #: A type annotation for a subject-predicate-object triple
 Triple = tuple[Reference, Reference, Reference]
 
 
-def triple_key(triple: Triple) -> tuple[str, str, str]:
+class StrTriple(NamedTuple):
+    """A triple of curies."""
+
+    subject: str
+    predicate: str
+    object: str
+
+
+def triple_key(triple: Triple) -> StrTriple:
     """Get a sortable key for a triple."""
-    return triple[0].curie, triple[2].curie, triple[1].curie
+    return StrTriple(triple[0].curie, triple[2].curie, triple[1].curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -48,7 +57,7 @@ def _md5_hexdigest(picklable: object) -> str:
     return hasher.hexdigest()
 
 
-class KeyedMixin(ABC, Generic[P]):
+class KeyedMixin(ABC, Generic[P, X]):
     """A mixin for a class that can be hashed and CURIE-encoded."""
 
     #: The prefix for CURIEs for instances of this class
@@ -58,7 +67,7 @@ class KeyedMixin(ABC, Generic[P]):
         cls._prefix = prefix
 
     @abstractmethod
-    def key(self, *args: P.args, **kwargs: P.kwargs) -> object:
+    def key(self, *args: P.args, **kwargs: P.kwargs) -> X:
         """Return a picklable key."""
         raise NotImplementedError
 
@@ -117,7 +126,7 @@ class MappingSetKey(NamedTuple):
 class MappingSet(
     pydantic.BaseModel,
     ConfidenceMixin,
-    KeyedMixin[[]],
+    KeyedMixin[[], MappingSetKey],
     prefix=SEMRA_MAPPING_SET_PREFIX,
 ):
     """Represents a set of semantic mappings.
@@ -156,7 +165,7 @@ class SimpleEvidenceKey(NamedTuple):
 
 class SimpleEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]]],
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, SimpleEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -194,7 +203,7 @@ class SimpleEvidence(
             self.mapping_set.key(),
         )
 
-    def key(self, triple: Triple | Mapping) -> tuple[tuple[str, str, str], SimpleEvidenceKey]:
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -234,7 +243,7 @@ class ReasonedEvidenceKey(NamedTuple):
 
 class ReasonedEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]]],
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, ReasonedEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -266,7 +275,7 @@ class ReasonedEvidence(
             ),
         )
 
-    def key(self, triple: Triple | Mapping) -> tuple[tuple[str, str, str], ReasonedEvidenceKey]:
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, ReasonedEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -329,7 +338,7 @@ Evidence = Annotated[
 class Mapping(
     pydantic.BaseModel,
     ConfidenceMixin,
-    KeyedMixin[[]],
+    KeyedMixin[[], StrTriple],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
     """A semantic mapping."""
@@ -346,7 +355,7 @@ class Mapping(
         """Get the mapping's core triple as a tuple."""
         return self.s, self.p, self.o
 
-    def key(self) -> tuple[str, str, str]:
+    def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
 

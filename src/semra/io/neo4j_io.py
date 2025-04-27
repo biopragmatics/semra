@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import csv
-import gzip
-from collections.abc import Hashable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import click
@@ -12,8 +10,17 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
 from tqdm import tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie
-from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence
+from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
+from ..rules import (
+    SEMRA_EVIDENCE_PREFIX,
+    SEMRA_MAPPING_PREFIX,
+    SEMRA_MAPPING_SET_PREFIX,
+    SEMRA_NEO4J_CONCEPT_LABEL,
+    SEMRA_NEO4J_EVIDENCE_LABEL,
+    SEMRA_NEO4J_MAPPING_LABEL,
+    SEMRA_NEO4J_MAPPING_SET_LABEL,
+)
+from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
 
 __all__ = [
     "write_neo4j",
@@ -22,19 +29,10 @@ __all__ = [
 HERE = Path(__file__).parent.resolve()
 
 TEMPLATES = HERE.joinpath("templates")
-# STARTUP_PATH = TEMPLATES.joinpath("startup.sh")
-# DOCKERFILE_PATH = TEMPLATES.joinpath("Dockerfile")
-# RUN_ON_STARTUP_PATH = TEMPLATES.joinpath("run_on_startup.sh")
-
-env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
-
-STARTUP_TEMPLATE = env.get_template("startup.sh")
-DOCKERFILE_TEMPLATE = env.get_template("Dockerfile")
-RUN_ON_STARTUP_TEMPLATE = env.get_template("run_on_startup.sh")
-
-SEMRA_MAPPING_PREFIX = "semra.mapping"
-SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
-SEMRA_EVIDENCE_PREFIX = "semra.evidence"
+JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
+STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
+DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
+RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
 MAPPING_NODES_HEADER = [
@@ -78,9 +76,11 @@ EDGES_SUPPLEMENT_HEADER = [
     ":END_ID",
 ]
 
-ANNOTATED_PROPERTY = Reference(prefix="owl", identifier="annotatedProperty")
 ANNOTATED_SOURCE = Reference(prefix="owl", identifier="annotatedSource")
+ANNOTATED_SOURCE_CURIE = ANNOTATED_SOURCE.curie
+
 ANNOTATED_TARGET = Reference(prefix="owl", identifier="annotatedTarget")
+ANNOTATED_TARGET_CURIE = ANNOTATED_TARGET.curie
 
 #: The predicate used in the graph data model connecting a mapping node to an evidence node
 HAS_EVIDENCE_PREDICATE = "hasEvidence"
@@ -91,9 +91,16 @@ DERIVED_PREDICATE = "derivedFromMapping"
 #: node to the mapping node(s) from which it was derived
 HAS_AUTHOR_PREDICATE = "hasAuthor"
 
+CONCEPT_NODES_FILENAME = "concept_nodes.tsv"
+MAPPING_NODES_FILENAME = "mapping_nodes.tsv"
+EVIDENCE_NODES_FILENAME = "evidence_nodes.tsv"
+MAPPING_SET_NODES_FILENAME = "mapping_set_nodes.tsv"
+MAPPING_EDGES_FILENAME = "mapping_edges.tsv"
+EDGES_FILENAME = "edges.tsv"
+
 
 def write_neo4j(
-    mappings: list[Mapping],
+    mappings: Iterable[Mapping],
     directory: str | Path,
     *,
     docker_name: str | None = None,
@@ -102,7 +109,8 @@ def write_neo4j(
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
-    sort: bool = False,
+    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
+    use_tqdm: bool = True,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -110,8 +118,11 @@ def write_neo4j(
     :param directory: The directory to write nodes files, edge files, startup shell
         script (``startup.sh``), run script (``run_on_docker.sh``), and a Dockerfile
     :param docker_name: The name of the Docker image. Defaults to "semra"
-    :param equivalence_classes: A dictionary of equivalence classes, calculated from
-        processed and prioritized mappings. This argument is typically used internally.
+    :param equivalence_classes: A dictionary from references to booleans,
+        where having ``True`` as a value denotes that it is the "primary" reference
+        calculated from processed and prioritiized mappings.
+
+        This argument is typically used internally - you should not have to pass it yourself.
 
         .. code-block:: python
 
@@ -124,7 +135,7 @@ def write_neo4j(
     :param run_script_name: The name of the run script that you as the user should call
         to wrap building and running the Docker image
     :param dockerfile_name: The name of the Dockerfile produced
-    :param sort: Should the output nodes files be sorted?
+    :param pip_install: The package that's pip installed in the docker file
 
     You can use this function to build your own database like in
 
@@ -155,162 +166,122 @@ def write_neo4j(
     if equivalence_classes is None:
         equivalence_classes = {}
 
-    concept_nodes_path = directory.joinpath("concept_nodes.tsv.gz")
-    concepts: set[Reference] = set()
+    # keep track of the concepts that have been written
+    # as we iterate through mappings, so we don't write
+    # duplicates
+    seen_concepts: set[Reference] = set()
 
-    evidences: dict[Hashable, Evidence] = {}
-    mapping_sets: dict[str, MappingSet] = {}
+    # keep track of the CURIEs for mapping sets
+    mapping_set_curies: set[str] = set()
 
-    mapping_nodes_path = directory.joinpath("mapping_nodes.tsv.gz")
-    evidence_nodes_path = directory.joinpath("evidence_nodes.tsv.gz")
-    mapping_set_nodes_path = directory.joinpath("mapping_set_nodes.tsv.gz")
-    mapping_edges_path = directory.joinpath("mapping_edges.tsv.gz")
-    edges_path = directory.joinpath("edges.tsv.gz")
+    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
+    edges_path = directory.joinpath(EDGES_FILENAME)
 
-    with gzip.open(mapping_edges_path, "wt") as file1, gzip.open(edges_path, "wt") as file2:
-        mapping_writer = csv.writer(file1, delimiter="\t")
-        mapping_writer.writerow(EDGES_HEADER)
+    node_paths = [
+        (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),
+        (SEMRA_NEO4J_MAPPING_LABEL, mapping_nodes_path),
+        (SEMRA_NEO4J_EVIDENCE_LABEL, evidence_nodes_path),
+        (SEMRA_NEO4J_MAPPING_SET_LABEL, mapping_set_nodes_path),
+    ]
+    node_names = [(a, n.relative_to(directory)) for a, n in node_paths]
+    edge_paths = [mapping_edges_path, edges_path]
+    edge_names = [n.relative_to(directory) for n in edge_paths]
 
-        edge_writer = csv.writer(file2, delimiter="\t")
+    with (
+        safe_open_writer(mapping_edges_path) as mapping_edges_writer,
+        safe_open_writer(edges_path) as edge_writer,
+        safe_open_writer(concept_nodes_path) as concept_nodes_writer,
+        safe_open_writer(mapping_nodes_path) as mapping_nodes_writer,
+        safe_open_writer(evidence_nodes_path) as evidence_nodes_writer,
+        safe_open_writer(mapping_set_nodes_path) as mapping_set_writer,
+    ):
+        mapping_edges_writer.writerow(EDGES_HEADER)
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
+        concept_nodes_writer.writerow(CONCEPT_NODES_HEADER)
+        mapping_nodes_writer.writerow(MAPPING_NODES_HEADER)
+        evidence_nodes_writer.writerow(EVIDENCE_NODES_HEADER)
+        mapping_set_writer.writerow(MAPPING_SET_NODES_HEADER)
 
-        for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="preparing Neo4j"):
-            concepts.add(mapping.s)
-            concepts.add(mapping.o)
+        for mapping in tqdm(
+            mappings,
+            unit="mapping",
+            unit_scale=True,
+            desc="streaming writing to Neo4j",
+            disable=not use_tqdm,
+        ):
+            mapping_curie = mapping.curie
 
-            mapping_writer.writerow(
-                (
-                    mapping.s.curie,
-                    mapping.p.curie,
-                    mapping.o.curie,
-                    get_confidence_str(mapping),
-                    _neo4j_bool(mapping.has_primary),
-                    _neo4j_bool(mapping.has_secondary),
-                    _neo4j_bool(mapping.has_tertiary),
-                    "|".join(
-                        sorted(
-                            {
-                                evidence.mapping_set.name
-                                for evidence in mapping.evidence
-                                if evidence.mapping_set
-                            }
-                        )
-                    ),
+            if mapping.s not in seen_concepts:
+                concept_nodes_writer.writerow(
+                    _concept_to_row(mapping.s, add_labels, equivalence_classes)
                 )
-            )
-            edge_writer.writerow((mapping.curie, ANNOTATED_SOURCE.curie, mapping.s.curie))
-            edge_writer.writerow((mapping.curie, ANNOTATED_TARGET.curie, mapping.o.curie))
+                seen_concepts.add(mapping.s)
+            if mapping.o not in seen_concepts:
+                concept_nodes_writer.writerow(
+                    _concept_to_row(mapping.o, add_labels, equivalence_classes)
+                )
+                seen_concepts.add(mapping.o)
+
+            mapping_nodes_writer.writerow(_mapping_to_node_row(mapping_curie, mapping))
+            mapping_edges_writer.writerow(_mapping_to_edge_row(mapping))
+
+            # these connect the node representing the mappings to the
+            # subject and object using the RDF reified edge data model
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.s.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.o.curie))
+
             for evidence in mapping.evidence:
-                edge_writer.writerow((mapping.curie, HAS_EVIDENCE_PREDICATE, evidence.curie))
-                evidences[evidence.key()] = evidence
-                if evidence.mapping_set:
-                    mapping_sets[evidence.mapping_set.name] = evidence.mapping_set
-                    edge_writer.writerow(
-                        (evidence.curie, FROM_SET_PREDICATE, evidence.mapping_set.curie)
-                    )
-                elif isinstance(evidence, ReasonedEvidence):
-                    for mmm in evidence.mappings:
-                        edge_writer.writerow((evidence.curie, DERIVED_PREDICATE, mmm.curie))
-                # elif isinstance(evidence, SimpleEvidence):
-                #     pass
-                # else:
-                #     raise TypeError
+                evidence_curie = evidence.get_reference(mapping).curie
+
+                # this connects the mapping to its evidence
+                edge_writer.writerow((mapping_curie, HAS_EVIDENCE_PREDICATE, evidence_curie))
+
+                # this creates a node for the evidence
+                evidence_nodes_writer.writerow(_evidence_to_row(evidence_curie, evidence))
+
+                match evidence:
+                    case SimpleEvidence():
+                        mapping_set_curie = evidence.mapping_set.curie
+                        if mapping_set_curie not in mapping_set_curies:
+                            mapping_set_writer.writerow(
+                                _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
+                            )
+                            mapping_set_curies.add(mapping_set_curie)
+
+                        edge_writer.writerow(
+                            (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
+                        )
+                    case ReasonedEvidence():
+                        for mmm in evidence.mappings:
+                            edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
 
                 # Add authorship information for the evidence, if available
                 if evidence.author:
-                    concepts.add(evidence.author)
+                    if evidence.author not in seen_concepts:
+                        concept_nodes_writer.writerow(
+                            _concept_to_row(evidence.author, add_labels, equivalence_classes)
+                        )
+                        seen_concepts.add(evidence.author)
+
                     edge_writer.writerow(
-                        (evidence.curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
+                        (evidence_curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
                     )
-
-    sorted_concepts = sorted(concepts, key=lambda n: n.curie) if sort else list(concepts)
-    _write_tsv_gz(
-        concept_nodes_path,
-        CONCEPT_NODES_HEADER,
-        (
-            (
-                concept.curie,
-                concept.prefix,
-                get_name_by_curie(concept.curie) or "" if add_labels else "",
-                _neo4j_bool(equivalence_classes.get(concept, False)),
-            )
-            for concept in tqdm(
-                sorted_concepts, desc="writing concept nodes", unit_scale=True, unit="concept"
-            )
-        ),
-    )
-
-    sorted_mappings = sorted(mappings, key=lambda n: n.curie) if sort else mappings
-    _write_tsv_gz(
-        mapping_nodes_path,
-        MAPPING_NODES_HEADER,
-        (
-            (
-                mapping.curie,
-                SEMRA_MAPPING_PREFIX,
-                mapping.p.curie,
-                get_confidence_str(mapping),
-                _neo4j_bool(mapping.has_primary),
-                _neo4j_bool(mapping.has_secondary),
-                _neo4j_bool(mapping.has_tertiary),
-            )
-            for mapping in tqdm(
-                sorted_mappings, desc="writing mapping nodes", unit_scale=True, unit="mapping"
-            )
-        ),
-    )
-
-    sorted_mapping_sets = (
-        sorted(mapping_sets.values(), key=lambda n: n.curie)
-        if sort
-        else list(mapping_sets.values())
-    )
-    _write_tsv_gz(
-        mapping_set_nodes_path,
-        MAPPING_SET_NODES_HEADER,
-        (
-            (
-                mapping_set.curie,
-                SEMRA_MAPPING_SET_PREFIX,
-                mapping_set.name,
-                mapping_set.license or "",
-                mapping_set.version or "",
-                get_confidence_str(mapping_set),
-            )
-            for mapping_set in sorted_mapping_sets
-        ),
-    )
-
-    sorted_evidences = (
-        sorted(evidences.values(), key=lambda row: row.curie) if sort else list(evidences.values())
-    )
-    _write_tsv_gz(
-        evidence_nodes_path,
-        EVIDENCE_NODES_HEADER,
-        (
-            (
-                evidence.curie,
-                SEMRA_EVIDENCE_PREFIX,
-                evidence.evidence_type,
-                evidence.justification.curie,
-                get_confidence_str(evidence),
-            )
-            for evidence in tqdm(
-                sorted_evidences,
-                desc="writing evidence nodes",
-                leave=False,
-                unit_scale=True,
-                unit="evidence",
-            )
-        ),
-    )
 
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render())
 
-    # TODO flag for swapping on version of semra / git installation
     docker_path = directory.joinpath(dockerfile_name)
-    docker_path.write_text(DOCKERFILE_TEMPLATE.render())
+    docker_path.write_text(
+        DOCKERFILE_TEMPLATE.render(
+            node_names=node_names,
+            edge_names=edge_names,
+            pip_install=pip_install,
+        )
+    )
 
     run_path = directory.joinpath(run_script_name)
     run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))
@@ -337,9 +308,67 @@ def _neo4j_bool(b: bool, /) -> str:
     return "true" if b else "false"
 
 
-def _write_tsv_gz(path: str | Path, header: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
-    click.echo(f"writing to {path}")
-    with gzip.open(path, "wt") as file:
-        writer = csv.writer(file, delimiter="\t")
-        writer.writerow(header)
-        writer.writerows(rows)
+def _concept_to_row(
+    concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
+) -> Sequence[str]:
+    concept_curie = concept.curie
+    if add_labels:
+        name = concept.name or get_name_by_curie(concept_curie) or ""
+    else:
+        name = concept.name or ""
+    return (
+        concept_curie,
+        concept.prefix,
+        name,
+        _neo4j_bool(equivalence_classes.get(concept, False)),
+    )
+
+
+def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
+    return (
+        mapping_curie,
+        SEMRA_MAPPING_PREFIX,
+        mapping.p.curie,
+        get_confidence_str(mapping),
+        _neo4j_bool(mapping.has_primary),
+        _neo4j_bool(mapping.has_secondary),
+        _neo4j_bool(mapping.has_tertiary),
+    )
+
+
+def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
+    return (
+        evidence_curie,
+        SEMRA_EVIDENCE_PREFIX,
+        evidence.evidence_type,
+        evidence.justification.curie,
+        get_confidence_str(evidence),
+    )
+
+
+def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
+    return (
+        mapping.s.curie,
+        mapping.p.curie,
+        mapping.o.curie,
+        get_confidence_str(mapping),
+        _neo4j_bool(mapping.has_primary),
+        _neo4j_bool(mapping.has_secondary),
+        _neo4j_bool(mapping.has_tertiary),
+        "|".join(
+            sorted(
+                {evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set}
+            )
+        ),
+    )
+
+
+def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequence[str]:
+    return (
+        mapping_set_curie,
+        SEMRA_MAPPING_SET_PREFIX,
+        mapping_set.name,
+        mapping_set.license or "",
+        mapping_set.version or "",
+        get_confidence_str(mapping_set),
+    )

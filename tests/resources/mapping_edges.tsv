@@ -1,0 +1,4 @@
+:START_ID	:TYPE	:END_ID	confidence:float	primary:boolean	secondary:boolean	tertiary:boolean	mapping_sets:string[]
+mesh:C406527	skos:exactMatch	chebi:101854	0.99988	false	true	false	biomappings|lexical
+chebi:101854	skos:exactMatch	chembl.compound:CHEMBL459505	0.9	false	true	false	chembl
+mesh:C406527	skos:exactMatch	chembl.compound:CHEMBL459505	1.0	false	false	true	

@@ -67,6 +67,11 @@ BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. 
 
 SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]
 
+SEMRA_NEO4J_MAPPING_LABEL = "mapping"
+SEMRA_NEO4J_CONCEPT_LABEL = "concept"
+SEMRA_NEO4J_EVIDENCE_LABEL = "evidence"
+SEMRA_NEO4J_MAPPING_SET_LABEL = "mappingset"
+
 SEMRA_MAPPING_PREFIX = "semra.mapping"
 SEMRA_MAPPING = bioregistry.Resource(prefix=SEMRA_MAPPING_PREFIX, name="SeMRA Mapping")
 

@@ -225,7 +225,7 @@ def write_neo4j(
             edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.o.curie))
 
             for evidence in mapping.evidence:
-                evidence_curie = evidence.curie
+                evidence_curie = evidence.get_reference(mapping).curie
 
                 # this connects the mapping to its evidence
                 edge_writer.writerow((mapping_curie, HAS_EVIDENCE_PREDICATE, evidence_curie))

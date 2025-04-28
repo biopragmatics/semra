@@ -225,18 +225,16 @@ summary_df = summarize_prefixes(mappings)
 A priority graph looks like this:
 
 ```mermaid
-graph LR
+flowchart LR
     subgraph unprocessed
-       A[R 115866<br/>mesh:C406527] -- B[talarozole<br/>chebi:101854]
-       B --  C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
-       A -- C
+    A[R 115866<br/>mesh:C406527] -- B[talarozole<br/>chebi:101854]
+    B --  C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A -- C
     end
-
     subgraph star
-       A[R 115866<br/>mesh:C406527] --> B[talarozole<br/>chebi:101854]
-       C[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> B
-    end
-    
+    A[R 115866<br/>mesh:C406527] --> B[talarozole<br/>chebi:101854]
+    C[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> B
+    end    
     unprocessed --> star
 ```
 

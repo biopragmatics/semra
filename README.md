@@ -227,9 +227,9 @@ A priority graph looks like this:
 ```mermaid
 flowchart LR
     subgraph unprocessed
-    A[R 115866<br/>mesh:C406527] -- B[talarozole<br/>chebi:101854]
-    B --  C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
-    A -- C
+    A[R 115866<br/>mesh:C406527] --- B[talarozole<br/>chebi:101854]
+    B --- C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A --- C
     end
     subgraph star
     A[R 115866<br/>mesh:C406527] --> B[talarozole<br/>chebi:101854]

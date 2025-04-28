@@ -17,17 +17,8 @@ import ssslm
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
-from semra.rules import (
-    BROAD_MATCH,
-    CHAIN_MAPPING,
-    DB_XREF,
-    EXACT_MATCH,
-    FLIP,
-    INVERSION_MAPPING,
-    KNOWLEDGE_MAPPING,
-    NARROW_MATCH,
-    SubsetConfiguration,
-)
+from semra.io.graph import _from_digraph_edge, to_digraph
+from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
 from semra.struct import (
     Evidence,
     Mapping,
@@ -38,10 +29,9 @@ from semra.struct import (
     Triple,
     triple_key,
 )
+from semra.utils import cleanup_prefixes, semra_tqdm
 
 __all__ = [
-    "EVIDENCE_KEY",
-    "PREDICATE_KEY",
     "TEST_MAPPING_SET",
     "Index",
     "M2MIndex",
@@ -57,18 +47,12 @@ __all__ = [
     "filter_self_matches",
     "filter_subsets",
     "flip",
-    "from_digraph",
     "get_index",
     "get_many_to_many",
     "get_priority_reference",
     "get_test_evidence",
     "get_test_reference",
     "hydrate_subsets",
-    "infer_chains",
-    "infer_dbxref_mutations",
-    "infer_mutations",
-    "infer_mutual_dbxref_mutations",
-    "infer_reversible",
     "keep_object_prefixes",
     "keep_prefixes",
     "keep_subject_prefixes",
@@ -80,8 +64,6 @@ __all__ = [
     "str_source_target_counts",
     "summarize_prefixes",
     "tabulate_index",
-    "to_digraph",
-    "to_multidigraph",
     "unindex",
     "update_literal_mappings",
     "validate_mappings",
@@ -89,35 +71,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-DATA_KEY = "data"
-PREDICATE_KEY = "predicate"
-EVIDENCE_KEY = "evidence"
-
 #: An index allows for the aggregation of evidences for each core triple
 Index = dict[Triple, list[Evidence]]
 
 X = TypeVar("X")
-
-
-def _tqdm(
-    mappings: Iterable[X],
-    desc: str | None = None,
-    *,
-    progress: bool = True,
-    leave: bool = True,
-) -> Iterable[X]:
-    return cast(
-        Iterable[X],
-        tqdm(
-            mappings,
-            unit_scale=True,
-            unit="mapping",
-            desc=desc,
-            leave=leave,
-            disable=not progress,
-        ),
-    )
-
 
 #: A test mapping set that can be used in examples.
 TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
@@ -216,7 +173,7 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
 def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool = False) -> Index:
     """Aggregate and deduplicate evidences for each core triple."""
     dd: defaultdict[Triple, list[Evidence]] = defaultdict(list)
-    for mapping in _tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
+    for mapping in semra_tqdm(mappings, desc="Indexing mappings", progress=progress, leave=leave):
         dd[mapping.triple].extend(mapping.evidence)
     return {triple: deduplicate_evidence(triple, evidence) for triple, evidence in dd.items()}
 
@@ -245,65 +202,6 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
     """
     index = get_index(mappings, progress=progress)
     return unindex(index, progress=progress)
-
-
-def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
-    """Extend the mapping list with flipped mappings.
-
-    :param mappings: An iterable of mappings
-    :param progress: Should a progress bar be shown? Defaults to true.
-    :returns:
-        A list where if a mapping can be flipped (i.e., :func:`flip`), a flipped
-        mapping is added. Flipped mappings contain reasoned evidence
-        :class:`ReasonedEvidence` objects that point to the mapping from which
-        the evidence was derived.
-
-    Flipping a mapping means switching the subject and object, then modifying the
-    predicate as follows:
-
-    1. Broad becomes narrow
-    2. Narrow becomes broad
-    3. Exact and close mappings remain the same, since they're reflexive
-
-    This is configured in the :data:`semra.rules.FLIP` dictionary.
-
-    >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
-    >>> from semra.api import get_test_evidence, get_test_reference
-    >>> r1, r2 = get_test_reference(2)
-    >>> e1 = get_test_evidence()
-    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-    >>> mappings = list(infer_reversible([m1]))
-    >>> len(mappings)
-    2
-    >>> assert mappings[0] == m1
-
-    .. warning::
-
-        This operation does not "assemble", meaning if you had existing evidence
-        for an inverse mapping, they will be seperate. Therefore, you can chain
-        it with the :func:`assemble_evidences` operation:
-
-        >>> from semra import Mapping, Reference, EXACT_MATCH
-        >>> from semra.api import get_test_evidence
-        >>> from semra.api import get_test_evidence, get_test_reference
-        >>> r1, r2 = get_test_reference(2)
-        >>> e1, e2 = get_test_evidence(2)
-        >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-        >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
-        >>> mappings = list(infer_reversible([m1, m2]))
-        >>> len(mappings)
-        4
-        >>> mappings = assemble_evidences(mappings)
-        >>> len(mappings)
-        2
-
-    """
-    rv = []
-    for mapping in _tqdm(mappings, desc="Infer reverse", progress=progress):
-        rv.append(mapping)
-        if flipped_mapping := flip(mapping):
-            rv.append(flipped_mapping)
-    return rv
 
 
 # TODO infer negative mappings for exact match from narrow/broad match
@@ -345,198 +243,10 @@ def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
         return None
 
 
-def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
-    """Convert mappings into a simple directed graph data model.
-
-    :param mappings: An iterable of mappings
-    :returns: A directed graph in which the nodes are
-        :class:`curies.Reference` objects. The predicate
-        is put under the :data:`PREDICATE_KEY` key in the
-        edge data and the evidences are put under the
-        :data:`EVIDENCE_KEY` key in the edge data.
-
-    .. warning::
-
-        This function makes two assumptions:
-
-        1. The graph has already been assembled using :func:`assemble_evidences`
-        2. That only one predicate is used in the graph.
-
-        In order to support multiple predicate types, this would have to be
-        a :class:`networkx.MultiDiGraph` and use
-        ``graph.add_edge(mappings.s, mapping.o, key=mapping.p, **{EVIDENCE_KEY: mapping.evidence})``
-    """
-    graph = nx.DiGraph()
-    edges: defaultdict[tuple[Reference, Reference], defaultdict[Reference, list[Evidence]]] = (
-        defaultdict(lambda: defaultdict(list))
-    )
-    for mapping in mappings:
-        edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
-    for (s, o), data in edges.items():
-        graph.add_edge(s, o, **{DATA_KEY: data})
-    return graph
-
-
-def from_digraph(graph: nx.DiGraph) -> list[Mapping]:
-    """Extract mappings from a simple directed graph data model."""
-    return [mapping for s, o in graph.edges() for mapping in _from_digraph_edge(graph, s, o)]
-
-
-def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
-    data = graph[s][o]
-    for p, evidence in data[DATA_KEY].items():
-        yield Mapping(s=s, p=p, o=o, evidence=evidence)
-
-
 def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[set[Reference]]:
     """Iterate over connected components in the multidigraph view over the mappings."""
     graph = to_digraph(mappings)
     return cast(t.Iterable[set[Reference]], nx.weakly_connected_components(graph))
-
-
-def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
-    """Convert mappings into a multi directed graph data model.
-
-    :param mappings: An iterable of mappings
-    :param progress: Should a progress bar be shown?
-    :returns: A directed graph in which the nodes are
-        :class:`curies.Reference` objects. The predicate
-        is put under the :data:`PREDICATE_KEY` key in the
-        edge data and the evidences are put under the
-        :data:`EVIDENCE_KEY` key in the edge data.
-
-    .. warning::
-
-        This function makes the following assumptions:
-
-        1. The graph has already been assembled using :func:`assemble_evidences`
-
-    """
-    graph = nx.MultiDiGraph()
-    for mapping in _tqdm(mappings, progress=progress):
-        graph.add_edge(
-            mapping.s,
-            mapping.o,
-            key=mapping.p,
-            **{EVIDENCE_KEY: mapping.evidence},
-        )
-    return graph
-
-
-def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference | None:
-    """Return a single reasoned predicate based on a set, if possible.
-
-    :param predicates: A collection of predicates
-    :return:
-        A single predicate that represents the set, if possible
-
-        For example, if a predicate set with exact + broad are given, then
-        the most specific possible is exact. If a predicate contains
-        exact, broad, and narrow, then no reasoning can be done and None is returned.
-    """
-    predicate_set = set(predicates)
-    if predicate_set == {EXACT_MATCH}:
-        return EXACT_MATCH
-    if predicate_set == {BROAD_MATCH} or predicate_set == {EXACT_MATCH, BROAD_MATCH}:
-        return BROAD_MATCH
-    if predicate_set == {NARROW_MATCH} or predicate_set == {EXACT_MATCH, NARROW_MATCH}:
-        return NARROW_MATCH
-    return None
-
-
-def infer_chains(
-    mappings: list[Mapping],
-    *,
-    backwards: bool = True,
-    progress: bool = True,
-    cutoff: int = 5,
-    minimum_component_size: int = 2,
-    maximum_component_size: int = 100,
-) -> list[Mapping]:
-    """Apply graph-based reasoning over mapping chains to infer new mappings.
-
-    :param mappings: A list of input mappings
-    :param backwards: Should inference be done in reverse?
-    :param progress: Should a progress bar be shown? Defaults to true.
-    :param cutoff: What's the maximum length path to infer over?
-    :param minimum_component_size: The smallest size of a component to consider, defaults to 2
-    :param maximum_component_size: The smallest size of a component to consider, defaults to 100.
-        Components that are very large (i.e., much larger than the number of target prefixes)
-        likely are the result of many broad/narrow mappings
-    :return: The list of input mappings _plus_ inferred mappings
-    """
-    mappings = assemble_evidences(mappings, progress=progress)
-    graph = to_multidigraph(mappings)
-    new_mappings = []
-
-    components = sorted(
-        (
-            component
-            for component in nx.weakly_connected_components(graph)
-            if minimum_component_size < len(component) <= maximum_component_size
-        ),
-        key=len,
-        reverse=True,
-    )
-    it = tqdm(
-        components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress
-    )
-    for _i, component in enumerate(it):
-        sg: nx.MultiDiGraph = graph.subgraph(component).copy()
-        sg_len = sg.number_of_nodes()
-        it.set_postfix(size=sg_len)
-        inner_it = tqdm(
-            itt.combinations(sg, 2),
-            total=sg_len * (sg_len - 1) // 2,
-            unit_scale=True,
-            disable=not progress,
-            unit="edge",
-            leave=False,
-        )
-        for s, o in inner_it:
-            if sg.has_edge(s, o):  # do not overwrite existing mappings
-                continue
-            # TODO there has to be a way to reimplement transitive closure to handle this
-            # nx.shortest_path(sg, s, o)
-            predicate_evidence_dict: defaultdict[Reference, list[Evidence]] = defaultdict(list)
-            for path in nx.all_simple_edge_paths(sg, s, o, cutoff=cutoff):
-                if _path_has_prefix_duplicates(path):
-                    continue
-                predicates = [k for _u, _v, k in path]
-                p = _reason_multiple_predicates(predicates)
-                if p is not None:
-                    evidence = ReasonedEvidence(
-                        justification=CHAIN_MAPPING,
-                        mappings=[
-                            Mapping(
-                                s=path_s,
-                                o=path_o,
-                                p=path_p,
-                                evidence=graph[path_s][path_o][path_p][EVIDENCE_KEY],
-                            )
-                            for path_s, path_o, path_p in path
-                        ],
-                        # TODO add confidence that's inversely proportional to sg_len, i.e.
-                        # larger components should return less confident mappings
-                    )
-                    predicate_evidence_dict[p].append(evidence)
-
-            for p, evidences in predicate_evidence_dict.items():
-                new_mappings.append(Mapping(s=s, p=p, o=o, evidence=evidences))
-                if backwards:
-                    new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidences))
-
-    return [*mappings, *new_mappings]
-
-
-def _path_has_prefix_duplicates(path: Iterable[tuple[Reference, Reference, Reference]]) -> bool:
-    """Return if the path has multiple unique."""
-    elements: set[Reference] = set()
-    for u, v, _ in path:
-        elements.add(u)
-        elements.add(v)
-    counter = Counter(element.prefix for element in elements)
-    return any(v > 1 for v in counter.values())
 
 
 def tabulate_index(index: Index) -> str:
@@ -567,202 +277,6 @@ def tabulate_index(index: Index) -> str:
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")
 
 
-def infer_mutual_dbxref_mutations(
-    mappings: Iterable[Mapping],
-    prefixes: Iterable[str],
-    confidence: float | None = None,
-    *,
-    progress: bool = False,
-) -> list[Mapping]:
-    """Upgrade database cross-references into exact matches for the given pairs.
-
-    :param mappings: A list of mappings
-    :param prefixes: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
-        If giving a collection of pairs, will use the ``confidence`` value as given.
-    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
-        Defaults to 0.7
-    :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A new list of mappings containing upgrades
-
-    In the following example, we use four different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge
-    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
-
-    >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
-    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3 = map(Reference.from_curie, curies)
-    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
-    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> m3 = Mapping.from_triple(
-    ...     (r1, EXACT_MATCH, r2),
-    ...     evidence=[
-    ...         ReasonedEvidence(
-    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
-    ...         )
-    ...     ],
-    ... )  # this is what we are inferring
-    >>> assert infer_mutual_dbxref_mutations([m1, m2], ["DOID", "mesh"], confidence=0.99) == [
-    ...     m1,
-    ...     m3,
-    ...     m2,
-    ... ]
-
-    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
-    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
-    """
-    prefixes = _cleanup_prefixes(prefixes)
-    pairs = {
-        (subject_prefix, object_prefix)
-        for subject_prefix, object_prefix in itt.product(prefixes, repeat=2)
-        if subject_prefix != object_prefix
-    }
-    return infer_dbxref_mutations(mappings, pairs=pairs, confidence=confidence, progress=progress)
-
-
-def infer_dbxref_mutations(
-    mappings: Iterable[Mapping],
-    pairs: dict[tuple[str, str], float] | Iterable[tuple[str, str]],
-    confidence: float | None = None,
-    progress: bool = False,
-) -> list[Mapping]:
-    """Upgrade database cross-references into exact matches for the given pairs.
-
-    :param mappings: A list of mappings
-    :param pairs: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
-        If giving a collection of pairs, will use the ``confidence`` value as given.
-    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
-        Defaults to 0.7
-    :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A new list of mappings containing upgrades
-
-    In the following example, we use four different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge
-    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
-
-    >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
-    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
-    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
-    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> mappings = [m1, m2]
-    >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple(
-    ...     (r1, EXACT_MATCH, r2),
-    ...     evidence=[
-    ...         ReasonedEvidence(
-    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
-    ...         )
-    ...     ],
-    ... )  # this is what we are inferring
-    >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
-
-    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
-    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
-    """
-    if confidence is None:
-        confidence = 0.7
-    if not isinstance(pairs, dict):
-        pairs = dict.fromkeys(pairs, confidence)
-    return infer_mutations(
-        mappings,
-        pairs=pairs,
-        old_predicate=DB_XREF,
-        new_predicate=EXACT_MATCH,
-        progress=progress,
-    )
-
-
-def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], float]:
-    rv = {}
-    for (p1, p2), v in pairs.items():
-        p1_norm = bioregistry.normalize_prefix(p1, strict=True)
-        p2_norm = bioregistry.normalize_prefix(p2, strict=True)
-        rv[p1_norm, p2_norm] = v
-    return rv
-
-
-def infer_mutations(
-    mappings: Iterable[Mapping],
-    pairs: dict[tuple[str, str], float],
-    old_predicate: Reference,
-    new_predicate: Reference,
-    *,
-    progress: bool = False,
-) -> list[Mapping]:
-    """Infer mappings with alternate predicates for the given prefix pairs.
-
-    :param mappings: Mappings to infer from
-    :param pairs: A dictionary of pairs of (subject prefix, object prefix) to the confidence
-        of inference
-    :param old_predicate: The predicate on which inference should be done
-    :param new_predicate: The predicate to get inferred
-    :param progress: Should a progress bar be shown? Defaults to true.
-    :returns: A list of all old mapping plus inferred ones interspersed.
-
-    In the following example, we use three different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge that there's a high
-    confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
-
-    >>> from semra import DB_XREF, EXACT_MATCH, Reference
-    >>> from semra.rules import KNOWLEDGE_MAPPING
-    >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
-    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
-    >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))
-    >>> m2 = Mapping.from_triple((r2, DB_XREF, r3))
-    >>> pairs = {("DOID", "mesh"): 0.99}
-    >>> m3 = Mapping.from_triple(
-    ...     (r1, EXACT_MATCH, r2),
-    ...     evidence=[
-    ...         ReasonedEvidence(
-    ...             mappings=[m1], justification=KNOWLEDGE_MAPPING, confidence_factor=0.99
-    ...         )
-    ...     ],
-    ... )  # this is what we are inferring  # this is what we are inferring
-    >>> mappings = infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH)
-    >>> assert mappings == [m1, m3, m2]
-    """
-    pairs = _clean_pairs(pairs)
-    rv = []
-    for mapping in _tqdm(mappings, desc="Adding mutated predicates", progress=progress):
-        rv.append(mapping)
-        if mapping.p != old_predicate:
-            continue
-        confidence_factor = pairs.get((mapping.s.prefix, mapping.o.prefix))
-        if confidence_factor is None:
-            # This means that there was no explicit confidence set for the
-            # subject/object prefix pair, meaning it wasn't asked to be inferred
-            continue
-        inferred_mapping = Mapping(
-            s=mapping.s,
-            p=new_predicate,
-            o=mapping.o,
-            evidence=[
-                ReasonedEvidence(
-                    justification=KNOWLEDGE_MAPPING,
-                    mappings=[mapping],
-                    confidence_factor=confidence_factor,
-                )
-            ],
-        )
-        rv.append(inferred_mapping)
-    return rv
-
-
-def _cleanup_prefixes(prefixes: str | Iterable[str]) -> set[str]:
-    if isinstance(prefixes, str):
-        prefixes = [prefixes]
-    return {bioregistry.normalize_prefix(prefix, strict=True) for prefix in prefixes}
-
-
 def keep_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -781,10 +295,10 @@ def keep_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_prefixes([m1, m2, m3], {"DOID", "mesh"}) == [m1]
     """
-    prefixes = _cleanup_prefixes(prefixes)
+    prefixes = cleanup_prefixes(prefixes)
     return [
         mapping
-        for mapping in _tqdm(
+        for mapping in semra_tqdm(
             mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress
         )
         if mapping.s.prefix in prefixes and mapping.o.prefix in prefixes
@@ -809,10 +323,10 @@ def keep_subject_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_subject_prefixes([m1, m2, m3], {"DOID"})
     """
-    prefixes = _cleanup_prefixes(prefixes)
+    prefixes = cleanup_prefixes(prefixes)
     return [
         mapping
-        for mapping in _tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
+        for mapping in semra_tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
         if mapping.s.prefix in prefixes
     ]
 
@@ -835,10 +349,10 @@ def keep_object_prefixes(
     >>> m3 = Mapping.from_triple((r1, DB_XREF, r3))
     >>> assert keep_object_prefixes([m1, m2, m3], {"mesh"}) == [m1]
     """
-    prefixes = _cleanup_prefixes(prefixes)
+    prefixes = cleanup_prefixes(prefixes)
     return [
         mapping
-        for mapping in _tqdm(mappings, desc="Filtering object prefixes", progress=progress)
+        for mapping in semra_tqdm(mappings, desc="Filtering object prefixes", progress=progress)
         if mapping.o.prefix in prefixes
     ]
 
@@ -847,10 +361,10 @@ def filter_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings whose subject or object are in the given list of prefixes."""
-    prefixes = _cleanup_prefixes(prefixes)
+    prefixes = cleanup_prefixes(prefixes)
     return [
         mapping
-        for mapping in _tqdm(
+        for mapping in semra_tqdm(
             mappings, desc=f"Filtering out {len(prefixes)} prefixes", progress=progress
         )
         if mapping.s.prefix not in prefixes and mapping.o.prefix not in prefixes
@@ -861,7 +375,7 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     """Filter out mappings within the same resource."""
     return [
         mapping
-        for mapping in _tqdm(mappings, desc="Filtering out self-matches", progress=progress)
+        for mapping in semra_tqdm(mappings, desc="Filtering out self-matches", progress=progress)
         if mapping.s.prefix != mapping.o.prefix
     ]
 
@@ -873,7 +387,7 @@ def filter_mappings(
     skip_triples = {skip_mapping.triple for skip_mapping in skip_mappings}
     return [
         mapping
-        for mapping in _tqdm(mappings, desc="Filtering mappings", progress=progress)
+        for mapping in semra_tqdm(mappings, desc="Filtering mappings", progress=progress)
         if mapping.triple not in skip_triples
     ]
 
@@ -1097,7 +611,9 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     """
     return [
         Mapping.from_triple(triple, evidence=evidence)
-        for triple, evidence in _tqdm(index.items(), desc="Unindexing mappings", progress=progress)
+        for triple, evidence in semra_tqdm(
+            index.items(), desc="Unindexing mappings", progress=progress
+        )
     ]
 
 
@@ -1312,7 +828,7 @@ def aggregate_components(
     components = iter_components(mappings)
 
     if prefix_allowlist is not None:
-        prefix_set = _cleanup_prefixes(prefix_allowlist)
+        prefix_set = cleanup_prefixes(prefix_allowlist)
         for component in components:
             # subset to the priority prefixes
             subcomponent: frozenset[Reference] = frozenset(

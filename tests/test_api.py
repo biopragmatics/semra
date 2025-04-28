@@ -15,17 +15,14 @@ from semra.api import (
     filter_mappings,
     filter_self_matches,
     flip,
-    from_digraph,
     get_index,
     get_many_to_many,
-    infer_chains,
-    infer_mutations,
-    infer_reversible,
     keep_prefixes,
     prioritize_df,
     project,
-    to_digraph,
 )
+from semra.inference import infer_chains, infer_mutations, infer_reversible
+from semra.io.graph import from_digraph, to_digraph
 from semra.rules import (
     BROAD_MATCH,
     DB_XREF,

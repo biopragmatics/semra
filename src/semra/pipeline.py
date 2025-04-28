@@ -22,13 +22,11 @@ from semra.api import (
     filter_self_matches,
     filter_subsets,
     hydrate_subsets,
-    infer_chains,
-    infer_mutual_dbxref_mutations,
-    infer_reversible,
     keep_prefixes,
     prioritize,
     validate_mappings,
 )
+from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_reversible
 from semra.io import (
     from_bioontologies,
     from_cache_df,

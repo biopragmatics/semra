@@ -31,6 +31,12 @@ def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
     url = f"https://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Monthly/{version}/Extras/CID-MeSH"
     res = requests.get(url, stream=True, timeout=600)
 
+    evidence = SimpleEvidence(
+        justification=UNSPECIFIED_MAPPING,
+        # Data is in public domain: https://www.ncbi.nlm.nih.gov/home/about/policies/
+        mapping_set=MappingSet(name="pubchem", version=version, confidence=0.99, license="CC0"),
+    )
+
     rv = []
     for line in res.iter_lines():
         # on a small number of entries, there are multiple names. their impact is negligible
@@ -45,15 +51,7 @@ def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
             s=Reference(prefix="pubchem.compound", identifier=pubchem),
             o=Reference(prefix="mesh", identifier=mesh_id),
             p=EXACT_MATCH,
-            evidence=[
-                SimpleEvidence(
-                    justification=UNSPECIFIED_MAPPING,
-                    # Data is in public domain: https://www.ncbi.nlm.nih.gov/home/about/policies/
-                    mapping_set=MappingSet(
-                        name="pubchem", version=version, confidence=0.99, license="CC0"
-                    ),
-                )
-            ],
+            evidence=[evidence],
         )
         rv.append(mapping)
 

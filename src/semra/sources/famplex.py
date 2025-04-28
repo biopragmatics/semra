@@ -26,6 +26,9 @@ def get_fplx_mappings() -> list[Mapping]:
     """Get xrefs from FamPlex."""
     df = pd.read_csv(URL, header=None, names=["target_prefix", "target_id", "source_id"], sep=",")
     df = df[df["target_prefix"] != "MEDSCAN"]
+    evidence = SimpleEvidence(
+        justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_ORCID
+    )
     rv = [
         Mapping(
             s=Reference(prefix="fplx", identifier=source_id),
@@ -34,11 +37,7 @@ def get_fplx_mappings() -> list[Mapping]:
                 prefix=bioregistry.normalize_prefix(target_prefix),
                 identifier=bioregistry.standardize_identifier(target_prefix, target_id),
             ),
-            evidence=[
-                SimpleEvidence(
-                    justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_ORCID
-                )
-            ],
+            evidence=[evidence],
         )
         for target_prefix, target_id, source_id in df.values
         if (

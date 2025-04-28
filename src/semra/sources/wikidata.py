@@ -72,6 +72,7 @@ def _help(
     _predicate = Reference(prefix=predicate.prefix, identifier=predicate.identifier)
 
     mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
+    evidence = SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
     rv = []
     for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
         if not wikidata_id.startswith("Q"):
@@ -84,7 +85,7 @@ def _help(
             s=Reference(prefix="wikidata", identifier=wikidata_id),
             p=_predicate,
             o=o,
-            evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
+            evidence=[evidence],
         )
         rv.append(mapping)
     return rv

@@ -34,6 +34,13 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
     )
     for k in ("source_prefix", "target_prefix"):
         df[k] = df[k].map(bioregistry.normalize_prefix)
+
+    evidence = SimpleEvidence(
+        justification=LEXICAL_MAPPING,
+        mapping_set=MappingSet(name="gilda_mesh", confidence=confidence, license="CC0"),
+        author=BEN_ORCID,
+    )
+
     rv = []
     for sp, si, tp, ti in tqdm(df.values, desc="Loading Gilda", unit="mapping", unit_scale=True):
         if not sp or not tp:
@@ -48,13 +55,7 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
                 prefix=bioregistry.normalize_prefix(tp),
                 identifier=bioregistry.standardize_identifier(tp, ti),
             ),
-            evidence=[
-                SimpleEvidence(
-                    justification=LEXICAL_MAPPING,
-                    mapping_set=MappingSet(name="gilda_mesh", confidence=confidence, license="CC0"),
-                    author=BEN_ORCID,
-                )
-            ],
+            evidence=[evidence],
         )
         rv.append(m)
     validate_mappings(rv)

@@ -24,17 +24,17 @@ def _get_df(name: str, *, sha: str, sep: str = ",") -> list[Mapping]:
     df = df[df["Mapping Type"] == "equivalentTo"]
     del df["Mapping Type"]
 
+    evidence = SimpleEvidence(
+        mapping_set=MappingSet(name=name, confidence=0.99),
+        justification=MANUAL_MAPPING,
+    )
+
     return [
         Mapping(
             s=Reference(prefix=s_p, identifier=_fix_kegg_identifier(s_p, s_i)),
             p=EXACT_MATCH,
             o=Reference(prefix=t_p, identifier=_fix_kegg_identifier(t_p, t_i)),
-            evidence=[
-                SimpleEvidence(
-                    mapping_set=MappingSet(name=name, confidence=0.99),
-                    justification=MANUAL_MAPPING,
-                )
-            ],
+            evidence=[evidence],
         )
         for s_p, s_i, t_p, t_i in df.values
     ]

@@ -54,6 +54,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
         license=bioregistry.get_license("clo"),
         confidence=confidence,
     )
+    evidence = SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
 
     mappings = []
     for node in tqdm(graph.nodes, unit_scale=True, unit="node"):
@@ -140,11 +141,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                         s=Reference(prefix="clo", identifier=clo_id),
                         p=DB_XREF,
                         o=Reference(prefix=prefix, identifier=identifier),
-                        evidence=[
-                            SimpleEvidence(
-                                justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set
-                            )
-                        ],
+                        evidence=[evidence],
                     )
                 )
     return mappings

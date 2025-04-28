@@ -15,6 +15,8 @@ def get_omim_gene_mappings() -> list[Mapping]:
     """Get gene mappings from OMIM."""
     df = pd.read_csv(URL, sep="\t", dtype=str, skiprows=4)
     mapping_set = MappingSet(name="OMIM", confidence=0.99)
+    evidence = SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
+
     rv = []
     for identifier, _type, entrez_id, _hgnc_symbol, ensembl_id in df.values:
         s = Reference(prefix="omim", identifier=identifier)
@@ -23,9 +25,7 @@ def get_omim_gene_mappings() -> list[Mapping]:
                 s=s,
                 p=EXACT_MATCH,
                 o=Reference(prefix="ncbigene", identifier=entrez_id),
-                evidence=[
-                    SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
-                ],
+                evidence=[evidence],
             )
             rv.append(mapping)
         # TODO handle dependencies for mapping gene symbol
@@ -34,9 +34,7 @@ def get_omim_gene_mappings() -> list[Mapping]:
                 s=s,
                 p=EXACT_MATCH,
                 o=Reference(prefix="ensembl", identifier=ensembl_id),
-                evidence=[
-                    SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)
-                ],
+                evidence=[evidence],
             )
             rv.append(mapping)
     return rv

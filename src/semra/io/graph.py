@@ -14,6 +14,7 @@ __all__ = [
     "DIGRAPH_DATA_KEY",
     "MULTIDIGRAPH_DATA_KEY",
     "from_digraph",
+    "from_multidigraph",
     "to_digraph",
     "to_multidigraph",
 ]
@@ -94,3 +95,11 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
             **{MULTIDIGRAPH_DATA_KEY: mapping.evidence},
         )
     return graph
+
+
+def from_multidigraph(graph: nx.MultiDiGraph) -> list[Mapping]:
+    """Extract mappings from a multi-directed graph data model."""
+    return [
+        Mapping(s=s, p=p, o=o, evidence=data[MULTIDIGRAPH_DATA_KEY])
+        for s, o, p, data in graph.edges(keys=True, data=True)
+    ]

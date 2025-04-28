@@ -1,6 +1,6 @@
 """I/O functions for SeMRA."""
 
-from .graph import from_digraph, to_digraph, to_multidigraph
+from .graph import from_digraph, from_multidigraph, to_digraph, to_multidigraph
 from .io import (
     from_bioontologies,
     from_cache_df,
@@ -21,6 +21,7 @@ __all__ = [
     "from_cache_df",
     "from_digraph",
     "from_jsonl",
+    "from_multidigraph",
     "from_pickle",
     "from_pyobo",
     "from_sssom",

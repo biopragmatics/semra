@@ -9,7 +9,16 @@ from pathlib import Path
 import pandas as pd
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
-from semra.io import from_jsonl, from_pyobo, from_sssom_df, write_jsonl
+from semra.io import (
+    from_digraph,
+    from_jsonl,
+    from_multidigraph,
+    from_pyobo,
+    from_sssom_df,
+    to_digraph,
+    to_multidigraph,
+    write_jsonl,
+)
 from semra.rules import (
     BEN_ORCID,
     CHAIN_MAPPING,
@@ -44,7 +53,7 @@ class TestIOLocal(unittest.TestCase):
             self.assertEqual("mesh", mapping.o.prefix)
 
 
-class TestIO(unittest.TestCase):
+class TestSSSOM(unittest.TestCase):
     """Tests for I/O functions."""
 
     def test_from_sssom_df(self) -> None:
@@ -173,8 +182,12 @@ class TestIO(unittest.TestCase):
         )
         self.assertEqual(expected_mappings, actual_mappings)
 
-    def test_jsonl(self) -> None:
-        """Test JSONL I/O."""
+
+class TestIO(unittest.TestCase):
+    """Test I/O funcitons."""
+
+    def setUp(self) -> None:
+        """Set up the test case."""
         r1 = Reference.from_curie("mesh:C406527", name="R 115866")
         r2 = Reference.from_curie("chebi:101854", name="talarozole")
         r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
@@ -214,13 +227,25 @@ class TestIO(unittest.TestCase):
         m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
 
-        mappings = [m1, m2, m3]
+        self.mappings = [m1, m2, m3]
 
+    def test_jsonl(self) -> None:
+        """Test JSONL I/O."""
         with tempfile.TemporaryDirectory() as directory_:
             for path in [
                 Path(directory_).joinpath("test.jsonl"),
                 Path(directory_).joinpath("test.jsonl.gz"),
             ]:
-                write_jsonl(mappings, path)
+                write_jsonl(self.mappings, path)
                 new_mappings = from_jsonl(path, show_progress=False)
-                self.assertEqual(mappings, new_mappings)
+                self.assertEqual(self.mappings, new_mappings)
+
+    def test_digraph(self) -> None:
+        """Test I/O to a directed graph."""
+        self.assertEqual(sorted(self.mappings), sorted(from_digraph(to_digraph(self.mappings))))
+
+    def test_multidigraph(self) -> None:
+        """Test I/O with multi-directed graph."""
+        self.assertEqual(
+            sorted(self.mappings), sorted(from_multidigraph(to_multidigraph(self.mappings)))
+        )

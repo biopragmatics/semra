@@ -1,19 +1,28 @@
 """Tests for I/O functions."""
 
 import getpass
+import tempfile
 import unittest
 import uuid
+from pathlib import Path
 
 import pandas as pd
 
-from semra import Mapping, MappingSet, SimpleEvidence
-from semra.io import from_pyobo, from_sssom_df
-from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.io import from_jsonl, from_pyobo, from_sssom_df, write_jsonl
+from semra.rules import (
+    BEN_ORCID,
+    CHAIN_MAPPING,
+    EXACT_MATCH,
+    LEXICAL_MAPPING,
+    MANUAL_MAPPING,
+    UNSPECIFIED_MAPPING,
+    charlie,
+)
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
 CONST_UUID = uuid.uuid4()
-
 
 mapping_set_name = "test"
 mapping_set_confidence = 0.6
@@ -163,3 +172,55 @@ class TestIO(unittest.TestCase):
             version=test_version,
         )
         self.assertEqual(expected_mappings, actual_mappings)
+
+    def test_jsonl(self) -> None:
+        """Test JSONL I/O."""
+        r1 = Reference.from_curie("mesh:C406527", name="R 115866")
+        r2 = Reference.from_curie("chebi:101854", name="talarozole")
+        r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+
+        t1 = r1, EXACT_MATCH, r2
+        t2 = r2, EXACT_MATCH, r3
+        t3 = r1, EXACT_MATCH, r3
+
+        biomappings = MappingSet(name="biomappings", confidence=0.90, license="CC0")
+        chembl = MappingSet(name="chembl", confidence=0.90, license="CC-BY-SA-3.0")
+        lexical_ms = MappingSet(name="lexical", confidence=0.90)
+
+        m1_e1 = SimpleEvidence(
+            mapping_set=biomappings, justification=MANUAL_MAPPING, author=charlie, confidence=0.99
+        )
+
+        # check that making an identical evidence gives the same hex digest
+        m1_e1_copy = SimpleEvidence(
+            mapping_set=biomappings, justification=MANUAL_MAPPING, author=charlie, confidence=0.99
+        )
+        self.assertEqual(m1_e1.hexdigest(t1), m1_e1_copy.hexdigest(t1))
+
+        m1_e2 = SimpleEvidence(
+            mapping_set=biomappings, justification=MANUAL_MAPPING, author=BEN_ORCID, confidence=0.94
+        )
+        m1_e3 = SimpleEvidence(
+            mapping_set=lexical_ms, justification=LEXICAL_MAPPING, confidence=0.8
+        )
+
+        m1 = Mapping.from_triple(t1, evidence=[m1_e1, m1_e2, m1_e3])
+
+        m2_e1 = SimpleEvidence(
+            mapping_set=chembl, justification=UNSPECIFIED_MAPPING, confidence=0.90
+        )
+        m2 = Mapping.from_triple(t2, evidence=[m2_e1])
+
+        m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
+        m3 = Mapping.from_triple(t3, evidence=[m3_e1])
+
+        mappings = [m1, m2, m3]
+
+        with tempfile.TemporaryDirectory() as directory_:
+            for path in [
+                Path(directory_).joinpath("test.jsonl"),
+                Path(directory_).joinpath("test.jsonl.gz"),
+            ]:
+                write_jsonl(mappings, path)
+                new_mappings = from_jsonl(path, show_progress=False)
+                self.assertEqual(mappings, new_mappings)

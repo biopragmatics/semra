@@ -232,8 +232,8 @@ flowchart LR
     A --- C
     end
     subgraph star
-    A[R 115866<br/>mesh:C406527] --> B[talarozole<br/>chebi:101854]
-    C[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> B
+    D[R 115866<br/>mesh:C406527] --> E[talarozole<br/>chebi:101854]
+    F[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> E
     end    
     unprocessed --> star
 ```

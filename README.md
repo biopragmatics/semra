@@ -200,7 +200,8 @@ graph LR
 ### Processing
 
 Mappings can be processed, aggregated, and summarized using functions from the
-[`semra.api`](https://semra.readthedocs.io/en/latest/usage.html#module-semra.api) submodule:
+[`semra.api`](https://semra.readthedocs.io/en/latest/usage.html#module-semra.api)
+submodule:
 
 ```python
 from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
@@ -234,7 +235,7 @@ graph LR
     subgraph star [Prioritized Mapping Graph]
     D[R 115866<br/>mesh:C406527] --> E[talarozole<br/>chebi:101854]
     F[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> E
-    end    
+    end
     unprocessed --> star
 ```
 

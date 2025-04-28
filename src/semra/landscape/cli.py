@@ -13,20 +13,8 @@ from semra.pipeline import (
     UPLOAD_OPTION,
 )
 
-from . import anatomy, cells, complexes, diseases, genes, taxrank
-
 __all__ = [
-    "FUNCTIONS",
     "landscape",
-]
-
-FUNCTIONS: list[tuple[str, click.Command]] = [
-    (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli()),
-    (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli()),
-    (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli()),
-    (cells.CONFIGURATION.key, cells.main),
-    (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli()),
-    (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli()),
 ]
 
 
@@ -47,8 +35,19 @@ def landscape(
     build_docker: bool,
 ) -> None:
     """Run all landscape builds."""
+    from . import anatomy, cells, complexes, diseases, genes, taxrank
+
+    functions: list[tuple[str, click.Command]] = [
+        (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli()),
+        (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli()),
+        (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli()),
+        (cells.CONFIGURATION.key, cells.main),
+        (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli()),
+        (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli()),
+    ]
+
     with logging_redirect_tqdm():
-        it = tqdm(FUNCTIONS, unit="configuration", desc="landscape analysis")
+        it = tqdm(functions, unit="configuration", desc="landscape analysis")
         for label, func in it:
             tqdm.write(click.style(label, bold=True, fg="green"))
             ctx.invoke(

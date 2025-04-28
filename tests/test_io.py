@@ -242,8 +242,10 @@ class TestIO(unittest.TestCase):
 
     def test_digraph(self) -> None:
         """Test I/O to a directed graph."""
-        self.assertEqual(self.mappings, from_digraph(to_digraph(self.mappings)))
+        self.assertEqual(sorted(self.mappings), sorted(from_digraph(to_digraph(self.mappings))))
 
     def test_multidigraph(self) -> None:
         """Test I/O with multi-directed graph."""
-        self.assertEqual(self.mappings, from_multidigraph(to_multidigraph(self.mappings)))
+        self.assertEqual(
+            sorted(self.mappings), sorted(from_multidigraph(to_multidigraph(self.mappings)))
+        )

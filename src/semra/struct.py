@@ -359,6 +359,9 @@ class Mapping(
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
 
+    def __lt__(self, other: Mapping) -> bool:
+        return self.triple < other.triple
+
     @classmethod
     def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
         """Instantiate a mapping from a triple."""

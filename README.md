@@ -114,10 +114,8 @@ mappings = infer_reversible([mapping])
 
 ```mermaid
 graph LR
-    A[2,3-diacetyloxybenzoic\nCHEBI:107635] -- Link text --> B((Circle))
-    A --> C(Round Rect)
-    B --> D{Rhombus}
-    C --> D
+    A[2,3-diacetyloxybenzoic<br/>CHEBI:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
+    B -.- skos:exactMatch -.-> A
 ```
 
 

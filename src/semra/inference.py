@@ -402,6 +402,7 @@ def _mutate(
         if configuration is None:
             continue
 
+        confidence_factor: float | None
         if configuration.default_confidence:
             confidence_factor = configuration.default_confidence
         elif configuration.pairs:

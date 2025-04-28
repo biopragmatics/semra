@@ -208,6 +208,8 @@ from semra.api import filter_minimum_confidence, prioritize, project, summarize_
 mappings = ...
 mappings = filter_minimum_confidence(mappings, cutoff=0.7)
 
+summary_df = summarize_prefixes(mappings)
+
 # get one-to-one mappings between entities from the given prefixes
 chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 
@@ -218,15 +220,13 @@ chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 priority_mapping = prioritize(mappings, priority=[
    "chebi", "chembl.compound", "pubchem.compound", "drugbank",
 ])
-
-summary_df = summarize_prefixes(mappings)
 ```
 
-A priority graph looks like this:
+The prioritization described by the code above works like this:
 
 ```mermaid
 graph LR
-    subgraph unprocessed [Undirected Exact Matches Graph]
+    subgraph unprocessed [Exact Matches Graph]
     A[R 115866<br/>mesh:C406527] --- B[talarozole<br/>chebi:101854]
     B --- C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
     A --- C

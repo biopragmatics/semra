@@ -443,7 +443,16 @@ def infer_generalizations(
     *,
     progress: bool = False,
 ) -> list[Mapping]:
-    """Apply generalization rules."""
+    """Apply generalization rules.
+
+    :param mappings: Mappings to process
+    :param progress: Should a progress bar be used?
+    :returns:
+        Mappings that have been mutated to relax relations configured
+        by :data:`semra.rules.GENERALIZATIONS`
+
+    .. seealso:: Rules definition in SSSOM https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules
+    """
     configurations = [
         Configuration(old=old, new=new, default_confidence=1.0)
         for old, new in GENERALIZATIONS.items()

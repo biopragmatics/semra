@@ -66,6 +66,8 @@ mapping = Mapping(
 )
 ```
 
+### Assembly
+
 Mappings can be assembled from many source formats using functions in the
 `semra.io` submodule:
 
@@ -94,6 +96,8 @@ from semra.sources import get_omim_gene_mappings
 omim_gene_mappings = get_omim_gene_mappings()
 ```
 
+### Inference
+
 SeMRA implements the chaining and inference rules described in the
 [SSSOM](https://mapping-commons.github.io/sssom/chaining-rules/) specification
 
@@ -115,7 +119,7 @@ mappings = infer_reversible([mapping])
 ```mermaid
 graph LR
     A[2,3-diacetyloxybenzoic<br/>CHEBI:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
-    B -. "skos:exactMatch (inferred)" .-> A
+    B -. "skos:exactMatch<br/>(inferred)" .-> A
 ```
 
 ```python
@@ -133,6 +137,14 @@ m2 = Mapping(s=r2, p=EXACT_MATCH, o=r3)
 mappings = infer_chains([m1, m2])
 ```
 
+```mermaid
+graph LR
+    A[R 115866<br/>mesh:C406527] -- skos:exactMatch --> B[talarozole<br/>chebi:101854]
+    B -- skos:exactMatch --> C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A -. "skos:exactMatch<br/>(inferred)" .-> C
+```
+
+### Processing
 
 Mappings can be processed, aggregated, and summarized using functions from the
 [`semra.api`]() submodule:

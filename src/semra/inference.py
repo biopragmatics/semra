@@ -9,6 +9,7 @@ from collections.abc import Iterable
 
 import bioregistry
 import networkx as nx
+from pydantic import BaseModel
 from tqdm.asyncio import tqdm
 
 from semra.api import assemble_evidences, flip
@@ -19,6 +20,7 @@ from semra.rules import (
     DB_XREF,
     EXACT_MATCH,
     FLIP,
+    GENERALIZATIONS,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
@@ -28,6 +30,7 @@ from semra.utils import cleanup_prefixes, semra_tqdm
 __all__ = [
     "infer_chains",
     "infer_dbxref_mutations",
+    "infer_generalizations",
     "infer_mutations",
     "infer_mutual_dbxref_mutations",
     "infer_reversible",
@@ -363,20 +366,56 @@ def infer_mutations(
     >>> mappings = infer_mutations([m1, m2], pairs, DB_XREF, EXACT_MATCH)
     >>> assert mappings == [m1, m3, m2]
     """
-    pairs = _clean_pairs(pairs)
+    configurations = [
+        Configuration(
+            old=old_predicate,
+            new=new_predicate,
+            pairs=_clean_pairs(pairs),
+        )
+    ]
+    return _mutate(mappings, configurations, progress=progress)
+
+
+class Configuration(BaseModel):
+    """A configuration for mutation."""
+
+    old: Reference
+    new: Reference
+    default_confidence: float | None = None
+    pairs: dict[tuple[str, str], float] | None = None
+
+
+def _mutate(
+    mappings: Iterable[Mapping],
+    configurations: list[Configuration],
+    *,
+    progress: bool = False,
+) -> list[Mapping]:
     rv = []
+
+    # index all configurations
+    upgrade_map = {c.old: c for c in configurations}
+
     for mapping in semra_tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
-        if mapping.p != old_predicate:
+        configuration = upgrade_map.get(mapping.p)
+        if configuration is None:
             continue
-        confidence_factor = pairs.get((mapping.s.prefix, mapping.o.prefix))
+
+        if configuration.default_confidence:
+            confidence_factor = configuration.default_confidence
+        elif configuration.pairs:
+            confidence_factor = configuration.pairs.get((mapping.s.prefix, mapping.o.prefix))
+        else:
+            raise ValueError
+
         if confidence_factor is None:
             # This means that there was no explicit confidence set for the
             # subject/object prefix pair, meaning it wasn't asked to be inferred
             continue
         inferred_mapping = Mapping(
             s=mapping.s,
-            p=new_predicate,
+            p=configuration.new,
             o=mapping.o,
             evidence=[
                 ReasonedEvidence(
@@ -397,3 +436,25 @@ def _clean_pairs(pairs: dict[tuple[str, str], float]) -> dict[tuple[str, str], f
         p2_norm = bioregistry.normalize_prefix(p2, strict=True)
         rv[p1_norm, p2_norm] = v
     return rv
+
+
+def infer_generalizations(
+    mappings: list[Mapping],
+    *,
+    progress: bool = False,
+) -> list[Mapping]:
+    """Apply generalization rules.
+
+    :param mappings: Mappings to process
+    :param progress: Should a progress bar be used?
+    :returns:
+        Mappings that have been mutated to relax relations configured
+        by :data:`semra.rules.GENERALIZATIONS`
+
+    .. seealso:: Rules definition in SSSOM https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules
+    """
+    configurations = [
+        Configuration(old=old, new=new, default_confidence=1.0)
+        for old, new in GENERALIZATIONS.items()
+    ]
+    return _mutate(mappings, configurations, progress=progress)

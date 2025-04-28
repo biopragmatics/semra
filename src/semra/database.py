@@ -24,6 +24,7 @@ from semra import Mapping
 from semra.io import (
     from_pickle,
     from_pyobo,
+    write_jsonl,
     write_neo4j,
     write_pickle,
     write_sssom,
@@ -37,7 +38,7 @@ MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
 LOGS = MODULE.module("logs")
 SSSOM_PATH = MODULE.join(name="mappings.sssom.tsv")
-PICKLE_PATH = MODULE.join(name="mappings.pkl")
+JSONL_PATH = MODULE.join(name="mappings.jsonl")
 WARNINGS_PATH = LOGS.join(name="warnings.tsv")
 ERRORS_PATH = LOGS.join(name="errors.tsv")
 SUMMARY_PATH = LOGS.join(name="summary.tsv")
@@ -144,10 +145,10 @@ def build(
     if include_wikidata:
         mappings.extend(_yield_wikidata(write_labels=write_labels))
 
+    click.echo(f"Writing JSONL to {JSONL_PATH}")
+    write_jsonl(mappings, JSONL_PATH)
     click.echo(f"Writing SSSOM to {SSSOM_PATH}")
     write_sssom(mappings, SSSOM_PATH, add_labels=False, prune=False)
-    click.echo(f"Writing Pickle to {PICKLE_PATH}")
-    write_pickle(mappings, PICKLE_PATH)
     click.echo(f"Writing Neo4j folder to {NEO4J_DIR}")
     write_neo4j(mappings, NEO4J_DIR)
 

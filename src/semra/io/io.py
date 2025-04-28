@@ -15,23 +15,26 @@ import bioontologies
 import bioregistry
 import bioversions
 import pandas as pd
+import pydantic
 import pyobo
 import pyobo.utils
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
+from .io_utils import get_confidence_str, get_name_by_curie, safe_open, safe_open_writer
 from ..rules import UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "from_bioontologies",
     "from_cache_df",
+    "from_jsonl",
     "from_pickle",
     "from_pyobo",
     "from_sssom",
     "from_sssom_df",
     "get_sssom_df",
+    "write_jsonl",
     "write_pickle",
     "write_sssom",
 ]
@@ -547,3 +550,38 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     else:
         with path.open("rb") as file:
             return cast(list[Mapping], pickle.load(file))
+
+
+def write_jsonl(
+    objects: Iterable[pydantic.BaseModel], path: str | Path, *, show_progress: bool = False
+) -> None:
+    """Write a list of Pydantic objects into a JSONL file."""
+    with safe_open(path, read=False) as file:
+        for obj in tqdm(
+            objects,
+            desc="Writing JSONL",
+            leave=False,
+            unit="object",
+            unit_scale=True,
+            disable=not show_progress,
+        ):
+            file.write(f"{obj.model_dump_json(exclude_none=True)}\n")
+
+
+def from_jsonl(path: str | Path, *, show_progress: bool = False) -> list[Mapping]:
+    """Read a list of Mapping objects from a JSONL file."""
+    return list(_iter_read_jsonl(path, show_progress=show_progress))
+
+
+def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Iterable[Mapping]:
+    """Stream mapping objects from a JSONL file."""
+    with safe_open(path, read=True) as file:
+        for line in tqdm(
+            file,
+            desc="Reading mappings",
+            leave=False,
+            unit="mapping",
+            unit_scale=True,
+            disable=not show_progress,
+        ):
+            yield Mapping.model_validate_json(line.strip())

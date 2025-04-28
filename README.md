@@ -118,7 +118,7 @@ mappings = infer_reversible([mapping])
 
 ```mermaid
 graph LR
-    A[2,3-diacetyloxybenzoic<br/>CHEBI:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
+    A[2,3-diacetyloxybenzoic<br/>chebi:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
     B -. "skos:exactMatch<br/>(inferred)" .-> A
 ```
 
@@ -142,6 +142,24 @@ graph LR
     A[R 115866<br/>mesh:C406527] -- skos:exactMatch --> B[talarozole<br/>chebi:101854]
     B -- skos:exactMatch --> C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
     A -. "skos:exactMatch<br/>(inferred)" .-> C
+```
+
+```python
+from semra import Reference, Mapping, DB_XREF
+from semra.inference import infer_dbxref_mutations
+
+r1 = Reference.from_curie("doid:0050577", name="cranioectodermal dysplasia")
+r2 = Reference.from_curie("mesh:C562966", name="Cranioectodermal Dysplasia")
+m1 = Mapping(s=r1, p=DB_XREF, o=r2)
+
+# we're 99% confident doid-mesh dbxrefs actually are exact matches
+mappings = infer_dbxref_mutations([m1], {("doid", "mesh"): 0.99})
+```
+
+```mermaid
+graph LR
+    A[cranioectodermal dysplasia<br/>doid:0050577] -- oboInOwl:hasDbXref --> B[Cranioectodermal Dysplasia<br/>mesh:C562966]
+    A -. "skos:exactMatch<br/>(inferred)" .-> B
 ```
 
 ### Processing

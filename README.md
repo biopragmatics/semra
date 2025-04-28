@@ -158,14 +158,14 @@ predicate, like `owl:equivalentTo` to `skos:exactMatch`.
 
 ```python
 from semra import Reference, Mapping, EXACT_MATCH, EQUIVALENT_TO
-from semra.inference import infer_mutations
+from semra.inference import infer_generalizations
 
 r1 = Reference.from_curie("chebi:101854", name="talarozole")
 r2 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
 m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
 
-mappings = infer_mutations([m1], {('chebi', 'chembl.compound'): 1.0}, EQUIVALENT_TO, EXACT_MATCH)
+mappings = infer_generalizations([m1])
 ```
 
 ```mermaid

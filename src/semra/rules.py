@@ -19,6 +19,7 @@ EXACT_MATCH = _f(v.exact_match)
 BROAD_MATCH = _f(v.broad_match)
 NARROW_MATCH = _f(v.narrow_match)
 CLOSE_MATCH = _f(v.close_match)
+SUBCLASS = _f(v.is_a)
 DB_XREF = _f(v.has_dbxref)
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
 REPLACED_BY = _f(v.term_replaced_by)
@@ -31,6 +32,7 @@ RELATIONS: list[Reference] = [
     CLOSE_MATCH,
     EQUIVALENT_TO,
     REPLACED_BY,
+    SUBCLASS,
 ]
 
 IMPRECISE: set[Reference] = {DB_XREF, CLOSE_MATCH}
@@ -53,6 +55,13 @@ TWO_STEP: dict[tuple[Reference, Reference], Reference] = {
     (EXACT_MATCH, BROAD_MATCH): BROAD_MATCH,
     (NARROW_MATCH, EXACT_MATCH): NARROW_MATCH,
     (EXACT_MATCH, NARROW_MATCH): NARROW_MATCH,
+}
+
+#: Rules for relaxing a more strict predicate to a more loose one,
+#: see https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules
+GENERALIZATIONS = {
+    EQUIVALENT_TO: EXACT_MATCH,
+    SUBCLASS: BROAD_MATCH,
 }
 
 MANUAL_MAPPING = _f(v.manual_mapping_curation)

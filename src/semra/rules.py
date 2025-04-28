@@ -22,6 +22,9 @@ CLOSE_MATCH = _f(v.close_match)
 DB_XREF = _f(v.has_dbxref)
 EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
 REPLACED_BY = _f(v.term_replaced_by)
+CROSS_SPECIES_EXACT = Reference.from_curie("semapv:crossSpeciesExactMatch")
+CROSS_SPECIES_NARROW = Reference.from_curie("semapv:crossSpeciesNarrowMatch")
+CROSS_SPECIES_BROAD = Reference.from_curie("semapv:crossSpeciesBroadMatch")
 
 RELATIONS: list[Reference] = [
     EXACT_MATCH,
@@ -31,6 +34,9 @@ RELATIONS: list[Reference] = [
     CLOSE_MATCH,
     EQUIVALENT_TO,
     REPLACED_BY,
+    CROSS_SPECIES_EXACT,
+    CROSS_SPECIES_NARROW,
+    CROSS_SPECIES_BROAD,
 ]
 
 IMPRECISE: set[Reference] = {DB_XREF, CLOSE_MATCH}
@@ -41,11 +47,29 @@ FLIP = {
     CLOSE_MATCH: CLOSE_MATCH,
     DB_XREF: DB_XREF,
     EQUIVALENT_TO: EQUIVALENT_TO,
+    CROSS_SPECIES_EXACT: CROSS_SPECIES_EXACT,
+    CROSS_SPECIES_BROAD: CROSS_SPECIES_NARROW,
+    CROSS_SPECIES_NARROW: CROSS_SPECIES_BROAD,
 }
+
+# TODO transitivity and two-step with cross-species relations?
+
 #: Which predicates are transitive? This excludes the imprecise onces
-TRANSITIVE: set[Reference] = {BROAD_MATCH, NARROW_MATCH, EXACT_MATCH, EQUIVALENT_TO}
+TRANSITIVE: set[Reference] = {
+    BROAD_MATCH,
+    NARROW_MATCH,
+    EXACT_MATCH,
+    EQUIVALENT_TO,
+    CROSS_SPECIES_EXACT,
+}
 #: Which predicates are directionless
-DIRECTIONLESS: set[Reference] = {EXACT_MATCH, CLOSE_MATCH, DB_XREF, EQUIVALENT_TO}
+DIRECTIONLESS: set[Reference] = {
+    EXACT_MATCH,
+    CLOSE_MATCH,
+    DB_XREF,
+    EQUIVALENT_TO,
+    CROSS_SPECIES_EXACT,
+}
 
 #: Two step chain inference rules
 TWO_STEP: dict[tuple[Reference, Reference], Reference] = {

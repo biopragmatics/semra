@@ -226,12 +226,12 @@ A priority graph looks like this:
 
 ```mermaid
 graph LR
-    subgraph unprocessed
+    subgraph unprocessed [Undirected Exact Matches Graph]
     A[R 115866<br/>mesh:C406527] --- B[talarozole<br/>chebi:101854]
     B --- C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
     A --- C
     end
-    subgraph star
+    subgraph star [Prioritized Mapping Graph]
     D[R 115866<br/>mesh:C406527] --> E[talarozole<br/>chebi:101854]
     F[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> E
     end    

@@ -115,9 +115,8 @@ mappings = infer_reversible([mapping])
 ```mermaid
 graph LR
     A[2,3-diacetyloxybenzoic<br/>CHEBI:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
-    B -.- skos:exactMatch -.-> A
+    B -. "skos:exactMatch (inferred)" .-> A
 ```
-
 
 ```python
 from semra import Reference, Mapping, EXACT_MATCH

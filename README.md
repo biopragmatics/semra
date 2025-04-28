@@ -151,11 +151,33 @@ graph LR
     A -. "skos:exactMatch<br/>(inferred)" .-> C
 ```
 
-The last inference type is a generalization of the "Generalization" rule to
-enable bringing domain knowledge about how curation is done. For example, some
-resources curate `oboInOwl:hasDbXref` predicates when it's implied that they
-mean `skos:exactMatch` because the resource is curated in the OBO flat file
-format.
+The third rule is
+[generalization](https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules),
+which means that a more strict predicate can be relaxed to a less specific
+predicate, like `owl:equivalentTo` to `skos:exactMatch`.
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH, EQUIVALENT_TO
+from semra.inference import infer_mutations
+
+r1 = Reference.from_curie("chebi:101854", name="talarozole")
+r2 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+
+m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+
+mappings = infer_mutations([m1], {('chebi', 'chembl.compound'): 1.0}, EQUIVALENT_TO, EXACT_MATCH)
+```
+
+```mermaid
+graph LR
+    A[talarozole<br/>chebi:101854] -- owl:equivalentTo --> B[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A -. "skos:exactMatch<br/>(inferred)" .-> B
+```
+
+The third rule can actually be generalized to any kinds of mutation of one
+predicate to another, given some domain knowledge. For example, some resources
+curate `oboInOwl:hasDbXref` predicates when it's implied that they mean
+`skos:exactMatch` because the resource is curated in the OBO flat file format.
 
 ```python
 from semra import Reference, Mapping, DB_XREF

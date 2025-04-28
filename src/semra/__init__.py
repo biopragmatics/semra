@@ -4,6 +4,7 @@ from semra.pipeline import Configuration, Input, Mutation
 from semra.rules import (
     BROAD_MATCH,
     DB_XREF,
+    EQUIVALENT_TO,
     EXACT_MATCH,
     LEXICAL_MAPPING,
     MANUAL_MAPPING,
@@ -16,6 +17,7 @@ from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Refere
 __all__ = [
     "BROAD_MATCH",
     "DB_XREF",
+    "EQUIVALENT_TO",
     "EXACT_MATCH",
     "LEXICAL_MAPPING",
     "MANUAL_MAPPING",

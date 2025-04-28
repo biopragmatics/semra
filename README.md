@@ -94,6 +94,49 @@ from semra.sources import get_omim_gene_mappings
 omim_gene_mappings = get_omim_gene_mappings()
 ```
 
+SeMRA implements the chaining and inference rules described in the
+[SSSOM](https://mapping-commons.github.io/sssom/chaining-rules/) specification
+
+```python
+from semra import Mapping, EXACT_MATCH, Reference
+from semra.inference import infer_reversible
+
+# infer reversible
+mapping = Mapping(
+   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
+   p=EXACT_MATCH,
+   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
+)
+
+# includes the mesh -> exact match-> chebi mapping with full provenance
+mappings = infer_reversible([mapping])
+```
+
+```mermaid
+graph LR
+    A[2,3-diacetyloxybenzoic\nCHEBI:107635] -- Link text --> B((Circle))
+    A --> C(Round Rect)
+    B --> D{Rhombus}
+    C --> D
+```
+
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH
+from semra.inference import infer_chains
+
+r1 = Reference.from_curie("mesh:C406527", name="R 115866")
+r2 = Reference.from_curie("chebi:101854", name="talarozole")
+r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+
+m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+m2 = Mapping(s=r2, p=EXACT_MATCH, o=r3)
+
+# infers r1 -> exact match -> r3
+mappings = infer_chains([m1, m2])
+```
+
+
 Mappings can be processed, aggregated, and summarized using functions from the
 [`semra.api`]() submodule:
 

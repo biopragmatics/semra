@@ -40,7 +40,7 @@ def _get_df(name: str, *, sha: str, sep: str = ",") -> list[Mapping]:
     ]
 
 
-def _fix_kegg_identifier(prefix, identifier) -> str:
+def _fix_kegg_identifier(prefix: str, identifier: str) -> str:
     if prefix == "kegg.pathway":
         return identifier[len("path:") :]
     return identifier

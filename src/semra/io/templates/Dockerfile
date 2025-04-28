@@ -15,33 +15,31 @@ RUN apt-get update && \
     apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \
     curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
-RUN python3.11 -m pip install "semra[web] @ git+https://github.com/biopragmatics/semra.git"
+RUN python3.11 -m pip install "{{ pip_install }}"
 
-# Add graph content
-COPY concept_nodes.tsv.gz /sw/concept_nodes.tsv.gz
-COPY mapping_nodes.tsv.gz /sw/mapping_nodes.tsv.gz
-COPY evidence_nodes.tsv.gz /sw/evidence_nodes.tsv.gz
-COPY mapping_set_nodes.tsv.gz /sw/mapping_set_nodes.tsv.gz
-COPY mapping_edges.tsv.gz /sw/mapping_edges.tsv.gz
-COPY edges.tsv.gz /sw/edges.tsv.gz
+# Add nodes files to the docker image
+{%- for node_type, name in node_names %}
+COPY {{ name }} /sw/{{ name }}
+{%- endfor %}
+
+# Add edge files to the docker image
+{%- for name in edge_names %}
+COPY {{ name }} /sw/{{ name }}
+{%- endfor %}
 
 # Ingest graph content into neo4j
 RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
     sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \
-    neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true --skip-bad-relationships=true \
-        --relationships /sw/mapping_edges.tsv.gz \
-        --relationships /sw/edges.tsv.gz \
-        --nodes=concept=/sw/concept_nodes.tsv.gz \
-        --nodes=mapping=/sw/mapping_nodes.tsv.gz \
-        --nodes=mappingset=/sw/mapping_set_nodes.tsv.gz \
-        --nodes=evidence=/sw/evidence_nodes.tsv.gz
+    neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true \
+        {%- for name in edge_names %}
+        --relationships /sw/{{ name }} \
+        {%- endfor %}
+        {%- for node_type, name in node_names %}
+        --nodes={{ node_type }}=/sw/{{ name }} \
+        {%- endfor %}
+        --skip-bad-relationships=true
 
-RUN rm /sw/concept_nodes.tsv.gz
-RUN rm /sw/mapping_nodes.tsv.gz
-RUN rm /sw/evidence_nodes.tsv.gz
-RUN rm /sw/mapping_set_nodes.tsv.gz
-RUN rm /sw/edges.tsv.gz
-RUN rm /sw/mapping_edges.tsv.gz
+# TODO remove source files to make the image smaller
 
 COPY startup.sh startup.sh
 ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]

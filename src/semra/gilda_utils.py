@@ -6,11 +6,11 @@ import itertools as itt
 import logging
 import typing as t
 from collections import defaultdict
+from typing import cast
 
 import bioregistry
 import gilda
-from gilda import Term
-from gilda.term import filter_out_duplicates
+import gilda.term
 from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map
@@ -49,7 +49,7 @@ GILDA_TO_BIOREGISTRY = {
 REVERSE_GILDA_MAP = {v: k for k, v in GILDA_TO_BIOREGISTRY.items()}
 
 
-def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
+def update_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda.Term]:
     """Use a priority mapping to re-write terms with priority groundings.
 
     :param terms: A list of Gilda term objects
@@ -99,24 +99,29 @@ def update_terms(terms: list[Term], mappings: list[Mapping]) -> list[Term]:
 
     # Unwind the terms index
     new_terms = list(itt.chain.from_iterable(terms_index.values()))
-    return filter_out_duplicates(new_terms)
+    return cast(list[gilda.Term], gilda.term.filter_out_duplicates(new_terms))
 
 
-def standardize_terms(terms: t.Iterable[Term], *, multiprocessing: bool = True) -> list[Term]:
+def standardize_terms(
+    terms: t.Iterable[gilda.Term], *, multiprocessing: bool = True
+) -> list[gilda.Term]:
     """Standardize a list of terms."""
     if not multiprocessing:
         return [standardize_term(t) for t in terms]
-    return process_map(
-        standardize_term,
-        terms,
-        unit="term",
-        unit_scale=True,
-        desc="standardizing",
-        chunksize=40_000,
+    return cast(
+        list[gilda.Term],
+        process_map(
+            standardize_term,
+            terms,
+            unit="term",
+            unit_scale=True,
+            desc="standardizing",
+            chunksize=40_000,
+        ),
     )
 
 
-def standardize_term(term: Term) -> Term:
+def standardize_term(term: gilda.Term) -> gilda.Term:
     """Standardize a term's prefix and identifier to the Bioregistry standard."""
     prefix = bioregistry.normalize_prefix(term.db)
     if prefix is None:
@@ -133,17 +138,17 @@ def standardize_term(term: Term) -> Term:
 
 
 def make_new_term(
-    term: Term,
+    term: gilda.Term,
     target_db: str,
     target_id: str,
     target_name: str | None = None,
-) -> Term:
+) -> gilda.Term:
     """Make a new gilda term object by replacing the database, identifier, and name."""
     if target_name is None:
         from indra.ontology.bio import bio_ontology
 
         target_name = bio_ontology.get_name(target_db, target_id)
-    return Term(
+    return gilda.Term(
         norm_text=term.norm_text,
         text=term.text,
         db=target_db,

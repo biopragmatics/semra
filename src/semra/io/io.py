@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import contextlib
-import csv
 import gzip
 import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -22,7 +20,7 @@ import pyobo.utils
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie
+from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
 from ..rules import UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
@@ -54,7 +52,7 @@ def _safe_get_version(prefix: str) -> str | None:
 
 # TODO delete this
 def from_cache_df(
-    path,
+    path: str | Path,
     source_prefix: str,
     *,
     prefixes: t.Collection[str] | None = None,
@@ -136,7 +134,7 @@ def from_pyobo(
 
     :returns: A list of semantic mapping objects
     """
-    df: pd.DataFrame = pyobo.get_mappings_df(  # type:ignore
+    df: pd.DataFrame = pyobo.get_mappings_df(
         prefix, force_process=force_process, names=False, cache=cache
     )
     return _from_pyobo_sssom_df(
@@ -220,7 +218,9 @@ def _filter_sssom_by_prefixes(df: pd.DataFrame, prefixes: str | t.Collection[str
     return df[idx]
 
 
-def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -> list[Mapping]:
+def from_bioontologies(
+    prefix: str, confidence: float | None = None, **kwargs: Any
+) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`bioontologies`."""
     if confidence is None:
         confidence = DEFAULT_ONTOLOGY_CONFIDENCE
@@ -258,7 +258,7 @@ def from_bioontologies(prefix: str, confidence: float | None = None, **kwargs) -
 
 
 def from_sssom(
-    path,
+    path: str | Path,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
     **kwargs: Any,
@@ -318,7 +318,7 @@ def from_sssom_df(
 
 
 def _parse_sssom_row(
-    row,
+    row: dict[str, Any],
     mapping_set_name: str | None,
     mapping_set_confidence: float | None,
     mapping_set_license: str | None,
@@ -395,9 +395,9 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
     has_name = pd.notna(name) and name
     if not standardize:
         if has_name:
-            return cast(Reference, Reference.from_curie(curie, name=cast(str, name)))
+            return Reference.from_curie(curie, name=cast(str, name))
         else:
-            return cast(Reference, Reference.from_curie(curie))
+            return Reference.from_curie(curie)
 
     prefix, identifier = bioregistry.parse_curie(curie)
     if not prefix or not identifier:
@@ -450,7 +450,7 @@ def get_sssom_df(
                 ("subject_label", "subject_id"),
                 ("object_label", "object_id"),
             ]:
-                df[label_column] = df[id_column].map(get_name_by_curie)  # type:ignore
+                df[label_column] = df[id_column].map(get_name_by_curie)
         df = df[
             [
                 "subject_id",
@@ -477,11 +477,11 @@ def get_sssom_df(
     return df
 
 
-def _get_sssom_row(mapping: Mapping, e: Evidence):
+def _get_sssom_row(mapping: Mapping, e: Evidence) -> tuple[str, ...]:
     # TODO increase this
     if isinstance(e, SimpleEvidence):
-        mapping_set_version = e.mapping_set.version
-        mapping_set_license = e.mapping_set.license
+        mapping_set_version = e.mapping_set.version or ""
+        mapping_set_license = e.mapping_set.license or ""
     elif isinstance(e, ReasonedEvidence):
         mapping_set_version = ""
         mapping_set_license = ""
@@ -515,28 +515,8 @@ def write_sssom(
     df.to_csv(file, sep="\t", index=False)
 
 
-@contextlib.contextmanager
-def _safe_opener(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
-    path = Path(path).expanduser().resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, mode="rt" if read else "wt") as file:
-            yield file
-    else:
-        with open(path, mode="r" if read else "w") as file:
-            yield file
-
-
-@contextlib.contextmanager
-def _safe_writer(f: str | Path | TextIO):
-    if isinstance(f, str | Path):
-        with _safe_opener(f, read=False) as file:
-            yield csv.writer(file, delimiter="\t")
-    else:
-        yield csv.writer(f, delimiter="\t")
-
-
 def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
-    with _safe_writer(file) as writer:
+    with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         writer.writerows(
             _get_sssom_row(m, e)
@@ -563,7 +543,7 @@ def from_pickle(path: str | Path) -> list[Mapping]:
     path = Path(path).resolve()
     if path.suffix.endswith(".gz"):
         with gzip.open(path, "rb") as file:
-            return pickle.load(file)
+            return cast(list[Mapping], pickle.load(file))
     else:
         with path.open("rb") as file:
-            return pickle.load(file)
+            return cast(list[Mapping], pickle.load(file))

@@ -33,7 +33,7 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
         names=["source_prefix", "source_id", "target_prefix", "target_id"],
     )
     for k in ("source_prefix", "target_prefix"):
-        df[k] = df[k].map(bioregistry.normalize_prefix)  # type:ignore
+        df[k] = df[k].map(bioregistry.normalize_prefix)
     rv = []
     for sp, si, tp, ti in tqdm(df.values, desc="Loading Gilda", unit="mapping", unit_scale=True):
         if not sp or not tp:

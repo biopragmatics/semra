@@ -1,6 +1,5 @@
 """Assemble a database."""
 
-import csv
 import subprocess
 import time
 from collections.abc import Iterable
@@ -29,6 +28,7 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
+from semra.io.io_utils import safe_open_writer
 from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
@@ -338,8 +338,7 @@ def _get_pickle_path(subdirectory: str, key: str) -> Path:
 
 
 def _write_summary() -> None:
-    with SUMMARY_PATH.open("w") as file:
-        writer = csv.writer(file, delimiter="\t")
+    with safe_open_writer(SUMMARY_PATH) as writer:
         writer.writerow(("prefix", "mappings", "seconds", "source_type"))
         for prefix, n_mappings, time_delta, source_type in summaries:
             writer.writerow((prefix, n_mappings, round(time_delta, 2), source_type))

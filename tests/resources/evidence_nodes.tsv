@@ -1,0 +1,6 @@
+curie:ID	prefix	type	mapping_justification	confidence:float
+semra.evidence:b6218d883b277224a0bc92746e829f64	semra.evidence	simple	semapv:ManualMappingCuration	0.99
+semra.evidence:3bdd23485d20a416e82504e8e87693c1	semra.evidence	simple	semapv:ManualMappingCuration	0.94
+semra.evidence:019f6aacf4dfa3b2a4cf575529653edb	semra.evidence	simple	semapv:LexicalMatching	0.8
+semra.evidence:89ed68424fe529d225005d16dd14f7b9	semra.evidence	simple	semapv:UnspecifiedMatching	0.9
+semra.evidence:193adcd5500add72ece4ff039f7d8b09	semra.evidence	reasoned	semapv:MappingChaining	1.0

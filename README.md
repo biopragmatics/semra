@@ -99,7 +99,9 @@ omim_gene_mappings = get_omim_gene_mappings()
 ### Inference
 
 SeMRA implements the chaining and inference rules described in the
-[SSSOM](https://mapping-commons.github.io/sssom/chaining-rules/) specification
+[SSSOM](https://mapping-commons.github.io/sssom/chaining-rules/) specification.
+The first rule is
+[inversions](https://mapping-commons.github.io/sssom/chaining-rules/#inverse-rules):
 
 ```python
 from semra import Mapping, EXACT_MATCH, Reference
@@ -122,6 +124,11 @@ graph LR
     B -. "skos:exactMatch<br/>(inferred)" .-> A
 ```
 
+The second rule is about
+[transitivity](https://mapping-commons.github.io/sssom/chaining-rules/#transitivity-rule).
+This means some predicates apply over chains. SeMRA further implements
+configuration for two-length chains and could be extended to arbitrary chains.
+
 ```python
 from semra import Reference, Mapping, EXACT_MATCH
 from semra.inference import infer_chains
@@ -143,6 +150,12 @@ graph LR
     B -- skos:exactMatch --> C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
     A -. "skos:exactMatch<br/>(inferred)" .-> C
 ```
+
+The last inference type is a generalization of the "Generalization" rule to
+enable bringing domain knowledge about how curation is done. For example, some
+resources curate `oboInOwl:hasDbXref` predicates when it's implied that they
+mean `skos:exactMatch` because the resource is curated in the OBO flat file
+format.
 
 ```python
 from semra import Reference, Mapping, DB_XREF

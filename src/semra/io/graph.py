@@ -32,9 +32,9 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
     """Convert mappings into a simple directed graph data model.
 
     :param mappings: An iterable of mappings
-    :returns: A directed graph in which the nodes are
-        :class:`curies.Reference` objects. A dictionary
-        of predicate to evidence lists is put under the
+
+    :returns: A directed graph in which the nodes are :class:`curies.Reference` objects.
+        A dictionary of predicate to evidence lists is put under the
         :data:`DIGRAPH_DATA_KEY`.
 
     .. warning::
@@ -42,9 +42,8 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         This function makes two assumptions:
 
         1. The graph has already been assembled using :func:`assemble_evidences`
-        2. That only one predicate is used in the graph. If you want to handle
-           multiple prediates, see :func:`to_multidigraph`
-
+        2. That only one predicate is used in the graph. If you want to handle multiple
+           prediates, see :func:`to_multidigraph`
     """
     graph = nx.DiGraph()
     edges: defaultdict[tuple[Reference, Reference], defaultdict[Reference, list[Evidence]]] = (
@@ -73,18 +72,16 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
 
     :param mappings: An iterable of mappings
     :param progress: Should a progress bar be shown?
-    :returns: A directed graph in which the nodes are
-        :class:`curies.Reference` objects. The predicate
-        is used as the edge key and the evidences are stored
-        in a list under the :data:`MULTIDIGRAPH_DATA_KEY` in
-        each edge data dictionary.
+
+    :returns: A directed graph in which the nodes are :class:`curies.Reference` objects.
+        The predicate is used as the edge key and the evidences are stored in a list
+        under the :data:`MULTIDIGRAPH_DATA_KEY` in each edge data dictionary.
 
     .. warning::
 
         This function makes the following assumptions:
 
         1. The graph has already been assembled using :func:`assemble_evidences`
-
     """
     graph = nx.MultiDiGraph()
     for mapping in semra_tqdm(mappings, progress=progress):

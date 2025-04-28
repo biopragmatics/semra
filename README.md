@@ -200,7 +200,7 @@ graph LR
 ### Processing
 
 Mappings can be processed, aggregated, and summarized using functions from the
-[`semra.api`]() submodule:
+[`semra.api`](https://semra.readthedocs.io/en/latest/usage.html#module-semra.api) submodule:
 
 ```python
 from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
@@ -220,6 +220,24 @@ priority_mapping = prioritize(mappings, priority=[
 ])
 
 summary_df = summarize_prefixes(mappings)
+```
+
+A priority graph looks like this:
+
+```mermaid
+graph LR
+    subgraph unprocessed
+       A[R 115866<br/>mesh:C406527] -- B[talarozole<br/>chebi:101854]
+       B --  C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+       A -- C
+    end
+
+    subgraph star
+       A[R 115866<br/>mesh:C406527] --> B[talarozole<br/>chebi:101854]
+       C[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> B
+    end
+    
+    unprocessed --> star
 ```
 
 ## 🏞️ Landscape Analysis

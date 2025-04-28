@@ -118,11 +118,12 @@ def write_neo4j(
     :param directory: The directory to write nodes files, edge files, startup shell
         script (``startup.sh``), run script (``run_on_docker.sh``), and a Dockerfile
     :param docker_name: The name of the Docker image. Defaults to "semra"
-    :param equivalence_classes: A dictionary from references to booleans,
-        where having ``True`` as a value denotes that it is the "primary" reference
-        calculated from processed and prioritiized mappings.
+    :param equivalence_classes: A dictionary from references to booleans, where having
+        ``True`` as a value denotes that it is the "primary" reference calculated from
+        processed and prioritiized mappings.
 
-        This argument is typically used internally - you should not have to pass it yourself.
+        This argument is typically used internally - you should not have to pass it
+        yourself.
 
         .. code-block:: python
 

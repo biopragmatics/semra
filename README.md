@@ -200,13 +200,16 @@ graph LR
 ### Processing
 
 Mappings can be processed, aggregated, and summarized using functions from the
-[`semra.api`]() submodule:
+[`semra.api`](https://semra.readthedocs.io/en/latest/usage.html#module-semra.api)
+submodule:
 
 ```python
 from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
 
 mappings = ...
 mappings = filter_minimum_confidence(mappings, cutoff=0.7)
+
+summary_df = summarize_prefixes(mappings)
 
 # get one-to-one mappings between entities from the given prefixes
 chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
@@ -218,8 +221,22 @@ chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 priority_mapping = prioritize(mappings, priority=[
    "chebi", "chembl.compound", "pubchem.compound", "drugbank",
 ])
+```
 
-summary_df = summarize_prefixes(mappings)
+The prioritization described by the code above works like this:
+
+```mermaid
+graph LR
+    subgraph unprocessed [Exact Matches Graph]
+    A[R 115866<br/>mesh:C406527] --- B[talarozole<br/>chebi:101854]
+    B --- C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A --- C
+    end
+    subgraph star [Prioritized Mapping Graph]
+    D[R 115866<br/>mesh:C406527] --> E[talarozole<br/>chebi:101854]
+    F[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> E
+    end
+    unprocessed --> star
 ```
 
 ## 🏞️ Landscape Analysis

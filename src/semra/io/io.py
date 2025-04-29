@@ -273,6 +273,7 @@ def from_sssom(
     mapping_set_id: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
+    mapping_set_version: str | None = None,
     license: str | None = None,
     justification: Reference | None = None,
     version: str | None = None,
@@ -293,13 +294,14 @@ def from_sssom(
         specify its own confidence, but there is no global confidence at the set level.
 
         .. seealso:: https://github.com/mapping-commons/sssom/issues/438
+    :param mapping_set_version: The title for the SSSOM mapping set, if not given explicitly in each
+        mapping row nor by ``metadata``.
     :param license: The license for the SSSOM mapping set, if not given explicitly in
         each mapping row nor by ``metadata``.
     :param justification: The mapping justification for all mappings in the SSSOM
         mapping set, if not given explicitly in each mapping row nor by ``metadata``.
         Given as a :class:`curies.Reference` object using ``semapv`` as the prefix.
-    :param version: The title for the SSSOM mapping set, if not given explicitly in each
-        mapping row nor by ``metadata``.
+    :param version: Deprecated name for ``mapping_set_version``
     :param standardize: Should Bioregistry be applied to standardize all
     :param metadata: A URL to a SSSOM metadata file, which can contain an external
         definition of several of the relevant metadata fields accepted by this function.
@@ -323,6 +325,7 @@ def from_sssom(
         mapping_set_id=mapping_set_id,
         mapping_set_name=mapping_set_name,
         mapping_set_confidence=mapping_set_confidence,
+        mapping_set_version=mapping_set_version,
         license=license,
         justification=justification,
         version=version,

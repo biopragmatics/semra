@@ -15,8 +15,11 @@ from semra.io import (
     from_multidigraph,
     from_pyobo,
     from_sssom_df,
+    from_sssom,
+    write_sssom,
     to_digraph,
     to_multidigraph,
+    from_pickle, write_pickle,
     write_jsonl,
 )
 from semra.rules import (
@@ -249,3 +252,25 @@ class TestIO(unittest.TestCase):
         self.assertEqual(
             sorted(self.mappings), sorted(from_multidigraph(to_multidigraph(self.mappings)))
         )
+
+    def test_pickle(self) -> None:
+        """Test I/O with pickle."""
+        with tempfile.TemporaryDirectory() as directory_:
+            for path in [
+                Path(directory_).joinpath("test.pkl"),
+                Path(directory_).joinpath("test.pkl.gz"),
+            ]:
+                write_pickle(self.mappings, path)
+                new_mappings = from_pickle(path)
+                self.assertEqual(self.mappings, new_mappings)
+
+    def test_sssom(self) -> None:
+        """Test I/O with SSSOM."""
+        with tempfile.TemporaryDirectory() as directory_:
+            for path in [
+                Path(directory_).joinpath("test.sssom.tsv"),
+                Path(directory_).joinpath("test.sssom.tsv.gz"),
+            ]:
+                write_sssom(self.mappings, path)
+                new_mappings = from_sssom(path)
+                self.assertEqual(sorted(self.mappings), sorted(new_mappings))

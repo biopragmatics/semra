@@ -13,7 +13,7 @@ from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, Param
 
 import pydantic
 from more_itertools import triplewise
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 from pydantic.types import UUID4
 from pyobo import Reference
 
@@ -136,16 +136,43 @@ class MappingSet(
     1. All the mappings extracted from an ontology
     2. All the mappings published with a database
     3. All the mappings inferred by SeMRA based on a given configuration
+
+    Mostly corresponds to the concept of a SSSOM mapping set, documented in
+    https://mapping-commons.github.io/sssom/MappingSet.
     """
 
-    name: str = Field(..., description="Name of the mapping set")
+    id: str | None = Field(
+        default=None,
+        description="The identifier for the mapping set. Corresponds to required SSSOM field https://mapping-commons.github.io/sssom/mapping_set_id/.",
+    )
+    name: str = Field(
+        ...,
+        description="Name of the mapping set. Corresponds to optional SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_title/",
+    )
     version: str | None = Field(
-        default=None, description="The version of the dataset from which the mapping comes"
+        default=None,
+        description="The version of the dataset from which the mapping comes. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_version/",
     )
     license: str | None = Field(
-        default=None, description="License name or URL that applies to the whole mapping set"
+        default=None,
+        description="License name or URL that applies to the whole mapping set. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/license/",
     )
-    confidence: float = Field(..., description="Mapping set level confidence")
+    confidence: float = Field(
+        ...,
+        description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_default_id(cls, data: Any) -> Any:
+        """Add a missing ``mapping_set_id`` field, if missing in the ``id`` slot."""
+        if not isinstance(data, dict) or data.get("id"):
+            return data
+        identifier = f"https://w3id.org/sssom/mappings/{data['name']}"
+        if version := data.get("version"):
+            identifier += f"v{version}"
+        data["id"] = identifier
+        return data
 
     def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""

@@ -18,6 +18,8 @@ import pandas as pd
 import pydantic
 import pyobo
 import pyobo.utils
+import requests
+import yaml
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -204,7 +206,7 @@ def _from_pyobo_sssom_df(
         version=version,
         justification=justification,
         mapping_set_confidence=confidence,
-        mapping_set_name=mapping_set_name,
+        mapping_set_name=mapping_set_name,  # TODO rename to mapping_set_title align with SSSOM
     )
 
 
@@ -261,33 +263,72 @@ def from_bioontologies(
 
 def from_sssom(
     path: str | Path,
+    *,
+    mapping_set_id: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
-    **kwargs: Any,
+    license: str | None = None,
+    justification: Reference | None = None,
+    version: str | None = None,
+    standardize: bool = True,
+    metadata: str | None = None,
 ) -> list[Mapping]:
-    """Get mappings from a path to a SSSOM TSV file."""
+    """Get mappings from a path to a SSSOM TSV file.
+
+    :param path: The local file path or URL to a SSSOM TSV file. This is also interpreted
+        as the SSSOM ``mapping_set_id`` field.
+    :param mapping_set_id: The ID for the SSSOM mapping set. If not given,
+        the ``path`` is used.
+    :param mapping_set_name: The title for the SSSOM mapping set, if not given
+        explicitly in each mapping row nor by ``metadata``
+    :param mapping_set_confidence:
+        The confidence associated with all mappings in the
+        mapping set. This diverges from the SSSOM data model in that each mapping can
+        specify its own confidence, but there is no global confidence at the set level.
+
+        .. seealso:: https://github.com/mapping-commons/sssom/issues/438
+    :param license: The license for the SSSOM mapping set, if not given explicitly in
+        each mapping row nor by ``metadata``.
+    :param justification: The mapping justification for all mappings in the SSSOM
+        mapping set, if not given explicitly in each mapping row nor by ``metadata``.
+        Given as a :class:`curies.Reference` object using ``semapv`` as the prefix.
+    :param version: The title for the SSSOM mapping set, if not given explicitly in each
+        mapping row nor by ``metadata``.
+    :param standardize: Should Bioregistry be applied to standardize all
+    :param metadata: A URL to a SSSOM metadata file, which can contain an external
+        definition of several of the relevant metadata fields accepted by this function.
+
+    :returns: A list of SeMRA mapping objects
+
+    Load a SSSOM file by URL that has external metadata
+
+    .. code-block:: python
+
+        mappings = from_sssom(
+            "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+            mapping_set_confidence=0.85,
+            metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml",
+        )
+    """
     # FIXME use sssom-py for this
     df = pd.read_csv(path, sep="\t", dtype=str)
-    df = df.rename(
-        columns={
-            "source_id": "subject_id",
-            "source_label": "subject_label",
-            "target_id": "object_id",
-            "target_label": "object_label",
-            "justification": "mapping_justification",
-        }
-    )
     return from_sssom_df(
         df,
+        mapping_set_id=mapping_set_id or (path.as_uri() if isinstance(path, Path) else path),
         mapping_set_name=mapping_set_name,
         mapping_set_confidence=mapping_set_confidence,
-        **kwargs,
+        license=license,
+        justification=justification,
+        version=version,
+        standardize=standardize,
+        metadata=metadata,
     )
 
 
 def from_sssom_df(
     df: pd.DataFrame,
     *,
+    mapping_set_id: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
     license: str | None = None,
@@ -295,14 +336,37 @@ def from_sssom_df(
     version: str | None = None,
     _uuid: uuid.UUID | None = None,
     standardize: bool = True,
+    metadata: str | None = None,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
+    df = df.rename(
+        columns={
+            "source_id": "subject_id",
+            "source_label": "subject_label",
+            "target_id": "object_id",
+            "target_label": "object_label",
+            "justification": "mapping_justification",
+            "mapping_set_name": "mapping_set_title",
+        }
+    )
+    if metadata:
+        metadata_dict = yaml.safe_load(requests.get(metadata, timeout=15).text)
+        if mapping_set_name is None:
+            mapping_set_name = metadata_dict.get("mapping_set_title")
+        if mapping_set_id is None:
+            mapping_set_name = metadata_dict.get("mapping_set_id")
+        if version is None:
+            version = metadata_dict.get("mapping_set_version")
+        if license is None:
+            license = metadata_dict.get("license")
+
     return [
         _parse_sssom_row(
             row,
+            mapping_set_id=mapping_set_id,
             mapping_set_name=mapping_set_name,
             mapping_set_confidence=mapping_set_confidence,
-            mapping_set_license=license,
+            license=license,
             mapping_set_version=version,
             justification=justification,
             standardize=standardize,
@@ -321,9 +385,10 @@ def from_sssom_df(
 
 def _parse_sssom_row(
     row: dict[str, Any],
+    mapping_set_id: str | None,
     mapping_set_name: str | None,
     mapping_set_confidence: float | None,
-    mapping_set_license: str | None,
+    license: str | None,
     justification: Reference | None,
     mapping_set_version: str | None,
     standardize: bool,
@@ -334,36 +399,47 @@ def _parse_sssom_row(
     else:
         author = None
 
-    if "mapping_set_name" in row and pd.notna(row["mapping_set_name"]):
-        n = row["mapping_set_name"]
+    # See https://mapping-commons.github.io/sssom/mapping_set_title/
+    if mapping_set_name is not None:
+        pass
+    elif "mapping_set_title" in row and pd.notna(row["mapping_set_title"]):
+        mapping_set_name = row["mapping_set_title"]
     elif "mapping_set" in row and pd.notna(row["mapping_set"]):
-        n = row["mapping_set"]
+        mapping_set_name = row["mapping_set"]
     elif mapping_set_name is None:
         raise KeyError("need a mapping set name")
-    else:
-        n = mapping_set_name
 
-    confidence = None
-    if "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
-        confidence = row["mapping_set_confidence"]
-    if confidence is None:
-        confidence = mapping_set_confidence
+    # note that ``mapping_set_confidence`` isn't actually part of the SSSOM standard (yet),
+    # see https://github.com/mapping-commons/sssom/issues/438
+    if mapping_set_confidence is not None:
+        pass
+    elif "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
+        mapping_set_confidence = row["mapping_set_confidence"]
 
+    # See https://mapping-commons.github.io/sssom/mapping_set_version/
     if mapping_set_version is not None:
         pass
     elif "mapping_set_version" in row and pd.notna(row["mapping_set_version"]):
         mapping_set_version = row["mapping_set_version"]
 
-    if mapping_set_license is not None:
+    # See https://mapping-commons.github.io/sssom/mapping_set_id/
+    if mapping_set_id is not None:
         pass
-    elif "mapping_set_license" in row and pd.notna(row["mapping_set_license"]):
-        mapping_set_license = row["mapping_set_license"]
+    elif "mapping_set_id" in row and pd.notna(row["mapping_set_id"]):
+        mapping_set_id = row["mapping_set_id"]
+
+    # See https://mapping-commons.github.io/sssom/license/
+    if license is not None:
+        pass
+    elif "license" in row and pd.notna(row["license"]):
+        license = row["license"]
 
     mapping_set = MappingSet(
-        name=n,
+        id=mapping_set_id,
+        name=mapping_set_name,
         version=mapping_set_version,
-        license=mapping_set_license,
-        confidence=confidence,
+        license=license,
+        confidence=mapping_set_confidence,
     )
 
     if justification is not None:
@@ -386,6 +462,7 @@ def _parse_sssom_row(
         "justification": justification,
         "mapping_set": mapping_set,
         "author": author,
+        # TODO add mapping confidence here?
     }
     if _uuid:
         e["uuid"] = _uuid

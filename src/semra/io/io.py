@@ -338,6 +338,7 @@ def from_sssom_df(
     mapping_set_id: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
+    mapping_set_version: str | None = None,
     license: str | None = None,
     justification: Reference | None = None,
     version: str | None = None,
@@ -346,6 +347,18 @@ def from_sssom_df(
     _path: str | None = None,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
+    # deprecated
+    if version:
+        if mapping_set_version:
+            raise ValueError(
+                f"got both {version=} and {mapping_set_version=} when loading a SSSOM dataframe. Just use `mapping_set_version`"
+            )
+        else:
+            logger.warning(
+                "passing `version` when loading a SSSOM dataframe is deprecated. Use `mapping_set_version` instead"
+            )
+            mapping_set_version = version
+
     df = df.rename(
         columns={
             "source_id": "subject_id",
@@ -362,8 +375,10 @@ def from_sssom_df(
             mapping_set_name = metadata_dict.get("mapping_set_title")
         if mapping_set_id is None:
             mapping_set_id = metadata_dict.get("mapping_set_id")
-        if version is None:
-            version = metadata_dict.get("mapping_set_version")
+        if mapping_set_confidence is None:
+            mapping_set_confidence = metadata_dict.get("mapping_set_confidence")
+        if mapping_set_version is None:
+            mapping_set_version = metadata_dict.get("mapping_set_version")
         if license is None:
             license = metadata_dict.get("license")
 
@@ -381,8 +396,8 @@ def from_sssom_df(
             mapping_set_id=mapping_set_id,
             mapping_set_name=mapping_set_name,
             mapping_set_confidence=mapping_set_confidence,
+            mapping_set_version=mapping_set_version,
             license=license,
-            mapping_set_version=version,
             justification=justification,
             standardize=standardize,
             _path=_path,
@@ -406,9 +421,9 @@ def _parse_sssom_row(
     mapping_set_id: str | None,
     mapping_set_name: str | None,
     mapping_set_confidence: float | None,
+    mapping_set_version: str | None,
     license: str | None,
     justification: Reference | None,
-    mapping_set_version: str | None,
     standardize: bool,
     _path: str | None = None,
 ) -> Mapping | None:
@@ -464,8 +479,8 @@ def _parse_sssom_row(
         id=mapping_set_id,
         name=mapping_set_name,
         version=mapping_set_version,
-        license=license,
         confidence=mapping_set_confidence,
+        license=license,
     )
 
     if justification is not None:

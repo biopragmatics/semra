@@ -266,7 +266,6 @@ class TestIO(unittest.TestCase):
 
     def test_sssom(self) -> None:
         """Test I/O with SSSOM."""
-        switch = False
         prefix_map = {
             "mesh": bioregistry.get_uri_prefix("mesh"),
             "orcid": bioregistry.get_uri_prefix("orcid"),
@@ -284,13 +283,15 @@ class TestIO(unittest.TestCase):
                 write_sssom(self.mappings, path, prune=prune)
                 new_mappings = assemble_evidences(from_sssom(path), progress=False)
 
-                if switch:
+                if not path.suffix.endswith(".gz"):
+                    # check gz after addressing https://github.com/mapping-commons/sssom-py/issues/581
                     msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
                     for vt in DEFAULT_VALIDATION_TYPES:
                         with self.subTest(msg=f"SSSOM Validation: {vt.name}"):
                             report = VALIDATION_METHODS[vt](msdf, False)
-                            self.assertIsNotNone(report)
-                            self.assertEqual([], report.results)
+                            if report is not None:
+                                # requires https://github.com/mapping-commons/sssom-py/pull/579
+                                self.assertEqual([], report.results)
 
                 with self.subTest(msg="reconstitution"):
                     # TODO update to also work for reasoned?

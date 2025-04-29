@@ -49,7 +49,6 @@ mapping_set_confidence = 0.6
 class TestIOLocal(unittest.TestCase):
     """Test I/O functions that only run if pyobo is available."""
 
-    @unittest.skip
     def test_from_pyobo(self) -> None:
         """Test loading content from PyOBO."""
         mappings = from_pyobo("doid")
@@ -298,7 +297,7 @@ class TestIO(unittest.TestCase):
                     self.assertEqual(_filter_simple(self.mappings), _filter_simple(new_mappings))
 
 
-def _filter_simple(mappings: list[Mapping]):
+def _filter_simple(mappings: list[Mapping]) -> list[Mapping]:
     rv = []
     for mapping in mappings:
         if all(isinstance(e, ReasonedEvidence) for e in mapping.evidence):

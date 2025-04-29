@@ -366,10 +366,13 @@ def from_sssom_df(
         columns={
             "source_id": "subject_id",
             "source_label": "subject_label",
+            "source_name": "subject_label",
             "target_id": "object_id",
             "target_label": "object_label",
+            "target_name": "object_label",
             "justification": "mapping_justification",
             "mapping_set_name": "mapping_set_title",
+            "mapping_set_license": "license",
         }
     )
     if metadata:

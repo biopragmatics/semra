@@ -166,7 +166,8 @@ class MappingSet(
         """Add a missing ``mapping_set_id`` field, if missing in the ``id`` slot."""
         if not isinstance(data, dict) or data.get("id"):
             return data
-        identifier = f"https://w3id.org/sssom/mappings/{data['name']}"
+        name = data["name"].lower().replace(" ", "-").replace("_", "-")
+        identifier = f"https://w3id.org/sssom/mappings/{name}"
         if version := data.get("version"):
             identifier += f"v{version}"
         data["id"] = identifier

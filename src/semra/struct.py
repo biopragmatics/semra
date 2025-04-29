@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import pickle
-import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
@@ -14,7 +13,6 @@ from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, Param
 import pydantic
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field, model_validator
-from pydantic.types import UUID4
 from pyobo import Reference
 
 from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
@@ -221,7 +219,6 @@ class SimpleEvidence(
             Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
         ],
     )
-    uuid: UUID4 = Field(default_factory=uuid.uuid4)
     confidence: float | None = Field(None, description="The confidence")
 
     def _simple_key(self) -> SimpleEvidenceKey:

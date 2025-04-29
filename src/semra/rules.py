@@ -71,6 +71,16 @@ INVERSION_MAPPING = _f(v.mapping_inversion)
 CHAIN_MAPPING = _f(v.mapping_chaining)
 KNOWLEDGE_MAPPING = _f(v.background_knowledge_based_matching_process)
 
+JUSTIFICATIONS = [
+    MANUAL_MAPPING,
+    LEXICAL_MAPPING,
+    UNSPECIFIED_MAPPING,
+    INVERSION_MAPPING,
+    CHAIN_MAPPING,
+    KNOWLEDGE_MAPPING,
+]
+CURIE_TO_JUSTIFICATION = {j.curie: j for j in JUSTIFICATIONS}
+
 charlie = _f(v.charlie)
 BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. Gyori")
 

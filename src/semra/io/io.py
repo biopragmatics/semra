@@ -9,7 +9,7 @@ import typing as t
 import uuid
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import Any, NamedTuple, TextIO, cast
 
 import bioontologies
 import bioregistry
@@ -23,8 +23,14 @@ import yaml
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie, safe_open, safe_open_writer
-from ..rules import UNSPECIFIED_MAPPING
+from .io_utils import (
+    CONFIDENCE_PRECISION,
+    get_confidence_str,
+    get_name_by_curie,
+    safe_open,
+    safe_open_writer,
+)
+from ..rules import CURIE_TO_JUSTIFICATION, UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
@@ -314,7 +320,7 @@ def from_sssom(
     df = pd.read_csv(path, sep="\t", dtype=str)
     return from_sssom_df(
         df,
-        mapping_set_id=mapping_set_id or (path.as_uri() if isinstance(path, Path) else path),
+        mapping_set_id=mapping_set_id,
         mapping_set_name=mapping_set_name,
         mapping_set_confidence=mapping_set_confidence,
         license=license,
@@ -322,6 +328,7 @@ def from_sssom(
         version=version,
         standardize=standardize,
         metadata=metadata,
+        _path=path.as_uri() if isinstance(path, Path) else path,
     )
 
 
@@ -334,9 +341,9 @@ def from_sssom_df(
     license: str | None = None,
     justification: Reference | None = None,
     version: str | None = None,
-    _uuid: uuid.UUID | None = None,
     standardize: bool = True,
     metadata: str | None = None,
+    _path: str | None = None,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
     df = df.rename(
@@ -354,14 +361,22 @@ def from_sssom_df(
         if mapping_set_name is None:
             mapping_set_name = metadata_dict.get("mapping_set_title")
         if mapping_set_id is None:
-            mapping_set_name = metadata_dict.get("mapping_set_id")
+            mapping_set_id = metadata_dict.get("mapping_set_id")
         if version is None:
             version = metadata_dict.get("mapping_set_version")
         if license is None:
             license = metadata_dict.get("license")
 
-    return [
-        _parse_sssom_row(
+    rv = []
+    for _, row in tqdm(
+        df.iterrows(),
+        total=len(df.index),
+        leave=False,
+        unit_scale=True,
+        unit="row",
+        desc="Loading SSSOM dataframe",
+    ):
+        mapping = _parse_sssom_row(
             row,
             mapping_set_id=mapping_set_id,
             mapping_set_name=mapping_set_name,
@@ -370,17 +385,20 @@ def from_sssom_df(
             mapping_set_version=version,
             justification=justification,
             standardize=standardize,
-            _uuid=_uuid,
+            _path=_path,
         )
-        for _, row in tqdm(
-            df.iterrows(),
-            total=len(df.index),
-            leave=False,
-            unit_scale=True,
-            unit="row",
-            desc="Loading SSSOM dataframe",
-        )
-    ]
+        if mapping is not None:
+            rv.append(mapping)
+    return rv
+
+
+def _row_get(row: dict[str, Any], key: str) -> Any:
+    if key not in row:
+        return None
+    value = row[key]
+    if pd.isna(value):
+        return None
+    return value
 
 
 def _parse_sssom_row(
@@ -392,10 +410,16 @@ def _parse_sssom_row(
     justification: Reference | None,
     mapping_set_version: str | None,
     standardize: bool,
-    _uuid: uuid.UUID | None = None,
-) -> Mapping:
+    _path: str | None = None,
+) -> Mapping | None:
+    if "reasoned" in row and pd.notna(row["reasoned"]):
+        # TODO implement
+        return None
+
     if "author_id" in row and pd.notna(row["author_id"]):
-        author = _from_curie(row["author_id"], standardize=standardize)
+        author = _from_curie(
+            row["author_id"], name=_row_get(row, "author_label"), standardize=standardize
+        )
     else:
         author = None
 
@@ -407,7 +431,7 @@ def _parse_sssom_row(
     elif "mapping_set" in row and pd.notna(row["mapping_set"]):
         mapping_set_name = row["mapping_set"]
     elif mapping_set_name is None:
-        raise KeyError("need a mapping set name")
+        raise KeyError("need a mapping set name. dataframe had columns")
 
     # note that ``mapping_set_confidence`` isn't actually part of the SSSOM standard (yet),
     # see https://github.com/mapping-commons/sssom/issues/438
@@ -427,6 +451,8 @@ def _parse_sssom_row(
         pass
     elif "mapping_set_id" in row and pd.notna(row["mapping_set_id"]):
         mapping_set_id = row["mapping_set_id"]
+    elif _path is not None:
+        mapping_set_id = _path
 
     # See https://mapping-commons.github.io/sssom/license/
     if license is not None:
@@ -445,9 +471,18 @@ def _parse_sssom_row(
     if justification is not None:
         pass
     elif "mapping_justification" in row and pd.notna(row["mapping_justification"]):
-        justification = Reference.from_curie(row["mapping_justification"])
+        justification_curie = row["mapping_justification"]
+        if justification_curie in CURIE_TO_JUSTIFICATION:
+            justification = CURIE_TO_JUSTIFICATION[justification_curie]
+        else:
+            justification = Reference.from_curie(justification_curie)
     else:
         justification = UNSPECIFIED_MAPPING
+
+    if "confidence" in row and pd.notna(row["confidence"]):
+        confidence = row["confidence"]
+    else:
+        confidence = None
 
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
@@ -462,11 +497,8 @@ def _parse_sssom_row(
         "justification": justification,
         "mapping_set": mapping_set,
         "author": author,
-        # TODO add mapping confidence here?
+        "confidence": confidence,
     }
-    if _uuid:
-        e["uuid"] = _uuid
-
     return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
 
 
@@ -488,18 +520,34 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
         return Reference(prefix=prefix, identifier=identifier)
 
 
-SSSOM_DEFAULT_COLUMNS = [
-    "subject_id",
-    "predicate_id",
-    "object_id",
-    "mapping_justification",
-    "mapping_set",
-    "mapping_set_version",
-    "mapping_set_license",
-    "mapping_set_confidence",
-    "author_id",
-    "comment",
-]
+class SSSOMRow(NamedTuple):
+    """A tuple representing a row in a SSSOM TSV file."""
+
+    triple_id: str
+    subject_id: str
+    subject_label: str
+    predicate_id: str
+    object_id: str
+    object_label: str
+    mapping_justification: str
+    mapping_set_id: str
+    mapping_set_title: str
+    mapping_set_version: str
+    mapping_set_confidence: str
+    confidence: str
+    license: str
+    author_id: str
+    author_label: str
+    comment: str
+    reasoned: str
+
+
+SSSOM_DEFAULT_COLUMNS = SSSOMRow._fields
+SSSOM_DUMMY_MAPPING_SET_BASE = "https://w3id.org/sssom/mappings/"
+
+
+def _get_dummy_id() -> str:
+    return SSSOM_DUMMY_MAPPING_SET_BASE + str(uuid.uuid4())
 
 
 def get_sssom_df(
@@ -515,8 +563,9 @@ def get_sssom_df(
 
     :returns: A SSSOM dataframe in Pandas
     """
+    semra_mapping_set_id = _get_dummy_id()
     rows = [
-        _get_sssom_row(m, e)
+        _get_sssom_row(m, e, semra_mapping_set_id)
         for m in tqdm(
             mappings, desc="Preparing SSSOM", leave=False, unit="mapping", unit_scale=True
         )
@@ -529,23 +578,10 @@ def get_sssom_df(
                 ("subject_label", "subject_id"),
                 ("object_label", "object_id"),
             ]:
-                df[label_column] = df[id_column].map(get_name_by_curie)
-        df = df[
-            [
-                "subject_id",
-                "subject_label",
-                "predicate_id",
-                "object_id",
-                "object_label",
-                "mapping_justification",
-                "mapping_set",
-                "mapping_set_version",
-                "mapping_set_license",
-                "mapping_set_confidence",
-                "author_id",
-                "comment",
-            ]
-        ]
+                df[label_column] = [
+                    name or get_name_by_curie(curie)
+                    for curie, name in df[[id_column, label_column]].values
+                ]
 
     if prune:
         # remove empty columns
@@ -556,27 +592,50 @@ def get_sssom_df(
     return df
 
 
-def _get_sssom_row(mapping: Mapping, e: Evidence) -> tuple[str, ...]:
+def _format_confidence(confidence: float) -> str:
+    return str(round(confidence, CONFIDENCE_PRECISION))
+
+
+def _get_sssom_row(mapping: Mapping, e: Evidence, msid: str) -> SSSOMRow:
     # TODO increase this
     if isinstance(e, SimpleEvidence):
+        mapping_set_id = cast(str, e.mapping_set.id)
+        mapping_set_name = e.mapping_set.name
         mapping_set_version = e.mapping_set.version or ""
         mapping_set_license = e.mapping_set.license or ""
+        mapping_set_confidence = get_confidence_str(e.mapping_set)
+        confidence = _format_confidence(e.confidence) if e.confidence else ""
+        reasoned = ""
     elif isinstance(e, ReasonedEvidence):
+        # warning: SeMRA's format is not possible to capture in SSSOM
+        mapping_set_id = msid
+        mapping_set_name = "semra"
         mapping_set_version = ""
         mapping_set_license = ""
+        mapping_set_confidence = "1.0"
+        confidence = _format_confidence(e.confidence_factor)
+        reasoned = "|".join(mapping.hexdigest() for mapping in e.mappings)
     else:
         raise TypeError
-    return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
-        e.justification.curie,
-        ",".join(sorted(e.mapping_set_names)),
-        mapping_set_version,
-        mapping_set_license,
-        get_confidence_str(e),
-        e.author.curie if e.author else "",
-        e.explanation,
+
+    return SSSOMRow(
+        triple_id=mapping.hexdigest(),
+        subject_id=mapping.s.curie,
+        subject_label=mapping.s.name or "",
+        predicate_id=mapping.p.curie,
+        object_id=mapping.o.curie,
+        object_label=mapping.o.name or "",
+        mapping_justification=e.justification.curie,
+        mapping_set_id=mapping_set_id,
+        mapping_set_title=mapping_set_name,
+        mapping_set_version=mapping_set_version,
+        mapping_set_confidence=mapping_set_confidence,
+        confidence=confidence,
+        license=mapping_set_license,
+        author_id=e.author.curie if e.author else "",
+        author_label=e.author.name or "" if e.author else "",
+        comment=e.explanation,
+        reasoned=reasoned,
     )
 
 
@@ -595,10 +654,11 @@ def write_sssom(
 
 
 def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
+    dummy_id = _get_dummy_id()
     with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         writer.writerows(
-            _get_sssom_row(m, e)
+            _get_sssom_row(m, e, dummy_id)
             for m in tqdm(
                 mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True
             )

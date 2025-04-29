@@ -76,7 +76,9 @@ import semra.io
 
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-mappings = semra.io.from_sssom(sssom_url)
+mappings = semra.io.from_sssom(
+   sssom_url, license="spdx:CC0-1.0", mapping_set_name="biomappings", mapping_set_confidence=0.85,
+)
 
 # load mappings from the Gene Ontology (via OBO format)
 go_mappings = semra.io.from_pyobo("go")

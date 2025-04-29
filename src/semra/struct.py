@@ -142,7 +142,7 @@ class MappingSet(
     version: str | None = Field(
         default=None, description="The version of the dataset from which the mapping comes"
     )
-    license: str | None = Field(default=None, description="License name or URL for mapping set")
+    license: str | None = Field(default=None, description="License name or URL that applies to the whole mapping set")
     confidence: float = Field(..., description="Mapping set level confidence")
 
     def key(self) -> MappingSetKey:

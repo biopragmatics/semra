@@ -6,7 +6,11 @@ import unittest
 import uuid
 from pathlib import Path
 
+import bioregistry
 import pandas as pd
+import sssom.io
+from sssom.constants import DEFAULT_VALIDATION_TYPES
+from sssom.validators import VALIDATION_METHODS
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.io import (
@@ -267,6 +271,12 @@ class TestIO(unittest.TestCase):
 
     def test_sssom(self) -> None:
         """Test I/O with SSSOM."""
+        prefix_map = {
+            "mesh": bioregistry.get_uri_prefix("mesh"),
+            "orcid": bioregistry.get_uri_prefix("orcid"),
+            "chembl.compound": bioregistry.get_uri_prefix("chembl.compound"),
+            "chebi": bioregistry.get_uri_prefix("chebi"),
+        }
         with tempfile.TemporaryDirectory() as directory_:
             for path in [
                 Path(directory_).joinpath("test.sssom.tsv"),
@@ -274,4 +284,12 @@ class TestIO(unittest.TestCase):
             ]:
                 write_sssom(self.mappings, path)
                 new_mappings = from_sssom(path)
-                self.assertEqual(sorted(self.mappings), sorted(new_mappings))
+
+                msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
+                for vt in DEFAULT_VALIDATION_TYPES:
+                    with self.subTest(msg=f"SSSOM Validation: {vt.name}"):
+                        report = VALIDATION_METHODS[vt](msdf, False)
+                        self.assertEqual([], report.results)
+
+                with self.subTest(msg="reconstitution"):
+                    self.assertEqual(sorted(self.mappings), sorted(new_mappings))

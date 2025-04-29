@@ -73,6 +73,7 @@ dependencies = [
 tests = [
     "pytest",
     "coverage[toml]",
+    "sssom",
 ]
 docs = [
     "sphinx>=8",

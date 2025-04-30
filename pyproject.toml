@@ -63,7 +63,7 @@ dependencies = [
     "typing_extensions",
     "zenodo_client",
     "ssslm",
-    "curies>=0.10.9",
+    "curies>=0.10.15",
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
     "pyyaml",

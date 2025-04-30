@@ -11,6 +11,7 @@ from itertools import islice
 from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
+from curies.triples import StrTriple, Triple
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pyobo import Reference
@@ -30,31 +31,6 @@ __all__ = [
 
 P = ParamSpec("P")
 X = TypeVar("X")
-
-
-class Triple(pydantic.BaseModel):
-    """A type annotation for a subject-predicate-object triple."""
-
-    model_config = ConfigDict(frozen=True)
-
-    subject: Reference
-    predicate: Reference
-    object: Reference
-
-    def __lt__(self, other: Triple) -> bool:
-        return self.as_str_triple() < other.as_str_triple()
-
-    def as_str_triple(self) -> StrTriple:
-        """Get a string triple."""
-        return StrTriple(self.subject.curie, self.subject.curie, self.subject.curie)
-
-
-class StrTriple(NamedTuple):
-    """A triple of curies."""
-
-    subject: str
-    predicate: str
-    object: str
 
 
 def _md5_hexdigest(picklable: object) -> str:

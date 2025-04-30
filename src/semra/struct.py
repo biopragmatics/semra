@@ -52,7 +52,7 @@ class Triple(NamedTuple):
     object: Reference
 
 
-class CURIETripleTuple(NamedTuple):
+class StrTriple(NamedTuple):
     """A triple of curies."""
 
     subject: str
@@ -60,9 +60,9 @@ class CURIETripleTuple(NamedTuple):
     object: str
 
 
-def triple_key(triple: Triple) -> CURIETripleTuple:
+def triple_key(triple: Triple) -> StrTriple:
     """Get a sortable key for a triple."""
-    return CURIETripleTuple(triple.subject.curie, triple.subject.curie, triple.subject.curie)
+    return StrTriple(triple.subject.curie, triple.subject.curie, triple.subject.curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -200,7 +200,7 @@ EvidenceP: TypeAlias = Union["Mapping", Triple]
 
 class SimpleEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[EvidenceP], tuple[CURIETripleTuple, SimpleEvidenceKey]],
+    KeyedMixin[[EvidenceP], tuple[StrTriple, SimpleEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -237,7 +237,7 @@ class SimpleEvidence(
             self.mapping_set.key(),
         )
 
-    def key(self, triple: EvidenceP) -> tuple[CURIETripleTuple, SimpleEvidenceKey]:
+    def key(self, triple: EvidenceP) -> tuple[StrTriple, SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -272,8 +272,7 @@ class ReasonedEvidenceKey(NamedTuple):
     justification: str
     rest: tuple[
         tuple[
-            tuple[CURIETripleTuple, ReasonedEvidenceKey]
-            | tuple[CURIETripleTuple, SimpleEvidenceKey],
+            tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey],
             ...,
         ],
         ...,
@@ -282,7 +281,7 @@ class ReasonedEvidenceKey(NamedTuple):
 
 class ReasonedEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[EvidenceP], tuple[CURIETripleTuple, ReasonedEvidenceKey]],
+    KeyedMixin[[EvidenceP], tuple[StrTriple, ReasonedEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -314,7 +313,7 @@ class ReasonedEvidence(
             ),
         )
 
-    def key(self, triple: EvidenceP) -> tuple[CURIETripleTuple, ReasonedEvidenceKey]:
+    def key(self, triple: EvidenceP) -> tuple[StrTriple, ReasonedEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -379,7 +378,7 @@ Evidence = Annotated[
 class Mapping(
     pydantic.BaseModel,
     ConfidenceMixin,
-    KeyedMixin[[], CURIETripleTuple],
+    KeyedMixin[[], StrTriple],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
     """A semantic mapping."""
@@ -396,7 +395,7 @@ class Mapping(
         """Get the mapping's core triple as a tuple."""
         return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
-    def key(self) -> CURIETripleTuple:
+    def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
 

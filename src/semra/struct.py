@@ -32,12 +32,17 @@ P = ParamSpec("P")
 X = TypeVar("X")
 
 
-class Triple(NamedTuple):
+class Triple(pydantic.BaseModel):
     """A type annotation for a subject-predicate-object triple."""
+
+    model_config = ConfigDict(frozen=True)
 
     subject: Reference
     predicate: Reference
     object: Reference
+
+    def __lt__(self, other: Triple) -> bool:
+        return self.as_str_triple() < other.as_str_triple()
 
     def as_str_triple(self) -> StrTriple:
         """Get a string triple."""
@@ -393,8 +398,16 @@ class Mapping(
         evidence: list[Evidence] | None = None,
     ) -> Mapping:
         """Instantiate a mapping from a triple."""
-        subject, predicate, obj = triple
-        return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
+        if isinstance(triple, Triple):
+            return cls(
+                subject=triple.subject,
+                predicate=triple.predicate,
+                object=triple.object,
+                evidence=evidence or [],
+            )
+        else:
+            subject, predicate, obj = triple
+            return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
 
     def get_confidence(self) -> float:
         """Aggregate the mapping's evidences' confidences in a binomial model."""

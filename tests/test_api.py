@@ -251,7 +251,7 @@ class TestOperations(unittest.TestCase):
             msg="inference over multiple steps is broken",
         )
         self.assert_same_triples(
-            [m1, m2, m3, m4, m5, m6, m4_i, m5_i, m6_i],
+            [m1, m2, m3, m4, m5, m4_i, m6, m5_i, m6_i],
             infer_chains([m1, m2, m3], backwards=True, progress=False),
             msg="inference over multiple steps is broken",
         )

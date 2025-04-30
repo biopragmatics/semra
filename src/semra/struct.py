@@ -60,10 +60,7 @@ class CURIETripleTuple(NamedTuple):
     object: str
 
 
-TripleHint: TypeAlias = Triple | tuple[Reference, Reference, Reference]
-
-
-def triple_key(triple: TripleHint) -> CURIETripleTuple:
+def triple_key(triple: Triple) -> CURIETripleTuple:
     """Get a sortable key for a triple."""
     return CURIETripleTuple(triple[0].curie, triple[1].curie, triple[2].curie)
 
@@ -198,7 +195,7 @@ class SimpleEvidenceKey(NamedTuple):
     mapping_set: MappingSetKey
 
 
-EvidenceP: TypeAlias = Union["Mapping", TripleHint]
+EvidenceP: TypeAlias = Union["Mapping", Triple]
 
 
 class SimpleEvidence(

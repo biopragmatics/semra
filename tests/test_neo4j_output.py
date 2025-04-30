@@ -17,6 +17,7 @@ from semra import (
 )
 from semra.io import write_neo4j
 from semra.rules import BEN_ORCID, CHAIN_MAPPING, UNSPECIFIED_MAPPING, charlie
+from semra.struct import Triple
 from tests import resources
 
 # TODO test when concept name has problematic characters like tabs or newlines
@@ -31,9 +32,9 @@ class TestNeo4jOutput(unittest.TestCase):
         r2 = Reference.from_curie("chebi:101854", name="talarozole")
         r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-        t1 = r1, EXACT_MATCH, r2
-        t2 = r2, EXACT_MATCH, r3
-        t3 = r1, EXACT_MATCH, r3
+        t1 = Triple(r1, EXACT_MATCH, r2)
+        t2 = Triple(r2, EXACT_MATCH, r3)
+        t3 = Triple(r1, EXACT_MATCH, r3)
 
         biomappings = MappingSet(
             purl="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",

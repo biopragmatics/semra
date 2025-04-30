@@ -266,6 +266,7 @@ def from_bioontologies(
 def from_sssom(
     path: str | Path,
     *,
+    mapping_set_title: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
     mapping_set_version: str | None = None,
@@ -277,10 +278,10 @@ def from_sssom(
 ) -> list[Mapping]:
     """Get mappings from a path to a SSSOM TSV file.
 
-    :param path: The local file path or URL to a SSSOM TSV file. This is also interpreted
-        as the SSSOM ``mapping_set_id`` field.
-    :param mapping_set_name: The title for the SSSOM mapping set, if not given
+    :param path: The local file path or URL to a SSSOM TSV file.
+    :param mapping_set_title: The title for the SSSOM mapping set, if not given
         explicitly in each mapping row nor by ``metadata``
+    :param mapping_set_name: A deprecated alias for ``mapping_set_title``
     :param mapping_set_confidence:
         The confidence associated with all mappings in the
         mapping set. This diverges from the SSSOM data model in that each mapping can
@@ -315,6 +316,7 @@ def from_sssom(
     df = pd.read_csv(path, sep="\t", dtype=str)
     return from_sssom_df(
         df,
+        mapping_set_title=mapping_set_title,
         mapping_set_name=mapping_set_name,
         mapping_set_confidence=mapping_set_confidence,
         mapping_set_version=mapping_set_version,
@@ -330,6 +332,7 @@ def from_sssom_df(
     df: pd.DataFrame,
     *,
     mapping_set_name: str | None = None,
+    mapping_set_title: str | None = None,
     mapping_set_confidence: float | None = None,
     mapping_set_version: str | None = None,
     license: str | None = None,
@@ -351,6 +354,16 @@ def from_sssom_df(
             )
             mapping_set_version = version
 
+    if mapping_set_name:
+        if mapping_set_title:
+            raise ValueError(
+                f"got both {mapping_set_name=} and {mapping_set_title=} when loading a SSSOM dataframe. Just use `mapping_set_title`"
+            )
+        logger.warning(
+            "passing `mapping_set_name` when loading a SSSOM dataframe is deprecated. Use `mapping_set_title` instead"
+        )
+        mapping_set_title = mapping_set_name
+
     df = df.rename(
         columns={
             "source_id": "subject_id",
@@ -366,8 +379,8 @@ def from_sssom_df(
     )
     if metadata:
         metadata_dict = yaml.safe_load(requests.get(metadata, timeout=15).text)
-        if mapping_set_name is None:
-            mapping_set_name = metadata_dict.get("mapping_set_title")
+        if mapping_set_title is None:
+            mapping_set_title = metadata_dict.get("mapping_set_title")
         if mapping_set_confidence is None:
             mapping_set_confidence = metadata_dict.get("mapping_set_confidence")
         if mapping_set_version is None:
@@ -386,7 +399,7 @@ def from_sssom_df(
     ):
         mapping = _parse_sssom_row(
             row,
-            mapping_set_name=mapping_set_name,
+            mapping_set_title=mapping_set_title,
             mapping_set_confidence=mapping_set_confidence,
             mapping_set_version=mapping_set_version,
             license=license,
@@ -409,7 +422,7 @@ def _row_get(row: dict[str, Any], key: str) -> Any:
 
 def _parse_sssom_row(
     row: dict[str, Any],
-    mapping_set_name: str | None,
+    mapping_set_title: str | None,
     mapping_set_confidence: float | None,
     mapping_set_version: str | None,
     license: str | None,
@@ -424,14 +437,14 @@ def _parse_sssom_row(
         author = None
 
     # See https://mapping-commons.github.io/sssom/mapping_set_title/
-    if mapping_set_name is not None:
+    if mapping_set_title is not None:
         pass
     elif "mapping_set_title" in row and pd.notna(row["mapping_set_title"]):
-        mapping_set_name = row["mapping_set_title"]
+        mapping_set_title = row["mapping_set_title"]
     elif "mapping_set" in row and pd.notna(row["mapping_set"]):
-        mapping_set_name = row["mapping_set"]
-    elif mapping_set_name is None:
-        raise KeyError("need a mapping set name. dataframe had columns")
+        mapping_set_title = row["mapping_set"]
+    elif mapping_set_title is None:
+        raise KeyError("need a mapping set title. dataframe had columns")
 
     # note that ``mapping_set_confidence`` isn't actually part of the SSSOM standard (yet),
     # see https://github.com/mapping-commons/sssom/issues/438
@@ -453,7 +466,7 @@ def _parse_sssom_row(
         license = row["license"]
 
     mapping_set = MappingSet(
-        name=mapping_set_name,
+        name=mapping_set_title,
         version=mapping_set_version,
         confidence=mapping_set_confidence,
         license=license,

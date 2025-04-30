@@ -27,7 +27,6 @@ from semra.struct import (
     Reference,
     SimpleEvidence,
     Triple,
-    triple_key,
 )
 from semra.utils import cleanup_prefixes, semra_tqdm
 
@@ -266,7 +265,7 @@ def tabulate_index(index: Index) -> str:
     from tabulate import tabulate
 
     rows: list[tuple[str, str, str, str]] = []
-    for triple, evidences in sorted(index.items(), key=lambda pair: triple_key(pair[0])):
+    for triple, evidences in sorted(index.items()):
         if not evidences:
             rows.append((triple.subject.curie, triple.predicate.curie, triple.object.curie, ""))
         else:

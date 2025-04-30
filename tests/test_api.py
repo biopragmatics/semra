@@ -38,7 +38,6 @@ from semra.struct import (
     Reference,
     SimpleEvidence,
     line,
-    triple_key,
 )
 
 PREFIX_A = "go"
@@ -168,7 +167,7 @@ class TestOperations(unittest.TestCase):
 
     @staticmethod
     def _clean_index(index: Index) -> list[str]:
-        triples = sorted(set(index), key=triple_key)
+        triples = sorted(set(index))
         return [
             f"<{triple.subject.curie}, {triple.predicate.curie}, {triple.object.curie}>"
             for triple in triples

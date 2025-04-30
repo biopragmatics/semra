@@ -12,7 +12,7 @@ from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, Param
 
 import pydantic
 from more_itertools import triplewise
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field
 from pyobo import Reference
 
 from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
@@ -155,24 +155,6 @@ class MappingSet(
         ...,
         description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
     )
-
-    id: str | None = Field(
-        default=None,
-        description="The identifier for the mapping set. Corresponds to required SSSOM field https://mapping-commons.github.io/sssom/mapping_set_id/.",
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_default_id(cls, data: Any) -> Any:
-        """Add a missing ``mapping_set_id`` field, if missing in the ``id`` slot."""
-        if not isinstance(data, dict) or data.get("id"):
-            return data
-        name = data["name"].lower().replace(" ", "-").replace("_", "-")
-        identifier = f"https://w3id.org/sssom/mappings/{name}"
-        if version := data.get("version"):
-            identifier += f"v{version}"
-        data["id"] = identifier
-        return data
 
     def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""

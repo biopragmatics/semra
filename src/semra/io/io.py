@@ -580,21 +580,20 @@ def _format_confidence(confidence: float) -> str:
 
 
 def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) -> SSSOMRow:
-    # TODO increase this
     if isinstance(e, SimpleEvidence):
-        mapping_set_id = cast(str, e.mapping_set.id)
-        mapping_set_name = e.mapping_set.name
+        mapping_set_id = FALLBACK_MAPPING_SET_ID_URI_PREFIX + e.mapping_set.hexdigest()
+        mapping_set_title = e.mapping_set.name
         mapping_set_version = e.mapping_set.version or ""
-        mapping_set_license = e.mapping_set.license or ""
         mapping_set_confidence = get_confidence_str(e.mapping_set)
+        license = e.mapping_set.license or ""
         confidence = _format_confidence(e.confidence) if e.confidence else ""
     elif isinstance(e, ReasonedEvidence):
         # warning: SeMRA's format is not possible to capture in SSSOM
         mapping_set_id = fallback_mapping_set_id
-        mapping_set_name = "semra"
+        mapping_set_title = "semra"
         mapping_set_version = ""
-        mapping_set_license = ""
         mapping_set_confidence = "1.0"
+        license = ""
         confidence = _format_confidence(e.confidence_factor)
     else:
         raise TypeError
@@ -607,11 +606,11 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) 
         object_label=mapping.o.name or "",
         mapping_justification=e.justification.curie,
         mapping_set_id=mapping_set_id,
-        mapping_set_title=mapping_set_name,
+        mapping_set_title=mapping_set_title,
         mapping_set_version=mapping_set_version,
         mapping_set_confidence=mapping_set_confidence,
         confidence=confidence,
-        license=mapping_set_license,
+        license=license,
         author_id=e.author.curie if e.author else "",
         author_label=e.author.name if e.author and e.author.name else "",
         comment=e.explanation,

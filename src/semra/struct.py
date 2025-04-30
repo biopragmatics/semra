@@ -62,7 +62,7 @@ class CURIETripleTuple(NamedTuple):
 
 def triple_key(triple: Triple) -> CURIETripleTuple:
     """Get a sortable key for a triple."""
-    return CURIETripleTuple(triple[0].curie, triple[1].curie, triple[2].curie)
+    return CURIETripleTuple(triple.subject.curie, triple.subject.curie, triple.subject.curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -394,7 +394,7 @@ class Mapping(
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
-        return Triple(self.subject, self.predicate, self.object)
+        return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
     def key(self) -> CURIETripleTuple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""

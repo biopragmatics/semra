@@ -169,7 +169,10 @@ class TestOperations(unittest.TestCase):
     @staticmethod
     def _clean_index(index: Index) -> list[str]:
         triples = sorted(set(index), key=triple_key)
-        return ["<" + ", ".join(element.curie for element in triple) + ">" for triple in triples]
+        return [
+            f"<{triple.subject.curie}, {triple.predicate.curie}, {triple.object.curie}>"
+            for triple in triples
+        ]
 
     def test_infer_exact_match(self) -> None:
         """Test inference through the transitivity of SKOS exact matches."""

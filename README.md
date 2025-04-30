@@ -77,7 +77,7 @@ import semra.io
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
 mappings = semra.io.from_sssom(
-   sssom_url, license="spdx:CC0-1.0", mapping_set_name="biomappings",
+   sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
 )
 
 # alternatively, metadata can be passed via a file/URL

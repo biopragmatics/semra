@@ -389,7 +389,7 @@ def from_sssom_df(
             license = metadata_dict.get("license")
 
     rv = []
-    for _, row in tqdm(
+    for index, row in tqdm(
         df.iterrows(),
         total=len(df.index),
         leave=False,
@@ -398,6 +398,7 @@ def from_sssom_df(
         desc="Loading SSSOM dataframe",
     ):
         mapping = _parse_sssom_row(
+            index,
             row,
             mapping_set_title=mapping_set_title,
             mapping_set_confidence=mapping_set_confidence,
@@ -421,6 +422,7 @@ def _row_get(row: dict[str, Any], key: str) -> Any:
 
 
 def _parse_sssom_row(
+    index: Any,
     row: dict[str, Any],
     mapping_set_title: str | None,
     mapping_set_confidence: float | None,
@@ -452,6 +454,8 @@ def _parse_sssom_row(
         pass
     elif "mapping_set_confidence" in row and pd.notna(row["mapping_set_confidence"]):
         mapping_set_confidence = row["mapping_set_confidence"]
+    else:
+        mapping_set_confidence = 1.0
 
     # See https://mapping-commons.github.io/sssom/mapping_set_version/
     if mapping_set_version is not None:
@@ -488,9 +492,15 @@ def _parse_sssom_row(
     else:
         confidence = None
 
-    s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
-    p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
-    o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
+    try:
+        s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
+        p = _from_curie(
+            row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
+        )
+        o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
+    except pydantic.ValidationError as e:
+        logger.warning("[%s] could not parse row: %s", index, e)
+        return None
     e: dict[str, t.Any] = {
         "justification": justification,
         "mapping_set": mapping_set,

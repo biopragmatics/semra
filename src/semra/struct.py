@@ -8,18 +8,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import (
-    Annotated,
-    Any,
-    ClassVar,
-    Generic,
-    Literal,
-    NamedTuple,
-    ParamSpec,
-    TypeAlias,
-    TypeVar,
-    Union,
-)
+from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
 from more_itertools import triplewise
@@ -193,12 +182,9 @@ class SimpleEvidenceKey(NamedTuple):
     mapping_set: MappingSetKey
 
 
-EvidenceP: TypeAlias = Union["Mapping", Triple]
-
-
 class SimpleEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[EvidenceP], tuple[StrTriple, SimpleEvidenceKey]],
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, SimpleEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -235,7 +221,7 @@ class SimpleEvidence(
             self.mapping_set.key(),
         )
 
-    def key(self, triple: EvidenceP) -> tuple[StrTriple, SimpleEvidenceKey]:
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -275,7 +261,7 @@ class ReasonedEvidenceKey(NamedTuple):
 
 class ReasonedEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[EvidenceP], tuple[StrTriple, ReasonedEvidenceKey]],
+    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, ReasonedEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -307,7 +293,7 @@ class ReasonedEvidence(
             ),
         )
 
-    def key(self, triple: EvidenceP) -> tuple[StrTriple, ReasonedEvidenceKey]:
+    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, ReasonedEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.

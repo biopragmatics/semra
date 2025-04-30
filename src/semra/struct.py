@@ -342,7 +342,12 @@ class Mapping(
     KeyedMixin[[], StrTriple],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
-    """A semantic mapping."""
+    """A semantic mapping.
+
+    This builds on the basic concept of a subject-predicate-object triple, where the
+    predicate is a semantic predicate, such as those listed in the `SSSOM specification
+    <https://mapping-commons.github.io/sssom/spec-model/>`_.
+    """
 
     model_config = ConfigDict(frozen=True)
 

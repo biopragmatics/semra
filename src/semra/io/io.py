@@ -283,14 +283,16 @@ def from_sssom(
     :param mapping_set_title: The title for the SSSOM mapping set, if not given
         explicitly in each mapping row nor by ``metadata``
     :param mapping_set_name: A deprecated alias for ``mapping_set_title``
-    :param mapping_set_confidence:
-        The confidence associated with all mappings in the
+    :param mapping_set_confidence: The confidence associated with all mappings in the
         mapping set. This diverges from the SSSOM data model in that each mapping can
         specify its own confidence, but there is no global confidence at the set level.
 
-        .. seealso:: https://github.com/mapping-commons/sssom/issues/438
-    :param mapping_set_version: The title for the SSSOM mapping set, if not given explicitly in each
-        mapping row nor by ``metadata``.
+        .. seealso::
+
+            https://github.com/mapping-commons/sssom/issues/438
+
+    :param mapping_set_version: The title for the SSSOM mapping set, if not given
+        explicitly in each mapping row nor by ``metadata``.
     :param license: The license for the SSSOM mapping set, if not given explicitly in
         each mapping row nor by ``metadata``.
     :param justification: The mapping justification for all mappings in the SSSOM

@@ -557,7 +557,7 @@ SSSOM_DEFAULT_COLUMNS = SSSOMRow._fields
 SSSOM_DUMMY_MAPPING_SET_BASE = "https://w3id.org/sssom/mappings/"
 
 
-def _get_dummy_id() -> str:
+def _get_fallback_mapping_set_id() -> str:
     return SSSOM_DUMMY_MAPPING_SET_BASE + str(uuid.uuid4())
 
 
@@ -574,9 +574,9 @@ def get_sssom_df(
 
     :returns: A SSSOM dataframe in Pandas
     """
-    semra_mapping_set_id = _get_dummy_id()
+    fallback_mapping_set_id = _get_fallback_mapping_set_id()
     rows = [
-        _get_sssom_row(m, e, semra_mapping_set_id)
+        _get_sssom_row(m, e, fallback_mapping_set_id)
         for m in tqdm(
             mappings, desc="Preparing SSSOM", leave=False, unit="mapping", unit_scale=True
         )
@@ -607,7 +607,7 @@ def _format_confidence(confidence: float) -> str:
     return str(round(confidence, CONFIDENCE_PRECISION))
 
 
-def _get_sssom_row(mapping: Mapping, e: Evidence, msid: str) -> SSSOMRow:
+def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) -> SSSOMRow:
     # TODO increase this
     if isinstance(e, SimpleEvidence):
         mapping_set_id = cast(str, e.mapping_set.id)
@@ -619,8 +619,8 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, msid: str) -> SSSOMRow:
         reasoned = ""
     elif isinstance(e, ReasonedEvidence):
         # warning: SeMRA's format is not possible to capture in SSSOM
-        mapping_set_id = msid
-        mapping_set_name = "semra"
+        mapping_set_id = fallback_mapping_set_id
+        mapping_set_name = f"semra-{fallback_mapping_set_id}"
         mapping_set_version = ""
         mapping_set_license = ""
         mapping_set_confidence = "1.0"
@@ -644,7 +644,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, msid: str) -> SSSOMRow:
         confidence=confidence,
         license=mapping_set_license,
         author_id=e.author.curie if e.author else "",
-        author_label=e.author.name or "" if e.author else "",
+        author_label=e.author.name if e.author and e.author.name else "",
         comment=e.explanation,
         reasoned=reasoned,
     )
@@ -713,7 +713,7 @@ def _write_sssom_stream(
 def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
 ) -> Generator[Mapping] | None:
-    dummy_id = _get_dummy_id()
+    dummy_id = _get_fallback_mapping_set_id()
     with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)

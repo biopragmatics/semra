@@ -36,11 +36,12 @@ class TestNeo4jOutput(unittest.TestCase):
         t3 = r1, EXACT_MATCH, r3
 
         biomappings = MappingSet(
+            id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
             name="biomappings",
             confidence=0.90,
             license="CC0",
         )
-        self.assertEqual("fa68b8e87141ffac7e64d2be07ef4b62", biomappings.hexdigest())
+        self.assertEqual("a678c40e1494d775c3bf4c491fea512c", biomappings.hexdigest())
 
         chembl = MappingSet(
             name="chembl",
@@ -54,7 +55,7 @@ class TestNeo4jOutput(unittest.TestCase):
             author=charlie,
             confidence=0.99,
         )
-        self.assertEqual("b6218d883b277224a0bc92746e829f64", m1_e1.hexdigest(t1))
+        self.assertEqual("0e17f568c60517ad2575dd4fff7734a3", m1_e1.hexdigest(t1))
 
         # check that making an identical evidence gives the same hex digest
         m1_e1_copy = SimpleEvidence(

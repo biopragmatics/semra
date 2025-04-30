@@ -34,6 +34,7 @@ RELATIONS: list[Reference] = [
     REPLACED_BY,
     SUBCLASS,
 ]
+CURIE_TO_RELATION = {r.curie: r for r in RELATIONS}
 
 IMPRECISE: set[Reference] = {DB_XREF, CLOSE_MATCH}
 FLIP = {

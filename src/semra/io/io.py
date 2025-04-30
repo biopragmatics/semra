@@ -30,7 +30,7 @@ from .io_utils import (
     safe_open,
     safe_open_writer,
 )
-from ..rules import CURIE_TO_JUSTIFICATION, UNSPECIFIED_MAPPING
+from ..rules import CURIE_TO_JUSTIFICATION, CURIE_TO_RELATION, UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
@@ -508,9 +508,14 @@ def _parse_sssom_row(
 
     try:
         s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
-        p = _from_curie(
-            row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
-        )
+
+        predicate_id = row["predicate_id"]
+        if predicate_id in CURIE_TO_RELATION:
+            p = CURIE_TO_RELATION[predicate_id]
+        else:
+            p = _from_curie(
+                row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
+            )
         o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     except pydantic.ValidationError as exc:
         logger.warning("[%s] could not parse row: %s", index, exc)

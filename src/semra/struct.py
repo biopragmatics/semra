@@ -271,11 +271,7 @@ class ReasonedEvidenceKey(NamedTuple):
     evidence_type: str
     justification: str
     rest: tuple[
-        tuple[
-            tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey],
-            ...,
-        ],
-        ...,
+        tuple[tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey], ...], ...
     ]
 
 

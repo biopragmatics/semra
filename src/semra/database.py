@@ -222,6 +222,9 @@ def _yield_custom(*, write_labels: bool) -> Iterable[Mapping]:
                     count += 1
                     yield mapping
 
+                # try to reclaim memory
+                del resource_mappings
+
         summaries.append(SummaryRow(resource_name, count, time.time() - start, "custom"))
         _write_summary()
 
@@ -250,18 +253,22 @@ def _yield_pyobo(
                     resource_mappings = from_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
-                    for mapping in _write_source(
-                        resource_mappings,
-                        "pyobo",
-                        resource.prefix,
-                        write_labels=write_labels,
-                        stream=True,
-                    ):
-                        count += 1
-                        yield mapping
             except Exception as e:
                 tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: {e}")
                 continue
+            else:
+                for mapping in _write_source(
+                    resource_mappings,
+                    "pyobo",
+                    resource.prefix,
+                    write_labels=write_labels,
+                    stream=True,
+                ):
+                    count += 1
+                    yield mapping
+
+                # try to reclaim memory
+                del resource_mappings
 
         summaries.append(SummaryRow(resource.prefix, count, time.time() - start, "pyobo"))
         _write_summary()
@@ -289,14 +296,17 @@ def _yield_wikidata(*, write_labels: bool) -> Iterable[Mapping]:
         else:
             try:
                 resource_mappings = get_wikidata_mappings_by_prefix(prefix)
+            except requests.exceptions.JSONDecodeError as e:
+                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+                continue
+            else:
                 for mapping in _write_source(
                     resource_mappings, "wikidata", resource_name, write_labels=write_labels
                 ):
                     count += 1
                     yield mapping
-            except requests.exceptions.JSONDecodeError as e:
-                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
-                continue
+                # try to reclaim memory
+                del resource_mappings
 
         summaries.append(SummaryRow(resource_name, count, time.time() - start, "wikidata"))
         _write_summary()
@@ -340,6 +350,9 @@ def _yield_ontology_resources(
                 ):
                     count += 1
                     yield mapping
+
+                # try to reclaim memory
+                del resource_mappings
             # this outputs on each iteration to get faster insight
             write_warned(WARNINGS_PATH)
             write_getter_warnings(ERRORS_PATH)

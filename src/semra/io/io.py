@@ -509,13 +509,10 @@ def _parse_sssom_row(
     try:
         s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
 
-        predicate_id = row["predicate_id"]
-        if predicate_id in CURIE_TO_RELATION:
+        if (predicate_id := row["predicate_id"]) in CURIE_TO_RELATION:
             p = CURIE_TO_RELATION[predicate_id]
         else:
-            p = _from_curie(
-                row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
-            )
+            p = _from_curie(predicate_id, standardize=standardize, name=row.get("predicate_label"))
         o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     except pydantic.ValidationError as exc:
         logger.warning("[%s] could not parse row: %s", index, exc)

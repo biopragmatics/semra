@@ -554,11 +554,11 @@ class SSSOMRow(NamedTuple):
 
 
 SSSOM_DEFAULT_COLUMNS = SSSOMRow._fields
-SSSOM_DUMMY_MAPPING_SET_BASE = "https://w3id.org/sssom/mappings/"
+FALLBACK_MAPPING_SET_ID_URI_PREFIX = "https://w3id.org/sssom/mappings/semra-"
 
 
 def _get_fallback_mapping_set_id() -> str:
-    return SSSOM_DUMMY_MAPPING_SET_BASE + str(uuid.uuid4())
+    return FALLBACK_MAPPING_SET_ID_URI_PREFIX + str(uuid.uuid4())
 
 
 def get_sssom_df(
@@ -620,7 +620,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) 
     elif isinstance(e, ReasonedEvidence):
         # warning: SeMRA's format is not possible to capture in SSSOM
         mapping_set_id = fallback_mapping_set_id
-        mapping_set_name = f"semra-{fallback_mapping_set_id}"
+        mapping_set_name = "semra"
         mapping_set_version = ""
         mapping_set_license = ""
         mapping_set_confidence = "1.0"
@@ -713,25 +713,25 @@ def _write_sssom_stream(
 def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
 ) -> Generator[Mapping] | None:
-    dummy_id = _get_fallback_mapping_set_id()
+    fallback_mapping_set_id = _get_fallback_mapping_set_id()
     with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
         if stream:
-            return _stream_write_sssom(writer, it, dummy_id)
+            return _stream_write_sssom(writer, it, fallback_mapping_set_id)
         else:
             for mapping in it:
                 for evidence in mapping.evidence:
-                    writer.writerow(_get_sssom_row(mapping, evidence, dummy_id))
+                    writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
             return None
 
 
 def _stream_write_sssom(
-    writer: Any, mappings: Iterable[Mapping], dummy_id: str
+    writer: Any, mappings: Iterable[Mapping], fallback_mapping_set_id: str
 ) -> Generator[Mapping]:
     for mapping in mappings:
         for evidence in mapping.evidence:
-            writer.writerow(_get_sssom_row(mapping, evidence, dummy_id))
+            writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
         yield mapping
 
 

@@ -103,7 +103,6 @@ skip_pyobo = {
     is_flag=True,
     help="If true, will try and prune unused SSSOM columns during output",
 )
-@click.option("--format", type=click.Choice(["jsonl", "sssom", "neo4j"]), default="neo4j")
 @UPLOAD_OPTION
 @REFRESH_SOURCE_OPTION
 def build(
@@ -112,7 +111,6 @@ def build(
     refresh_source: bool,
     write_labels: bool,
     prune_sssom: bool,
-    format: str,
 ) -> None:
     """Construct the full SeMRA database."""
     ontology_resources: list[bioregistry.Resource] = []

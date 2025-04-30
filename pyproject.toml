@@ -66,12 +66,14 @@ dependencies = [
     "curies>=0.10.9",
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
 tests = [
     "pytest",
     "coverage[toml]",
+    "sssom",
 ]
 docs = [
     "sphinx>=8",

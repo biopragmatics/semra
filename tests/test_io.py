@@ -1,22 +1,32 @@
 """Tests for I/O functions."""
 
 import getpass
+import itertools as itt
 import tempfile
 import unittest
 from pathlib import Path
 
+import bioregistry
 import pandas as pd
+import sssom.io
+from sssom.constants import DEFAULT_VALIDATION_TYPES
+from sssom.validators import VALIDATION_METHODS
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.api import assemble_evidences
 from semra.io import (
     from_digraph,
     from_jsonl,
     from_multidigraph,
+    from_pickle,
     from_pyobo,
+    from_sssom,
     from_sssom_df,
     to_digraph,
     to_multidigraph,
     write_jsonl,
+    write_pickle,
+    write_sssom,
 )
 from semra.rules import (
     BEN_ORCID,
@@ -243,3 +253,59 @@ class TestIO(unittest.TestCase):
         self.assertEqual(
             sorted(self.mappings), sorted(from_multidigraph(to_multidigraph(self.mappings)))
         )
+
+    def test_pickle(self) -> None:
+        """Test I/O with pickle."""
+        with tempfile.TemporaryDirectory() as directory_:
+            for path in [
+                Path(directory_).joinpath("test.pkl"),
+                Path(directory_).joinpath("test.pkl.gz"),
+            ]:
+                write_pickle(self.mappings, path)
+                new_mappings = from_pickle(path)
+                self.assertEqual(self.mappings, new_mappings)
+
+    def test_sssom(self) -> None:
+        """Test I/O with SSSOM."""
+        prefix_map = {
+            "mesh": bioregistry.get_uri_prefix("mesh"),
+            "orcid": bioregistry.get_uri_prefix("orcid"),
+            "chembl.compound": bioregistry.get_uri_prefix("chembl.compound"),
+            "chebi": bioregistry.get_uri_prefix("chebi"),
+        }
+        with tempfile.TemporaryDirectory() as directory_:
+            for path, prune in itt.product(
+                [
+                    Path(directory_).joinpath("test.sssom.tsv"),
+                    Path(directory_).joinpath("test.sssom.tsv.gz"),
+                ],
+                [True, False],
+            ):
+                write_sssom(self.mappings, path, prune=prune)
+                new_mappings = assemble_evidences(from_sssom(path), progress=False)
+
+                if not path.suffix.endswith(".gz"):
+                    # check gz after addressing https://github.com/mapping-commons/sssom-py/issues/581
+                    msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
+                    for vt in DEFAULT_VALIDATION_TYPES:
+                        with self.subTest(msg=f"SSSOM Validation: {vt.name}"):
+                            report = VALIDATION_METHODS[vt](msdf, False)
+                            if report is not None:
+                                # requires https://github.com/mapping-commons/sssom-py/pull/579
+                                self.assertEqual([], report.results)
+
+                with self.subTest(msg="reconstitution"):
+                    # TODO update to also work for reasoned?
+                    self.assertEqual(_filter_simple(self.mappings), _filter_simple(new_mappings))
+
+
+def _filter_simple(mappings: list[Mapping]) -> list[Mapping]:
+    rv = []
+    for mapping in mappings:
+        if all(
+            isinstance(e, ReasonedEvidence) or e.justification == CHAIN_MAPPING
+            for e in mapping.evidence
+        ):
+            continue
+        rv.append(mapping)
+    return sorted(rv)

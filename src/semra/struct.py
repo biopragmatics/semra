@@ -152,7 +152,7 @@ class MappingSet(
         description="License name or URL that applies to the whole mapping set. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/license/",
     )
     confidence: float = Field(
-        ...,
+        default=1.0,
         description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
     )
 

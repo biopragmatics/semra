@@ -203,7 +203,7 @@ class SimpleEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
-            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            triple.as_curie() if isinstance(triple, Mapping) else triple_key(triple),
             self._simple_key(),
         )
 
@@ -275,7 +275,7 @@ class ReasonedEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
-            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            triple.as_curie() if isinstance(triple, Mapping) else triple_key(triple),
             self._simple_key(),
         )
 

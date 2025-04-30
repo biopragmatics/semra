@@ -493,6 +493,7 @@ def _get_sssom_row(mapping: Mapping, e: Evidence) -> tuple[str, ...]:
     )
 
 
+# docstr-coverage:excused `overload`
 @overload
 def write_sssom(
     mappings: Iterable[Mapping],
@@ -504,6 +505,7 @@ def write_sssom(
 ) -> Generator[Mapping]: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def write_sssom(
     mappings: Iterable[Mapping],
@@ -537,12 +539,14 @@ def write_sssom(
         return None
 
 
+# docstr-coverage:excused `overload`
 @overload
 def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[False] = False
 ) -> None: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[True] = True
@@ -593,6 +597,7 @@ def from_pickle(path: str | Path) -> list[Mapping]:
             return cast(list[Mapping], pickle.load(file))
 
 
+# docstr-coverage:excused `overload`
 @overload
 def write_jsonl(
     objects: Iterable[X],
@@ -603,6 +608,7 @@ def write_jsonl(
 ) -> None: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def write_jsonl(
     objects: Iterable[X],
@@ -640,12 +646,14 @@ def _stream_write_jsonl(models: Iterable[X], file: TextIO) -> Generator[X]:
         yield model
 
 
+# docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
     path: str | Path, *, show_progress: bool = ..., stream: Literal[False] = False
 ) -> list[Mapping]: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
     path: str | Path, *, show_progress: bool = ..., stream: Literal[True] = True

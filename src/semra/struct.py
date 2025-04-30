@@ -337,7 +337,7 @@ Evidence = Annotated[
 
 
 class Mapping(
-    pydantic.BaseModel,
+    Triple,
     ConfidenceMixin,
     KeyedMixin[[], StrTriple],
     prefix=SEMRA_MAPPING_PREFIX,
@@ -356,16 +356,9 @@ class Mapping(
         """Get the mapping's core triple as a tuple."""
         return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
-    def as_str_triple(self) -> StrTriple:
-        """Get a string triple."""
-        return self.triple.as_str_triple()
-
     def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.triple.as_str_triple()
-
-    def __lt__(self, other: Mapping) -> bool:
-        return self.triple < other.triple
+        return self.as_str_triple()
 
     @classmethod
     def from_triple(

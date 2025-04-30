@@ -49,13 +49,14 @@ model:
 ```python
 from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
 
+r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
 mapping = Mapping(
-   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
-   p=EXACT_MATCH,
-   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
+   s=r1, p=EXACT_MATCH, o=r2,
    evidence=[
       SimpleEvidence(
-         evidence_type=MANUAL_MAPPING,
+         justification=MANUAL_MAPPING,
          confidence=0.99,
          author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
          mapping_set=MappingSet(
@@ -86,7 +87,6 @@ mappings_alt = semra.io.from_sssom(
    metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
 )
 
-
 # load mappings from the Gene Ontology (via OBO format)
 go_mappings = semra.io.from_pyobo("go")
 
@@ -116,12 +116,10 @@ The first rule is
 from semra import Mapping, EXACT_MATCH, Reference
 from semra.inference import infer_reversible
 
-# infer reversible
-mapping = Mapping(
-   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
-   p=EXACT_MATCH,
-   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
-)
+r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
+mapping = Mapping(s=r1, p=EXACT_MATCH, o=r2)
 
 # includes the mesh -> exact match-> chebi mapping with full provenance
 mappings = infer_reversible([mapping])
@@ -166,7 +164,7 @@ which means that a more strict predicate can be relaxed to a less specific
 predicate, like `owl:equivalentTo` to `skos:exactMatch`.
 
 ```python
-from semra import Reference, Mapping, EXACT_MATCH, EQUIVALENT_TO
+from semra import Reference, Mapping, EXACT_MATCH
 from semra.inference import infer_generalizations
 
 r1 = Reference.from_curie("chebi:101854", name="talarozole")

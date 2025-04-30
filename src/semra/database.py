@@ -21,13 +21,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from zenodo_client import Creator, Metadata, ensure_zenodo
 
 from semra import Mapping
-from semra.io import (
-    from_jsonl,
-    from_pyobo,
-    write_jsonl,
-    write_neo4j,
-    write_sssom,
-)
+from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
 from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
@@ -416,10 +410,6 @@ def _write_source(
 
 def _get_sssom_path(subdirectory: str, key: str) -> Path:
     return SOURCES.join(subdirectory, name=f"{key}.sssom.tsv.gz")
-
-
-def _get_pickle_path(subdirectory: str, key: str) -> Path:
-    return SOURCES.join(subdirectory, name=f"{key}.pkl.gz")
 
 
 def _get_jsonl_path(subdirectory: str, key: str) -> Path:

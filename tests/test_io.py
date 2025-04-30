@@ -302,7 +302,10 @@ class TestIO(unittest.TestCase):
 def _filter_simple(mappings: list[Mapping]) -> list[Mapping]:
     rv = []
     for mapping in mappings:
-        if all(isinstance(e, ReasonedEvidence) for e in mapping.evidence):
+        if all(
+            isinstance(e, ReasonedEvidence) or e.justification == CHAIN_MAPPING
+            for e in mapping.evidence
+        ):
             continue
         rv.append(mapping)
     return sorted(rv)

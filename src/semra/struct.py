@@ -116,7 +116,7 @@ class EvidenceMixin:
 class MappingSetKey(NamedTuple):
     """The key used for a mapping set."""
 
-    id: str
+    purl: str
     name: str
     version: str
     license: str
@@ -140,9 +140,9 @@ class MappingSet(
     https://mapping-commons.github.io/sssom/MappingSet.
     """
 
-    id: str | None = Field(
+    purl: str | None = Field(
         None,
-        description="ID of the mapping set. While it's optional in SeMRA, this is a required SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_id/",
+        description="The persistent URL (PURL) for the mapping set. While it's optional in SeMRA, this is a required SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_id/",
     )
     name: str = Field(
         ...,
@@ -163,7 +163,7 @@ class MappingSet(
 
     def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""
-        return MappingSetKey(self.id or "", self.name, self.version or "", self.license or "")
+        return MappingSetKey(self.purl or "", self.name, self.version or "", self.license or "")
 
     def get_confidence(self) -> float:
         """Get the explicit confidence for the mapping set."""

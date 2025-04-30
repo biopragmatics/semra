@@ -36,7 +36,7 @@ class TestNeo4jOutput(unittest.TestCase):
         t3 = r1, EXACT_MATCH, r3
 
         biomappings = MappingSet(
-            id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+            purl="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
             name="biomappings",
             confidence=0.90,
             license="CC0",

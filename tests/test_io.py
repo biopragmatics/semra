@@ -200,15 +200,18 @@ class TestIO(unittest.TestCase):
         t3 = r1, EXACT_MATCH, r3
 
         biomappings = MappingSet(
-            id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+            purl="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
             name="biomappings",
             confidence=0.90,
             license="CC0",
         )
         chembl = MappingSet(
-            id="https://example.org/test-1", name="chembl", confidence=0.90, license="CC-BY-SA-3.0"
+            purl="https://example.org/test-1",
+            name="chembl",
+            confidence=0.90,
+            license="CC-BY-SA-3.0",
         )
-        lexical_ms = MappingSet(id="https://example.org/test-2", name="lexical", confidence=0.90)
+        lexical_ms = MappingSet(purl="https://example.org/test-2", name="lexical", confidence=0.90)
 
         m1_e1 = SimpleEvidence(
             mapping_set=biomappings, justification=MANUAL_MAPPING, author=charlie, confidence=0.99

@@ -483,7 +483,7 @@ def _parse_sssom_row(
         mapping_set_id = row["mapping_set_id"]
 
     mapping_set = MappingSet(
-        id=mapping_set_id,
+        purl=mapping_set_id,
         name=mapping_set_title,
         version=mapping_set_version,
         confidence=mapping_set_confidence,
@@ -620,8 +620,8 @@ def _format_confidence(confidence: float) -> str:
 
 def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) -> SSSOMRow:
     if isinstance(e, SimpleEvidence):
-        if e.mapping_set.id:
-            mapping_set_id = e.mapping_set.id
+        if e.mapping_set.purl:
+            mapping_set_id = e.mapping_set.purl
         else:
             mapping_set_id = FALLBACK_MAPPING_SET_ID_URI_PREFIX + e.mapping_set.hexdigest()
         mapping_set_title = e.mapping_set.name

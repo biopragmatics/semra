@@ -54,6 +54,7 @@ EVIDENCE_NODES_HEADER = [
 MAPPING_SET_NODES_HEADER = [
     "curie:ID",
     "prefix",
+    "purl",
     "name",
     "license",
     "version",
@@ -368,6 +369,7 @@ def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequ
     return (
         mapping_set_curie,
         SEMRA_MAPPING_SET_PREFIX,
+        mapping_set.purl or "",
         mapping_set.name,
         mapping_set.license or "",
         mapping_set.version or "",

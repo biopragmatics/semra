@@ -30,7 +30,7 @@ from .io_utils import (
     safe_open,
     safe_open_writer,
 )
-from ..rules import CURIE_TO_JUSTIFICATION, UNSPECIFIED_MAPPING
+from ..rules import CURIE_TO_JUSTIFICATION, CURIE_TO_RELATION, UNSPECIFIED_MAPPING
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
@@ -266,6 +266,7 @@ def from_bioontologies(
 def from_sssom(
     path: str | Path,
     *,
+    mapping_set_id: str | None = None,
     mapping_set_title: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_confidence: float | None = None,
@@ -316,6 +317,7 @@ def from_sssom(
     df = pd.read_csv(path, sep="\t", dtype=str)
     return from_sssom_df(
         df,
+        mapping_set_id=mapping_set_id,
         mapping_set_title=mapping_set_title,
         mapping_set_name=mapping_set_name,
         mapping_set_confidence=mapping_set_confidence,
@@ -331,6 +333,7 @@ def from_sssom(
 def from_sssom_df(
     df: pd.DataFrame,
     *,
+    mapping_set_id: str | None = None,
     mapping_set_name: str | None = None,
     mapping_set_title: str | None = None,
     mapping_set_confidence: float | None = None,
@@ -379,6 +382,8 @@ def from_sssom_df(
     )
     if metadata:
         metadata_dict = yaml.safe_load(requests.get(metadata, timeout=15).text)
+        if mapping_set_id is None:
+            mapping_set_id = metadata_dict.get("mapping_set_id")
         if mapping_set_title is None:
             mapping_set_title = metadata_dict.get("mapping_set_title")
         if mapping_set_confidence is None:
@@ -400,6 +405,7 @@ def from_sssom_df(
         mapping = _parse_sssom_row(
             index,
             row,
+            mapping_set_id=mapping_set_id,
             mapping_set_title=mapping_set_title,
             mapping_set_confidence=mapping_set_confidence,
             mapping_set_version=mapping_set_version,
@@ -424,6 +430,7 @@ def _row_get(row: dict[str, Any], key: str) -> Any:
 def _parse_sssom_row(
     index: Any,
     row: dict[str, Any],
+    mapping_set_id: str | None,
     mapping_set_title: str | None,
     mapping_set_confidence: float | None,
     mapping_set_version: str | None,
@@ -469,7 +476,14 @@ def _parse_sssom_row(
     elif "license" in row and pd.notna(row["license"]):
         license = row["license"]
 
+    # See https://mapping-commons.github.io/sssom/mapping_set_id/
+    if mapping_set_id is not None:
+        pass
+    elif "mapping_set_id" in row and pd.notna(row["mapping_set_id"]):
+        mapping_set_id = row["mapping_set_id"]
+
     mapping_set = MappingSet(
+        purl=mapping_set_id,
         name=mapping_set_title,
         version=mapping_set_version,
         confidence=mapping_set_confidence,
@@ -494,9 +508,11 @@ def _parse_sssom_row(
 
     try:
         s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
-        p = _from_curie(
-            row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
-        )
+
+        if (predicate_id := row["predicate_id"]) in CURIE_TO_RELATION:
+            p = CURIE_TO_RELATION[predicate_id]
+        else:
+            p = _from_curie(predicate_id, standardize=standardize, name=row.get("predicate_label"))
         o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     except pydantic.ValidationError as exc:
         logger.warning("[%s] could not parse row: %s", index, exc)
@@ -604,7 +620,10 @@ def _format_confidence(confidence: float) -> str:
 
 def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) -> SSSOMRow:
     if isinstance(e, SimpleEvidence):
-        mapping_set_id = FALLBACK_MAPPING_SET_ID_URI_PREFIX + e.mapping_set.hexdigest()
+        if e.mapping_set.purl:
+            mapping_set_id = e.mapping_set.purl
+        else:
+            mapping_set_id = FALLBACK_MAPPING_SET_ID_URI_PREFIX + e.mapping_set.hexdigest()
         mapping_set_title = e.mapping_set.name
         mapping_set_version = e.mapping_set.version or ""
         mapping_set_confidence = get_confidence_str(e.mapping_set)

@@ -11,6 +11,7 @@ from itertools import islice
 from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
+from curies.triples import StrTriple, Triple
 from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pyobo import Reference
@@ -30,26 +31,6 @@ __all__ = [
 
 P = ParamSpec("P")
 X = TypeVar("X")
-
-
-class Triple(NamedTuple):
-    """A type annotation for a subject-predicate-object triple."""
-
-    subject: Reference
-    predicate: Reference
-    object: Reference
-
-    def as_str_triple(self) -> StrTriple:
-        """Get a string triple."""
-        return StrTriple(self.subject.curie, self.subject.curie, self.subject.curie)
-
-
-class StrTriple(NamedTuple):
-    """A triple of curies."""
-
-    subject: str
-    predicate: str
-    object: str
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -356,12 +337,17 @@ Evidence = Annotated[
 
 
 class Mapping(
-    pydantic.BaseModel,
+    Triple,
     ConfidenceMixin,
     KeyedMixin[[], StrTriple],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
-    """A semantic mapping."""
+    """A semantic mapping.
+
+    This builds on the basic concept of a subject-predicate-object triple, where the
+    predicate is a semantic predicate, such as those listed in the `SSSOM specification
+    <https://mapping-commons.github.io/sssom/spec-model/>`_.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -375,16 +361,9 @@ class Mapping(
         """Get the mapping's core triple as a tuple."""
         return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
-    def as_str_triple(self) -> StrTriple:
-        """Get a string triple."""
-        return self.triple.as_str_triple()
-
     def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.triple.as_str_triple()
-
-    def __lt__(self, other: Mapping) -> bool:
-        return self.triple < other.triple
+        return self.as_str_triple()
 
     @classmethod
     def from_triple(
@@ -393,8 +372,16 @@ class Mapping(
         evidence: list[Evidence] | None = None,
     ) -> Mapping:
         """Instantiate a mapping from a triple."""
-        subject, predicate, obj = triple
-        return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
+        if isinstance(triple, Triple):
+            return cls(
+                subject=triple.subject,
+                predicate=triple.predicate,
+                object=triple.object,
+                evidence=evidence or [],
+            )
+        else:
+            subject, predicate, obj = triple
+            return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
 
     def get_confidence(self) -> float:
         """Aggregate the mapping's evidences' confidences in a binomial model."""

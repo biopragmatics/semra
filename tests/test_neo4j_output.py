@@ -56,7 +56,7 @@ class TestNeo4jOutput(unittest.TestCase):
             author=charlie,
             confidence=0.99,
         )
-        self.assertEqual("285acf742315635fbb8e239ae3e62b52", m1_e1.hexdigest(t1))
+        self.assertEqual("b59546c8b03b27da7e89b6a08c76843b", m1_e1.hexdigest(t1))
 
         # check that making an identical evidence gives the same hex digest
         m1_e1_copy = SimpleEvidence(
@@ -89,7 +89,7 @@ class TestNeo4jOutput(unittest.TestCase):
 
         # this curie is generated as a md5 digest of the pickle dump
         # of the 3-tuple of CURIE strings for the subject, predicate, object
-        m1_hexdigest = "c3f216811ba4bd7d1e5a02ec927252b7"
+        m1_hexdigest = "9f85f585b0179ba53df2dd274e0067dc"
         self.assertEqual(m1_hexdigest, m1.hexdigest())
 
         # Test that the evidences don't affect the hash
@@ -113,7 +113,7 @@ class TestNeo4jOutput(unittest.TestCase):
         m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
         m3_e1_rev = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m2, m1])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
-        m3_hexdigest = "c3f216811ba4bd7d1e5a02ec927252b7"
+        m3_hexdigest = "6185a77934184112529b68ea7780a54d"
         self.assertEqual(m3_hexdigest, m3.hexdigest())
 
         # check that order of mappings in evidence doesn't change the hash

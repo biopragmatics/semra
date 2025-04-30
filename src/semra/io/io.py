@@ -734,12 +734,12 @@ def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
 ) -> Generator[Mapping] | None:
     fallback_mapping_set_id = _get_fallback_mapping_set_id()
-    with safe_open_writer(file) as writer:
-        writer.writerow(SSSOM_DEFAULT_COLUMNS)
-        it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
-        if stream:
-            return _stream_write_sssom(writer, it, fallback_mapping_set_id)
-        else:
+    it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
+    if stream:
+        return _stream_write_sssom(file, it, fallback_mapping_set_id)
+    else:
+        with safe_open_writer(file) as writer:
+            writer.writerow(SSSOM_DEFAULT_COLUMNS)
             for mapping in it:
                 for evidence in mapping.evidence:
                     writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
@@ -747,12 +747,14 @@ def _write_sssom_stream(
 
 
 def _stream_write_sssom(
-    writer: Any, mappings: Iterable[Mapping], fallback_mapping_set_id: str
+    path: str | Path | TextIO, mappings: Iterable[Mapping], fallback_mapping_set_id: str
 ) -> Generator[Mapping]:
-    for mapping in mappings:
-        for evidence in mapping.evidence:
-            writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
-        yield mapping
+    with safe_open_writer(path) as writer:
+        writer.writerow(SSSOM_DEFAULT_COLUMNS)
+        for mapping in mappings:
+            for evidence in mapping.evidence:
+                writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
+            yield mapping
 
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
@@ -811,19 +813,20 @@ def write_jsonl(
         unit_scale=True,
         disable=not show_progress,
     )
-    with safe_open(path, read=False) as file:
-        if stream:
-            return _stream_write_jsonl(models, file)
-        else:
+    if stream:
+        return _stream_write_jsonl(models, path)
+    else:
+        with safe_open(path, read=False) as file:
             for model in models:
                 file.write(f"{model.model_dump_json(exclude_none=True)}\n")
-            return None
+        return None
 
 
-def _stream_write_jsonl(models: Iterable[X], file: TextIO) -> Generator[X]:
-    for model in models:
-        file.write(f"{model.model_dump_json(exclude_none=True)}\n")
-        yield model
+def _stream_write_jsonl(models: Iterable[X], path: str | Path) -> Generator[X]:
+    with safe_open(path, read=False) as file:
+        for model in models:
+            file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+            yield model
 
 
 # docstr-coverage:excused `overload`

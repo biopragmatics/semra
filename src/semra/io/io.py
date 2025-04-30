@@ -498,16 +498,16 @@ def _parse_sssom_row(
             row["predicate_id"], standardize=standardize, name=row.get("predicate_label")
         )
         o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
-    except pydantic.ValidationError as e:
-        logger.warning("[%s] could not parse row: %s", index, e)
+    except pydantic.ValidationError as exc:
+        logger.warning("[%s] could not parse row: %s", index, exc)
         return None
-    e: dict[str, t.Any] = {
+    evidence_dict: dict[str, t.Any] = {
         "justification": justification,
         "mapping_set": mapping_set,
         "author": author,
         "confidence": confidence,
     }
-    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
+    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(evidence_dict)])
 
 
 def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:

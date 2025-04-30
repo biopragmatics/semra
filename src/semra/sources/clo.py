@@ -137,9 +137,9 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
 
                 mappings.append(
                     Mapping(
-                        s=Reference(prefix="clo", identifier=clo_id),
-                        p=DB_XREF,
-                        o=Reference(prefix=prefix, identifier=identifier),
+                        subject=Reference(prefix="clo", identifier=clo_id),
+                        predicate=DB_XREF,
+                        object=Reference(prefix=prefix, identifier=identifier),
                         evidence=[
                             SimpleEvidence(
                                 justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set

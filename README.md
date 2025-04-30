@@ -53,7 +53,7 @@ r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic
 r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
 
 mapping = Mapping(
-   s=r1, p=EXACT_MATCH, o=r2,
+   subject=r1, predicate=EXACT_MATCH, object=r2,
    evidence=[
       SimpleEvidence(
          justification=MANUAL_MAPPING,
@@ -119,7 +119,7 @@ from semra.inference import infer_reversible
 r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
 r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
 
-mapping = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+mapping = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
 
 # includes the mesh -> exact match-> chebi mapping with full provenance
 mappings = infer_reversible([mapping])
@@ -144,8 +144,8 @@ r1 = Reference.from_curie("mesh:C406527", name="R 115866")
 r2 = Reference.from_curie("chebi:101854", name="talarozole")
 r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-m2 = Mapping(s=r2, p=EXACT_MATCH, o=r3)
+m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+m2 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r3)
 
 # infers r1 -> exact match -> r3
 mappings = infer_chains([m1, m2])
@@ -170,7 +170,7 @@ from semra.inference import infer_generalizations
 r1 = Reference.from_curie("chebi:101854", name="talarozole")
 r2 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
 
 mappings = infer_generalizations([m1])
 ```
@@ -192,7 +192,7 @@ from semra.inference import infer_dbxref_mutations
 
 r1 = Reference.from_curie("doid:0050577", name="cranioectodermal dysplasia")
 r2 = Reference.from_curie("mesh:C562966", name="Cranioectodermal Dysplasia")
-m1 = Mapping(s=r1, p=DB_XREF, o=r2)
+m1 = Mapping(subject=r1, predicate=DB_XREF, object=r2)
 
 # we're 99% confident doid-mesh dbxrefs actually are exact matches
 mappings = infer_dbxref_mutations([m1], {("doid", "mesh"): 0.99})

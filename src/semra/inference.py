@@ -61,7 +61,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> from semra.api import get_test_evidence, get_test_reference
     >>> r1, r2 = get_test_reference(2)
     >>> e1 = get_test_evidence()
-    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
+    >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
     >>> mappings = infer_reversible([m1])
     >>> len(mappings)
     2
@@ -78,8 +78,8 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> from semra.api import get_test_evidence, get_test_reference
         >>> r1, r2 = get_test_reference(2)
         >>> e1, e2 = get_test_evidence(2)
-        >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-        >>> m2 = Mapping(s=r2, p=EXACT_MATCH, o=r1, evidence=[e2])
+        >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
+        >>> m2 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r1, evidence=[e2])
         >>> mappings = infer_reversible([m1, m2])
         >>> len(mappings)
         4
@@ -161,9 +161,9 @@ def infer_chains(
                         justification=CHAIN_MAPPING,
                         mappings=[
                             Mapping(
-                                s=path_s,
-                                o=path_o,
-                                p=path_p,
+                                subject=path_s,
+                                object=path_o,
+                                predicate=path_p,
                                 evidence=graph[path_s][path_o][path_p][MULTIDIGRAPH_DATA_KEY],
                             )
                             for path_s, path_o, path_p in path
@@ -174,9 +174,11 @@ def infer_chains(
                     predicate_evidence_dict[p].append(evidence)
 
             for p, evidences in predicate_evidence_dict.items():
-                new_mappings.append(Mapping(s=s, p=p, o=o, evidence=evidences))
+                new_mappings.append(Mapping(subject=s, predicate=p, object=o, evidence=evidences))
                 if backwards:
-                    new_mappings.append(Mapping(o=s, s=o, p=FLIP[p], evidence=evidences))
+                    new_mappings.append(
+                        Mapping(object=s, subject=o, predicate=FLIP[p], evidence=evidences)
+                    )
 
     return [*mappings, *new_mappings]
 
@@ -398,7 +400,7 @@ def _mutate(
 
     for mapping in semra_tqdm(mappings, desc="Adding mutated predicates", progress=progress):
         rv.append(mapping)
-        configuration = upgrade_map.get(mapping.p)
+        configuration = upgrade_map.get(mapping.predicate)
         if configuration is None:
             continue
 
@@ -406,7 +408,9 @@ def _mutate(
         if configuration.default_confidence:
             confidence_factor = configuration.default_confidence
         elif configuration.pairs:
-            confidence_factor = configuration.pairs.get((mapping.s.prefix, mapping.o.prefix))
+            confidence_factor = configuration.pairs.get(
+                (mapping.subject.prefix, mapping.object.prefix)
+            )
         else:
             raise ValueError
 
@@ -415,9 +419,9 @@ def _mutate(
             # subject/object prefix pair, meaning it wasn't asked to be inferred
             continue
         inferred_mapping = Mapping(
-            s=mapping.s,
-            p=configuration.new,
-            o=mapping.o,
+            subject=mapping.subject,
+            predicate=configuration.new,
+            object=mapping.object,
             evidence=[
                 ReasonedEvidence(
                     justification=KNOWLEDGE_MAPPING,

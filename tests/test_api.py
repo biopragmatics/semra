@@ -65,7 +65,7 @@ def _get_references(
 
 
 def _exact(s: Reference, o: Reference, evidence: list[SimpleEvidence] | None = None) -> Mapping:
-    return Mapping(s=s, p=EXACT_MATCH, o=o, evidence=evidence or [])
+    return Mapping(subject=s, predicate=EXACT_MATCH, object=o, evidence=evidence or [])
 
 
 EV = SimpleEvidence(
@@ -81,8 +81,8 @@ class TestOperations(unittest.TestCase):
     def test_path(self) -> None:
         """Test quickly creating mapping lists."""
         r1, r2, r3 = _get_references(3)
-        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-        m2 = Mapping(s=r2, p=BROAD_MATCH, o=r3)
+        m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+        m2 = Mapping(subject=r2, predicate=BROAD_MATCH, object=r3)
         self.assertEqual([m1], line(r1, EXACT_MATCH, r2))
         self.assertEqual([m1, m2], line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3))
 
@@ -90,12 +90,14 @@ class TestOperations(unittest.TestCase):
         """Test flipping a symmetric relation (e.g., exact match)."""
         chebi_reference = Reference(prefix="chebi", identifier="10001")
         mesh_reference = Reference(prefix="mesh", identifier="C067604")
-        mapping = Mapping(s=chebi_reference, p=EXACT_MATCH, o=mesh_reference, evidence=[EV])
+        mapping = Mapping(
+            subject=chebi_reference, predicate=EXACT_MATCH, object=mesh_reference, evidence=[EV]
+        )
         new_mapping = flip(mapping)
         self.assertIsNotNone(new_mapping)
-        self.assertEqual(mesh_reference, new_mapping.s)
-        self.assertEqual(EXACT_MATCH, new_mapping.p)
-        self.assertEqual(chebi_reference, new_mapping.o)
+        self.assertEqual(mesh_reference, new_mapping.subject)
+        self.assertEqual(EXACT_MATCH, new_mapping.predicate)
+        self.assertEqual(chebi_reference, new_mapping.object)
         self.assertEqual(1, len(new_mapping.evidence))
         self.assertIsInstance(new_mapping.evidence[0], ReasonedEvidence)
         evidence: ReasonedEvidence = cast(ReasonedEvidence, new_mapping.evidence[0])
@@ -106,20 +108,24 @@ class TestOperations(unittest.TestCase):
         """Test flipping asymmetric relations (e.g., narrow and broad match)."""
         docetaxel_mesh = Reference(prefix="mesh", identifier="D000077143")
         docetaxel_anhydrous_chebi = Reference(prefix="chebi", identifier="4672")
-        narrow_mapping = Mapping(s=docetaxel_mesh, p=NARROW_MATCH, o=docetaxel_anhydrous_chebi)
-        broad_mapping = Mapping(o=docetaxel_mesh, p=BROAD_MATCH, s=docetaxel_anhydrous_chebi)
+        narrow_mapping = Mapping(
+            subject=docetaxel_mesh, predicate=NARROW_MATCH, object=docetaxel_anhydrous_chebi
+        )
+        broad_mapping = Mapping(
+            object=docetaxel_mesh, predicate=BROAD_MATCH, subject=docetaxel_anhydrous_chebi
+        )
 
         actual_1: Mapping = flip(narrow_mapping)
         self.assertIsNotNone(actual_1)
-        self.assertEqual(docetaxel_anhydrous_chebi, actual_1.s)
-        self.assertEqual(BROAD_MATCH, actual_1.p)
-        self.assertEqual(docetaxel_mesh, actual_1.o)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual_1.subject)
+        self.assertEqual(BROAD_MATCH, actual_1.predicate)
+        self.assertEqual(docetaxel_mesh, actual_1.object)
 
         actual_2: Mapping = flip(broad_mapping)
         self.assertIsNotNone(actual_2)
-        self.assertEqual(docetaxel_mesh, actual_2.s)
-        self.assertEqual(NARROW_MATCH, actual_2.p)
-        self.assertEqual(docetaxel_anhydrous_chebi, actual_2.o)
+        self.assertEqual(docetaxel_mesh, actual_2.subject)
+        self.assertEqual(NARROW_MATCH, actual_2.predicate)
+        self.assertEqual(docetaxel_anhydrous_chebi, actual_2.object)
 
     def test_index(self) -> None:
         """Test indexing semantic mappings."""
@@ -131,8 +137,8 @@ class TestOperations(unittest.TestCase):
             justification=Reference(prefix="semapv", identifier="ManualMappingCuration"),
             mapping_set=MS,
         )
-        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-        m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
+        m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
+        m2 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e2])
         index = get_index([m1, m2], progress=False)
         self.assertIn(m1.triple, index)
         self.assertEqual(1, len(index))
@@ -218,12 +224,12 @@ class TestOperations(unittest.TestCase):
         """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, EXACT_MATCH, r2, BROAD_MATCH, r3, EXACT_MATCH, r4)
-        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3, evidence=[EV])
-        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4, evidence=[EV])
-        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4, evidence=[EV])
-        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3, evidence=[EV])
-        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4, evidence=[EV])
-        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4, evidence=[EV])
+        m4 = Mapping(subject=r1, predicate=BROAD_MATCH, object=r3, evidence=[EV])
+        m5 = Mapping(subject=r1, predicate=BROAD_MATCH, object=r4, evidence=[EV])
+        m6 = Mapping(subject=r2, predicate=BROAD_MATCH, object=r4, evidence=[EV])
+        m4_i = Mapping(object=r1, predicate=NARROW_MATCH, subject=r3, evidence=[EV])
+        m5_i = Mapping(object=r1, predicate=NARROW_MATCH, subject=r4, evidence=[EV])
+        m6_i = Mapping(object=r2, predicate=NARROW_MATCH, subject=r4, evidence=[EV])
 
         # Check inference over two steps
         self.assert_same_triples(
@@ -252,12 +258,12 @@ class TestOperations(unittest.TestCase):
         """Test inferring broad matches."""
         r1, r2, r3, r4 = _get_references(4, different_prefixes=True)
         m1, m2, m3 = line(r1, BROAD_MATCH, r2, EXACT_MATCH, r3, BROAD_MATCH, r4)
-        m4 = Mapping(s=r1, p=BROAD_MATCH, o=r3)
-        m5 = Mapping(s=r1, p=BROAD_MATCH, o=r4)
-        m6 = Mapping(s=r2, p=BROAD_MATCH, o=r4)
-        m4_i = Mapping(o=r1, p=NARROW_MATCH, s=r3)
-        m5_i = Mapping(o=r1, p=NARROW_MATCH, s=r4)
-        m6_i = Mapping(o=r2, p=NARROW_MATCH, s=r4)
+        m4 = Mapping(subject=r1, predicate=BROAD_MATCH, object=r3)
+        m5 = Mapping(subject=r1, predicate=BROAD_MATCH, object=r4)
+        m6 = Mapping(subject=r2, predicate=BROAD_MATCH, object=r4)
+        m4_i = Mapping(object=r1, predicate=NARROW_MATCH, subject=r3)
+        m5_i = Mapping(object=r1, predicate=NARROW_MATCH, subject=r4)
+        m6_i = Mapping(object=r2, predicate=NARROW_MATCH, subject=r4)
 
         # Check inference over two steps
         self.assert_same_triples(
@@ -280,8 +286,8 @@ class TestOperations(unittest.TestCase):
         """Test inferring narrow matches."""
         r1, r2, r3 = _get_references(3, different_prefixes=True)
         m1, m2 = line(r1, EXACT_MATCH, r2, NARROW_MATCH, r3)
-        m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
-        m3_i = Mapping(o=r1, p=BROAD_MATCH, s=r3)
+        m3 = Mapping(subject=r1, predicate=NARROW_MATCH, object=r3)
+        m3_i = Mapping(object=r1, predicate=BROAD_MATCH, subject=r3)
         self.assert_same_triples(
             [m1, m2, m3], infer_chains([m1, m2], backwards=False, progress=False)
         )
@@ -292,13 +298,13 @@ class TestOperations(unittest.TestCase):
     def test_mixed_inference_1(self) -> None:
         """Test inferring over a mix of narrow, broad, and exact matches."""
         r1, r2, r3 = _get_references(3, different_prefixes=True)
-        m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
-        m2 = Mapping(s=r2, p=NARROW_MATCH, o=r3)
-        m3 = Mapping(s=r1, p=NARROW_MATCH, o=r3)
+        m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+        m2 = Mapping(subject=r2, predicate=NARROW_MATCH, object=r3)
+        m3 = Mapping(subject=r1, predicate=NARROW_MATCH, object=r3)
 
-        m4 = Mapping(s=r2, p=EXACT_MATCH, o=r1)
-        m5 = Mapping(s=r3, p=BROAD_MATCH, o=r2)
-        m6 = Mapping(s=r3, p=BROAD_MATCH, o=r1)
+        m4 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r1)
+        m5 = Mapping(subject=r3, predicate=BROAD_MATCH, object=r2)
+        m6 = Mapping(subject=r3, predicate=BROAD_MATCH, object=r1)
 
         mappings = [m1, m2]
         mappings = infer_reversible(mappings, progress=False)
@@ -312,9 +318,9 @@ class TestOperations(unittest.TestCase):
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
         (r31,) = _get_references(1, prefix=PREFIX_C)
-        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
-        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
-        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
+        m1 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r21)
+        m2 = Mapping(subject=r12, predicate=EXACT_MATCH, object=r22)
+        m3 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r31)
         mappings = [m1, m2, m3]
         self.assert_same_triples(
             [m1, m2], keep_prefixes(mappings, {PREFIX_A, PREFIX_B}, progress=False)
@@ -324,9 +330,9 @@ class TestOperations(unittest.TestCase):
         """Test filtering out mappings within a given prefix."""
         r11, r12, r13 = _get_references(3, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
-        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
-        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
-        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r13)
+        m1 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r21)
+        m2 = Mapping(subject=r12, predicate=EXACT_MATCH, object=r22)
+        m3 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r13)
         mappings = [m1, m2, m3]
         self.assert_same_triples([m1, m2], filter_self_matches(mappings, progress=False))
 
@@ -334,8 +340,8 @@ class TestOperations(unittest.TestCase):
         """Test filtering out mappings within a given prefix."""
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
-        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
-        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
+        m1 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r21)
+        m2 = Mapping(subject=r12, predicate=EXACT_MATCH, object=r22)
         mappings = [m1, m2]
         negative = [m2]
         self.assert_same_triples([m1], filter_mappings(mappings, negative, progress=False))
@@ -345,10 +351,10 @@ class TestOperations(unittest.TestCase):
         r11, r12 = _get_references(2, prefix=PREFIX_A)
         r21, r22 = _get_references(2, prefix=PREFIX_B)
         (r31,) = _get_references(1, prefix=PREFIX_C)
-        m1 = Mapping(s=r11, p=EXACT_MATCH, o=r21)
-        m2 = Mapping(s=r12, p=EXACT_MATCH, o=r22)
-        m2_i = Mapping(o=r12, p=EXACT_MATCH, s=r22)
-        m3 = Mapping(s=r11, p=EXACT_MATCH, o=r31)
+        m1 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r21)
+        m2 = Mapping(subject=r12, predicate=EXACT_MATCH, object=r22)
+        m2_i = Mapping(object=r12, predicate=EXACT_MATCH, subject=r22)
+        m3 = Mapping(subject=r11, predicate=EXACT_MATCH, object=r31)
         mappings = [m1, m2, m2_i, m3]
         self.assert_same_triples(
             [m1, m2], project(mappings, PREFIX_A, PREFIX_B, progress=False, return_sus=False)
@@ -360,12 +366,12 @@ class TestOperations(unittest.TestCase):
         b1, b2, b3 = _get_references(3, prefix=PREFIX_B)
 
         # Subject duplicate
-        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1)
-        m2 = Mapping(s=a1, p=EXACT_MATCH, o=b3)
-        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2)
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1)
+        m2 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b3)
+        m3 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2)
         self.assert_same_triples([m1, m2], get_many_to_many([m1, m2, m3]))
 
-        m4 = Mapping(s=a3, p=EXACT_MATCH, o=b2)
+        m4 = Mapping(subject=a3, predicate=EXACT_MATCH, object=b2)
         self.assert_same_triples([m3, m4], get_many_to_many([m2, m3, m4]))
 
     def test_filter_confidence(self) -> None:
@@ -373,10 +379,16 @@ class TestOperations(unittest.TestCase):
         (a1, a2) = _get_references(2, prefix=PREFIX_A)
         (b1, b2) = _get_references(2, prefix=PREFIX_B)
         m1 = Mapping(
-            s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)]
+            subject=a1,
+            predicate=DB_XREF,
+            object=b1,
+            evidence=[SimpleEvidence(confidence=0.95, mapping_set=MS)],
         )
         m2 = Mapping(
-            s=a1, p=DB_XREF, o=b1, evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)]
+            subject=a1,
+            predicate=DB_XREF,
+            object=b1,
+            evidence=[SimpleEvidence(confidence=0.65, mapping_set=MS)],
         )
         mmm = list(api.filter_minimum_confidence([m1, m2], cutoff=0.7))
         self.assertEqual([m1], mmm)
@@ -387,12 +399,12 @@ class TestOperations(unittest.TestCase):
         b1, b2 = _get_references(2, prefix=PREFIX_B)
         c1, c2 = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
-        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
-        m2 = Mapping(s=b1, p=EXACT_MATCH, o=a1, evidence=[ev])
-        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
-        m4 = Mapping(s=b2, p=EXACT_MATCH, o=a2, evidence=[ev])
-        m5 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
-        m6 = Mapping(s=c1, p=EXACT_MATCH, o=b1, evidence=[ev])
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        m3 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[ev])
+        m4 = Mapping(subject=b2, predicate=EXACT_MATCH, object=a2, evidence=[ev])
+        m5 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m6 = Mapping(subject=c1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
 
         terms = {
             PREFIX_A: [a1, a2],
@@ -425,10 +437,12 @@ class TestOperations(unittest.TestCase):
         b1, b2 = _get_references(2, prefix=PREFIX_B)
         c1, _ = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
-        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
-        m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
-        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
-        m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m3 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[ev])
+        m4 = Mapping(
+            subject=a2, predicate=DB_XREF, object=b2, evidence=[ev]
+        )  # this shouldn't hae an effect
         mappings = [m1, m2, m3, m4]
         self.assertEqual(
             {frozenset([PREFIX_A, PREFIX_B]): 1, frozenset([PREFIX_A, PREFIX_B, PREFIX_C]): 1},
@@ -442,10 +456,12 @@ class TestOperations(unittest.TestCase):
         b1, b2 = _get_references(2, prefix=PREFIX_B)
         c1, _ = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
-        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
-        m2 = Mapping(s=b1, p=EXACT_MATCH, o=c1, evidence=[ev])
-        m3 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
-        m4 = Mapping(s=a2, p=DB_XREF, o=b2, evidence=[ev])  # this shouldn't hae an effect
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m3 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[ev])
+        m4 = Mapping(
+            subject=a2, predicate=DB_XREF, object=b2, evidence=[ev]
+        )  # this shouldn't hae an effect
         mappings = [m1, m2, m3, m4]
         self.assertEqual(mappings, from_digraph(to_digraph(mappings)))
 
@@ -454,8 +470,8 @@ class TestOperations(unittest.TestCase):
         a1, a2 = _get_references(2, prefix=PREFIX_A)
         b1, b2 = _get_references(2, prefix=PREFIX_B)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
-        m1 = Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[ev])
-        m2 = Mapping(s=a2, p=EXACT_MATCH, o=b2, evidence=[ev])
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m2 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[ev])
 
         rows = [("r1", a1.curie), ("r2", a2.curie)]
         df = pd.DataFrame(rows, columns=["label", "curie"])
@@ -478,9 +494,9 @@ class TestUpgrades(unittest.TestCase):
         original_confidence = 0.95
         mutation_confidence = 0.80
         m1 = Mapping(
-            s=a1,
-            p=DB_XREF,
-            o=b1,
+            subject=a1,
+            predicate=DB_XREF,
+            object=b1,
             evidence=[SimpleEvidence(confidence=original_confidence, mapping_set=MS)],
         )
         new_mappings = infer_mutations(
@@ -493,9 +509,9 @@ class TestUpgrades(unittest.TestCase):
         self.assertEqual(2, len(new_mappings))
         new_m1, new_m2 = new_mappings
         self.assertEqual(m1, new_m1)
-        self.assertEqual(a1, new_m2.s)
-        self.assertEqual(EXACT_MATCH, new_m2.p)
-        self.assertEqual(b1, new_m2.o)
+        self.assertEqual(a1, new_m2.subject)
+        self.assertEqual(EXACT_MATCH, new_m2.predicate)
+        self.assertEqual(b1, new_m2.object)
         self.assertEqual(1, len(new_m2.evidence))
         new_evidence = new_m2.evidence[0]
         self.assertIsInstance(new_evidence, ReasonedEvidence)

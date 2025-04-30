@@ -217,24 +217,24 @@ def write_neo4j(
         ):
             mapping_curie = mapping.curie
 
-            if mapping.s not in seen_concepts:
+            if mapping.subject not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.s, add_labels, equivalence_classes)
+                    _concept_to_row(mapping.subject, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.s)
-            if mapping.o not in seen_concepts:
+                seen_concepts.add(mapping.subject)
+            if mapping.object not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.o, add_labels, equivalence_classes)
+                    _concept_to_row(mapping.object, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.o)
+                seen_concepts.add(mapping.object)
 
             mapping_nodes_writer.writerow(_mapping_to_node_row(mapping_curie, mapping))
             mapping_edges_writer.writerow(_mapping_to_edge_row(mapping))
 
             # these connect the node representing the mappings to the
             # subject and object using the RDF reified edge data model
-            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.s.curie))
-            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.o.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.subject.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.object.curie))
 
             for evidence in mapping.evidence:
                 evidence_curie = evidence.get_reference(mapping).curie
@@ -330,7 +330,7 @@ def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
     return (
         mapping_curie,
         SEMRA_MAPPING_PREFIX,
-        mapping.p.curie,
+        mapping.predicate.curie,
         get_confidence_str(mapping),
         _neo4j_bool(mapping.has_primary),
         _neo4j_bool(mapping.has_secondary),
@@ -350,9 +350,9 @@ def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
 
 def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
     return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
+        mapping.subject.curie,
+        mapping.predicate.curie,
+        mapping.object.curie,
         get_confidence_str(mapping),
         _neo4j_bool(mapping.has_primary),
         _neo4j_bool(mapping.has_secondary),

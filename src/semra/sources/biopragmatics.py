@@ -96,9 +96,9 @@ def _process(mapping_dicts: Iterable[dict[str, Any]], confidence: float = 0.999)
             predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
 
         mm = Mapping(
-            s=subject,
-            p=predicate,
-            o=obj,
+            subject=subject,
+            predicate=predicate,
+            object=obj,
             evidence=[
                 SimpleEvidence(
                     justification=Reference.from_curie(mapping_dict["type"]),

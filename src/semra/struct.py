@@ -134,14 +134,27 @@ class MappingSet(
     1. All the mappings extracted from an ontology
     2. All the mappings published with a database
     3. All the mappings inferred by SeMRA based on a given configuration
+
+    Mostly corresponds to the concept of a SSSOM mapping set, documented in
+    https://mapping-commons.github.io/sssom/MappingSet.
     """
 
-    name: str = Field(..., description="Name of the mapping set")
-    version: str | None = Field(
-        default=None, description="The version of the dataset from which the mapping comes"
+    name: str = Field(
+        ...,
+        description="Name of the mapping set. Corresponds to optional SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_title/",
     )
-    license: str | None = Field(default=None, description="License name or URL for mapping set")
-    confidence: float = Field(..., description="Mapping set level confidence")
+    version: str | None = Field(
+        default=None,
+        description="The version of the dataset from which the mapping comes. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_version/",
+    )
+    license: str | None = Field(
+        default=None,
+        description="License name or URL that applies to the whole mapping set. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/license/",
+    )
+    confidence: float = Field(
+        ...,
+        description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
+    )
 
     def key(self) -> MappingSetKey:
         """Get a picklable key representing the mapping set."""

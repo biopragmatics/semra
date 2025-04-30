@@ -398,7 +398,7 @@ class Mapping(
         return self.triple.as_str_triple()
 
     def __lt__(self, other: Mapping) -> bool:
-        return self.as_str_triple() < other.as_str_triple()
+        return self.triple < other.triple
 
     @classmethod
     def from_triple(

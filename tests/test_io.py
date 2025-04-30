@@ -3,7 +3,6 @@
 import getpass
 import tempfile
 import unittest
-import uuid
 from pathlib import Path
 
 import pandas as pd
@@ -31,7 +30,6 @@ from semra.rules import (
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
-CONST_UUID = uuid.uuid4()
 
 mapping_set_name = "test"
 mapping_set_confidence = 0.6
@@ -64,7 +62,6 @@ class TestSSSOM(unittest.TestCase):
                 confidence=mapping_set_confidence,
             ),
             justification=UNSPECIFIED_MAPPING,
-            uuid=CONST_UUID,
         )
         expected_mappings = [
             Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
@@ -87,7 +84,6 @@ class TestSSSOM(unittest.TestCase):
             df,
             mapping_set_name=mapping_set_name,
             mapping_set_confidence=mapping_set_confidence,
-            _uuid=CONST_UUID,
         )
         self.assertEqual(expected_mappings, actual_mappings)
 
@@ -107,7 +103,6 @@ class TestSSSOM(unittest.TestCase):
         actual_mappings = from_sssom_df(
             df,
             mapping_set_confidence=mapping_set_confidence,
-            _uuid=CONST_UUID,
         )
         self.assertEqual(expected_mappings, actual_mappings)
 
@@ -139,7 +134,7 @@ class TestSSSOM(unittest.TestCase):
             "mapping_set_confidence",
         ]
         df = pd.DataFrame(rows_test_3, columns=columns)
-        actual_mappings = from_sssom_df(df, _uuid=CONST_UUID)
+        actual_mappings = from_sssom_df(df)
         self.assertEqual(expected_mappings, actual_mappings)
 
     def test_from_sssom_df_with_license(self) -> None:
@@ -154,7 +149,6 @@ class TestSSSOM(unittest.TestCase):
                 version=test_version,
             ),
             justification=UNSPECIFIED_MAPPING,
-            uuid=CONST_UUID,
         )
         expected_mappings = [
             Mapping(s=a1, p=EXACT_MATCH, o=b1, evidence=[expected_evidence]),
@@ -174,7 +168,6 @@ class TestSSSOM(unittest.TestCase):
         df = pd.DataFrame(rows, columns=columns)
         actual_mappings = from_sssom_df(
             df,
-            _uuid=CONST_UUID,
             mapping_set_name=mapping_set_name,
             mapping_set_confidence=mapping_set_confidence,
             license=test_license,

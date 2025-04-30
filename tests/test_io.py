@@ -37,6 +37,7 @@ from semra.rules import (
     UNSPECIFIED_MAPPING,
     charlie,
 )
+from semra.struct import Triple
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
@@ -195,9 +196,9 @@ class TestIO(unittest.TestCase):
         r2 = Reference.from_curie("chebi:101854", name="talarozole")
         r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-        t1 = r1, EXACT_MATCH, r2
-        t2 = r2, EXACT_MATCH, r3
-        t3 = r1, EXACT_MATCH, r3
+        t1 = Triple(subject=r1, predicate=EXACT_MATCH, object=r2)
+        t2 = Triple(subject=r2, predicate=EXACT_MATCH, object=r3)
+        t3 = Triple(subject=r1, predicate=EXACT_MATCH, object=r3)
 
         biomappings = MappingSet(
             purl="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",

@@ -481,10 +481,10 @@ def _get_summary_index(
     index = get_index(mappings, progress=show_progress, leave=False)
     directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     target_predicates = {EXACT_MATCH, DB_XREF}
-    for s, p, o in index:
-        if p in target_predicates:
-            directed[s.prefix, o.prefix].add(s.identifier)
-            directed[o.prefix, s.prefix].add(o.identifier)
+    for triple in index:
+        if triple.predicate in target_predicates:
+            directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
+            directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
     return dict(directed)
 
 

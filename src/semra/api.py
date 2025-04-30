@@ -27,7 +27,6 @@ from semra.struct import (
     Reference,
     SimpleEvidence,
     Triple,
-    triple_key,
 )
 from semra.utils import cleanup_prefixes, semra_tqdm
 
@@ -134,7 +133,7 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
     >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
     >>> counter = count_source_target([m1])
     """
-    return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
+    return Counter((triple.subject.prefix, triple.object.prefix) for triple in get_index(mappings))
 
 
 def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> str:
@@ -266,12 +265,14 @@ def tabulate_index(index: Index) -> str:
     from tabulate import tabulate
 
     rows: list[tuple[str, str, str, str]] = []
-    for (s, p, o), evidences in sorted(index.items(), key=lambda pair: triple_key(pair[0])):
+    for triple, evidences in sorted(index.items()):
         if not evidences:
-            rows.append((s.curie, p.curie, o.curie, ""))
+            rows.append((triple.subject.curie, triple.predicate.curie, triple.object.curie, ""))
         else:
             first, *rest = evidences
-            rows.append((s.curie, p.curie, o.curie, str(first)))
+            rows.append(
+                (triple.subject.curie, triple.predicate.curie, triple.object.curie, str(first))
+            )
             for r in rest:
                 rows.append(("", "", "", str(r)))
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")

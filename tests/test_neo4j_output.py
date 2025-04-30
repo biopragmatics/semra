@@ -17,6 +17,7 @@ from semra import (
 )
 from semra.io import write_neo4j
 from semra.rules import BEN_ORCID, CHAIN_MAPPING, UNSPECIFIED_MAPPING, charlie
+from semra.struct import Triple
 from tests import resources
 
 # TODO test when concept name has problematic characters like tabs or newlines
@@ -31,9 +32,9 @@ class TestNeo4jOutput(unittest.TestCase):
         r2 = Reference.from_curie("chebi:101854", name="talarozole")
         r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-        t1 = r1, EXACT_MATCH, r2
-        t2 = r2, EXACT_MATCH, r3
-        t3 = r1, EXACT_MATCH, r3
+        t1 = Triple(subject=r1, predicate=EXACT_MATCH, object=r2)
+        t2 = Triple(subject=r2, predicate=EXACT_MATCH, object=r3)
+        t3 = Triple(subject=r1, predicate=EXACT_MATCH, object=r3)
 
         biomappings = MappingSet(
             purl="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
@@ -55,7 +56,7 @@ class TestNeo4jOutput(unittest.TestCase):
             author=charlie,
             confidence=0.99,
         )
-        self.assertEqual("0e17f568c60517ad2575dd4fff7734a3", m1_e1.hexdigest(t1))
+        self.assertEqual("285acf742315635fbb8e239ae3e62b52", m1_e1.hexdigest(t1))
 
         # check that making an identical evidence gives the same hex digest
         m1_e1_copy = SimpleEvidence(
@@ -88,7 +89,7 @@ class TestNeo4jOutput(unittest.TestCase):
 
         # this curie is generated as a md5 digest of the pickle dump
         # of the 3-tuple of CURIE strings for the subject, predicate, object
-        m1_hexdigest = "f9705b214dbb3feb51ea49e973e0b8c3"
+        m1_hexdigest = "c3f216811ba4bd7d1e5a02ec927252b7"
         self.assertEqual(m1_hexdigest, m1.hexdigest())
 
         # Test that the evidences don't affect the hash
@@ -112,7 +113,7 @@ class TestNeo4jOutput(unittest.TestCase):
         m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
         m3_e1_rev = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m2, m1])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
-        m3_hexdigest = "ecb8073a9acbd943ab32e6f95cabdff0"
+        m3_hexdigest = "c3f216811ba4bd7d1e5a02ec927252b7"
         self.assertEqual(m3_hexdigest, m3.hexdigest())
 
         # check that order of mappings in evidence doesn't change the hash

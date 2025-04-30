@@ -26,14 +26,22 @@ __all__ = [
     "SimpleEvidence",
     "Triple",
     "line",
-    "triple_key",
 ]
 
 P = ParamSpec("P")
 X = TypeVar("X")
 
-#: A type annotation for a subject-predicate-object triple
-Triple = tuple[Reference, Reference, Reference]
+
+class Triple(NamedTuple):
+    """A type annotation for a subject-predicate-object triple."""
+
+    subject: Reference
+    predicate: Reference
+    object: Reference
+
+    def as_str_triple(self) -> StrTriple:
+        """Get a string triple."""
+        return StrTriple(self.subject.curie, self.subject.curie, self.subject.curie)
 
 
 class StrTriple(NamedTuple):
@@ -42,11 +50,6 @@ class StrTriple(NamedTuple):
     subject: str
     predicate: str
     object: str
-
-
-def triple_key(triple: Triple) -> StrTriple:
-    """Get a sortable key for a triple."""
-    return StrTriple(triple[0].curie, triple[2].curie, triple[1].curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -226,7 +229,7 @@ class SimpleEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
-            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            triple.as_str_triple(),
             self._simple_key(),
         )
 
@@ -286,7 +289,7 @@ class ReasonedEvidence(
                     evidence.key(mapping)
                     for evidence in sorted(mapping.evidence, key=_sort_evidence_key)
                 )
-                for mapping in sorted(self.mappings, key=lambda m: triple_key(m.triple))
+                for mapping in sorted(self.mappings)
             ),
         )
 
@@ -298,7 +301,7 @@ class ReasonedEvidence(
         Note: this should be extended to include basically _all_ fields
         """
         return (
-            triple_key(triple.triple if isinstance(triple, Mapping) else triple),
+            triple.as_str_triple(),
             self._simple_key(),
         )
 
@@ -370,17 +373,25 @@ class Mapping(
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
-        return self.subject, self.predicate, self.object
+        return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
+
+    def as_str_triple(self) -> StrTriple:
+        """Get a string triple."""
+        return self.triple.as_str_triple()
 
     def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return triple_key(self.triple)
+        return self.triple.as_str_triple()
 
     def __lt__(self, other: Mapping) -> bool:
         return self.triple < other.triple
 
     @classmethod
-    def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
+    def from_triple(
+        cls,
+        triple: Triple | tuple[Reference, Reference, Reference],
+        evidence: list[Evidence] | None = None,
+    ) -> Mapping:
         """Instantiate a mapping from a triple."""
         subject, predicate, obj = triple
         return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])

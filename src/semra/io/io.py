@@ -6,7 +6,6 @@ import gzip
 import logging
 import pickle
 import typing as t
-import uuid
 from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any, Literal, TextIO, TypeVar, cast, overload
@@ -289,7 +288,6 @@ def from_sssom_df(
     license: str | None = None,
     justification: Reference | None = None,
     version: str | None = None,
-    _uuid: uuid.UUID | None = None,
     standardize: bool = True,
 ) -> list[Mapping]:
     """Get mappings from a SSSOM dataframe."""
@@ -302,7 +300,6 @@ def from_sssom_df(
             mapping_set_version=version,
             justification=justification,
             standardize=standardize,
-            _uuid=_uuid,
         )
         for _, row in tqdm(
             df.iterrows(),
@@ -323,7 +320,6 @@ def _parse_sssom_row(
     justification: Reference | None,
     mapping_set_version: str | None,
     standardize: bool,
-    _uuid: uuid.UUID | None = None,
 ) -> Mapping:
     if "author_id" in row and pd.notna(row["author_id"]):
         author = _from_curie(row["author_id"], standardize=standardize)
@@ -377,8 +373,6 @@ def _parse_sssom_row(
         "mapping_set": mapping_set,
         "author": author,
     }
-    if _uuid:
-        e["uuid"] = _uuid
 
     return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(e)])
 

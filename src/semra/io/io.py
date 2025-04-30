@@ -7,7 +7,7 @@ import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any, Literal, TextIO, TypeVar, cast, overload
 
@@ -501,7 +501,7 @@ def write_sssom(
     add_labels: bool = ...,
     prune: bool = ...,
     stream: Literal[True] = True,
-) -> Iterable[Mapping]: ...
+) -> Generator[Mapping]: ...
 
 
 @overload
@@ -515,25 +515,26 @@ def write_sssom(
 ) -> None: ...
 
 
-def write_sssom(  # type:ignore[return]
+def write_sssom(
     mappings: Iterable[Mapping],
     file: str | Path | TextIO,
     *,
     add_labels: bool = False,
     prune: bool = True,
     stream: bool = False,
-) -> None | Iterable[Mapping]:
+) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
     if not add_labels and not prune:
         if stream:
-            yield from _write_sssom_stream(mappings, file, stream=True)
+            return _write_sssom_stream(mappings, file, stream=stream)
         else:
-            _write_sssom_stream(mappings, file, stream=False)
+            return _write_sssom_stream(mappings, file, stream=stream)
     elif stream:
         raise ValueError
     else:
         df = get_sssom_df(mappings, add_labels=add_labels)
         df.to_csv(file, sep="\t", index=False)
+        return None
 
 
 @overload
@@ -545,24 +546,29 @@ def _write_sssom_stream(
 @overload
 def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[True] = True
-) -> Iterable[Mapping]: ...
+) -> Generator[Mapping]: ...
 
 
-def _write_sssom_stream(  # type:ignore[return]
+def _write_sssom_stream(
     mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
-) -> Iterable[Mapping] | None:
+) -> Generator[Mapping] | None:
     with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
         if stream:
-            for m in it:
-                for e in m.evidence:
-                    writer.writerow(_get_sssom_row(m, e))
-                yield m
+            return _stream_write_sssom(writer, it)
         else:
-            for m in it:
-                for e in m.evidence:
-                    writer.writerow(_get_sssom_row(m, e))
+            for mapping in it:
+                for evidence in mapping.evidence:
+                    writer.writerow(_get_sssom_row(mapping, evidence))
+            return None
+
+
+def _stream_write_sssom(writer: Any, mappings: Iterable[Mapping]) -> Generator[Mapping]:
+    for mapping in mappings:
+        for evidence in mapping.evidence:
+            writer.writerow(_get_sssom_row(mapping, evidence))
+        yield mapping
 
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
@@ -604,12 +610,12 @@ def write_jsonl(
     *,
     show_progress: bool = ...,
     stream: Literal[True] = True,
-) -> Iterable[X]: ...
+) -> Generator[X]: ...
 
 
-def write_jsonl(  # type:ignore[return]
+def write_jsonl(
     objects: Iterable[X], path: str | Path, *, show_progress: bool = False, stream: bool = False
-) -> None | Iterable[X]:
+) -> None | Generator[X]:
     """Write a list of Pydantic objects into a JSONL file."""
     models = tqdm(
         objects,
@@ -621,12 +627,17 @@ def write_jsonl(  # type:ignore[return]
     )
     with safe_open(path, read=False) as file:
         if stream:
-            for model in models:
-                file.write(f"{model.model_dump_json(exclude_none=True)}\n")
-                yield model
+            return _stream_write_jsonl(models, file)
         else:
             for model in models:
                 file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+            return None
+
+
+def _stream_write_jsonl(models: Iterable[X], file: TextIO) -> Generator[X]:
+    for model in models:
+        file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+        yield model
 
 
 @overload
@@ -641,18 +652,18 @@ def from_jsonl(
 ) -> Iterable[Mapping]: ...
 
 
-def from_jsonl(  # type:ignore[return]
+def from_jsonl(
     path: str | Path, *, show_progress: bool = False, stream: bool = False
-) -> list[Mapping] | Iterable[Mapping]:
+) -> list[Mapping] | Generator[Mapping]:
     """Read a list of Mapping objects from a JSONL file."""
     rv = _iter_read_jsonl(path, show_progress=show_progress)
     if stream:
-        yield from rv
+        return rv
     else:
         return list(rv)
 
 
-def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Iterable[Mapping]:
+def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Generator[Mapping]:
     """Stream mapping objects from a JSONL file."""
     with safe_open(path, read=True) as file:
         for line in tqdm(

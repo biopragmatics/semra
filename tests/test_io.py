@@ -238,6 +238,7 @@ class TestIO(unittest.TestCase):
             ]:
                 write_jsonl(self.mappings, path)
                 new_mappings = from_jsonl(path, show_progress=False)
+                self.assertIsInstance(new_mappings, list)
                 self.assertEqual(self.mappings, new_mappings)
 
     def test_digraph(self) -> None:

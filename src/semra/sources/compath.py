@@ -26,9 +26,9 @@ def _get_df(name: str, *, sha: str, sep: str = ",") -> list[Mapping]:
 
     return [
         Mapping(
-            s=Reference(prefix=s_p, identifier=_fix_kegg_identifier(s_p, s_i)),
-            p=EXACT_MATCH,
-            o=Reference(prefix=t_p, identifier=_fix_kegg_identifier(t_p, t_i)),
+            subject=Reference(prefix=s_p, identifier=_fix_kegg_identifier(s_p, s_i)),
+            predicate=EXACT_MATCH,
+            object=Reference(prefix=t_p, identifier=_fix_kegg_identifier(t_p, t_i)),
             evidence=[
                 SimpleEvidence(
                     mapping_set=MappingSet(name=name, confidence=0.99),

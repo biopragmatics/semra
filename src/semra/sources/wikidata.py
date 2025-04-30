@@ -77,13 +77,13 @@ def _help(
         if not wikidata_id.startswith("Q"):
             continue
         try:
-            o = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
+            obj = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
         except ValueError:
             continue
         mapping = Mapping(
-            s=Reference(prefix="wikidata", identifier=wikidata_id),
-            p=_predicate,
-            o=o,
+            subject=Reference(prefix="wikidata", identifier=wikidata_id),
+            predicate=_predicate,
+            object=obj,
             evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
         )
         rv.append(mapping)

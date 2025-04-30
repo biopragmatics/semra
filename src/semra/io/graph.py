@@ -50,7 +50,7 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         defaultdict(lambda: defaultdict(list))
     )
     for mapping in mappings:
-        edges[mapping.s, mapping.o][mapping.p].extend(mapping.evidence)
+        edges[mapping.subject, mapping.object][mapping.predicate].extend(mapping.evidence)
     for (s, o), data in edges.items():
         graph.add_edge(s, o, **{DIGRAPH_DATA_KEY: data})
     return graph
@@ -64,7 +64,7 @@ def from_digraph(graph: nx.DiGraph) -> list[Mapping]:
 def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
     data = graph[s][o]
     for p, evidence in data[DIGRAPH_DATA_KEY].items():
-        yield Mapping(s=s, p=p, o=o, evidence=evidence)
+        yield Mapping(subject=s, predicate=p, object=o, evidence=evidence)
 
 
 def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.MultiDiGraph:
@@ -86,9 +86,9 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
     graph = nx.MultiDiGraph()
     for mapping in semra_tqdm(mappings, progress=progress):
         graph.add_edge(
-            mapping.s,
-            mapping.o,
-            key=mapping.p,
+            mapping.subject,
+            mapping.object,
+            key=mapping.predicate,
             **{MULTIDIGRAPH_DATA_KEY: mapping.evidence},
         )
     return graph
@@ -97,6 +97,6 @@ def to_multidigraph(mappings: t.Iterable[Mapping], *, progress: bool = False) ->
 def from_multidigraph(graph: nx.MultiDiGraph) -> list[Mapping]:
     """Extract mappings from a multi-directed graph data model."""
     return [
-        Mapping(s=s, p=p, o=o, evidence=data[MULTIDIGRAPH_DATA_KEY])
+        Mapping(subject=s, predicate=p, object=o, evidence=data[MULTIDIGRAPH_DATA_KEY])
         for s, o, p, data in graph.edges(keys=True, data=True)
     ]

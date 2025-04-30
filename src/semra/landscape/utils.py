@@ -582,7 +582,7 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> dict[str, set[str]]:
     """Get the set of terms appearing in each prefix."""
     entities: defaultdict[str, set[str]] = defaultdict(set)
     for mapping in mappings:
-        for reference in (mapping.s, mapping.o):
+        for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
 

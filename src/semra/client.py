@@ -181,9 +181,9 @@ class Neo4jClient:
             )
             evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
         return semra.Mapping(
-            s=Reference.from_curie(source_curie),
-            p=Reference.from_curie(mapping["predicate"]),
-            o=Reference.from_curie(target_curie),
+            subject=Reference.from_curie(source_curie),
+            predicate=Reference.from_curie(mapping["predicate"]),
+            object=Reference.from_curie(target_curie),
             evidence=evidence,
         )
 

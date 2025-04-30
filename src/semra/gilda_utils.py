@@ -90,10 +90,11 @@ def update_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda
         terms_index[term.db, term.id].append(term)
 
     for mapping in tqdm(mappings, unit="mapping", unit_scale=True, desc="applying mappings"):
-        source_terms = terms_index.pop(mapping.s.pair, None)
+        source_terms = terms_index.pop(mapping.subject.pair, None)
         if source_terms:
-            terms_index[mapping.o.pair].extend(
-                make_new_term(term, mapping.o.prefix, mapping.o.identifier) for term in source_terms
+            terms_index[mapping.object.pair].extend(
+                make_new_term(term, mapping.object.prefix, mapping.object.identifier)
+                for term in source_terms
             )
 
     # Unwind the terms index

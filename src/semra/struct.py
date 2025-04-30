@@ -340,7 +340,9 @@ class ReasonedEvidence(
             returns a space-delmited list of the CURIEs for these entities.
         """
         return (
-            " ".join(mapping.s.curie for mapping in self.mappings) + " " + self.mappings[-1].o.curie
+            " ".join(mapping.subject.curie for mapping in self.mappings)
+            + " "
+            + self.mappings[-1].object.curie
         )
 
 
@@ -360,15 +362,15 @@ class Mapping(
 
     model_config = ConfigDict(frozen=True)
 
-    s: Reference = Field(..., title="subject")
-    p: Reference = Field(..., title="predicate")
-    o: Reference = Field(..., title="object")
+    subject: Reference = Field(..., title="subject")
+    predicate: Reference = Field(..., title="predicate")
+    object: Reference = Field(..., title="object")
     evidence: list[Evidence] = Field(default_factory=list)
 
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
-        return self.s, self.p, self.o
+        return self.subject, self.predicate, self.object
 
     def key(self) -> StrTriple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
@@ -380,8 +382,8 @@ class Mapping(
     @classmethod
     def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
         """Instantiate a mapping from a triple."""
-        s, p, o = triple
-        return cls(s=s, p=p, o=o, evidence=evidence or [])
+        subject, predicate, obj = triple
+        return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
 
     def get_confidence(self) -> float:
         """Aggregate the mapping's evidences' confidences in a binomial model."""
@@ -393,7 +395,8 @@ class Mapping(
     def has_primary(self) -> bool:
         """Get if there is a primary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name == self.s.prefix
+            isinstance(evidence, SimpleEvidence)
+            and evidence.mapping_set.name == self.subject.prefix
             for evidence in self.evidence
         )
 
@@ -401,7 +404,8 @@ class Mapping(
     def has_secondary(self) -> bool:
         """Get if there is a secondary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence) and evidence.mapping_set.name != self.s.prefix
+            isinstance(evidence, SimpleEvidence)
+            and evidence.mapping_set.name != self.subject.prefix
             for evidence in self.evidence
         )
 
@@ -415,7 +419,10 @@ def line(*references: Reference) -> list[Mapping]:
     """Create a list of mappings from a simple mappings path."""
     if not (3 <= len(references) and len(references) % 2):
         raise ValueError
-    return [Mapping(s=s, p=p, o=o) for s, p, o in islice(triplewise(references), None, None, 2)]
+    return [
+        Mapping(subject=subject, predicate=predicate, object=obj)
+        for subject, predicate, obj in islice(triplewise(references), None, None, 2)
+    ]
 
 
 ReasonedEvidence.model_rebuild()

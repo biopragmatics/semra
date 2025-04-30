@@ -507,13 +507,17 @@ def _parse_sssom_row(
         confidence = None
 
     try:
-        s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
+        subject = _from_curie(
+            row["subject_id"], standardize=standardize, name=row.get("subject_label")
+        )
 
         if (predicate_id := row["predicate_id"]) in CURIE_TO_RELATION:
-            p = CURIE_TO_RELATION[predicate_id]
+            predicate = CURIE_TO_RELATION[predicate_id]
         else:
-            p = _from_curie(predicate_id, standardize=standardize, name=row.get("predicate_label"))
-        o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
+            predicate = _from_curie(
+                predicate_id, standardize=standardize, name=row.get("predicate_label")
+            )
+        obj = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     except pydantic.ValidationError as exc:
         logger.warning("[%s] could not parse row: %s", index, exc)
         return None
@@ -523,7 +527,12 @@ def _parse_sssom_row(
         "author": author,
         "confidence": confidence,
     }
-    return Mapping(s=s, p=p, o=o, evidence=[SimpleEvidence.model_validate(evidence_dict)])
+    return Mapping(
+        subject=subject,
+        predicate=predicate,
+        object=obj,
+        evidence=[SimpleEvidence.model_validate(evidence_dict)],
+    )
 
 
 def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Reference:
@@ -641,11 +650,11 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) 
         raise TypeError
 
     return SSSOMRow(
-        subject_id=mapping.s.curie,
-        subject_label=mapping.s.name or "",
-        predicate_id=mapping.p.curie,
-        object_id=mapping.o.curie,
-        object_label=mapping.o.name or "",
+        subject_id=mapping.subject.curie,
+        subject_label=mapping.subject.name or "",
+        predicate_id=mapping.predicate.curie,
+        object_id=mapping.object.curie,
+        object_label=mapping.object.name or "",
         mapping_justification=e.justification.curie,
         mapping_set_id=mapping_set_id,
         mapping_set_title=mapping_set_title,

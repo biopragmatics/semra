@@ -131,7 +131,7 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_reference
     >>> r1, r2 = get_test_reference(2)
-    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2)
+    >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
     >>> counter = count_source_target([m1])
     """
     return Counter((s.prefix, o.prefix) for s, _, o in get_index(mappings))
@@ -195,10 +195,10 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
     >>> from semra.api import get_test_evidence, get_test_reference
     >>> r1, r2 = get_test_reference(2)
     >>> e1, e2 = get_test_evidence(2)
-    >>> m1 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1])
-    >>> m2 = Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e2])
+    >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
+    >>> m2 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e2])
     >>> m = assemble_evidences([m1, m2])
-    >>> assert m == [Mapping(s=r1, p=EXACT_MATCH, o=r2, evidence=[e1, e2])]
+    >>> assert m == [Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1, e2])]
     """
     index = get_index(mappings, progress=progress)
     return unindex(index, progress=progress)
@@ -230,11 +230,11 @@ def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
         with an inversion (e.g., for practical purposes, regular dbrefs and
         close matches are not configured to invert), then None is returned
     """
-    if (p := FLIP.get(mapping.p)) is not None:
+    if (p := FLIP.get(mapping.predicate)) is not None:
         return Mapping(
-            s=mapping.o,
-            p=p,
-            o=mapping.s,
+            subject=mapping.object,
+            predicate=p,
+            object=mapping.subject,
             evidence=[ReasonedEvidence(justification=INVERSION_MAPPING, mappings=[mapping])],
         )
     elif strict:
@@ -301,7 +301,7 @@ def keep_prefixes(
         for mapping in semra_tqdm(
             mappings, desc=f"Keeping from {len(prefixes)} prefixes", progress=progress
         )
-        if mapping.s.prefix in prefixes and mapping.o.prefix in prefixes
+        if mapping.subject.prefix in prefixes and mapping.object.prefix in prefixes
     ]
 
 
@@ -327,7 +327,7 @@ def keep_subject_prefixes(
     return [
         mapping
         for mapping in semra_tqdm(mappings, desc="Filtering subject prefixes", progress=progress)
-        if mapping.s.prefix in prefixes
+        if mapping.subject.prefix in prefixes
     ]
 
 
@@ -353,7 +353,7 @@ def keep_object_prefixes(
     return [
         mapping
         for mapping in semra_tqdm(mappings, desc="Filtering object prefixes", progress=progress)
-        if mapping.o.prefix in prefixes
+        if mapping.object.prefix in prefixes
     ]
 
 
@@ -367,7 +367,7 @@ def filter_prefixes(
         for mapping in semra_tqdm(
             mappings, desc=f"Filtering out {len(prefixes)} prefixes", progress=progress
         )
-        if mapping.s.prefix not in prefixes and mapping.o.prefix not in prefixes
+        if mapping.subject.prefix not in prefixes and mapping.object.prefix not in prefixes
     ]
 
 
@@ -376,7 +376,7 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     return [
         mapping
         for mapping in semra_tqdm(mappings, desc="Filtering out self-matches", progress=progress)
-        if mapping.s.prefix != mapping.o.prefix
+        if mapping.subject.prefix != mapping.object.prefix
     ]
 
 
@@ -406,11 +406,11 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     forward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     backward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
-        forward[mapping.s.prefix, mapping.o.prefix][mapping.s.identifier][
-            mapping.o.identifier
+        forward[mapping.subject.prefix, mapping.object.prefix][mapping.subject.identifier][
+            mapping.object.identifier
         ].append(mapping)
-        backward[mapping.s.prefix, mapping.o.prefix][mapping.o.identifier][
-            mapping.s.identifier
+        backward[mapping.subject.prefix, mapping.object.prefix][mapping.object.identifier][
+            mapping.subject.identifier
         ].append(mapping)
 
     index: defaultdict[Triple, list[Evidence]] = defaultdict(list)
@@ -483,12 +483,12 @@ def project(
 def project_dict(mappings: list[Mapping], source_prefix: str, target_prefix: str) -> dict[str, str]:
     """Get a dictionary from source identifiers to target identifiers."""
     mappings = cast(list[Mapping], project(mappings, source_prefix, target_prefix))
-    return {mapping.s.identifier: mapping.o.identifier for mapping in mappings}
+    return {mapping.subject.identifier: mapping.object.identifier for mapping in mappings}
 
 
 def assert_projection(mappings: list[Mapping]) -> None:
     """Raise an exception if any entities appear as the subject in multiple mappings."""
-    counter = Counter(m.s for m in mappings)
+    counter = Counter(m.subject for m in mappings)
     counter = Counter({k: v for k, v in counter.items() if v > 1})
     if not counter:
         return
@@ -519,7 +519,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
            and the priority reference is the object (skip the self mapping)
     """
     original_mappings = len(mappings)
-    mappings = [m for m in mappings if m.p == EXACT_MATCH]
+    mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
 
@@ -542,7 +542,15 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order
     pos = {prefix: i for i, prefix in enumerate(priority)}
-    rv = sorted(rv, key=lambda m: (pos[m.o.prefix], m.o.identifier, m.s.prefix, m.s.identifier))
+    rv = sorted(
+        rv,
+        key=lambda m: (
+            pos[m.object.prefix],
+            m.object.identifier,
+            m.subject.prefix,
+            m.subject.identifier,
+        ),
+    )
 
     end_mappings = len(rv)
     logger.info(
@@ -607,7 +615,7 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     >>> s, p, o = get_test_reference(3)
     >>> e1 = get_test_evidence()
     >>> index = {(s, p, o): [e1]}
-    >>> assert unindex(index) == [Mapping(s=s, p=p, o=o, evidence=[e1])]
+    >>> assert unindex(index) == [Mapping(subject=s, predicate=p, object=o, evidence=[e1])]
     """
     return [
         Mapping.from_triple(triple, evidence=evidence)
@@ -630,29 +638,29 @@ def validate_mappings(mappings: list[Mapping], *, progress: bool = True) -> None
     for mapping in tqdm(
         mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress
     ):
-        if bioregistry.normalize_prefix(mapping.s.prefix) != mapping.s.prefix:
+        if bioregistry.normalize_prefix(mapping.subject.prefix) != mapping.subject.prefix:
             raise ValueError(
-                f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.s}."
+                f"invalid subject prefix.\n\nMapping: {mapping}\n\nSubject:{mapping.subject}."
             )
-        if bioregistry.normalize_prefix(mapping.o.prefix) != mapping.o.prefix:
+        if bioregistry.normalize_prefix(mapping.object.prefix) != mapping.object.prefix:
             raise ValueError(f"invalid object prefix: {mapping}.")
-        if not bioregistry.is_valid_identifier(mapping.s.prefix, mapping.s.identifier):
+        if not bioregistry.is_valid_identifier(mapping.subject.prefix, mapping.subject.identifier):
             raise ValueError(
                 f"Invalid mapping subject."
                 f"\n\nMapping:{mapping}."
-                f"\n\nSubject: {mapping.s}"
-                f"\n\nUse regex {bioregistry.get_pattern(mapping.s.prefix)}"
+                f"\n\nSubject: {mapping.subject}"
+                f"\n\nUse regex {bioregistry.get_pattern(mapping.subject.prefix)}"
             )
-        if ":" in mapping.s.identifier:
+        if ":" in mapping.subject.identifier:
             raise ValueError(f"banana in mapping subject: {mapping}")
-        if not bioregistry.is_valid_identifier(mapping.o.prefix, mapping.o.identifier):
+        if not bioregistry.is_valid_identifier(mapping.object.prefix, mapping.object.identifier):
             raise ValueError(
                 f"Invalid mapping object."
                 f"\n\nMapping:{mapping}."
-                f"\n\nObject: {mapping.o}"
-                f"\n\nUse regex {bioregistry.get_pattern(mapping.o.prefix)}"
+                f"\n\nObject: {mapping.object}"
+                f"\n\nUse regex {bioregistry.get_pattern(mapping.object.prefix)}"
             )
-        if ":" in mapping.o.identifier:
+        if ":" in mapping.object.identifier:
             raise ValueError(f"banana in mapping object: {mapping}")
 
 
@@ -660,7 +668,7 @@ def summarize_prefixes(mappings: list[Mapping]) -> pd.DataFrame:
     """Get a dataframe summarizing the prefixes appearing in the mappings."""
     import bioregistry
 
-    prefixes = set(itt.chain.from_iterable((m.o.prefix, m.s.prefix) for m in mappings))
+    prefixes = set(itt.chain.from_iterable((m.object.prefix, m.subject.prefix) for m in mappings))
     return pd.DataFrame(
         [
             (
@@ -789,13 +797,13 @@ def filter_subsets(
     rv = []
     for mapping in mappings:
         if (
-            mapping.s.prefix in clean_prefix_to_identifiers
-            and mapping.s not in clean_prefix_to_identifiers[mapping.s.prefix]
+            mapping.subject.prefix in clean_prefix_to_identifiers
+            and mapping.subject not in clean_prefix_to_identifiers[mapping.subject.prefix]
         ):
             continue
         if (
-            mapping.o.prefix in clean_prefix_to_identifiers
-            and mapping.o not in clean_prefix_to_identifiers[mapping.o.prefix]
+            mapping.object.prefix in clean_prefix_to_identifiers
+            and mapping.object not in clean_prefix_to_identifiers[mapping.object.prefix]
         ):
             continue
         rv.append(mapping)
@@ -906,12 +914,12 @@ def update_literal_mappings(
     assert_projection(mappings)
     return ssslm.remap_literal_mappings(
         literal_mappings=literal_mappings,
-        mappings=[(mapping.s, mapping.o) for mapping in mappings],
+        mappings=[(mapping.subject, mapping.object) for mapping in mappings],
     )
 
 
 def _prioritization_to_curie_dict(mappings: Iterable[Mapping]) -> dict[str, str]:
-    rv = {mapping.s.curie: mapping.o.curie for mapping in mappings}
+    rv = {mapping.subject.curie: mapping.object.curie for mapping in mappings}
     return rv
 
 

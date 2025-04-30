@@ -533,11 +533,11 @@ def get_mappings_from_config(
 def _get_equivalence_classes(
     mappings: Iterable[Mapping], prioritized_mappings: Iterable[Mapping]
 ) -> dict[Reference, bool]:
-    priority_references = {mapping.o for mapping in prioritized_mappings}
+    priority_references = {mapping.object for mapping in prioritized_mappings}
     rv = {}
     for mapping in mappings:
-        rv[mapping.s] = mapping.s in priority_references
-        rv[mapping.o] = mapping.o in priority_references
+        rv[mapping.subject] = mapping.subject in priority_references
+        rv[mapping.object] = mapping.object in priority_references
     return rv
 
 
@@ -670,7 +670,7 @@ def process(
         logger.info("Removing unqualified database xrefs")
         before = len(mappings)
         start = time.time()
-        mappings = [m for m in mappings if m.p not in IMPRECISE]
+        mappings = [m for m in mappings if m.predicate not in IMPRECISE]
         _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
 
     # 3. Inference based on adding reverse relations then doing multichain hopping

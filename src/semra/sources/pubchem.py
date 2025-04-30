@@ -42,9 +42,9 @@ def get_pubchem_mesh_mappings(version: str | None = None) -> list[Mapping]:
                 logger.debug("[mesh] needs curating: %s", mesh_name)
             continue
         mapping = Mapping(
-            s=Reference(prefix="pubchem.compound", identifier=pubchem),
-            o=Reference(prefix="mesh", identifier=mesh_id),
-            p=EXACT_MATCH,
+            subject=Reference(prefix="pubchem.compound", identifier=pubchem),
+            object=Reference(prefix="mesh", identifier=mesh_id),
+            predicate=EXACT_MATCH,
             evidence=[
                 SimpleEvidence(
                     justification=UNSPECIFIED_MAPPING,

@@ -42,14 +42,14 @@ def _get_mappings(url: str, target_prefix: str) -> list[Mapping]:
     rv = []
     for intact_id, target_identifier in df.values:
         try:
-            o = Reference(prefix=target_prefix, identifier=target_identifier)
+            obj = Reference(prefix=target_prefix, identifier=target_identifier)
         except ValidationError:
             tqdm.write(f"[intact:{intact_id}] invalid xref: {target_prefix}:{target_identifier}")
             continue
         mapping = Mapping(
-            s=Reference(prefix="intact", identifier=intact_id),
-            p=EXACT_MATCH,
-            o=o,
+            subject=Reference(prefix="intact", identifier=intact_id),
+            predicate=EXACT_MATCH,
+            object=obj,
             evidence=[evidence],
         )
         rv.append(mapping)

@@ -28,9 +28,9 @@ def get_fplx_mappings() -> list[Mapping]:
     df = df[df["target_prefix"] != "MEDSCAN"]
     rv = [
         Mapping(
-            s=Reference(prefix="fplx", identifier=source_id),
-            p=EXACT_MATCH,
-            o=Reference(
+            subject=Reference(prefix="fplx", identifier=source_id),
+            predicate=EXACT_MATCH,
+            object=Reference(
                 prefix=bioregistry.normalize_prefix(target_prefix),
                 identifier=bioregistry.standardize_identifier(target_prefix, target_id),
             ),

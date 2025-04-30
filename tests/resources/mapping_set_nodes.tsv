@@ -1,4 +1,4 @@
-curie:ID	prefix	id	name	license	version	confidence:float
+curie:ID	prefix	purl	name	license	version	confidence:float
 semra.mappingset:a678c40e1494d775c3bf4c491fea512c	semra.mappingset	https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv	biomappings	CC0		0.9
 semra.mappingset:260f9a1bfb6ba579966ebd1e51d016bd	semra.mappingset		lexical			0.9
 semra.mappingset:4ba7b3932ff4181b9092e93310a1b6c4	semra.mappingset		chembl	CC-BY-SA-3.0		0.9

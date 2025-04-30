@@ -54,7 +54,7 @@ EVIDENCE_NODES_HEADER = [
 MAPPING_SET_NODES_HEADER = [
     "curie:ID",
     "prefix",
-    "id",
+    "purl",
     "name",
     "license",
     "version",

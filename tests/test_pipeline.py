@@ -81,7 +81,8 @@ class TestPipeline(unittest.TestCase):
         """Test using SSSOM sources in the configuration."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d).resolve().joinpath("test.sssom.tsv")
-            write_sssom(TEST_MAPPINGS, path)
+            res = write_sssom(TEST_MAPPINGS, path)
+            self.assertIsNone(res, msg="streaming should not be activated")
 
             inp = Input(source="sssom", prefix=path.as_posix(), extras={"mapping_set_name": "test"})
             config = Configuration(

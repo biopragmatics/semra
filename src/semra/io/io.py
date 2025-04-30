@@ -7,9 +7,9 @@ import logging
 import pickle
 import typing as t
 import uuid
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
-from typing import Any, NamedTuple, TextIO, cast
+from typing import Any, Literal, NamedTuple, TextIO, TypeVar, cast, overload
 
 import bioontologies
 import bioregistry
@@ -51,6 +51,8 @@ logger = logging.getLogger(__name__)
 
 #: The default confidence for ontology-based mappings
 DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
+
+X = TypeVar("X", bound=pydantic.BaseModel)
 
 
 def _safe_get_version(prefix: str) -> str | None:
@@ -246,12 +248,6 @@ def from_bioontologies(
     for subject, predicate, obj in tqdm(
         g.get_xrefs(), unit="mapping", unit_scale=True, leave=False
     ):
-        if predicate.curie == "oboinowl:hasDbXref":
-            predicate = Reference(
-                prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
-            )
-        elif predicate.curie == "skos:exactMatch":
-            predicate = Reference(prefix="skos", identifier="exactMatch", name="exact match")
         mapping = Mapping.from_triple(
             (subject, predicate, obj),
             evidence=[
@@ -507,12 +503,6 @@ def _parse_sssom_row(
 
     s = _from_curie(row["subject_id"], standardize=standardize, name=row.get("subject_label"))
     p = _from_curie(row["predicate_id"], standardize=standardize, name=row.get("predicate_label"))
-    if p.curie == "oboinowl:hasDbXref":
-        p = Reference(
-            prefix="oboInOwl", identifier="hasDbXref", name="has database cross-reference"
-        )
-    elif p.curie == "skos:exactMatch":
-        p = Reference(prefix="skos", identifier="exactMatch", name="exact match")
     o = _from_curie(row["object_id"], standardize=standardize, name=row.get("object_label"))
     e: dict[str, t.Any] = {
         "justification": justification,
@@ -572,7 +562,7 @@ def _get_dummy_id() -> str:
 
 
 def get_sssom_df(
-    mappings: list[Mapping], *, add_labels: bool = False, prune: bool = True
+    mappings: Iterable[Mapping], *, add_labels: bool = False, prune: bool = True
 ) -> pd.DataFrame:
     """Get a SSSOM dataframe.
 
@@ -660,31 +650,89 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, msid: str) -> SSSOMRow:
     )
 
 
+# docstr-coverage:excused `overload`
+@overload
 def write_sssom(
-    mappings: list[Mapping],
+    mappings: Iterable[Mapping],
+    file: str | Path | TextIO,
+    *,
+    add_labels: bool = ...,
+    prune: bool = ...,
+    stream: Literal[True] = True,
+) -> Generator[Mapping]: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def write_sssom(
+    mappings: Iterable[Mapping],
+    file: str | Path | TextIO,
+    *,
+    add_labels: bool = ...,
+    prune: bool = ...,
+    stream: Literal[False] = False,
+) -> None: ...
+
+
+def write_sssom(
+    mappings: Iterable[Mapping],
     file: str | Path | TextIO,
     *,
     add_labels: bool = False,
     prune: bool = True,
-) -> None:
+    stream: bool = False,
+) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
     if not add_labels and not prune:
-        _write_sssom_stream(mappings, file)
-    df = get_sssom_df(mappings, add_labels=add_labels)
-    df.to_csv(file, sep="\t", index=False)
+        if stream:
+            return _write_sssom_stream(mappings, file, stream=stream)
+        else:
+            return _write_sssom_stream(mappings, file, stream=stream)
+    elif stream:
+        raise ValueError
+    else:
+        df = get_sssom_df(mappings, add_labels=add_labels)
+        df.to_csv(file, sep="\t", index=False)
+        return None
 
 
-def _write_sssom_stream(mappings: Iterable[Mapping], file: str | Path | TextIO) -> None:
+# docstr-coverage:excused `overload`
+@overload
+def _write_sssom_stream(
+    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[False] = False
+) -> None: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def _write_sssom_stream(
+    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[True] = True
+) -> Generator[Mapping]: ...
+
+
+def _write_sssom_stream(
+    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
+) -> Generator[Mapping] | None:
     dummy_id = _get_dummy_id()
     with safe_open_writer(file) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
-        writer.writerows(
-            _get_sssom_row(m, e, dummy_id)
-            for m in tqdm(
-                mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True
-            )
-            for e in m.evidence
-        )
+        it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
+        if stream:
+            return _stream_write_sssom(writer, it, dummy_id)
+        else:
+            for mapping in it:
+                for evidence in mapping.evidence:
+                    writer.writerow(_get_sssom_row(mapping, evidence, dummy_id))
+            return None
+
+
+def _stream_write_sssom(
+    writer: Any, mappings: Iterable[Mapping], dummy_id: str
+) -> Generator[Mapping]:
+    for mapping in mappings:
+        for evidence in mapping.evidence:
+            writer.writerow(_get_sssom_row(mapping, evidence, dummy_id))
+        yield mapping
 
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
@@ -709,28 +757,81 @@ def from_pickle(path: str | Path) -> list[Mapping]:
             return cast(list[Mapping], pickle.load(file))
 
 
+# docstr-coverage:excused `overload`
+@overload
 def write_jsonl(
-    objects: Iterable[pydantic.BaseModel], path: str | Path, *, show_progress: bool = False
-) -> None:
+    objects: Iterable[X],
+    path: str | Path,
+    *,
+    show_progress: bool = ...,
+    stream: Literal[False] = False,
+) -> None: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def write_jsonl(
+    objects: Iterable[X],
+    path: str | Path,
+    *,
+    show_progress: bool = ...,
+    stream: Literal[True] = True,
+) -> Generator[X]: ...
+
+
+def write_jsonl(
+    objects: Iterable[X], path: str | Path, *, show_progress: bool = False, stream: bool = False
+) -> None | Generator[X]:
     """Write a list of Pydantic objects into a JSONL file."""
+    models = tqdm(
+        objects,
+        desc="Writing JSONL",
+        leave=False,
+        unit="object",
+        unit_scale=True,
+        disable=not show_progress,
+    )
     with safe_open(path, read=False) as file:
-        for obj in tqdm(
-            objects,
-            desc="Writing JSONL",
-            leave=False,
-            unit="object",
-            unit_scale=True,
-            disable=not show_progress,
-        ):
-            file.write(f"{obj.model_dump_json(exclude_none=True)}\n")
+        if stream:
+            return _stream_write_jsonl(models, file)
+        else:
+            for model in models:
+                file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+            return None
 
 
-def from_jsonl(path: str | Path, *, show_progress: bool = False) -> list[Mapping]:
+def _stream_write_jsonl(models: Iterable[X], file: TextIO) -> Generator[X]:
+    for model in models:
+        file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+        yield model
+
+
+# docstr-coverage:excused `overload`
+@overload
+def from_jsonl(
+    path: str | Path, *, show_progress: bool = ..., stream: Literal[False] = False
+) -> list[Mapping]: ...
+
+
+# docstr-coverage:excused `overload`
+@overload
+def from_jsonl(
+    path: str | Path, *, show_progress: bool = ..., stream: Literal[True] = True
+) -> Iterable[Mapping]: ...
+
+
+def from_jsonl(
+    path: str | Path, *, show_progress: bool = False, stream: bool = False
+) -> list[Mapping] | Generator[Mapping]:
     """Read a list of Mapping objects from a JSONL file."""
-    return list(_iter_read_jsonl(path, show_progress=show_progress))
+    rv = _iter_read_jsonl(path, show_progress=show_progress)
+    if stream:
+        return rv
+    else:
+        return list(rv)
 
 
-def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Iterable[Mapping]:
+def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Generator[Mapping]:
     """Stream mapping objects from a JSONL file."""
     with safe_open(path, read=True) as file:
         for line in tqdm(

@@ -8,7 +8,18 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from itertools import islice
-from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Generic,
+    Literal,
+    NamedTuple,
+    ParamSpec,
+    TypeAlias,
+    TypeVar,
+    Union,
+)
 
 import pydantic
 from more_itertools import triplewise
@@ -32,11 +43,16 @@ __all__ = [
 P = ParamSpec("P")
 X = TypeVar("X")
 
-#: A type annotation for a subject-predicate-object triple
-Triple = tuple[Reference, Reference, Reference]
+
+class Triple(NamedTuple):
+    """A type annotation for a subject-predicate-object triple."""
+
+    subject: Reference
+    predicate: Reference
+    object: Reference
 
 
-class StrTriple(NamedTuple):
+class CURIETripleTuple(NamedTuple):
     """A triple of curies."""
 
     subject: str
@@ -44,9 +60,12 @@ class StrTriple(NamedTuple):
     object: str
 
 
-def triple_key(triple: Triple) -> StrTriple:
+TripleHint: TypeAlias = Triple | tuple[Reference, Reference, Reference]
+
+
+def triple_key(triple: TripleHint) -> CURIETripleTuple:
     """Get a sortable key for a triple."""
-    return StrTriple(triple[0].curie, triple[2].curie, triple[1].curie)
+    return CURIETripleTuple(triple[0].curie, triple[1].curie, triple[2].curie)
 
 
 def _md5_hexdigest(picklable: object) -> str:
@@ -179,9 +198,12 @@ class SimpleEvidenceKey(NamedTuple):
     mapping_set: MappingSetKey
 
 
+EvidenceP: TypeAlias = Union["Mapping", TripleHint]
+
+
 class SimpleEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, SimpleEvidenceKey]],
+    KeyedMixin[[EvidenceP], tuple[CURIETripleTuple, SimpleEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -218,7 +240,7 @@ class SimpleEvidence(
             self.mapping_set.key(),
         )
 
-    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, SimpleEvidenceKey]:
+    def key(self, triple: EvidenceP) -> tuple[CURIETripleTuple, SimpleEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -252,13 +274,18 @@ class ReasonedEvidenceKey(NamedTuple):
     evidence_type: str
     justification: str
     rest: tuple[
-        tuple[tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey], ...], ...
+        tuple[
+            tuple[CURIETripleTuple, ReasonedEvidenceKey]
+            | tuple[CURIETripleTuple, SimpleEvidenceKey],
+            ...,
+        ],
+        ...,
     ]
 
 
 class ReasonedEvidence(
     pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, ReasonedEvidenceKey]],
+    KeyedMixin[[EvidenceP], tuple[CURIETripleTuple, ReasonedEvidenceKey]],
     EvidenceMixin,
     ConfidenceMixin,
     prefix=SEMRA_EVIDENCE_PREFIX,
@@ -290,7 +317,7 @@ class ReasonedEvidence(
             ),
         )
 
-    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, ReasonedEvidenceKey]:
+    def key(self, triple: EvidenceP) -> tuple[CURIETripleTuple, ReasonedEvidenceKey]:
         """Get a key suitable for hashing the evidence.
 
         :returns: A key for deduplication based on the mapping set.
@@ -355,7 +382,7 @@ Evidence = Annotated[
 class Mapping(
     pydantic.BaseModel,
     ConfidenceMixin,
-    KeyedMixin[[], StrTriple],
+    KeyedMixin[[], CURIETripleTuple],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
     """A semantic mapping."""
@@ -370,9 +397,9 @@ class Mapping(
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
-        return self.subject, self.predicate, self.object
+        return Triple(self.subject, self.predicate, self.object)
 
-    def key(self) -> StrTriple:
+    def key(self) -> CURIETripleTuple:
         """Get a hashable key for the mapping, based on the subject, predicate, and object."""
         return triple_key(self.triple)
 
@@ -380,7 +407,11 @@ class Mapping(
         return self.triple < other.triple
 
     @classmethod
-    def from_triple(cls, triple: Triple, evidence: list[Evidence] | None = None) -> Mapping:
+    def from_triple(
+        cls,
+        triple: Triple | tuple[Reference, Reference, Reference],
+        evidence: list[Evidence] | None = None,
+    ) -> Mapping:
         """Instantiate a mapping from a triple."""
         subject, predicate, obj = triple
         return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])

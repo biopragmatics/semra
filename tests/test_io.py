@@ -42,7 +42,7 @@ from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_cur
 
 LOCAL = getpass.getuser() == "cthoyt"
 
-mapping_set_name = "test"
+mapping_set_title = "test"
 mapping_set_confidence = 0.6
 
 
@@ -69,7 +69,7 @@ class TestSSSOM(unittest.TestCase):
         """Test importing mappings from a SSSOM dataframe."""
         expected_evidence = SimpleEvidence(
             mapping_set=MappingSet(
-                name=mapping_set_name,
+                name=mapping_set_title,
                 confidence=mapping_set_confidence,
             ),
             justification=UNSPECIFIED_MAPPING,
@@ -93,15 +93,15 @@ class TestSSSOM(unittest.TestCase):
         df = pd.DataFrame(rows, columns=columns)
         actual_mappings = from_sssom_df(
             df,
-            mapping_set_name=mapping_set_name,
+            mapping_set_title=mapping_set_title,
             mapping_set_confidence=mapping_set_confidence,
         )
         self.assertEqual(expected_mappings, actual_mappings)
 
         # Test 2 - from columns (partial)
         rows_test_2 = [
-            (a1_curie, "skos:exactMatch", "exact match", b1_curie, mapping_set_name),
-            (a2_curie, "skos:exactMatch", "exact match", b2_curie, mapping_set_name),
+            (a1_curie, "skos:exactMatch", "exact match", b1_curie, mapping_set_title),
+            (a2_curie, "skos:exactMatch", "exact match", b2_curie, mapping_set_title),
         ]
         columns = [
             "subject_id",
@@ -124,7 +124,7 @@ class TestSSSOM(unittest.TestCase):
                 "skos:exactMatch",
                 "exact match",
                 b1_curie,
-                mapping_set_name,
+                mapping_set_title,
                 mapping_set_confidence,
             ),
             (
@@ -132,7 +132,7 @@ class TestSSSOM(unittest.TestCase):
                 "skos:exactMatch",
                 "exact match",
                 b2_curie,
-                mapping_set_name,
+                mapping_set_title,
                 mapping_set_confidence,
             ),
         ]
@@ -154,7 +154,7 @@ class TestSSSOM(unittest.TestCase):
         test_version = "1.0"
         expected_evidence = SimpleEvidence(
             mapping_set=MappingSet(
-                name=mapping_set_name,
+                name=mapping_set_title,
                 confidence=mapping_set_confidence,
                 license=test_license,
                 version=test_version,
@@ -179,7 +179,7 @@ class TestSSSOM(unittest.TestCase):
         df = pd.DataFrame(rows, columns=columns)
         actual_mappings = from_sssom_df(
             df,
-            mapping_set_name=mapping_set_name,
+            mapping_set_title=mapping_set_title,
             mapping_set_confidence=mapping_set_confidence,
             license=test_license,
             version=test_version,

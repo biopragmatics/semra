@@ -172,6 +172,7 @@ def _from_pyobo_sssom_df(
     license: str | None = None,
     justification: Reference | None = None,
     mapping_set_name: str | None = None,
+    mapping_set_title: str | None = None,
 ) -> list[Mapping]:
     """Get mappings from a :mod:`pyobo`-flavored cache file.
 
@@ -203,8 +204,12 @@ def _from_pyobo_sssom_df(
         confidence = DEFAULT_ONTOLOGY_CONFIDENCE
     if license is None:
         license = bioregistry.get_license(prefix)
-    if mapping_set_name is None:
-        mapping_set_name = bioregistry.get_name(prefix)
+    if mapping_set_name is not None:
+        if mapping_set_title:
+            raise ValueError
+        mapping_set_title = mapping_set_name
+    if mapping_set_title is None:
+        mapping_set_title = bioregistry.get_name(prefix)
     if prefixes:
         df = _filter_sssom_by_prefixes(df, prefixes)
     return from_sssom_df(
@@ -214,7 +219,7 @@ def _from_pyobo_sssom_df(
         version=version,
         justification=justification,
         mapping_set_confidence=confidence,
-        mapping_set_name=mapping_set_name,  # TODO rename to mapping_set_title align with SSSOM
+        mapping_set_title=mapping_set_title,
     )
 
 

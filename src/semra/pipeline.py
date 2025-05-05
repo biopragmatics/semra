@@ -608,7 +608,7 @@ def get_raw_mappings(
 
 def process(
     mappings: list[Mapping],
-    upgrade_prefixes: Iterable[str] | None = None,
+    upgrade_prefixes: t.Collection[str] | None = None,
     remove_prefix_set: t.Collection[str] | None = None,
     keep_prefix_set: t.Collection[str] | None = None,
     post_remove_prefixes: t.Collection[str] | None = None,
@@ -656,7 +656,7 @@ def process(
     # mappings = filter_self_matches(mappings)
     # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
-    if upgrade_prefixes:
+    if upgrade_prefixes and len(upgrade_prefixes) > 1:
         logger.info("Inferring mapping upgrades")
         # 2. using the assumption that primary mappings from each of these
         # resources to each other are exact matches, rewrite the prefixes

@@ -27,7 +27,7 @@ from semra.pipeline import (
     Configuration,
     Input,
     Mutation,
-    get_mappings_from_config,
+    get_priority_mappings_from_config,
 )
 from semra.rules import charlie
 
@@ -100,18 +100,9 @@ CONFIGURATION = Configuration(
         Mutation(source="ncit", confidence=0.7),
         Mutation(source="umls", confidence=0.7),
     ],
-    raw_pickle_path=MODULE.join(name="raw.pkl"),
-    raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    # raw_neo4j_path=MODULE.join("neo4j_raw"),
     add_labels=True,
-    processed_pickle_path=MODULE.join(name="processed.pkl"),
-    processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
-    processed_neo4j_path=MODULE.join("neo4j"),
-    processed_neo4j_name="semra-cell",
-    priority_pickle_path=MODULE.join(name="priority.pkl"),
-    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
-    configuration_path=MODULE.join(name="configuration.json"),
     zenodo_record=11091581,
+    directory=MODULE.base,
 )
 
 
@@ -129,7 +120,7 @@ def main(
     build_docker: bool,
 ) -> None:
     """Build the mapping database for cell and cell line terms."""
-    mappings = get_mappings_from_config(
+    priority_mappings = get_priority_mappings_from_config(
         CONFIGURATION,
         refresh_raw=refresh_raw,
         refresh_processed=refresh_processed,
@@ -140,15 +131,17 @@ def main(
     if upload:
         CONFIGURATION._safe_upload()
 
-    click.echo(f"Processing returned {len(mappings):,} mappings")
-    click.echo(str_source_target_counts(mappings))
+    click.echo(f"Processing returned {len(priority_mappings):,} prioritized mappings")
+    click.echo(str_source_target_counts(priority_mappings))
 
     # Produce consolidation mappings
     for s_prefix, t_prefix in [
         ("ccle", "efo"),
         ("ccle", "depmap"),
     ]:
-        consolidation_mappings, sus = project(mappings, s_prefix, t_prefix, return_sus=True)
+        consolidation_mappings, sus = project(
+            priority_mappings, s_prefix, t_prefix, return_sus=True
+        )
         click.echo(
             f"Consolidated to {len(consolidation_mappings):,} mappings between "
             f"{s_prefix} and {t_prefix}"

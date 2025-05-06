@@ -58,18 +58,8 @@ CONFIGURATION = Configuration(
     mutations=[
         Mutation(source="go", confidence=0.95),
     ],
-    raw_pickle_path=MODULE.join(name="raw.pkl"),
-    raw_sssom_path=MODULE.join(name="raw.sssom.tsv"),
-    raw_neo4j_path=MODULE.join("neo4j_raw"),
-    raw_neo4j_name="semra-complex",
-    processed_pickle_path=MODULE.join(name="processed.pkl"),
-    processed_sssom_path=MODULE.join(name="processed.sssom.tsv"),
-    processed_neo4j_path=MODULE.join("neo4j"),
-    processed_neo4j_name="semra-complex",
-    priority_pickle_path=MODULE.join(name="priority.pkl"),
-    priority_sssom_path=MODULE.join(name="priority.sssom.tsv"),
-    configuration_path=MODULE.join(name="configuration.json"),
     zenodo_record=11091422,
+    directory=MODULE.base,
 )
 
 

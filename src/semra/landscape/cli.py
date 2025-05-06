@@ -35,6 +35,9 @@ def landscape(
     build_docker: bool,
 ) -> None:
     """Run all landscape builds."""
+    if build_docker:
+        pass  # TODO check if docker is running
+
     from . import anatomy, cells, complexes, diseases, genes, taxrank
 
     functions: list[tuple[str, click.Command]] = [

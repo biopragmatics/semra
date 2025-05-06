@@ -112,6 +112,7 @@ def write_neo4j(
     dockerfile_name: str = "Dockerfile",
     pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
     use_tqdm: bool = True,
+    do_gzip: bool = False,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -176,12 +177,18 @@ def write_neo4j(
     # keep track of the CURIEs for mapping sets
     mapping_set_curies: set[str] = set()
 
-    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
-    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
-    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
-    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
-    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
-    edges_path = directory.joinpath(EDGES_FILENAME)
+    def _join_gzip(name: str) -> Path:
+        if do_gzip:
+            return directory.joinpath(name + ".gz")
+        else:
+            return directory.joinpath(name)
+
+    concept_nodes_path = _join_gzip(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = _join_gzip(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = _join_gzip(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = _join_gzip(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = _join_gzip(MAPPING_EDGES_FILENAME)
+    edges_path = _join_gzip(EDGES_FILENAME)
 
     node_paths = [
         (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),

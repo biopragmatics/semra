@@ -216,10 +216,10 @@ def _from_pyobo_sssom_df(
         df,
         standardize=standardize,
         license=license,
-        version=version,
         justification=justification,
         mapping_set_confidence=confidence,
         mapping_set_title=mapping_set_title,
+        mapping_set_version=version,
     )
 
 

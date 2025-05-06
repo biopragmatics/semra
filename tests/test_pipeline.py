@@ -73,6 +73,7 @@ class TestPipeline(unittest.TestCase):
             key="test",
             name="Test Configuration",
             description="Tests using custom sources",
+            directory=Path("."),  # dummy
         )
         mappings = get_raw_mappings(config, show_progress=False)
         self.assert_test_mappings(mappings)
@@ -91,6 +92,7 @@ class TestPipeline(unittest.TestCase):
                 key="test",
                 name="Test Configuration",
                 description="Tests using SSSOM sources",
+                directory=Path("."),  # dummy
             )
             mappings = get_raw_mappings(config, show_progress=False)
             self.assert_test_mappings(mappings)

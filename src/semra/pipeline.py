@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import typing as t
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any, Literal
 
@@ -30,11 +30,12 @@ from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_r
 from semra.io import (
     from_bioontologies,
     from_cache_df,
+    from_jsonl,
     from_pickle,
     from_pyobo,
     from_sssom,
+    write_jsonl,
     write_neo4j,
-    write_pickle,
     write_sssom,
 )
 from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE, SubsetConfiguration
@@ -56,7 +57,7 @@ __all__ = [
     "Input",
     "Mutation",
     "SubsetConfiguration",
-    "get_mappings_from_config",
+    "get_priority_mappings_from_config",
     "get_raw_mappings",
     "process",
 ]
@@ -148,37 +149,111 @@ class Configuration(BaseModel):
         "prefixes and local unique identifier regular expressions (when available)?",
     )
 
-    raw_pickle_path: Path | None = None
-    raw_sssom_path: Path | None = None
-    raw_neo4j_path: Path | None = Field(
-        default=None, description="Directory in which Neo4j stuff goes"
-    )
-    raw_neo4j_name: str | None = Field(
-        default=None, description="Directory for docker tag for Neo4j"
-    )
+    directory: Path = Field(..., description="The directory where contents are written")
 
-    processed_pickle_path: Path | None = None
-    processed_sssom_path: Path | None = None
-    processed_neo4j_path: Path | None = Field(
-        default=None, description="Directory in which Neo4j stuff goes"
+    write_raw_neo4j: bool = Field(
+        default=False, description="Should a neo4j directory be written for raw mappings?"
     )
-    processed_neo4j_name: str | None = Field(
-        default=None, description="Directory for docker tag for Neo4j"
-    )
-
-    priority_pickle_path: Path | None = None
-    priority_sssom_path: Path | None = None
-    # note that making a priority neo4j doesn't make sense
-
+    neo4j_gzip: bool = Field(default=True)
     add_labels: bool = Field(
         default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
     )
 
-    configuration_path: Path | None = Field(
-        None, description="The path where this configuration should be written."
-    )
-
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
+
+    @property
+    def raw_pickle_path(self) -> Path:
+        """Get the path to raw mappings as a gzipped pickle file."""
+        return self.directory.joinpath("raw.pkl.gz")
+
+    @property
+    def raw_sssom_path(self) -> Path:
+        """Get the path to raw mappings as a gzipped SSSOM TSV file."""
+        return self.directory.joinpath("raw.sssom.tsv.gz")
+
+    @property
+    def raw_jsonl_path(self) -> Path:
+        """Get the path to raw mappings as a gzipped JSON lines file."""
+        return self.directory.joinpath("raw.jsonl.gz")
+
+    def has_raw_path(self) -> bool:
+        """Check if the configuration has cached raw mappings."""
+        return any(
+            p.is_file() for p in [self.raw_jsonl_path, self.raw_pickle_path, self.raw_sssom_path]
+        )
+
+    @property
+    def processed_pickle_path(self) -> Path:
+        """Get the path to processed mappings as a gzipped pickle file."""
+        return self.directory.joinpath("processed.pkl.gz")
+
+    @property
+    def processed_sssom_path(self) -> Path:
+        """Get the path to processed mappings as a gzipped SSSOM TSV file."""
+        return self.directory.joinpath("processed.sssom.tsv.gz")
+
+    @property
+    def processed_jsonl_path(self) -> Path:
+        """Get the path to processed mappings as a gzipped JSON lines file."""
+        return self.directory.joinpath("processed.jsonl.gz")
+
+    def has_processed_path(self) -> bool:
+        """Check if the configuration has cached priority mappings."""
+        return any(
+            p.is_file()
+            for p in [
+                self.processed_jsonl_path,
+                self.processed_pickle_path,
+                self.processed_sssom_path,
+            ]
+        )
+
+    @property
+    def priority_pickle_path(self) -> Path:
+        """Get the path to priority mappings as a gzipped pickle file."""
+        return self.directory.joinpath("priority.pkl.gz")
+
+    @property
+    def priority_sssom_path(self) -> Path:
+        """Get the path to priority mappings as a gzipped SSSOM TSV file."""
+        return self.directory.joinpath("priority.sssom.tsv.gz")
+
+    @property
+    def priority_jsonl_path(self) -> Path:
+        """Get the path to priority mappings as a gzipped JSON lines file."""
+        return self.directory.joinpath("priority.jsonl.gz")
+
+    def has_priority_path(self) -> bool:
+        """Check if the configuration has cached priority mappings."""
+        return any(
+            p.is_file()
+            for p in [self.priority_jsonl_path, self.priority_pickle_path, self.priority_sssom_path]
+        )
+
+    @property
+    def configuration_path(self) -> Path:
+        """Get the path to the configuration file."""
+        return self.directory.joinpath("configuration.json")
+
+    @property
+    def raw_neo4j_path(self) -> Path:
+        """Get the path to the raw neo4j directory."""
+        return self.directory.joinpath("neo4j_raw")
+
+    @property
+    def processed_neo4j_path(self) -> Path:
+        """Get the path to the processed neo4j directory."""
+        return self.directory.joinpath("neo4j")
+
+    @property
+    def processed_neo4j_name(self) -> str:
+        """Get the name for the processed mappings Neo4j docker image."""
+        return f"semra-{self.key}"
+
+    @property
+    def raw_neo4j_name(self) -> str:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return f"semra-{self.key}-raw"
 
     @model_validator(mode="before")
     def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
@@ -205,6 +280,7 @@ class Configuration(BaseModel):
         prefixes: t.Iterable[str],
         include_biomappings: bool = True,
         include_gilda: bool = True,
+        directory: Path,
     ) -> Self:
         """Get a configuration from ontology prefixes."""
         inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
@@ -212,7 +288,7 @@ class Configuration(BaseModel):
             inputs.append(Input(source="biomappings"))
         if include_gilda:
             inputs.append(Input(source="gilda"))
-        return cls(key=key, name=name, inputs=inputs)
+        return cls(key=key, name=name, inputs=inputs, directory=directory)
 
     def get_mappings(
         self,
@@ -222,7 +298,7 @@ class Configuration(BaseModel):
         refresh_source: bool = False,
     ) -> list[Mapping]:
         """Run assembly based on this configuration."""
-        return get_mappings_from_config(
+        return get_priority_mappings_from_config(
             self,
             refresh_source=refresh_source,
             refresh_raw=refresh_raw,
@@ -231,31 +307,42 @@ class Configuration(BaseModel):
 
     def read_raw_mappings(self) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
-        if self.raw_pickle_path and self.raw_pickle_path.is_file():
-            return from_pickle(self.raw_pickle_path)
-        if self.raw_sssom_path and self.raw_sssom_path.is_file():
-            return from_sssom(self.raw_sssom_path)
-        if self.raw_pickle_path and not self.raw_pickle_path.is_file():
-            raise FileNotFoundError(f"raw mappings pickle file not found: {self.raw_pickle_path}")
-        if self.raw_sssom_path and not self.raw_sssom_path.is_file():
-            raise FileNotFoundError(f"raw mappings SSSOM file not found: {self.raw_sssom_path}")
-        raise ValueError("no raw pickle nor SSSOM file given")
+        paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
+            (self.raw_jsonl_path, from_jsonl),
+            (self.raw_pickle_path, from_pickle),
+            (self.raw_sssom_path, from_sssom),
+        ]
+        for path, opener in paths:
+            if path.is_file():
+                logger.info("loading cached raw mappings from %s", path)
+                return opener(path)
+        raise ValueError(f"raw mappings have not yet been cached in {self.directory}")
 
     def read_processed_mappings(self) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
-        if self.processed_pickle_path and self.processed_pickle_path.is_file():
-            return from_pickle(self.processed_pickle_path)
-        if self.processed_sssom_path and self.processed_sssom_path.is_file():
-            return from_sssom(self.processed_sssom_path)
-        if self.processed_pickle_path and not self.processed_pickle_path.is_file():
-            raise FileNotFoundError(
-                f"processed mappings pickle file not found: {self.processed_pickle_path}"
-            )
-        if self.processed_sssom_path and not self.processed_sssom_path.is_file():
-            raise FileNotFoundError(
-                f"processed mappings SSSOM file not found: {self.processed_sssom_path}"
-            )
-        raise ValueError("no processed pickle nor SSSOM file given")
+        paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
+            (self.processed_jsonl_path, from_jsonl),
+            (self.processed_pickle_path, from_pickle),
+            (self.processed_sssom_path, from_sssom),
+        ]
+        for path, opener in paths:
+            if path.is_file():
+                logger.info("loading cached processed mappings from %s", path)
+                return opener(path)
+        raise ValueError(f"processed mappings have not yet been cached in {self.directory}")
+
+    def read_priority_mappings(self) -> list[Mapping]:
+        """Read priority mappings from pickle, if already cached."""
+        paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
+            (self.priority_jsonl_path, from_jsonl),
+            (self.priority_pickle_path, from_pickle),
+            (self.priority_sssom_path, from_sssom),
+        ]
+        for path, opener in paths:
+            if path.is_file():
+                logger.info("loading cached priority mappings from %s", path)
+                return opener(path)
+        raise ValueError(f"priority mappings have not yet been cached in {self.directory}")
 
     def get_hydrated_subsets(self, *, show_progress: bool = True) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
@@ -287,35 +374,31 @@ class Configuration(BaseModel):
         )
 
     def _get_zenodo_paths(self, *, processed: bool = True) -> list[Path]:
-        if self.configuration_path is not None and not self.configuration_path.is_file():
+        if not self.configuration_path.is_file():
             self.configuration_path.write_text(
                 self.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
             )
         paths = [
             self.configuration_path,
             self.raw_sssom_path,
-            self.raw_pickle_path,
+            self.raw_jsonl_path,
             self.processed_sssom_path,
-            self.processed_pickle_path,
+            self.processed_jsonl_path,
             self.priority_sssom_path,
-            self.processed_pickle_path,
+            self.priority_jsonl_path,
         ]
         for path in paths:
             if path is None:
                 raise ValueError("Can't upload to Zenodo if not all output paths are configured")
             if not path.is_file():
                 raise FileNotFoundError(path)
-        if (
-            processed
-            and self.processed_neo4j_path is not None
-            and self.processed_neo4j_path.is_dir()
-        ):
+        if processed and self.processed_neo4j_path.is_dir():
             paths.extend(self.processed_neo4j_path.iterdir())
-        elif self.raw_neo4j_path is not None and self.raw_neo4j_path.is_dir():
-            paths.extend(self.raw_neo4j_path.iterdir())
+        # elif self.raw_neo4j_path is not None and self.raw_neo4j_path.is_dir():
+        #    paths.extend(self.raw_neo4j_path.iterdir())
         else:
             logger.debug("Not uploading neo4j")
-        return t.cast(list[Path], paths)
+        return paths
 
     def ensure_zenodo(
         self,
@@ -362,11 +445,7 @@ class Configuration(BaseModel):
         import os
         import subprocess
 
-        if self.processed_neo4j_name is None:
-            click.secho("you should set the processed_neo4j_name", fg="red")
-            name = "semra"
-        else:
-            name = self.processed_neo4j_name
+        name = f"semra-{self.key}"
 
         args = ["docker", "build", "--tag", name, "."]
         click.secho("Building dockerfile (automated)", fg="green")
@@ -423,109 +502,105 @@ class Configuration(BaseModel):
             click.echo(f"uploaded to {url}")
 
 
-def get_mappings_from_config(
+def get_priority_mappings_from_config(
     configuration: Configuration,
     *,
     refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
 ) -> list[Mapping]:
-    """Run assembly based on a configuration."""
+    """Get prioritized mappings based on an assembly configuration."""
     if refresh_source:
         refresh_raw = True
     if refresh_raw:
         refresh_processed = True
 
-    if (
-        configuration.priority_pickle_path
-        and configuration.priority_pickle_path.is_file()
-        and not refresh_raw
-        and not refresh_processed
-    ):
-        logger.info("loading cached priority mappings from %s", configuration.priority_pickle_path)
-        return from_pickle(configuration.priority_pickle_path)
+    if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
+        return configuration.read_priority_mappings()
 
-    if (
-        configuration.raw_pickle_path
-        and configuration.raw_pickle_path.is_file()
-        and not refresh_raw
-    ):
-        start = time.time()
-        logger.info("loading cached raw mappings from %s", configuration.raw_pickle_path)
-        raw_mappings = from_pickle(configuration.raw_pickle_path)
-        logger.info(
-            "loaded cached raw mappings from %s in %.2f seconds",
-            configuration.raw_pickle_path,
-            time.time() - start,
-        )
+    if configuration.has_processed_path() and not refresh_raw and not refresh_processed:
+        processed_mappings = configuration.read_processed_mappings()
     else:
-        if configuration.configuration_path is not None:
+        if configuration.has_raw_path() and not refresh_raw:
+            start = time.time()
+            raw_mappings = configuration.read_raw_mappings()
+            logger.info(
+                "loaded cached raw mappings from %s in %.2f seconds",
+                configuration.raw_pickle_path,
+                time.time() - start,
+            )
+        else:
             configuration.configuration_path.write_text(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
+            raw_mappings = get_raw_mappings(configuration, refresh_source=refresh_source)
+            if not raw_mappings:
+                raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
+            if configuration.validate_raw:
+                validate_mappings(raw_mappings)
 
-        raw_mappings = get_raw_mappings(configuration, refresh_source=refresh_source)
-        if not raw_mappings:
-            raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
-        if configuration.validate_raw:
-            validate_mappings(raw_mappings)
-        if configuration.raw_pickle_path:
-            write_pickle(raw_mappings, configuration.raw_pickle_path)
-        if configuration.raw_sssom_path:
+            # TODO stream?
             write_sssom(
                 raw_mappings,
                 configuration.raw_sssom_path,
                 # add_labels=configuration.add_labels
             )
-        if configuration.raw_neo4j_path:
-            write_neo4j(
+            write_jsonl(
                 raw_mappings,
-                configuration.raw_neo4j_path,
-                docker_name=configuration.raw_neo4j_name,
-                add_labels=False,  # configuration.add_labels,
+                configuration.raw_jsonl_path,
             )
+            if configuration.write_raw_neo4j:
+                write_neo4j(
+                    raw_mappings,
+                    configuration.raw_neo4j_path,
+                    docker_name=configuration.raw_neo4j_name,
+                    add_labels=False,  # configuration.add_labels,
+                    do_gzip=configuration.neo4j_gzip,
+                )
 
-    # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-    processed_mappings = process(
-        raw_mappings,
-        upgrade_prefixes=[  # TODO more carefully compile a set of mutations together for applying
-            m.source for m in configuration.mutations
-        ],
-        remove_prefix_set=configuration.remove_prefixes,
-        keep_prefix_set=configuration.keep_prefixes,
-        post_remove_prefixes=configuration.post_remove_prefixes,
-        post_keep_prefixes=configuration.post_keep_prefixes,
-        remove_imprecise=configuration.remove_imprecise,
-        subsets=configuration.get_hydrated_subsets(),
-    )
+        # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
+        processed_mappings = process(
+            raw_mappings,
+            upgrade_prefixes=[  # TODO more carefully compile a set of mutations together for applying
+                m.source for m in configuration.mutations
+            ],
+            remove_prefix_set=configuration.remove_prefixes,
+            keep_prefix_set=configuration.keep_prefixes,
+            post_remove_prefixes=configuration.post_remove_prefixes,
+            post_keep_prefixes=configuration.post_keep_prefixes,
+            remove_imprecise=configuration.remove_imprecise,
+            subsets=configuration.get_hydrated_subsets(),
+        )
+
     prioritized_mappings = prioritize(processed_mappings, configuration.priority)
+    equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
+    write_sssom(
+        processed_mappings,
+        configuration.processed_sssom_path,
+        add_labels=configuration.add_labels,
+    )
+    write_jsonl(
+        processed_mappings,
+        configuration.processed_jsonl_path,
+    )
+    write_neo4j(
+        processed_mappings,
+        configuration.processed_neo4j_path,
+        docker_name=configuration.processed_neo4j_name,
+        equivalence_classes=equivalence_classes,
+        add_labels=configuration.add_labels,
+        do_gzip=configuration.neo4j_gzip,
+    )
 
-    if configuration.processed_pickle_path:
-        write_pickle(processed_mappings, configuration.processed_pickle_path)
-    if configuration.processed_sssom_path:
-        write_sssom(
-            processed_mappings,
-            configuration.processed_sssom_path,
-            add_labels=configuration.add_labels,
-        )
-    if configuration.processed_neo4j_path:
-        equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
-        write_neo4j(
-            processed_mappings,
-            configuration.processed_neo4j_path,
-            docker_name=configuration.processed_neo4j_name,
-            equivalence_classes=equivalence_classes,
-            add_labels=configuration.add_labels,
-        )
-
-    if configuration.priority_pickle_path:
-        write_pickle(prioritized_mappings, configuration.priority_pickle_path)
-    if configuration.priority_sssom_path:
-        write_sssom(
-            prioritized_mappings,
-            configuration.priority_sssom_path,
-            add_labels=configuration.add_labels,
-        )
+    write_jsonl(
+        prioritized_mappings,
+        configuration.priority_jsonl_path,
+    )
+    write_sssom(
+        prioritized_mappings,
+        configuration.priority_sssom_path,
+        add_labels=configuration.add_labels,
+    )
 
     return prioritized_mappings
 

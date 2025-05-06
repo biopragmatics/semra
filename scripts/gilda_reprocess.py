@@ -13,12 +13,9 @@ from semra.gilda_utils import (
     standardize_terms,
     update_terms,
 )
-from semra.pipeline import Configuration, Input, Mutation, get_mappings_from_config
+from semra.pipeline import Configuration, Input, Mutation, get_priority_mappings_from_config
 
 MODULE = pystow.module("semra", "gilda-demo")
-RAW_MAPPINGS_PICKLE_PATH = MODULE.join(name="raw.pkl")
-PROCESSED_MAPPINGS_PICKLE_PATH = MODULE.join(name="processed.pkl")
-PROCESSED_MAPPINGS_SSSOM_PATH = MODULE.join(name="processed.tsv")
 PROCESSED_GILDA_TERMS_PATH = resource_dir.joinpath("grounding_terms_standardized.tsv.gz")
 
 PRIORITY = [
@@ -65,9 +62,7 @@ CONFIGURATION = Configuration(
         Mutation(source="doid", confidence=0.95),
         Mutation(source="mondo", confidence=0.95),
     ],
-    raw_path=RAW_MAPPINGS_PICKLE_PATH,
-    processed_path=PROCESSED_MAPPINGS_PICKLE_PATH,
-    processed_sssom_path=PROCESSED_MAPPINGS_SSSOM_PATH,
+    directory=MODULE.base,
 )
 
 
@@ -84,7 +79,7 @@ def _get_terms() -> list[gilda.Term]:
 
 def main():
     """Reprocess the gilda default lexical index."""
-    mappings = get_mappings_from_config(CONFIGURATION)
+    mappings = get_priority_mappings_from_config(CONFIGURATION)
     if not mappings:
         raise ValueError("Bad mapping priority definition resulted in no mappings")
 

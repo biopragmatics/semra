@@ -28,7 +28,6 @@ __all__ = [
     "write_neo4j",
 ]
 
-
 HERE = Path(__file__).parent.resolve()
 
 TEMPLATES = HERE.joinpath("templates")

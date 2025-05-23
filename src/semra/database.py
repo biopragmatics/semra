@@ -137,7 +137,7 @@ def build(
 
     if upload:
         res = update_zenodo(
-            deposition_id=11082038,
+            deposition_id="11082038",
             paths=[
                 SSSOM_PATH,
                 WARNINGS_PATH,

@@ -311,7 +311,7 @@ def write_neo4j(
 
 
 def _gzip_path(path: Path) -> Path:
-    rv = path.with_suffix(".gz")
+    rv = path.with_suffix(path.suffix + ".gz")
     with open(path, "rb") as ip, gzip.open(rv, mode="wb") as op:
         shutil.copyfileobj(ip, op)
     path.unlink()

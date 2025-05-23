@@ -23,6 +23,7 @@ from zenodo_client import Creator, Metadata, ensure_zenodo
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
+from semra.io.neo4j_io import _gzip_path
 from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
@@ -133,9 +134,13 @@ def build(
     )
     mappings = write_jsonl(mappings, JSONL_PATH, stream=True)
     mappings = write_sssom(mappings, SSSOM_PATH, add_labels=False, prune=False, stream=True)
-    # neo4j doesn't need to stream since it's last. to avoid SIGKILLS,
+    # neo4j doesn't need to stream since it's last. to avoid SIGKILLs,
     # write the file to disk, then compress after.
     write_neo4j(mappings, NEO4J_DIR, compress="after")
+
+    # gzip these after the fact to avoid SIGKILLs
+    jsonl_gz_path = _gzip_path(JSONL_PATH)
+    sssom_gz_path = _gzip_path(SSSOM_PATH)
 
     if upload:
         # Define the metadata that will be used on initial upload
@@ -153,7 +158,8 @@ def build(
             key="semra-database-test-1",
             data=zenodo_metadata,
             paths=[
-                SSSOM_PATH,
+                jsonl_gz_path,
+                sssom_gz_path,
                 WARNINGS_PATH,
                 ERRORS_PATH,
                 SUMMARY_PATH,

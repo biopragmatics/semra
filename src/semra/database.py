@@ -133,8 +133,9 @@ def build(
     )
     mappings = write_jsonl(mappings, JSONL_PATH, stream=True)
     mappings = write_sssom(mappings, SSSOM_PATH, add_labels=False, prune=False, stream=True)
-    # neo4j doesn't need to stream since it's last
-    write_neo4j(mappings, NEO4J_DIR)
+    # neo4j doesn't need to stream since it's last. to avoid SIGKILLS,
+    # write the file to disk, then compress after.
+    write_neo4j(mappings, NEO4J_DIR, compress="after")
 
     if upload:
         # Define the metadata that will be used on initial upload

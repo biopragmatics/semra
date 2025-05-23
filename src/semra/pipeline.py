@@ -154,7 +154,10 @@ class Configuration(BaseModel):
     write_raw_neo4j: bool = Field(
         default=False, description="Should a neo4j directory be written for raw mappings?"
     )
-    neo4j_gzip: None | Literal["during", "after"] = Field(None)
+    neo4j_gzip: None | Literal["during", "after"] = Field(
+        default="during",
+        description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
+    )
     add_labels: bool = Field(
         default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
     )

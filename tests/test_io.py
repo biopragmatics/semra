@@ -9,6 +9,7 @@ from pathlib import Path
 import bioregistry
 import pandas as pd
 import sssom.io
+import sssom.validators
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.api import assemble_evidences
@@ -298,6 +299,7 @@ class TestIO(unittest.TestCase):
                     msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
 
                     reports = sssom.validators.validate(msdf, fail_on_error=False)
+                    self.assertNotEqual(0, len(reports), msg="no reports generated")
                     for validator, report in reports.items():
                         with self.subTest(msg=f"SSSOM Validation: {validator.name}"):
                             self.assertEqual([], report.results)

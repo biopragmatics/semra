@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import gzip
+import shutil
 from collections.abc import Iterable, Sequence
 from pathlib import Path
+from typing import Literal
 
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -112,7 +115,7 @@ def write_neo4j(
     dockerfile_name: str = "Dockerfile",
     pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
     use_tqdm: bool = True,
-    do_gzip: bool = False,
+    compress: None | Literal["during", "after"] = None,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -178,7 +181,7 @@ def write_neo4j(
     mapping_set_curies: set[str] = set()
 
     def _join_gzip(name: str) -> Path:
-        if do_gzip:
+        if compress == "during":
             return directory.joinpath(name + ".gz")
         else:
             return directory.joinpath(name)
@@ -196,9 +199,7 @@ def write_neo4j(
         (SEMRA_NEO4J_EVIDENCE_LABEL, evidence_nodes_path),
         (SEMRA_NEO4J_MAPPING_SET_LABEL, mapping_set_nodes_path),
     ]
-    node_names = [(a, n.relative_to(directory)) for a, n in node_paths]
     edge_paths = [mapping_edges_path, edges_path]
-    edge_names = [n.relative_to(directory) for n in edge_paths]
 
     with (
         safe_open_writer(mapping_edges_path) as mapping_edges_writer,
@@ -283,6 +284,15 @@ def write_neo4j(
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render())
 
+    if compress == "after":
+        node_names = [
+            (label, _gzip_path(path).relative_to(directory)) for label, path in node_paths
+        ]
+        edge_names = [_gzip_path(path).relative_to(directory) for path in edge_paths]
+    else:
+        node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
+        edge_names = [path.relative_to(directory) for path in edge_paths]
+
     docker_path = directory.joinpath(dockerfile_name)
     docker_path.write_text(
         DOCKERFILE_TEMPLATE.render(
@@ -299,17 +309,13 @@ def write_neo4j(
     click.secho(f"  cd {run_path.parent.absolute()}")
     click.secho(f"  sh {run_script_name}")
 
-    # shell_command = dedent(f"""\
-    #     neo4j-admin database import full \\
-    #         --delimiter='TAB' \\
-    #         --skip-duplicate-nodes=true \\
-    #         --overwrite-destination=true \\
-    #         --skip-bad-relationships=true \\
-    #         --nodes {nodes_path.as_posix()} \\
-    #         --relationships  {edges_path.as_posix()} \\
-    #         neo4j
-    # """)
-    # command_path.write_text(shell_command)
+
+def _gzip_path(path: Path) -> Path:
+    rv = path.with_suffix(".gz")
+    with open(path, "rb") as ip, gzip.open(rv, mode="wb") as op:
+        shutil.copyfileobj(ip, op)
+    path.unlink()
+    return rv
 
 
 def _neo4j_bool(b: bool, /) -> str:

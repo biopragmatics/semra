@@ -9,8 +9,6 @@ from pathlib import Path
 import bioregistry
 import pandas as pd
 import sssom.io
-from sssom.constants import DEFAULT_VALIDATION_TYPES
-from sssom.validators import VALIDATION_METHODS
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.api import assemble_evidences

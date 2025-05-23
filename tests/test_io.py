@@ -298,12 +298,11 @@ class TestIO(unittest.TestCase):
                 if not path.suffix.endswith(".gz"):
                     # check gz after addressing https://github.com/mapping-commons/sssom-py/issues/581
                     msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
-                    for vt in DEFAULT_VALIDATION_TYPES:
-                        with self.subTest(msg=f"SSSOM Validation: {vt.name}"):
-                            report = VALIDATION_METHODS[vt](msdf, False)
-                            if report is not None:
-                                # requires https://github.com/mapping-commons/sssom-py/pull/579
-                                self.assertEqual([], report.results)
+
+                    reports = sssom.validators.validate(msdf, fail_on_error=False)
+                    for validator, report in reports.items():
+                        with self.subTest(msg=f"SSSOM Validation: {validator.name}"):
+                            self.assertEqual([], report.results)
 
                 with self.subTest(msg="reconstitution"):
                     # TODO update to also work for reasoned?

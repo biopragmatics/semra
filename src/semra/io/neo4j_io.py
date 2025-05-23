@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
-import shutil
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Literal
@@ -24,10 +22,12 @@ from ..rules import (
     SEMRA_NEO4J_MAPPING_SET_LABEL,
 )
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
+from ..utils import gzip_path
 
 __all__ = [
     "write_neo4j",
 ]
+
 
 HERE = Path(__file__).parent.resolve()
 
@@ -285,10 +285,8 @@ def write_neo4j(
     startup_path.write_text(STARTUP_TEMPLATE.render())
 
     if compress == "after":
-        node_names = [
-            (label, _gzip_path(path).relative_to(directory)) for label, path in node_paths
-        ]
-        edge_names = [_gzip_path(path).relative_to(directory) for path in edge_paths]
+        node_names = [(label, gzip_path(path).relative_to(directory)) for label, path in node_paths]
+        edge_names = [gzip_path(path).relative_to(directory) for path in edge_paths]
     else:
         node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
         edge_names = [path.relative_to(directory) for path in edge_paths]
@@ -308,14 +306,6 @@ def write_neo4j(
     click.secho("Run Neo4j with the following:", fg="green")
     click.secho(f"  cd {run_path.parent.absolute()}")
     click.secho(f"  sh {run_script_name}")
-
-
-def _gzip_path(path: Path) -> Path:
-    rv = path.with_suffix(path.suffix + ".gz")
-    with open(path, "rb") as ip, gzip.open(rv, mode="wb") as op:
-        shutil.copyfileobj(ip, op)
-    path.unlink()
-    return rv
 
 
 def _neo4j_bool(b: bool, /) -> str:

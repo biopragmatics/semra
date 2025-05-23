@@ -23,10 +23,10 @@ from zenodo_client import Creator, Metadata, ensure_zenodo
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
-from semra.io.neo4j_io import _gzip_path
 from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
+from semra.utils import gzip_path
 
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
@@ -139,8 +139,8 @@ def build(
     write_neo4j(mappings, NEO4J_DIR, compress="after")
 
     # gzip these after the fact to avoid SIGKILLs
-    jsonl_gz_path = _gzip_path(JSONL_PATH)
-    sssom_gz_path = _gzip_path(SSSOM_PATH)
+    jsonl_gz_path = gzip_path(JSONL_PATH)
+    sssom_gz_path = gzip_path(SSSOM_PATH)
 
     if upload:
         # Define the metadata that will be used on initial upload

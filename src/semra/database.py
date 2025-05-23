@@ -14,11 +14,10 @@ import pystow
 import requests
 from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
-from curies.vocabulary import charlie
 from pyobo.getters import NoBuildError
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from zenodo_client import Creator, Metadata, ensure_zenodo
+from zenodo_client import update_zenodo
 
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
@@ -137,20 +136,8 @@ def build(
     write_neo4j(mappings, NEO4J_DIR)
 
     if upload:
-        # Define the metadata that will be used on initial upload
-        zenodo_metadata = Metadata(
-            title="SeMRA Mapping Database",
-            upload_type="dataset",
-            description=f"A compendium of mappings extracted from {len(summaries)} database/ontologies. "
-            f"Note that primary mappings are marked with the license of their source (when available). "
-            f"Inferred mappings are distributed under the CC0 license.",
-            creators=[
-                Creator(name="Hoyt, Charles Tapley", orcid=charlie.identifier),
-            ],
-        )
-        res = ensure_zenodo(
-            key="semra-database-test-1",
-            data=zenodo_metadata,
+        res = update_zenodo(
+            deposition_id="11082038",
             paths=[
                 SSSOM_PATH,
                 WARNINGS_PATH,
@@ -158,7 +145,6 @@ def build(
                 SUMMARY_PATH,
                 *NEO4J_DIR.iterdir(),
             ],
-            sandbox=True,
         )
         click.echo(res.json()["links"]["html"])
 

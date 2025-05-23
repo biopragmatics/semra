@@ -9,8 +9,7 @@ from pathlib import Path
 import bioregistry
 import pandas as pd
 import sssom.io
-from sssom.constants import DEFAULT_VALIDATION_TYPES
-from sssom.validators import VALIDATION_METHODS
+import sssom.validators
 
 from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.api import assemble_evidences
@@ -295,15 +294,12 @@ class TestIO(unittest.TestCase):
                 write_sssom(self.mappings, path, prune=prune)
                 new_mappings = assemble_evidences(from_sssom(path), progress=False)
 
-                if not path.suffix.endswith(".gz"):
-                    # check gz after addressing https://github.com/mapping-commons/sssom-py/issues/581
-                    msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
-                    for vt in DEFAULT_VALIDATION_TYPES:
-                        with self.subTest(msg=f"SSSOM Validation: {vt.name}"):
-                            report = VALIDATION_METHODS[vt](msdf, False)
-                            if report is not None:
-                                # requires https://github.com/mapping-commons/sssom-py/pull/579
-                                self.assertEqual([], report.results)
+                msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
+                reports = sssom.validators.validate(msdf, fail_on_error=False)
+                self.assertNotEqual(0, len(reports), msg="no reports generated")
+                for validator, report in reports.items():
+                    with self.subTest(msg=f"SSSOM Validation: {validator.name}"):
+                        self.assertEqual([], report.results)
 
                 with self.subTest(msg="reconstitution"):
                     # TODO update to also work for reasoned?

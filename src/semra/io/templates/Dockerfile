@@ -12,23 +12,34 @@ RUN apt-get update && \
 # Install python
 RUN apt-get update && \
     add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y git zip unzip bzip2 gcc pkg-config python3.11 && \
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+    apt-get install -y git zip unzip bzip2 gcc pkg-config {{ python }}
 
-RUN python3.11 -m pip install "{{ pip_install }}"
+# Security-conscious organizations should package/review uv themselves.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Add nodes files to the docker image
-{%- for node_type, name in node_names %}
-COPY {{ name }} /sw/{{ name }}
-{%- endfor %}
+# - Silence uv complaining about not being able to use hard links,
+# - tell uv to byte-compile packages for faster application startups,
+# - prevent uv from accidentally downloading isolated Python builds,
+# - pick a Python (use `/usr/bin/python3.12` on uv 0.5.0 and later),
+# - and finally declare `/app` as the target for `uv sync`.
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON={{ python }}
 
-# Add edge files to the docker image
-{%- for name in edge_names %}
-COPY {{ name }} /sw/{{ name }}
-{%- endfor %}
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system "{{ pip_install }}"
 
-# Ingest graph content into neo4j
-RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
+# Ingest graph content into neo4j. Mount the data
+RUN \
+    {%- for name in edge_names %}
+    --mount=type=bind,source={{ name }},target=/sw/{{ name }} \
+    {%- endfor %}
+    {%- for node_type, name in node_names %}
+    --mount=type=bind,source={{ name }},target=/sw/{{ name }} \
+    {%- endfor %}
+    sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
     sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \
     neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true \
         {%- for name in edge_names %}
@@ -38,8 +49,6 @@ RUN sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/ne
         --nodes={{ node_type }}=/sw/{{ name }} \
         {%- endfor %}
         --skip-bad-relationships=true
-
-# TODO remove source files to make the image smaller
 
 COPY startup.sh startup.sh
 ENTRYPOINT ["/bin/bash", "/sw/startup.sh"]

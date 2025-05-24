@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import typing as t
 from collections import Counter
-from typing import Any, TypeAlias, cast
+from textwrap import dedent
+from typing import Any, NamedTuple, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -24,10 +26,11 @@ from semra.rules import (
 )
 
 __all__ = [
+    "BaseClient",
+    "FullSummary",
     "Neo4jClient",
     "Node",
 ]
-
 
 Node: TypeAlias = t.Mapping[str, Any]
 
@@ -53,10 +56,132 @@ RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN re
 CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
 
-class Neo4jClient:
+class BaseClient:
+    """An abstract class defining all of the functionality for a mapping client."""
+
+    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
+        """Get a mapping.
+
+        :param curie: Either a Reference object, a string representing a curie with
+            ``semra.mapping`` as the prefix, or a local unique identifier representing a
+            SeMRA mapping.
+
+        :returns: A semantic mapping object
+        """
+        raise NotImplementedError
+
+    def get_mapping_sets(self) -> list[MappingSet]:
+        """Get all mappings sets."""
+        raise NotImplementedError
+
+    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet:
+        """Get a mappings set.
+
+        :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
+            prefix. For example, use
+            ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
+
+        :returns: A mapping set object
+        """
+        raise NotImplementedError
+
+    def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
+        """Get an evidence.
+
+        :param curie: The CURIE for a mapping set, using ``semra.evidence`` as a prefix.
+
+        :returns: An evidence object
+        """
+        raise NotImplementedError
+
+    def summarize_predicates(self) -> t.Counter[str]:
+        """Get a counter of predicates."""
+        raise NotImplementedError
+
+    def summarize_justifications(self) -> t.Counter[str]:
+        """Get a counter of mapping justifications."""
+        raise NotImplementedError
+
+    def summarize_evidence_types(self) -> t.Counter[str]:
+        """Get a counter of evidence types."""
+        raise NotImplementedError
+
+    def summarize_mapping_sets(self) -> t.Counter[str]:
+        """Get the number of evidences in each mapping set."""
+        raise NotImplementedError
+
+    def summarize_nodes(self) -> t.Counter[str]:
+        """Get a counter of node types (concepts, evidences, mappings, mapping sets)."""
+        raise NotImplementedError
+
+    def summarize_concepts(self) -> t.Counter[tuple[str, str]]:
+        """Get a counter of prefixes in concept nodes."""
+        raise NotImplementedError
+
+    def summarize_authors(self) -> t.Counter[tuple[str, str]]:
+        """Get a counter of the number of evidences each author has contributed to."""
+        raise NotImplementedError
+
+    def get_highest_exact_matches(self, limit: int = 10) -> t.Counter[tuple[str, str]]:
+        """Get a counter of concepts with the highest exact matches.
+
+        :param limit: The number of top concepts to return
+
+        :returns: A counter with keys that are CURIE/name pairs
+        """
+        raise NotImplementedError
+
+    def get_exact_matches(
+        self, curie: ReferenceHint, *, max_distance: int | None = None
+    ) -> dict[Reference, str]:
+        """Get a mapping of references->name for all concepts equivalent to the given concept."""
+        raise NotImplementedError
+
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
+        """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        """
+        raise NotImplementedError
+
+    def get_concept_name(self, curie: ReferenceHint) -> str | None:
+        """Get the name for a CURIE or reference."""
+        raise NotImplementedError
+
+    def sample_mappings_from_set(
+        self, curie: ReferenceHint, n: int = 10
+    ) -> list[tuple[str, str, str, str, str, str]]:
+        """Get n mappings from a given set (by CURIE)."""
+        raise NotImplementedError
+
+    def get_example_mappings(self) -> list[ExampleMapping]:
+        """Get example mappings."""
+        raise NotImplementedError
+
+    def get_full_summary(self) -> FullSummary:
+        """Get a full summary."""
+        if self._summary is None:
+            self._summary = FullSummary(
+                PREDICATE_COUNTER=self.summarize_predicates(),
+                MAPPING_SET_COUNTER=self.summarize_mapping_sets(),
+                NODE_COUNTER=self.summarize_nodes(),
+                JUSTIFICATION_COUNTER=self.summarize_justifications(),
+                EVIDENCE_TYPE_COUNTER=self.summarize_evidence_types(),
+                PREFIX_COUNTER=self.summarize_concepts(),
+                AUTHOR_COUNTER=self.summarize_authors(),
+                HIGH_MATCHES_COUNTER=self.get_highest_exact_matches(),
+                example_mappings=self.get_example_mappings(),
+            )
+        return self._summary
+
+
+class Neo4jClient(BaseClient):
     """A client to Neo4j."""
 
-    _session: neo4j.Session | None = None
+    _summary: FullSummary | None
+    driver: neo4j.GraphDatabase
 
     def __init__(
         self,
@@ -86,6 +211,7 @@ class Neo4jClient:
             for reference in RELATIONS
             if reference.curie in self._all_relations
         )
+        self._summary = None
 
     def __del__(self) -> None:
         """Ensure driver is shut down when client is destroyed."""
@@ -398,6 +524,45 @@ as label, count UNION ALL
         LIMIT {n}
         """
         return list(self.read_query(query, curie=curie))  # type:ignore
+
+    def get_example_mappings(self) -> list[ExampleMapping]:
+        """Get example mappings."""
+        return [ExampleMapping(*row) for row in self.read_query(EXAMPLE_MAPPINGS_QUERY)]
+
+
+EXAMPLE_MAPPINGS_QUERY = dedent("""\
+    MATCH
+        (t:concept)<-[`owl:annotatedTarget`]-(n:mapping)-[`owl:annotatedSource`]->(s:concept)
+    WHERE n.predicate = 'skos:exactMatch'
+    RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
+    LIMIT 5
+""")
+
+
+class ExampleMapping(NamedTuple):
+    """Example mapping."""
+
+    mapping_curie: str
+    predicate: str
+    subject_curie: str
+    subject_name: str
+    object_curie: str
+    object_name: str
+
+
+@dataclasses.dataclass
+class FullSummary:
+    """A full summary object."""
+
+    PREDICATE_COUNTER: t.Counter[str] = dataclasses.field(default_factory=t.Counter)
+    MAPPING_SET_COUNTER: t.Counter[str] = dataclasses.field(default_factory=t.Counter)
+    NODE_COUNTER: t.Counter[str] = dataclasses.field(default_factory=t.Counter)
+    JUSTIFICATION_COUNTER: t.Counter[str] = dataclasses.field(default_factory=t.Counter)
+    EVIDENCE_TYPE_COUNTER: t.Counter[str] = dataclasses.field(default_factory=t.Counter)
+    PREFIX_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
+    AUTHOR_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
+    HIGH_MATCHES_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
+    example_mappings: list[ExampleMapping] = dataclasses.field(default_factory=list)
 
 
 # Follows example here:

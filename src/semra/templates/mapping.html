@@ -16,11 +16,11 @@
                 </h5>
                 <dl>
                     <dt>Subject</dt>
-                    <dd><a href="{{ url_for('view_concept', curie=mapping.s.curie) }}"><code>{{ mapping.s.curie }}</code></a></dd>
+                    <dd><a href="{{ url_for('view_concept', curie=mapping.subject.curie) }}"><code>{{ mapping.subject.curie }}</code></a></dd>
                     <dt>Predicate</dt>
                     <dd><code>{{ mapping.p.curie }}</code></dd>
                     <dt>Object</dt>
-                    <dd><a href="{{ url_for('view_concept', curie=mapping.o.curie) }}"><code>{{ mapping.o.curie }}</code></a></dd>
+                    <dd><a href="{{ url_for('view_concept', curie=mapping.object.curie) }}"><code>{{ mapping.object.curie }}</code></a></dd>
                     <dt>Evidence</dt>
                     {%- for evidence in mapping.evidence -%}
                     <dd>

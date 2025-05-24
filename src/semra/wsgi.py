@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import typing as t
+from dataclasses import dataclass
+from typing import Annotated, Literal, overload, cast
 
 import bioregistry
 import fastapi
@@ -11,14 +13,16 @@ import flask
 import networkx as nx
 import werkzeug
 from curies import Reference
-from fastapi import Path, Query
+from fastapi import HTTPException, Path, Query
 from fastapi.responses import JSONResponse
-from flask import Flask, render_template
+from flask import Blueprint, Flask, current_app, render_template
 from flask_bootstrap import Bootstrap5
 from starlette.middleware.wsgi import WSGIMiddleware
 
 from semra import Evidence, Mapping, MappingSet
-from semra.client import Neo4jClient
+from semra.client import BaseClient, ExampleMapping, FullSummary, Neo4jClient
+
+EXAMPLE_CONCEPTS = ["efo:0002142"]
 
 
 def _index_mapping(mapping_index: set[tuple[str, str]], mapping_dict: t.Mapping[str, str]) -> None:
@@ -41,38 +45,15 @@ except ImportError:
 else:
     BIOMAPPINGS_GIT_HASH = biomappings.utils.get_git_hash()
     false_mapping_index = set()
-    for m in biomappings.load_false_mappings():
-        _index_mapping(false_mapping_index, m)
-
-client = Neo4jClient()
+    # for m in biomappings.load_false_mappings():
+    #    _index_mapping(false_mapping_index, m)
 
 api_router = fastapi.APIRouter(prefix="/api")
 
-flask_app = Flask(__name__)
-flask_app.secret_key = os.urandom(8)
-Bootstrap5(flask_app)
-
-EXAMPLE_CONCEPTS = ["efo:0002142"]
-EXAMPLE_MAPPINGS = list(
-    client.read_query(
-        """\
-    MATCH
-        (t:concept)<-[`owl:annotatedTarget`]-(n:mapping)-[`owl:annotatedSource`]->(s:concept)
-    WHERE n.predicate = 'skos:exactMatch'
-    RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
-    LIMIT 5
-    """
-    )
+flask_app = Blueprint(
+    "ui",
+    __name__,
 )
-
-PREDICATE_COUNTER = client.summarize_predicates()
-MAPPING_SET_COUNTER = client.summarize_mapping_sets()
-NODE_COUNTER = client.summarize_nodes()
-JUSTIFICATION_COUNTER = client.summarize_justifications()
-EVIDENCE_TYPE_COUNTER = client.summarize_evidence_types()
-PREFIX_COUNTER = client.summarize_concepts()
-AUTHOR_COUNTER = client.summarize_authors()
-HIGH_MATCHES_COUNTER = client.get_highest_exact_matches()
 
 
 # TODO use replaced by relationship for rewiring
@@ -101,26 +82,27 @@ def home() -> str:
     # TODO
     #  1. Mapping with most evidences
     #  7. Nodes with equivalent entity sharing its prefix
+    state = _flask_get_state()
     return render_template(
         "home.html",
-        example_mappings=EXAMPLE_MAPPINGS,
-        predicate_counter=PREDICATE_COUNTER,
-        mapping_set_counter=MAPPING_SET_COUNTER,
-        node_counter=NODE_COUNTER,
+        example_mappings=state.summary.example_mappings,
+        predicate_counter=state.summary.PREDICATE_COUNTER,
+        mapping_set_counter=state.summary.MAPPING_SET_COUNTER,
+        node_counter=state.summary.NODE_COUNTER,
         mapping_sets=client.get_mapping_sets(),
         format_number=_figure_number,
-        justification_counter=JUSTIFICATION_COUNTER,
-        evidence_type_counter=EVIDENCE_TYPE_COUNTER,
-        prefix_counter=PREFIX_COUNTER,
-        author_counter=AUTHOR_COUNTER,
-        high_matches_counter=HIGH_MATCHES_COUNTER,
+        justification_counter=state.summary.JUSTIFICATION_COUNTER,
+        evidence_type_counter=state.summary.EVIDENCE_TYPE_COUNTER,
+        prefix_counter=state.summary.PREFIX_COUNTER,
+        author_counter=state.summary.AUTHOR_COUNTER,
+        high_matches_counter=state.summary.HIGH_MATCHES_COUNTER,
     )
 
 
 @flask_app.get("/mapping/<curie>")
 def view_mapping(curie: str) -> str:
     """View a mapping."""
-    m = client.get_mapping(curie)
+    m = _flask_get_client().get_mapping(curie)
     return render_template("mapping.html", mapping=m)
 
 
@@ -128,6 +110,7 @@ def view_mapping(curie: str) -> str:
 def view_concept(curie: str) -> str:
     """View a concept."""
     reference = Reference.from_curie(curie)
+    client = _flask_get_client()
     name = client.get_concept_name(curie)
     # TODO include evidence for each for better debugging
     exact_matches = client.get_exact_matches(curie)
@@ -150,6 +133,8 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     if not BIOMAPPINGS_GIT_HASH:
         flask.flash("Can't interact with biomappings", category="error")
         return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
+
+    client = _flask_get_client()
 
     import biomappings.resources
     from biomappings.wsgi import _manual_source
@@ -185,6 +170,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
 @flask_app.get("/mapping_set/<mapping_set_id>")
 def view_mapping_set(mapping_set_id: str) -> str:
     """View a mapping set by its ID."""
+    client = _flask_get_client()
     mapping_set = client.get_mapping_set(mapping_set_id)
     examples = client.sample_mappings_from_set(mapping_set_id, n=10)
     return render_template(
@@ -194,14 +180,28 @@ def view_mapping_set(mapping_set_id: str) -> str:
     )
 
 
+def _fastapi_get_client(request: fastapi.Request) -> BaseClient:
+    return request.app.state.client  # type:ignore
+
+
+AnnotatedClient = Annotated[BaseClient, fastapi.Depends(_fastapi_get_client)]
+
+
 @api_router.get("/evidence/{evidence_id}", response_model=Evidence)
-def get_evidence(evidence_id: str = Path(description="An evidence's MD5 hex digest.")) -> Evidence:
+def get_evidence(
+    client: AnnotatedClient,
+    evidence_id: str = Path(description="An evidence's MD5 hex digest."),
+) -> Evidence:
     """Get an evidence by its MD5 hex digest."""
-    return client.get_evidence(evidence_id)
+    rv = client.get_evidence(evidence_id)
+    if rv is None:
+        raise HTTPException(status_code=404, detail="evidence not found")
+    return rv
 
 
 @api_router.get("/cytoscape/{curie}")
 def get_concept_cytoscape(
+    client: AnnotatedClient,
     curie: str = Path(
         description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS
     ),
@@ -214,6 +214,7 @@ def get_concept_cytoscape(
 
 @api_router.get("/exact/{curie}", response_model=list[Reference])
 def get_exact_matches(
+    client: AnnotatedClient,
     curie: str = Path(
         description="the compact URI (CURIE) for a concept", examples=EXAMPLE_CONCEPTS
     ),
@@ -227,9 +228,8 @@ def get_exact_matches(
 
 @api_router.get("/mapping/{mapping_id}", response_model=Mapping)
 def get_mapping(
-    mapping_id: str = Path(
-        description="A mapping's MD5 hex digest.", examples=[t[0] for t in EXAMPLE_MAPPINGS]
-    ),
+    client: AnnotatedClient,
+    mapping_id: str = Path(description="A mapping's MD5 hex digest."),
 ) -> Mapping:
     """Get the mapping by its MD5 hex digest."""
     return client.get_mapping(mapping_id)
@@ -237,6 +237,7 @@ def get_mapping(
 
 @api_router.get("/mapping_set/{mapping_set_id}", response_model=MappingSet)
 def get_mapping_set(
+    client: AnnotatedClient,
     mapping_set_id: str = Path(
         description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
     ),
@@ -246,19 +247,74 @@ def get_mapping_set(
 
 
 @api_router.get("/mapping_set/", response_model=list[MappingSet])
-def get_mapping_sets() -> list[MappingSet]:
+def get_mapping_sets(client: AnnotatedClient) -> list[MappingSet]:
     """Get all mapping sets."""
     return client.get_mapping_sets()
 
 
-def get_app() -> fastapi.FastAPI:
+@dataclass
+class State:
+    """Represents application state."""
+
+    client: BaseClient
+    summary: FullSummary
+
+    def example_mappings(self) -> list[ExampleMapping]:
+        """Extract example mappings."""
+        return self.summary.example_mappings
+
+
+def _flask_get_state() -> State:
+    """Get the state for the flask app."""
+    return cast(State, current_app.extensions["semra"])
+
+
+def _flask_get_client() -> BaseClient:
+    """Get a client for the flask app."""
+    return _flask_get_state().client
+
+
+@overload
+def get_app(
+    *, client: BaseClient | None = ..., return_flask: Literal[True] = True
+) -> tuple[Flask, fastapi.FastAPI]: ...
+
+
+@overload
+def get_app(
+    *, client: BaseClient | None = ..., return_flask: Literal[False] = False
+) -> fastapi.FastAPI: ...
+
+
+def get_app(
+    *, client: BaseClient | None = None, return_flask: bool = False
+) -> fastapi.FastAPI | tuple[Flask, fastapi.FastAPI]:
     """Get the SeMRA FastAPI app."""
+    if client is None:
+        client = Neo4jClient()
+
+    state = State(
+        client=client,
+        summary=client.get_full_summary(),
+    )
+
+    flask_app__ = Flask(__name__)
+    flask_app__.secret_key = os.urandom(8)
+    flask_app__.extensions["semra"] = state
+    Bootstrap5(flask_app__)
+
+    flask_app__.register_blueprint(flask_app)
+
     app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",
         description="A web app to access a SeMRA Neo4j database",
     )
+    app.state = state  # type:ignore
     app.include_router(api_router)
-    app.mount("/", WSGIMiddleware(flask_app))
+    app.mount("/", WSGIMiddleware(flask_app__))
+
+    if return_flask:
+        return flask_app, app
     return app
 
 

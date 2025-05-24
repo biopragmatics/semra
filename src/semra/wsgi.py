@@ -12,7 +12,7 @@ from starlette.middleware.wsgi import WSGIMiddleware
 
 from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router
-from semra.web.flask_components import _index_mapping, flask_blueprint
+from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
 
 
@@ -47,7 +47,7 @@ def get_app(
     else:
         biomappings_git_hash = biomappings.utils.get_git_hash()
         for m in biomappings.load_false_mappings():
-            _index_mapping(false_mapping_index, m)
+            index_biomapping(false_mapping_index, m)
 
     state = State(
         client=client,

@@ -16,6 +16,7 @@ from semra.web.shared import State, _figure_number
 
 __all__ = [
     "flask_blueprint",
+    "index_biomapping",
 ]
 
 flask_blueprint = Blueprint("ui", __name__)
@@ -110,7 +111,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
 
     mapping = biomappings.resources._standardize_mapping(mapping)
     biomappings.resources.append_false_mappings([mapping])
-    _index_mapping(_flask_get_false_mapping_index(), mapping)
+    index_biomapping(_flask_get_false_mapping_index(), mapping)
 
     flask.flash("Appended negative mapping")
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
@@ -149,7 +150,10 @@ def _flask_get_false_mapping_index() -> set[tuple[str, str]]:
     return _flask_get_state().false_mapping_index
 
 
-def _index_mapping(mapping_index: set[tuple[str, str]], mapping_dict: t.Mapping[str, str]) -> None:
+def index_biomapping(
+    mapping_index: set[tuple[str, str]], mapping_dict: t.Mapping[str, str]
+) -> None:
+    """Index a mapping from biomappings."""
     if mapping_dict["relation"] != "skos:exactMatch":
         return
     sp, si = mapping_dict["source prefix"], mapping_dict["source identifier"]

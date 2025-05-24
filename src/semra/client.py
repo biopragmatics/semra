@@ -7,7 +7,7 @@ import os
 import typing as t
 from collections import Counter
 from textwrap import dedent
-from typing import Any, NamedTuple, Self, TypeAlias, cast
+from typing import Any, NamedTuple, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -15,6 +15,7 @@ import neo4j.graph
 import networkx as nx
 import pydantic
 from neo4j import ManagedTransaction, unit_of_work
+from typing_extensions import Self
 
 import semra
 from semra import Evidence, MappingSet, Reference, SimpleEvidence

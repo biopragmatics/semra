@@ -849,25 +849,45 @@ def from_jsonl(
 
 
 def from_jsonl(
-    path: str | Path, *, show_progress: bool = False, stream: bool = False
+    path: str | Path,
+    *,
+    show_progress: bool = False,
+    stream: bool = False,
+    failure_action: Literal["raise", "skip"] = "skip",
 ) -> list[Mapping] | Generator[Mapping]:
     """Read a list of Mapping objects from a JSONL file."""
-    rv = _iter_read_jsonl(path, show_progress=show_progress)
+    rv = _iter_read_jsonl(path, show_progress=show_progress, failure_action=failure_action)
     if stream:
         return rv
     else:
         return list(rv)
 
 
-def _iter_read_jsonl(path: str | Path, *, show_progress: bool = False) -> Generator[Mapping]:
+def _iter_read_jsonl(
+    path: str | Path,
+    *,
+    show_progress: bool = False,
+    failure_action: Literal["raise", "skip"] = "skip",
+) -> Generator[Mapping]:
     """Stream mapping objects from a JSONL file."""
     with safe_open(path, read=True) as file:
-        for line in tqdm(
-            file,
-            desc="Reading mappings",
-            leave=False,
-            unit="mapping",
-            unit_scale=True,
-            disable=not show_progress,
+        for i, line in enumerate(
+            tqdm(
+                file,
+                desc="Reading mappings",
+                leave=False,
+                unit="mapping",
+                unit_scale=True,
+                disable=not show_progress,
+            )
         ):
-            yield Mapping.model_validate_json(line.strip())
+            try:
+                yv = Mapping.model_validate_json(line.strip())
+            except pydantic.ValidationError:
+                if failure_action == "raise":
+                    raise
+                else:
+                    logger.debug("[line:%d] failed to parse JSON", i)
+                    continue
+            else:
+                yield yv

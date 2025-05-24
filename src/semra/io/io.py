@@ -11,13 +11,9 @@ from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, TextIO, TypeVar, cast, overload
 
-import bioontologies
 import bioregistry
-import bioversions
 import pandas as pd
 import pydantic
-import pyobo
-import pyobo.utils
 import requests
 import yaml
 from tqdm.autonotebook import tqdm
@@ -53,14 +49,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_ONTOLOGY_CONFIDENCE = 0.9
 
 X = TypeVar("X", bound=pydantic.BaseModel)
-
-
-def _safe_get_version(prefix: str) -> str | None:
-    """Get a version from Bioversions, or return None if not possible."""
-    try:
-        return bioversions.get_version(prefix)
-    except (KeyError, TypeError):
-        return None
 
 
 # TODO delete this
@@ -146,6 +134,8 @@ def from_pyobo(
 
     :returns: A list of semantic mapping objects
     """
+    import pyobo
+
     df: pd.DataFrame = pyobo.get_mappings_df(
         prefix, force_process=force_process, names=False, cache=cache
     )
@@ -239,6 +229,8 @@ def from_bioontologies(
     prefix: str, confidence: float | None = None, **kwargs: Any
 ) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`bioontologies`."""
+    import bioontologies
+
     if confidence is None:
         confidence = DEFAULT_ONTOLOGY_CONFIDENCE
     o = bioontologies.get_obograph_by_prefix(prefix, **kwargs)

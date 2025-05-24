@@ -27,7 +27,6 @@ from semra.api import (
     get_index,
     hydrate_subsets,
 )
-from semra.io.io import _safe_get_version
 from semra.pipeline import Configuration, SubsetConfiguration
 from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping
@@ -430,6 +429,8 @@ def get_summary_df(
         6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the resource.
            Otherwise, will be "false"
     """
+    import bioversions
+
     summary_rows = []
     if subsets is None:
         subsets = {}
@@ -445,7 +446,7 @@ def get_summary_df(
             prefix,
             bioregistry.get_name(prefix),
             bioregistry.get_license(prefix),
-            _safe_get_version(prefix),
+            bioversions.get_version(prefix, strict=False),
             count,
             status,
         )

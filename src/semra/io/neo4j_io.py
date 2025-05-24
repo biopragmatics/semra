@@ -36,6 +36,8 @@ STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
 DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
 RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
+PYTHON = "python3.13"
+
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
 MAPPING_NODES_HEADER = [
     "curie:ID",
@@ -281,7 +283,11 @@ def write_neo4j(
                     )
 
     startup_path = directory.joinpath(startup_script_name)
-    startup_path.write_text(STARTUP_TEMPLATE.render())
+    startup_path.write_text(
+        STARTUP_TEMPLATE.render(
+            python=PYTHON,
+        )
+    )
 
     if compress == "after":
         node_names = [(label, gzip_path(path).relative_to(directory)) for label, path in node_paths]
@@ -296,11 +302,17 @@ def write_neo4j(
             node_names=node_names,
             edge_names=edge_names,
             pip_install=pip_install,
+            python=PYTHON,
         )
     )
 
     run_path = directory.joinpath(run_script_name)
-    run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))
+    run_path.write_text(
+        RUN_ON_STARTUP_TEMPLATE.render(
+            docker_name=docker_name,
+            python=PYTHON,
+        )
+    )
 
     click.secho("Run Neo4j with the following:", fg="green")
     click.secho(f"  cd {run_path.parent.absolute()}")

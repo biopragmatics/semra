@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import typing as t
 from dataclasses import dataclass
-from typing import Annotated, Literal, overload, cast
+from typing import Annotated, Literal, cast, overload
 
 import bioregistry
 import fastapi
@@ -50,10 +50,7 @@ else:
 
 api_router = fastapi.APIRouter(prefix="/api")
 
-flask_app = Blueprint(
-    "ui",
-    __name__,
-)
+flask_blueprint = Blueprint("ui", __name__)
 
 
 # TODO use replaced by relationship for rewiring
@@ -76,13 +73,14 @@ def _figure_number(n: int) -> tuple[int | float, str]:
         return n, ""
 
 
-@flask_app.get("/")
+@flask_blueprint.get("/")
 def home() -> str:
     """View the homepage, with a dashboard for several statistics over the database."""
     # TODO
     #  1. Mapping with most evidences
     #  7. Nodes with equivalent entity sharing its prefix
     state = _flask_get_state()
+    client = _flask_get_client()
     return render_template(
         "home.html",
         example_mappings=state.summary.example_mappings,
@@ -99,14 +97,14 @@ def home() -> str:
     )
 
 
-@flask_app.get("/mapping/<curie>")
+@flask_blueprint.get("/mapping/<curie>")
 def view_mapping(curie: str) -> str:
     """View a mapping."""
     m = _flask_get_client().get_mapping(curie)
     return render_template("mapping.html", mapping=m)
 
 
-@flask_app.get("/concept/<curie>")
+@flask_blueprint.get("/concept/<curie>")
 def view_concept(curie: str) -> str:
     """View a concept."""
     reference = Reference.from_curie(curie)
@@ -127,7 +125,7 @@ def view_concept(curie: str) -> str:
     )
 
 
-@flask_app.get("/concept/<source>/invalidate/<target>")
+@flask_blueprint.get("/concept/<source>/invalidate/<target>")
 def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     """Add a negative relationship to biomappings."""
     if not BIOMAPPINGS_GIT_HASH:
@@ -167,7 +165,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
 
-@flask_app.get("/mapping_set/<mapping_set_id>")
+@flask_blueprint.get("/mapping_set/<mapping_set_id>")
 def view_mapping_set(mapping_set_id: str) -> str:
     """View a mapping set by its ID."""
     client = _flask_get_client()
@@ -232,7 +230,10 @@ def get_mapping(
     mapping_id: str = Path(description="A mapping's MD5 hex digest."),
 ) -> Mapping:
     """Get the mapping by its MD5 hex digest."""
-    return client.get_mapping(mapping_id)
+    mapping = client.get_mapping(mapping_id)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="mapping not found")
+    return mapping
 
 
 @api_router.get("/mapping_set/{mapping_set_id}", response_model=MappingSet)
@@ -243,7 +244,10 @@ def get_mapping_set(
     ),
 ) -> MappingSet:
     """Get a mapping set by its MD5 hex digest."""
-    return client.get_mapping_set(mapping_set_id)
+    mapping_set = client.get_mapping_set(mapping_set_id)
+    if mapping_set is None:
+        raise HTTPException(status_code=404, detail="mapping set not found")
+    return mapping_set
 
 
 @api_router.get("/mapping_set/", response_model=list[MappingSet])
@@ -274,12 +278,14 @@ def _flask_get_client() -> BaseClient:
     return _flask_get_state().client
 
 
+# docstr-coverage:excused `overload`
 @overload
 def get_app(
     *, client: BaseClient | None = ..., return_flask: Literal[True] = True
 ) -> tuple[Flask, fastapi.FastAPI]: ...
 
 
+# docstr-coverage:excused `overload`
 @overload
 def get_app(
     *, client: BaseClient | None = ..., return_flask: Literal[False] = False
@@ -298,27 +304,27 @@ def get_app(
         summary=client.get_full_summary(),
     )
 
-    flask_app__ = Flask(__name__)
-    flask_app__.secret_key = os.urandom(8)
-    flask_app__.extensions["semra"] = state
-    Bootstrap5(flask_app__)
+    flask_app = Flask(__name__)
+    flask_app.secret_key = os.urandom(8)
+    flask_app.extensions["semra"] = state
+    Bootstrap5(flask_app)
 
-    flask_app__.register_blueprint(flask_app)
+    flask_app.register_blueprint(flask_blueprint)
 
-    app = fastapi.FastAPI(
+    fastapi_app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",
         description="A web app to access a SeMRA Neo4j database",
     )
-    app.state = state  # type:ignore
-    app.include_router(api_router)
-    app.mount("/", WSGIMiddleware(flask_app__))
+    fastapi_app.state = state  # type:ignore
+    fastapi_app.include_router(api_router)
+    fastapi_app.mount("/", WSGIMiddleware(flask_app))
 
     if return_flask:
-        return flask_app, app
-    return app
+        return flask_app, fastapi_app
+    return fastapi_app
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(get_app(), port=5000, host="0.0.0.0")  # noqa:S104
+    uvicorn.run(get_app(return_flask=False), port=5000, host="0.0.0.0")  # noqa:S104

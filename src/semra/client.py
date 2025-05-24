@@ -59,7 +59,7 @@ CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LI
 class BaseClient:
     """An abstract class defining all of the functionality for a mapping client."""
 
-    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
+    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
         """Get a mapping.
 
         :param curie: Either a Reference object, a string representing a curie with
@@ -74,7 +74,7 @@ class BaseClient:
         """Get all mappings sets."""
         raise NotImplementedError
 
-    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet:
+    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
         """Get a mappings set.
 
         :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
@@ -162,26 +162,21 @@ class BaseClient:
 
     def get_full_summary(self) -> FullSummary:
         """Get a full summary."""
-        if self._summary is None:
-            self._summary = FullSummary(
-                PREDICATE_COUNTER=self.summarize_predicates(),
-                MAPPING_SET_COUNTER=self.summarize_mapping_sets(),
-                NODE_COUNTER=self.summarize_nodes(),
-                JUSTIFICATION_COUNTER=self.summarize_justifications(),
-                EVIDENCE_TYPE_COUNTER=self.summarize_evidence_types(),
-                PREFIX_COUNTER=self.summarize_concepts(),
-                AUTHOR_COUNTER=self.summarize_authors(),
-                HIGH_MATCHES_COUNTER=self.get_highest_exact_matches(),
-                example_mappings=self.get_example_mappings(),
-            )
-        return self._summary
+        return FullSummary(
+            PREDICATE_COUNTER=self.summarize_predicates(),
+            MAPPING_SET_COUNTER=self.summarize_mapping_sets(),
+            NODE_COUNTER=self.summarize_nodes(),
+            JUSTIFICATION_COUNTER=self.summarize_justifications(),
+            EVIDENCE_TYPE_COUNTER=self.summarize_evidence_types(),
+            PREFIX_COUNTER=self.summarize_concepts(),
+            AUTHOR_COUNTER=self.summarize_authors(),
+            HIGH_MATCHES_COUNTER=self.get_highest_exact_matches(),
+            example_mappings=self.get_example_mappings(),
+        )
 
 
 class Neo4jClient(BaseClient):
     """A client to Neo4j."""
-
-    _summary: FullSummary | None
-    driver: neo4j.GraphDatabase
 
     def __init__(
         self,
@@ -268,7 +263,7 @@ class Neo4jClient(BaseClient):
         res = self.read_query(query, curie=curie)
         return cast(Node, res[0][0])
 
-    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping:
+    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
         """Get a mapping.
 
         :param curie: Either a Reference object, a string representing a curie with
@@ -323,7 +318,7 @@ class Neo4jClient(BaseClient):
         records = self.read_query(query)
         return [MappingSet.model_validate(record) for (record,) in records]
 
-    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet:
+    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
         """Get a mappings set.
 
         :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
@@ -336,7 +331,7 @@ class Neo4jClient(BaseClient):
         node = self._get_node_by_curie(curie, "mappingset")
         return MappingSet.model_validate(node)
 
-    def get_evidence(self, curie: ReferenceHint) -> Evidence:
+    def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence.
 
         :param curie: The CURIE for a mapping set, using ``semra.evidence`` as a prefix.
@@ -346,7 +341,7 @@ class Neo4jClient(BaseClient):
         curie = _safe_curie(curie, SEMRA_EVIDENCE_PREFIX)
         query = "MATCH (n:evidence {curie: $curie}) RETURN n"
         res = self.read_query(query, curie=curie)
-        return SimpleEvidence.model_validate(res[0][0])  # FIXME test this?
+        return SimpleEvidence.model_validate(res[0][0])
 
     def summarize_predicates(self) -> t.Counter[str]:
         """Get a counter of predicates."""

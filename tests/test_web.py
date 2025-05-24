@@ -18,14 +18,14 @@ E1 = SimpleEvidence(
 M1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[E1])
 M2 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[E1])
 TEST_MAPPINGS = [M1, M2]
-E1_M1_REFERENCE = E1.get_reference(triple=M1)
-E1_M2_REFERENCE = E1.get_reference(triple=M2)
+E1_M1_REFERENCE = E1.get_reference(M1)
+E1_M2_REFERENCE = E1.get_reference(M2)
 
 
 class MockClient(BaseClient):
     """A mock client."""
 
-    def get_evidence(self, curie: ReferenceHint) -> Evidence:
+    def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence."""
         if curie == E1_M1_REFERENCE.curie:
             return E1

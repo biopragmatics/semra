@@ -282,9 +282,11 @@ def write_neo4j(
                     )
 
     startup_path = directory.joinpath(startup_script_name)
-    startup_path.write_text(STARTUP_TEMPLATE.render(
-        python=PYTHON,
-    ))
+    startup_path.write_text(
+        STARTUP_TEMPLATE.render(
+            python=PYTHON,
+        )
+    )
 
     if compress == "after":
         node_names = [(label, gzip_path(path).relative_to(directory)) for label, path in node_paths]
@@ -304,10 +306,12 @@ def write_neo4j(
     )
 
     run_path = directory.joinpath(run_script_name)
-    run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(
-        docker_name=docker_name,
-        python=PYTHON,
-    ))
+    run_path.write_text(
+        RUN_ON_STARTUP_TEMPLATE.render(
+            docker_name=docker_name,
+            python=PYTHON,
+        )
+    )
 
     click.secho("Run Neo4j with the following:", fg="green")
     click.secho(f"  cd {run_path.parent.absolute()}")

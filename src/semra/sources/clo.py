@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import bioontologies
 import bioregistry
 import click
 from pyobo import Reference
@@ -47,6 +46,8 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
     Note that this function exists because CLO doesn't use standard curation for xrefs
     and instead uses a combination of messy references inside rdfs:seeAlso annotations
     """
+    import bioontologies
+
     graph = bioontologies.get_obograph_by_prefix("clo", check=False).guess("clo")
     mapping_set = MappingSet(
         name="clo",

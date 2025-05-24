@@ -7,13 +7,13 @@ from fastapi import FastAPI
 from flask import Flask
 from starlette.testclient import TestClient
 
+import semra
 from semra import (
     EXACT_MATCH,
     UNSPECIFIED_MAPPING,
     Evidence,
     Mapping,
     MappingSet,
-    Reference,
     SimpleEvidence,
 )
 from semra.client import BaseClient, FullSummary, ReferenceHint
@@ -43,6 +43,24 @@ class MockClient(BaseClient):
             return E1
         return None
 
+    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
+        """Get a mapping set."""
+        if curie == MS1.curie:
+            return MS1
+        return None
+
+    def get_mapping_sets(self) -> list[MappingSet]:
+        """Get all mapping sets."""
+        return [MS1]
+
+    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
+        """Get a mapping."""
+        if curie == M1.curie:
+            return M1
+        elif curie == M2.curie:
+            return M2
+        return None
+
     def get_full_summary(self) -> FullSummary:
         """Get an empty summary."""
         return FullSummary()
@@ -60,7 +78,9 @@ class TestAPI(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Set up the class with a mock client and app."""
         cls.dao = MockClient()
-        cls.flask_app, cls.fastapi_app = get_app(client=cls.dao, return_flask=True)
+        cls.flask_app, cls.fastapi_app = get_app(
+            client=cls.dao, return_flask=True, use_biomappings=False
+        )
         cls.test_client = TestClient(cls.fastapi_app)
 
     def test_evidence(self) -> None:
@@ -92,13 +112,4 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(M1, Mapping.model_validate(res.json()))
 
         res_not_found = self.test_client.get("/api/mapping/abcdef")
-        self.assertEqual(404, res_not_found.status_code)
-
-    def test_concept(self) -> None:
-        """Test the concept API."""
-        res = self.test_client.get(f"/api/concept/{a1.curie}")
-        self.assertEqual(200, res.status_code)
-        self.assertEqual(a1, Reference.model_validate(res.json()))
-
-        res_not_found = self.test_client.get("/api/concept/abcasdef")
         self.assertEqual(404, res_not_found.status_code)

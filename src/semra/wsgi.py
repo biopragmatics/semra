@@ -19,35 +19,42 @@ from semra.web.shared import State
 # docstr-coverage:excused `overload`
 @overload
 def get_app(
-    *, client: BaseClient | None = ..., return_flask: Literal[True] = True
+    *,
+    client: BaseClient | None = ...,
+    return_flask: Literal[True] = True,
+    use_biomappings: bool = ...,
 ) -> tuple[Flask, fastapi.FastAPI]: ...
 
 
 # docstr-coverage:excused `overload`
 @overload
 def get_app(
-    *, client: BaseClient | None = ..., return_flask: Literal[False] = False
+    *,
+    client: BaseClient | None = ...,
+    return_flask: Literal[False] = False,
+    use_biomappings: bool = ...,
 ) -> fastapi.FastAPI: ...
 
 
 def get_app(
-    *, client: BaseClient | None = None, return_flask: bool = False
+    *, client: BaseClient | None = None, return_flask: bool = False, use_biomappings: bool = True
 ) -> fastapi.FastAPI | tuple[Flask, fastapi.FastAPI]:
     """Get the SeMRA FastAPI app."""
     if client is None:
         client = Neo4jClient()
 
-    biomappings_git_hash: str | None
+    biomappings_git_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = set()
 
-    try:
-        import biomappings.utils
-    except ImportError:
-        biomappings_git_hash = None
-    else:
-        biomappings_git_hash = biomappings.utils.get_git_hash()
-        for m in biomappings.load_false_mappings():
-            index_biomapping(false_mapping_index, m)
+    if use_biomappings:
+        try:
+            import biomappings.utils
+        except ImportError:
+            pass
+        else:
+            biomappings_git_hash = biomappings.utils.get_git_hash()
+            for m in biomappings.load_false_mappings():
+                index_biomapping(false_mapping_index, m)
 
     state = State(
         client=client,

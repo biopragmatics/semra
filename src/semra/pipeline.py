@@ -154,7 +154,10 @@ class Configuration(BaseModel):
     write_raw_neo4j: bool = Field(
         default=False, description="Should a neo4j directory be written for raw mappings?"
     )
-    neo4j_gzip: bool = Field(default=True)
+    neo4j_gzip: None | Literal["during", "after"] = Field(
+        default="during",
+        description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
+    )
     add_labels: bool = Field(
         default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
     )
@@ -555,7 +558,7 @@ def get_priority_mappings_from_config(
                     configuration.raw_neo4j_path,
                     docker_name=configuration.raw_neo4j_name,
                     add_labels=False,  # configuration.add_labels,
-                    do_gzip=configuration.neo4j_gzip,
+                    compress=configuration.neo4j_gzip,
                 )
 
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -589,7 +592,7 @@ def get_priority_mappings_from_config(
         docker_name=configuration.processed_neo4j_name,
         equivalence_classes=equivalence_classes,
         add_labels=configuration.add_labels,
-        do_gzip=configuration.neo4j_gzip,
+        compress=configuration.neo4j_gzip,
     )
 
     write_jsonl(

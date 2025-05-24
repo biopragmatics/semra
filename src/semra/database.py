@@ -25,6 +25,7 @@ from semra.io.io_utils import safe_open_writer
 from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
+from semra.utils import gzip_path
 
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
@@ -132,14 +133,20 @@ def build(
     )
     mappings = write_jsonl(mappings, JSONL_PATH, stream=True)
     mappings = write_sssom(mappings, SSSOM_PATH, add_labels=False, prune=False, stream=True)
-    # neo4j doesn't need to stream since it's last
-    write_neo4j(mappings, NEO4J_DIR)
+    # neo4j doesn't need to stream since it's last. to avoid SIGKILLs,
+    # write the file to disk, then compress after.
+    write_neo4j(mappings, NEO4J_DIR, compress="after")
+
+    # gzip these after the fact to avoid SIGKILLs
+    jsonl_gz_path = gzip_path(JSONL_PATH)
+    sssom_gz_path = gzip_path(SSSOM_PATH)
 
     if upload:
         res = update_zenodo(
             deposition_id="11082038",
             paths=[
-                SSSOM_PATH,
+                jsonl_gz_path,
+                sssom_gz_path,
                 WARNINGS_PATH,
                 ERRORS_PATH,
                 SUMMARY_PATH,

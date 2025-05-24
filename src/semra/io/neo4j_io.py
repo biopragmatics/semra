@@ -36,6 +36,8 @@ STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
 DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
 RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
+PYTHON = "python3.13"
+
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
 MAPPING_NODES_HEADER = [
     "curie:ID",
@@ -100,7 +102,6 @@ EVIDENCE_NODES_FILENAME = "evidence_nodes.tsv"
 MAPPING_SET_NODES_FILENAME = "mapping_set_nodes.tsv"
 MAPPING_EDGES_FILENAME = "mapping_edges.tsv"
 EDGES_FILENAME = "edges.tsv"
-PYTHON = "python3.12"
 
 
 def write_neo4j(

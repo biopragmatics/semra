@@ -7,7 +7,7 @@ import os
 import typing as t
 from collections import Counter
 from textwrap import dedent
-from typing import Any, NamedTuple, TypeAlias, cast
+from typing import Any, NamedTuple, Self, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -150,9 +150,7 @@ class BaseClient:
         """Get the name for a CURIE or reference."""
         raise NotImplementedError
 
-    def sample_mappings_from_set(
-        self, curie: ReferenceHint, n: int = 10
-    ) -> list[tuple[str, str, str, str, str, str]]:
+    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
         """Get n mappings from a given set (by CURIE)."""
         raise NotImplementedError
 
@@ -501,9 +499,7 @@ as label, count UNION ALL
         else:
             return cast(str, name)
 
-    def sample_mappings_from_set(
-        self, curie: ReferenceHint, n: int = 10
-    ) -> list[tuple[str, str, str, str, str, str]]:
+    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
         """Get n mappings from a given set (by CURIE)."""
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -518,7 +514,7 @@ as label, count UNION ALL
         RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
         LIMIT {n}
         """
-        return list(self.read_query(query, curie=curie))  # type:ignore
+        return [ExampleMapping(*row) for row in self.read_query(query, curie=curie)]
 
     def get_example_mappings(self) -> list[ExampleMapping]:
         """Get example mappings."""
@@ -543,6 +539,18 @@ class ExampleMapping(NamedTuple):
     subject_name: str
     object_curie: str
     object_name: str
+
+    @classmethod
+    def from_mapping(cls, mapping: semra.Mapping) -> Self:
+        """Get from a mapping."""
+        return cls(
+            mapping.curie,
+            mapping.predicate.curie,
+            mapping.subject.curie,
+            mapping.subject.name or "",
+            mapping.object.curie,
+            mapping.object.name or "",
+        )
 
 
 @dataclasses.dataclass

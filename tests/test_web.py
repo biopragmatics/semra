@@ -1,7 +1,7 @@
 """Test the app."""
 
 import unittest
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from fastapi import FastAPI
 from flask import Flask
@@ -14,11 +14,12 @@ from semra import (
     Evidence,
     Mapping,
     MappingSet,
+    Reference,
     SimpleEvidence,
 )
-from semra.client import BaseClient, FullSummary, ReferenceHint
+from semra.client import BaseClient, ExampleMapping, FullSummary, ReferenceHint
 from semra.wsgi import get_app
-from tests.constants import a1, a2, b1, b2
+from tests.constants import TEST_CURIES, a1, a2, b1, b2
 
 MS1 = MappingSet(
     name="Test Mapping Set",
@@ -32,10 +33,23 @@ M2 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[E1])
 TEST_MAPPINGS = [M1, M2]
 E1_M1_REFERENCE = E1.get_reference(M1)
 E1_M2_REFERENCE = E1.get_reference(M2)
+NAMES = {c.curie: c.name for c in TEST_CURIES}
 
 
 class MockClient(BaseClient):
     """A mock client."""
+
+    def get_concept_name(self, curie: ReferenceHint) -> str | None:
+        """Get a concept name."""
+        return NAMES.get(curie)  # type:ignore
+
+    def get_exact_matches(
+        self, curie: ReferenceHint, *, max_distance: int | None = None
+    ) -> dict[Reference, str]:
+        """Get exact matches for a given CURIE."""
+        if curie == a1.curie:
+            return {b2: cast(str, b2.name)}
+        raise KeyError
 
     def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence."""
@@ -61,18 +75,23 @@ class MockClient(BaseClient):
             return M2
         return None
 
+    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
+        """Get example mappings from a set."""
+        if curie == MS1.curie:
+            return [ExampleMapping.from_mapping(M1)]
+        raise KeyError
+
     def get_full_summary(self) -> FullSummary:
         """Get an empty summary."""
         return FullSummary()
 
 
-class TestAPI(unittest.TestCase):
+class BaseTest(unittest.TestCase):
     """Test the app."""
 
     dao: ClassVar[BaseClient]
     flask_app: ClassVar[Flask]
     fastapi_app: ClassVar[FastAPI]
-    test_client: ClassVar[TestClient]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -81,6 +100,45 @@ class TestAPI(unittest.TestCase):
         cls.flask_app, cls.fastapi_app = get_app(
             client=cls.dao, return_flask=True, use_biomappings=False
         )
+
+
+class TestFrontend(BaseTest):
+    """Test the app."""
+
+    def test_home(self) -> None:
+        """Test the homepage."""
+        with self.flask_app.test_client() as client:
+            res = client.get("/")
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+    def test_mapping(self) -> None:
+        """Test the mapping page."""
+        with self.flask_app.test_client() as client:
+            res = client.get(f"/mapping/{M1.curie}")
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+    def test_mapping_set(self) -> None:
+        """Test the mapping set page."""
+        with self.flask_app.test_client() as client:
+            res = client.get(f"/mapping_set/{MS1.curie}")
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+    def test_concept(self) -> None:
+        """Test the mapping set page."""
+        with self.flask_app.test_client() as client:
+            res = client.get(f"/concept/{a1.curie}")
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+
+class TestAPI(BaseTest):
+    """Test the app."""
+
+    test_client: ClassVar[TestClient]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up the class with a mock client and app."""
+        super().setUpClass()
         cls.test_client = TestClient(cls.fastapi_app)
 
     def test_evidence(self) -> None:

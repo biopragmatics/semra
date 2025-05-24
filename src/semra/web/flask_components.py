@@ -33,13 +33,14 @@ def home() -> str:
     #  7. Nodes with equivalent entity sharing its prefix
     state = _flask_get_state()
     client = _flask_get_client()
+    mapping_sets = client.get_mapping_sets()
     return render_template(
         "home.html",
         example_mappings=state.summary.example_mappings,
         predicate_counter=state.summary.PREDICATE_COUNTER,
         mapping_set_counter=state.summary.MAPPING_SET_COUNTER,
         node_counter=state.summary.NODE_COUNTER,
-        mapping_sets=client.get_mapping_sets(),
+        mapping_sets=mapping_sets,
         format_number=_figure_number,
         justification_counter=state.summary.JUSTIFICATION_COUNTER,
         evidence_type_counter=state.summary.EVIDENCE_TYPE_COUNTER,

@@ -1,7 +1,10 @@
 """Test the app."""
 
 import unittest
+from typing import ClassVar
 
+from fastapi import FastAPI
+from flask import Flask
 from starlette.testclient import TestClient
 
 from semra import (
@@ -45,48 +48,57 @@ class MockClient(BaseClient):
         return FullSummary()
 
 
-class TestApp(unittest.TestCase):
+class TestAPI(unittest.TestCase):
     """Test the app."""
 
-    def test_app(self) -> None:
-        """Test the app."""
-        client = MockClient()
-        _flask_app, fastapi_app = get_app(client=client, return_flask=True)
+    dao: ClassVar[BaseClient]
+    flask_app: ClassVar[Flask]
+    fastapi_app: ClassVar[FastAPI]
+    test_client: ClassVar[TestClient]
 
-        test_client = TestClient(fastapi_app)
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up the class with a mock client and app."""
+        cls.dao = MockClient()
+        cls.flask_app, cls.fastapi_app = get_app(client=cls.dao, return_flask=True)
+        cls.test_client = TestClient(cls.fastapi_app)
 
-        # Test evidence API
-        res1 = test_client.get(f"/api/evidence/{E1_M1_REFERENCE.curie}")
-        self.assertEqual(200, res1.status_code)
-        self.assertEqual(E1, SimpleEvidence.model_validate(res1.json()))
+    def test_evidence(self) -> None:
+        """Test the evidence API."""
+        res = self.test_client.get(f"/api/evidence/{E1_M1_REFERENCE.curie}")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(E1, SimpleEvidence.model_validate(res.json()))
 
-        res2 = test_client.get(f"/api/evidence/{E1_M2_REFERENCE.curie}")
-        self.assertEqual(404, res2.status_code)
+        res_not_found = self.test_client.get(f"/api/evidence/{E1_M2_REFERENCE.curie}")
+        self.assertEqual(404, res_not_found.status_code)
 
-        # Test mapping set API
-        res3 = test_client.get(f"/api/mapping_set/{MS1.curie}")
-        self.assertEqual(200, res1.status_code)
-        self.assertEqual(MS1, MappingSet.model_validate(res3.json()))
+    def test_mapping_set(self) -> None:
+        """Test the mapping set API."""
+        res = self.test_client.get(f"/api/mapping_set/{MS1.curie}")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(MS1, MappingSet.model_validate(res.json()))
 
-        res4 = test_client.get("/api/mapping_set/abcdef")
-        self.assertEqual(404, res4.status_code)
+        res_not_found = self.test_client.get("/api/mapping_set/abcdef")
+        self.assertEqual(404, res_not_found.status_code)
 
-        res5 = test_client.get("/api/mapping_set/")
-        self.assertEqual(200, res1.status_code)
-        self.assertEqual([MS1], [MappingSet.model_validate(r) for r in res5.json()])
+        res_all = self.test_client.get("/api/mapping_set/")
+        self.assertEqual(200, res_all.status_code)
+        self.assertEqual([MS1], [MappingSet.model_validate(r) for r in res_all.json()])
 
-        # Test mapping API
-        res6 = test_client.get(f"/api/mapping/{M1.curie}")
-        self.assertEqual(200, res1.status_code)
-        self.assertEqual(M1, Mapping.model_validate(res6.json()))
+    def test_mapping(self) -> None:
+        """Test the mapping API."""
+        res = self.test_client.get(f"/api/mapping/{M1.curie}")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(M1, Mapping.model_validate(res.json()))
 
-        res7 = test_client.get("/api/mapping/abcdef")
-        self.assertEqual(404, res7.status_code)
+        res_not_found = self.test_client.get("/api/mapping/abcdef")
+        self.assertEqual(404, res_not_found.status_code)
 
-        # Test concept API
-        res8 = test_client.get(f"/api/concept/{a1.curie}")
-        self.assertEqual(200, res1.status_code)
-        self.assertEqual(a1, Reference.model_validate(res8.json()))
+    def test_concept(self) -> None:
+        """Test the concept API."""
+        res = self.test_client.get(f"/api/concept/{a1.curie}")
+        self.assertEqual(200, res.status_code)
+        self.assertEqual(a1, Reference.model_validate(res.json()))
 
-        res9 = test_client.get("/api/concept/abcasdef")
-        self.assertEqual(404, res9.status_code)
+        res_not_found = self.test_client.get("/api/concept/abcasdef")
+        self.assertEqual(404, res_not_found.status_code)

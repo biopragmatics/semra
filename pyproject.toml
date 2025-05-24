@@ -74,6 +74,7 @@ tests = [
     "pytest",
     "coverage[toml]",
     "sssom>=0.4.16",
+    "httpx",
 ]
 docs = [
     "sphinx>=8",

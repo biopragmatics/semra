@@ -38,10 +38,10 @@
         <td><code>
             {%- if is_concept -%}
             {% if has_names %}
-            <a href="{{ url_for('view_concept', curie=key[0]) }}">{{ key[0] }}</a>
+            <a href="{{ url_for('.view_concept', curie=key[0]) }}">{{ key[0] }}</a>
             {% else %}
             FAILURE!
-            <a href="{{ url_for('view_concept', curie=key) }}">{{ key }}</a>
+            <a href="{{ url_for('.view_concept', curie=key) }}">{{ key }}</a>
             {% endif %}
             {%- else -%}
             {% if has_names %}{{ key[0] }}{% else %}{{ key }}{% endif %}
@@ -98,7 +98,7 @@
                     {% for mapping_set in mapping_sets %}
                     <tr>
                         <td class="text-break">
-                            <a href="{{ url_for('view_mapping_set', mapping_set_id=mapping_set.curie) }}">
+                            <a href="{{ url_for('.view_mapping_set', mapping_set_id=mapping_set.curie) }}">
                                 {{ mapping_set.name }}
                             </a>
                         </td>

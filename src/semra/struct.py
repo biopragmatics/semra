@@ -124,6 +124,8 @@ class MappingSet(
     https://mapping-commons.github.io/sssom/MappingSet.
     """
 
+    model_config = ConfigDict(frozen=True)
+
     purl: str | None = Field(
         None,
         description="The persistent URL (PURL) for the mapping set. While it's optional in SeMRA, this is a required SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_id/",

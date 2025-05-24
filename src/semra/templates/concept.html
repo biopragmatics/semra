@@ -109,7 +109,7 @@ https://bioregistry.io/{{ ref.curie }}
                         {% if name %}{{ name }}{% endif %}
                     </td>
                     <td>
-                        <a href="{{ url_for('view_concept', curie=exact_match.curie) }}">SeMRA</a>
+                        <a href="{{ url_for('.view_concept', curie=exact_match.curie) }}">SeMRA</a>
                     </td>
                     <td>
                         <a href="{{ bioregistry_href(exact_match) }}">Bioregistry</a>

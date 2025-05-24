@@ -12,7 +12,7 @@
     {%- for curie, predicate, subject_curie, subject_name, target_curie, target_name in mappings -%}
     <tr>
         <td>
-            <a href="{{ url_for('view_mapping', curie=curie) }}">
+            <a href="{{ url_for('.view_mapping', curie=curie) }}">
                 <code>{{ curie[14:22]}}</code>
             </a>
         </td>

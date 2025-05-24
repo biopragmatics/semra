@@ -134,11 +134,11 @@ class BaseClient:
 
     def get_exact_matches(
         self, curie: ReferenceHint, *, max_distance: int | None = None
-    ) -> dict[Reference, str]:
+    ) -> dict[Reference, str] | None:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         raise NotImplementedError
 
-    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
@@ -412,7 +412,7 @@ as label, count UNION ALL
 
     def get_exact_matches(
         self, curie: ReferenceHint, *, max_distance: int | None = None
-    ) -> dict[Reference, str]:
+    ) -> dict[Reference, str] | None:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -468,7 +468,7 @@ as label, count UNION ALL
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]
         return nodes, relations
 
-    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph:
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
@@ -484,8 +484,8 @@ as label, count UNION ALL
                 g.add_edge(
                     path.start_node["curie"],
                     path.end_node["curie"],
-                    key=relationship.id,
-                    type=relationship.type,
+                    key=relationship.id,  # this is the mapping's CURIE
+                    type=relationship.type,  # this is the predicate CURIE
                 )
         return g
 

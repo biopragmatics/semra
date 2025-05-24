@@ -3,6 +3,7 @@
 import unittest
 from typing import ClassVar, cast
 
+import networkx as nx
 from fastapi import FastAPI
 from flask import Flask
 from starlette.testclient import TestClient
@@ -29,6 +30,7 @@ E1 = SimpleEvidence(
     justification=UNSPECIFIED_MAPPING,
 )
 M1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[E1])
+M1_INV = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[E1])
 M2 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[E1])
 TEST_MAPPINGS = [M1, M2]
 E1_M1_REFERENCE = E1.get_reference(M1)
@@ -45,11 +47,11 @@ class MockClient(BaseClient):
 
     def get_exact_matches(
         self, curie: ReferenceHint, *, max_distance: int | None = None
-    ) -> dict[Reference, str]:
+    ) -> dict[Reference, str] | None:
         """Get exact matches for a given CURIE."""
         if curie == a1.curie:
-            return {b2: cast(str, b2.name)}
-        raise KeyError
+            return {b1: cast(str, b1.name)}
+        return None
 
     def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence."""
@@ -84,6 +86,25 @@ class MockClient(BaseClient):
     def get_full_summary(self) -> FullSummary:
         """Get an empty summary."""
         return FullSummary()
+
+    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
+        """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
+
+        :param curie: A CURIE string or reference
+
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        """
+        if curie != a1.curie:
+            return None
+
+        # TODO unify with mapping graph!
+
+        g = nx.MultiDiGraph()
+        g.add_node(a1.curie)  # what about other parts?
+        g.add_node(b1.curie)
+        g.add_edge(a1.curie, b1.curie, key=M1.curie, type=EXACT_MATCH.curie)
+        g.add_edge(b1.curie, a1.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
+        return g
 
 
 class BaseTest(unittest.TestCase):
@@ -170,4 +191,25 @@ class TestAPI(BaseTest):
         self.assertEqual(M1, Mapping.model_validate(res.json()))
 
         res_not_found = self.test_client.get("/api/mapping/abcdef")
+        self.assertEqual(404, res_not_found.status_code)
+
+    def test_exact_matches(self) -> None:
+        """Test the exact matches API."""
+        res = self.test_client.get(f"/api/exact/{a1.curie}")
+        self.assertEqual(200, res.status_code)
+        records = res.json()
+        self.assertEqual(
+            [b1], [Reference.model_validate(r) for r in records], msg=f"Results: {records}"
+        )
+
+        res_not_found = self.test_client.get("/api/exact/abcdef")
+        self.assertEqual(404, res_not_found.status_code)
+
+    def test_component(self) -> None:
+        """Test the connected components API."""
+        res = self.test_client.get(f"/api/cytoscape/{a1.curie}")
+        self.assertEqual(200, res.status_code)
+        res.json()
+
+        res_not_found = self.test_client.get("/api/cytoscape/abcdef")
         self.assertEqual(404, res_not_found.status_code)

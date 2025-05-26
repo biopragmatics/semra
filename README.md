@@ -39,7 +39,7 @@ provides:
    community feedback-level
 
 We also provide an accompanying raw semantic mapping database on Zenodo at
-https://zenodo.org/records/15208251.
+https://doi.org/10.5281/zenodo.11082038.
 
 ## 💪 Getting Started
 

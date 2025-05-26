@@ -7,7 +7,7 @@ import time
 import typing as t
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import click
 import requests
@@ -63,6 +63,8 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+HERE = Path(__file__).parent.resolve()
 
 UPLOAD_OPTION = click.option("--upload", is_flag=True)
 REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
@@ -789,3 +791,36 @@ def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float
         f"(Δ={len(mappings) - before:,}) in %.2f seconds.",
         elapsed,
     )
+
+
+@overload
+def summarize_configuration(configuration: Configuration, path: None = ...) -> str: ...
+
+
+@overload
+def summarize_configuration(configuration: Configuration, path: str | Path = ...) -> None: ...
+
+
+def summarize_configuration(
+    configuration: Configuration, path: str | Path | None = None
+) -> str | None:
+    """Summarize a configuration."""
+    import bioregistry
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    TEMPLATES = HERE.joinpath("templates")
+    JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
+    STARTUP_TEMPLATE = JINJA_ENV.get_template("config-summary.md")
+
+    vv = STARTUP_TEMPLATE.render(configuration=configuration, bioregistry=bioregistry)
+
+    if path is None:
+        return vv
+    else:
+        Path(path).expanduser().resolve().write_text(vv)
+
+
+if __name__ == "__main__":
+    from semra.landscape import anatomy
+
+    summarize_configuration(anatomy.CONFIGURATION, path="anatomy.md")

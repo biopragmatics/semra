@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any, Literal, overload
 
+import bioregistry
 import click
 import requests
 from pydantic import BaseModel, Field, model_validator
@@ -805,14 +806,12 @@ def summarize_configuration(
     configuration: Configuration, path: str | Path | None = None
 ) -> str | None:
     """Summarize a configuration."""
-    import bioregistry
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-    TEMPLATES = HERE.joinpath("templates")
-    JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape())
-    STARTUP_TEMPLATE = JINJA_ENV.get_template("config-summary.md")
-
-    vv = STARTUP_TEMPLATE.render(configuration=configuration, bioregistry=bioregistry)
+    templates = HERE.joinpath("templates")
+    environment = Environment(loader=FileSystemLoader(templates), autoescape=select_autoescape())
+    template = environment.get_template("config-summary.md")
+    vv = template.render(configuration=configuration, bioregistry=bioregistry)
 
     if path is None:
         return vv

@@ -8,7 +8,7 @@ We summarize the resources used in the landscape analysis, including their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
-{% if number_pyobo_unavailable %} {{ number_pyobo_unavailable }} resources were
+{% if summary.number_pyobo_unavailable %} {{ summary.number_pyobo_unavailable }} resources were
 not available through [PyOBO](https://github.com/biopragmatics/pyobo).
 Therefore, we estimate the number of terms in that resource based on the ones
 appearing in mappings. Note that these are typically an underestimate.
@@ -16,7 +16,7 @@ appearing in mappings. Note that these are typically an underestimate.
 
 {{ summary.summary_df.to_markdown() }}
 
-There are a total of {{ "{:,}".format(summary.number_pyobo_unavailable) }} terms
+There are a total of {{ "{:,}".format(summary.total) }} terms
 across the {{ summary.summary_df.index | length }} resources.
 
 ## Mapping Summary and Usage

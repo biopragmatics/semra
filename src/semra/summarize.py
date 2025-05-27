@@ -111,13 +111,16 @@ def write_summary(
     plt.savefig(configuration.processed_landscape_histogram_path)
 
     template = get_jinja_template("config-summary.md")
-    vv = template.render(
-        configuration=configuration,
-        bioregistry=bioregistry,
-        summary=summary,
-        overlap_results=overlap_results,
-        landscape_results=landscape_results,
-    ).strip() + "\n"
+    vv = (
+        template.render(
+            configuration=configuration,
+            bioregistry=bioregistry,
+            summary=summary,
+            overlap_results=overlap_results,
+            landscape_results=landscape_results,
+        ).strip()
+        + "\n"
+    )
     logger.info("writing summary to %s", configuration.readme_path)
     configuration.readme_path.write_text(vv)
 
@@ -181,6 +184,7 @@ class Summarizer:
         )
         return SummaryResults(
             summary_df=summary_df,
+            total=summary_df["terms"].sum(),
             number_pyobo_unavailable=(summary_df["terms"] == 0).sum(),
         )
 
@@ -215,6 +219,7 @@ class SummaryResults:
     """Summary results."""
 
     summary_df: pd.DataFrame
+    total: int
     number_pyobo_unavailable: int
 
 
@@ -267,7 +272,7 @@ class OverlapResults:
     @property
     def number_overlaps(self) -> int:
         """Calculate the number of overlaps that will appear in the UpSet plot."""
-        return cast(int, 2 ** self.n_prefixes) - 1
+        return cast(int, 2**self.n_prefixes) - 1
 
 
 def overlap_analysis(

@@ -8,6 +8,10 @@ We summarize the resources used in the landscape analysis, including their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
+ 2 resources were
+not available through [PyOBO](https://github.com/biopragmatics/pyobo).
+Therefore, we estimate the number of terms in that resource based on the ones
+appearing in mappings. Note that these are typically an underestimate.
 
 
 | prefix        | name                                | license      | version    |   terms | status   |
@@ -21,7 +25,7 @@ number of terms (i.e., named concepts) they contain.
 | signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-04-01 |     856 | full     |
 | intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |       0 | observed |
 
-There are a total of 2 terms
+There are a total of 9,552 terms
 across the 8 resources.
 
 ## Mapping Summary and Usage

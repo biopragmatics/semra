@@ -37,7 +37,7 @@ __all__ = [
     "M2MIndex",
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
-    "SymmetricCounter",
+    "PrefixPairCounter",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -50,6 +50,7 @@ __all__ = [
     "filter_self_matches",
     "filter_subsets",
     "flip",
+    "get_asymmetric_counter",
     "get_directed_index",
     "get_index",
     "get_many_to_many",
@@ -1059,7 +1060,7 @@ def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> boo
 #: A counter from pairs of prefixes to the maximum number
 #: of observed terms of one or the other. Note that this
 #: estimate is only an upper bound.
-SymmetricCounter = t.Counter[tuple[str, str]]
+PrefixPairCounter: TypeAlias = t.Counter[tuple[str, str]]
 
 
 class TermCount(NamedTuple):
@@ -1092,9 +1093,10 @@ def get_symmetric_counter(
     *,
     terms_exact: PrefixIdentifierDict,
     terms_observed: PrefixIdentifierDict,
-) -> SymmetricCounter:
+    include_diag: bool = True,
+) -> PrefixPairCounter:
     """Create a symmetric mapping counts counter from a directed index."""
-    counter: SymmetricCounter = Counter()
+    counter: PrefixPairCounter = Counter()
 
     for left_prefix, right_prefix in directed:
         left_observed_terms = directed[left_prefix, right_prefix]
@@ -1107,11 +1109,28 @@ def get_symmetric_counter(
         if right_all_terms:
             right_observed_terms.intersection_update(right_all_terms)
 
-        counter[left_prefix, right_prefix] = max(
-            len(left_observed_terms), len(right_observed_terms)
-        )
+        if include_diag:
+            counter[left_prefix, right_prefix] = max(
+                len(left_observed_terms), len(right_observed_terms)
+            )
 
     for prefix in priority:
         counter[prefix, prefix] = _count_terms(prefix, terms_exact, terms_observed).count
 
     return counter
+
+
+def get_asymmetric_counter(
+    directed: DirectedIndex,
+    priority: list[str],
+    *,
+    terms_exact: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
+) -> PrefixPairCounter:
+    """Create a symmetric mapping counts counter from a directed index."""
+    return Counter(
+        {
+            (left_prefix, right_prefix): len(identifiers)
+            for (left_prefix, right_prefix), identifiers in directed.items()
+        }
+    )

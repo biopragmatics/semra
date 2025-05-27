@@ -20,10 +20,11 @@ import pandas as pd
 from semra.api import (
     DirectedIndex,
     PrefixIdentifierDict,
-    SymmetricCounter,
+    PrefixPairCounter,
     _count_terms,
     count_component_sizes,
     filter_subsets,
+    get_asymmetric_counter,
     get_directed_index,
     get_observed_terms,
     get_symmetric_counter,
@@ -222,15 +223,15 @@ class OverlapResults:
     """Results from mapping analysis."""
 
     raw_mappings: list[Mapping]
-    raw_counts: SymmetricCounter
+    raw_counts: PrefixPairCounter
     raw_counts_df: pd.DataFrame
 
     processed_mappings: list[Mapping]
-    processed_counts: SymmetricCounter
+    processed_counts: PrefixPairCounter
     processed_counts_df: pd.DataFrame
 
     priority_mappings: list[Mapping]
-    priority_counts: SymmetricCounter
+    priority_counts: PrefixPairCounter
     priority_counts_df: pd.DataFrame
 
     gains_df: pd.DataFrame
@@ -246,13 +247,16 @@ class OverlapResults:
         if self.minimum_count is None:
             self.minimum_count = 20
         self.raw_counts_drawing = draw_counter(
-            self.raw_counts, cls=nx.Graph, minimum_count=self.minimum_count
+            self.raw_counts,
+            cls=nx.Graph,
+            minimum_count=self.minimum_count,
+            directed=False,
         )
         self.processed_counts_drawing = draw_counter(
-            self.processed_counts, cls=nx.Graph, minimum_count=self.minimum_count
+            self.processed_counts, cls=nx.Graph, minimum_count=self.minimum_count, directed=False
         )
         self.priority_counts_drawing = draw_counter(
-            self.priority_counts, cls=nx.Graph, minimum_count=self.minimum_count
+            self.priority_counts, cls=nx.Graph, minimum_count=self.minimum_count, directed=True
         )
 
     @property
@@ -301,7 +305,7 @@ def overlap_analysis(
     priority_index = get_directed_index(
         priority_mappings, show_progress=show_progress, predicates=predicates
     )
-    priority_counts, priority_counts_df = get_symmetric_counts_df(
+    priority_counts, priority_counts_df = get_asymmetric_counts_df(
         priority_index,
         terms_exact=terms,
         priority=configuration.priority,
@@ -395,7 +399,7 @@ def get_symmetric_counts_df(
     priority: list[str],
     terms_exact: PrefixIdentifierDict,
     terms_observed: PrefixIdentifierDict,
-) -> tuple[SymmetricCounter, pd.DataFrame]:
+) -> tuple[PrefixPairCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter = get_symmetric_counter(
         directed=directed, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
@@ -404,8 +408,25 @@ def get_symmetric_counts_df(
     return counter, df
 
 
+def get_asymmetric_counts_df(
+    directed: DirectedIndex,
+    *,
+    priority: list[str],
+    terms_exact: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
+) -> tuple[PrefixPairCounter, pd.DataFrame]:
+    """Create an asymmetric mapping counts dataframe from a directed index."""
+    counter = get_asymmetric_counter(
+        directed=directed, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
+    )
+    df = counter_to_df(counter, priority=priority).fillna(0).astype(int)
+    return counter, df
+
+
 def draw_counter(
-    counter: SymmetricCounter,
+    counter: PrefixPairCounter,
+    *,
+    directed: bool,
     scaling_factor: float = 3.0,
     count_format: str = ",",
     cls: type[nx.Graph] = nx.DiGraph,
@@ -432,6 +453,7 @@ def draw_counter(
 
     agraph = nx.nx_agraph.to_agraph(graph)
     agraph.graph_attr["rankdir"] = direction
+    agraph.graph_attr["directed"] = "true" if directed else "false"
 
     values = [v for v in counter.values() if v is not None and v > 0]
     bottom, top = min(values), max(values)
@@ -447,7 +469,7 @@ def draw_counter(
 
 
 def counter_to_df(
-    counter: SymmetricCounter, priority: list[str], *, drop_missing: bool = True
+    counter: PrefixPairCounter, priority: list[str], *, drop_missing: bool = True
 ) -> pd.DataFrame:
     """Get a dataframe from a counter."""
     rows = [[counter.get((p1, p2), None) for p2 in priority] for p1 in priority]

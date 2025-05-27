@@ -8,16 +8,16 @@ We summarize the resources used in the landscape analysis, including their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
-{% if summary.number_pyobo_unavailable %} {{ summary.number_pyobo_unavailable }} resources were
-not available through [PyOBO](https://github.com/biopragmatics/pyobo).
-Therefore, we estimate the number of terms in that resource based on the ones
-appearing in mappings. Note that these are typically an underestimate.
-{% endif %}
+{% if summary.number_pyobo_unavailable %}{{ summary.number_pyobo_unavailable }}
+resources were not available through
+[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the
+number of terms in that resource based on the ones appearing in mappings. Note
+that these are typically an underestimate. {% endif %}
 
 {{ summary.summary_df.to_markdown() }}
 
-There are a total of {{ "{:,}".format(summary.total) }} terms
-across the {{ summary.summary_df.index | length }} resources.
+There are a total of {{ "{:,}".format(summary.total) }} terms across the
+{{ summary.summary_df.index | length }} resources.
 
 ## Mapping Summary and Usage
 
@@ -78,7 +78,7 @@ confidence filtering. The following prior knowledge was used during processing:
 {% for mutation in configuration.mutations %}
 <tr>
 <td>{{ mutation.source }}</td>
-<td>{{ mutation.target }}</td>
+<td>{% if mutation.target %}{{ mutation.target }}{% else %}(all){% endif %}</td>
 <td>{{ mutation.old.curie }}</td>
 <td>{{ mutation.new.curie }}</td>
 <td align="right">{{ mutation.confidence }}</td>
@@ -87,7 +87,13 @@ confidence filtering. The following prior knowledge was used during processing:
 </tbody>
 </table>
 
-This produced a mapping matrix of the following:
+The processed mappings table has the following qualities:
+
+- This table is symmetric, i.e., taking into account mappings from the source,
+  target, and inference
+- Diagonals represent the number of entities in the resource (or the number that
+  are observed in the mappings, in some cases)
+- Only exact matches are retained
 
 {{ overlap_results.processed_counts_df.to_markdown() }}
 
@@ -124,7 +130,9 @@ The prioritization for this output is:
 {%- endfor %}
 </ol>
 
+{#-
 {{ overlap_results.priority_counts_df.to_markdown() }}
+#}
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -145,9 +153,11 @@ df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
 
+{#-
 Below is a graph-based view on the priority mappings.
 
 ![](priority_graph.svg)
+-#}
 
 ## Web Application
 
@@ -210,20 +220,22 @@ This is only an estimate and is susceptible to a few things:
 
 1. It can be artificially high because there are entities that _should_ be
    mapped, but are not
-2. It can be artificially low because there are entities that are incorrectly
+1. It can be artificially low because there are entities that are incorrectly
    mapped, e.g., as a result of inference. The frontend curation interface can
    help identify and remove these
-3. It can be artificially low because for some vocabularies like SNOMED-CT, it's
+{%- if summary.number_pyobo_unavailable %}
+1. It can be artificially low because for some vocabularies like SNOMED-CT, it's
    not possible to load a terms list, and therefore it's not possible to account
    for terms that aren't mapped. Therefore, we make a lower bound estimate based
    on the terms that appear in mappings.
-4. It can be artificially high if a vocabulary is used that covers many domains
+{%- endif %}
+1. It can be artificially high if a vocabulary is used that covers many domains
    and is not properly subset'd. For example, EFO covers many different domains,
    so when doing disease landscape analysis, it should be subset to only terms
    in the disease hierarchy (i.e., appearing under `efo:0000408`).
-5. It can be affected by terminology issues, such as the confusion between
+1. It can be affected by terminology issues, such as the confusion between
    Orphanet and ORDO
-6. It can be affected by the existence of many-to-many mappings, which are
+1. It can be affected by the existence of many-to-many mappings, which are
    filtered out during processing, which makes the estimate artificially high
    since some subset of those entities could be mapped, but it's not clear which
    should.
@@ -232,4 +244,5 @@ This is only an estimate and is susceptible to a few things:
 
 Mappings are licensed according to their primary resources. These are explicitly
 annotated in the SSSOM file on each row (when available) and on the mapping set
-level in the Neo4j graph database artifacts.
+level in the Neo4j graph database artifacts. All original mappings produced by
+SeMRA are licensed under CC0-1.0.

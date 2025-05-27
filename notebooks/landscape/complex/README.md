@@ -1,6 +1,7 @@
 # SeMRA Protein Complex Landscape Analysis
 
-Analyze the landscape of protein complex nomenclature resources, species-agnostic.
+Analyze the landscape of protein complex nomenclature resources,
+species-agnostic.
 
 ## Resource Summary
 
@@ -8,32 +9,29 @@ We summarize the resources used in the landscape analysis, including their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
- 2 resources were
-not available through [PyOBO](https://github.com/biopragmatics/pyobo).
-Therefore, we estimate the number of terms in that resource based on the ones
-appearing in mappings. Note that these are typically an underestimate.
+2 resources were not available through
+[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the
+number of terms in that resource based on the ones appearing in mappings. Note
+that these are typically an underestimate.
 
+| prefix        | name                                | license      | version    | terms | status   |
+| :------------ | :---------------------------------- | :----------- | :--------- | ----: | :------- |
+| complexportal | Complex Portal                      | CC0-1.0      | 2025-03-28 |  5031 | full     |
+| fplx          | FamPlex                             | CC0-1.0      |            |   782 | full     |
+| go            | Gene Ontology                       | CC-BY-4.0    | 2025-03-16 |  2059 | subset   |
+| chembl.target | ChEMBL target                       | CC-BY-SA-3.0 | 35         |   689 | subset   |
+| wikidata      | Wikidata                            | CC0-1.0      |            |     0 | observed |
+| scomp         | Selventa Complexes                  | Apache-2.0   |            |   135 | full     |
+| signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-04-01 |   856 | full     |
+| intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |     0 | observed |
 
-| prefix        | name                                | license      | version    |   terms | status   |
-|:--------------|:------------------------------------|:-------------|:-----------|--------:|:---------|
-| complexportal | Complex Portal                      | CC0-1.0      | 2025-03-28 |    5031 | full     |
-| fplx          | FamPlex                             | CC0-1.0      |            |     782 | full     |
-| go            | Gene Ontology                       | CC-BY-4.0    | 2025-03-16 |    2059 | subset   |
-| chembl.target | ChEMBL target                       | CC-BY-SA-3.0 | 35         |     689 | subset   |
-| wikidata      | Wikidata                            | CC0-1.0      |            |       0 | observed |
-| scomp         | Selventa Complexes                  | Apache-2.0   |            |     135 | full     |
-| signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-04-01 |     856 | full     |
-| intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |       0 | observed |
-
-There are a total of 9,552 terms
-across the 8 resources.
+There are a total of 9,552 terms across the 8 resources.
 
 ## Mapping Summary and Usage
 
 ### Raw Mappings
 
-The raw mappings are the ones directly read from the
-9 sources.
+The raw mappings are the ones directly read from the 9 sources.
 
 - This table is symmetric, i.e., taking into account mappings from both the
   source and target.
@@ -41,16 +39,16 @@ The raw mappings are the ones directly read from the
   are observed in the mappings, in some cases)
 - All predicate types are combined in this table.
 
-| source_prefix   |   complexportal |   fplx |   go |   chembl.target |   wikidata |   scomp |   signor |   intact |
-|:----------------|----------------:|-------:|-----:|----------------:|-----------:|--------:|---------:|---------:|
-| complexportal   |            5031 |      5 |    0 |             203 |       4759 |       0 |      267 |     3325 |
-| fplx            |               5 |    782 |   46 |               0 |          0 |      66 |      118 |        0 |
-| go              |               0 |     46 | 2059 |               0 |          0 |       0 |        0 |        3 |
-| chembl.target   |             203 |      0 |    0 |             689 |          0 |       0 |        0 |        0 |
-| wikidata        |            4759 |      0 |    0 |               0 |          0 |       0 |        0 |        0 |
-| scomp           |               0 |     66 |    0 |               0 |          0 |     135 |        0 |        0 |
-| signor          |             267 |    118 |    0 |               0 |          0 |       0 |      856 |        0 |
-| intact          |            3325 |      0 |    3 |               0 |          0 |       0 |        0 |        0 |
+| source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
+| :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
+| complexportal |          5031 |    5 |    0 |           203 |     4759 |     0 |    267 |   3325 |
+| fplx          |             5 |  782 |   46 |             0 |        0 |    66 |    118 |      0 |
+| go            |             0 |   46 | 2059 |             0 |        0 |     0 |      0 |      3 |
+| chembl.target |           203 |    0 |    0 |           689 |        0 |     0 |      0 |      0 |
+| wikidata      |          4759 |    0 |    0 |             0 |        0 |     0 |      0 |      0 |
+| scomp         |             0 |   66 |    0 |             0 |        0 |   135 |      0 |      0 |
+| signor        |           267 |  118 |    0 |             0 |        0 |     0 |    856 |      0 |
+| intact        |          3325 |    0 |    3 |             0 |        0 |     0 |      0 |      0 |
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -96,7 +94,7 @@ confidence filtering. The following prior knowledge was used during processing:
 
 <tr>
 <td>go</td>
-<td></td>
+<td>(all)</td>
 <td>oboinowl:hasDbXref</td>
 <td>skos:exactMatch</td>
 <td align="right">0.95</td>
@@ -105,18 +103,24 @@ confidence filtering. The following prior knowledge was used during processing:
 </tbody>
 </table>
 
-This produced a mapping matrix of the following:
+The processed mappings table has the following qualities:
 
-| source_prefix   |   complexportal |   fplx |   go |   chembl.target |   wikidata |   scomp |   signor |   intact |
-|:----------------|----------------:|-------:|-----:|----------------:|-----------:|--------:|---------:|---------:|
-| complexportal   |            5031 |      7 |    2 |             203 |       4761 |       2 |      267 |     3325 |
-| fplx            |               7 |    782 |   50 |               0 |        411 |      66 |      118 |        5 |
-| go              |               2 |     50 | 2059 |               0 |         43 |      25 |       11 |        5 |
-| chembl.target   |             203 |      0 |    0 |             689 |          0 |       0 |        0 |        0 |
-| wikidata        |            4761 |    411 |   43 |               0 |          0 |      60 |       86 |     2043 |
-| scomp           |               2 |     66 |   25 |               0 |         60 |     135 |       14 |        2 |
-| signor          |             267 |    118 |   11 |               0 |         86 |      14 |      856 |        0 |
-| intact          |            3325 |      5 |    5 |               0 |       2043 |       2 |        0 |        0 |
+- This table is symmetric, i.e., taking into account mappings from the source,
+  target, and inference
+- Diagonals represent the number of entities in the resource (or the number that
+  are observed in the mappings, in some cases)
+- Only exact matches are retained
+
+| source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
+| :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
+| complexportal |          5031 |    7 |    2 |           203 |     4761 |     2 |    267 |   3325 |
+| fplx          |             7 |  782 |   50 |             0 |      411 |    66 |    118 |      5 |
+| go            |             2 |   50 | 2059 |             0 |       43 |    25 |     11 |      5 |
+| chembl.target |           203 |    0 |    0 |           689 |        0 |     0 |      0 |      0 |
+| wikidata      |          4761 |  411 |   43 |             0 |        0 |    60 |     86 |   2043 |
+| scomp         |             2 |   66 |   25 |             0 |       60 |   135 |     14 |      2 |
+| signor        |           267 |  118 |   11 |             0 |       86 |    14 |    856 |      0 |
+| intact        |          3325 |    5 |    5 |             0 |     2043 |     2 |      0 |      0 |
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -156,20 +160,11 @@ The prioritization for this output is:
 <li><a href="https://bioregistry.io/intact">IntAct protein interaction database (<code>intact</code>)</a></li>
 </ol>
 
-| source_prefix   |   complexportal |   fplx |
-|:----------------|----------------:|-------:|
-| fplx            |               7 |      0 |
-| go              |               2 |     47 |
-| wikidata        |            4761 |    398 |
-| scomp           |               2 |     63 |
-| signor          |               0 |    118 |
-| intact          |            3315 |      0 |
-
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
 following examples:
 
-```python
+````python
 import semra.io
 import semra.api
 
@@ -182,13 +177,7 @@ mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
 # Apply in a data science scenario
 df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
-```
-
-Below is a graph-based view on the priority mappings.
-
-![](priority_graph.svg)
-
-## Web Application
+```## Web Application
 
 1. Download all artifacts into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
@@ -280,20 +269,20 @@ This is only an estimate and is susceptible to a few things:
 
 1. It can be artificially high because there are entities that _should_ be
    mapped, but are not
-2. It can be artificially low because there are entities that are incorrectly
+1. It can be artificially low because there are entities that are incorrectly
    mapped, e.g., as a result of inference. The frontend curation interface can
    help identify and remove these
-3. It can be artificially low because for some vocabularies like SNOMED-CT, it's
+1. It can be artificially low because for some vocabularies like SNOMED-CT, it's
    not possible to load a terms list, and therefore it's not possible to account
    for terms that aren't mapped. Therefore, we make a lower bound estimate based
    on the terms that appear in mappings.
-4. It can be artificially high if a vocabulary is used that covers many domains
+1. It can be artificially high if a vocabulary is used that covers many domains
    and is not properly subset'd. For example, EFO covers many different domains,
    so when doing disease landscape analysis, it should be subset to only terms
    in the disease hierarchy (i.e., appearing under `efo:0000408`).
-5. It can be affected by terminology issues, such as the confusion between
+1. It can be affected by terminology issues, such as the confusion between
    Orphanet and ORDO
-6. It can be affected by the existence of many-to-many mappings, which are
+1. It can be affected by the existence of many-to-many mappings, which are
    filtered out during processing, which makes the estimate artificially high
    since some subset of those entities could be mapped, but it's not clear which
    should.
@@ -302,4 +291,6 @@ This is only an estimate and is susceptible to a few things:
 
 Mappings are licensed according to their primary resources. These are explicitly
 annotated in the SSSOM file on each row (when available) and on the mapping set
-level in the Neo4j graph database artifacts.
+level in the Neo4j graph database artifacts. All original mappings produced by
+SeMRA are licensed under CC0-1.0.
+````

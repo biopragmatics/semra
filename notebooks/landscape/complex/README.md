@@ -164,7 +164,7 @@ The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
 following examples:
 
-````python
+```python
 import semra.io
 import semra.api
 
@@ -177,7 +177,9 @@ mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
 # Apply in a data science scenario
 df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
-```## Web Application
+```
+
+## Web Application
 
 1. Download all artifacts into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
@@ -193,16 +195,16 @@ processing/inference. Across the board, this process adds large numbers of
 mappings to most resources, especially ones that were previously only connected
 to a small number of other resources.
 
-| source_prefix   |   complexportal |   fplx |   go |   chembl.target |   wikidata |   scomp |   signor |   intact |
-|:----------------|----------------:|-------:|-----:|----------------:|-----------:|--------:|---------:|---------:|
-| complexportal   |               0 |      2 |    2 |               0 |          2 |       2 |        0 |        0 |
-| fplx            |               2 |      0 |    4 |               0 |        411 |       0 |        0 |        5 |
-| go              |               2 |      4 |    0 |               0 |         43 |      25 |       11 |        2 |
-| chembl.target   |               0 |      0 |    0 |               0 |          0 |       0 |        0 |        0 |
-| wikidata        |               2 |    411 |   43 |               0 |          0 |      60 |       86 |     2043 |
-| scomp           |               2 |      0 |   25 |               0 |         60 |       0 |       14 |        2 |
-| signor          |               0 |      0 |   11 |               0 |         86 |      14 |        0 |        0 |
-| intact          |               0 |      5 |    2 |               0 |       2043 |       2 |        0 |        0 |
+| source_prefix | complexportal | fplx |  go | chembl.target | wikidata | scomp | signor | intact |
+| :------------ | ------------: | ---: | --: | ------------: | -------: | ----: | -----: | -----: |
+| complexportal |             0 |    2 |   2 |             0 |        2 |     2 |      0 |      0 |
+| fplx          |             2 |    0 |   4 |             0 |      411 |     0 |      0 |      5 |
+| go            |             2 |    4 |   0 |             0 |       43 |    25 |     11 |      2 |
+| chembl.target |             0 |    0 |   0 |             0 |        0 |     0 |      0 |      0 |
+| wikidata      |             2 |  411 |  43 |             0 |        0 |    60 |     86 |   2043 |
+| scomp         |             2 |    0 |  25 |             0 |       60 |     0 |     14 |      2 |
+| signor        |             0 |    0 |  11 |             0 |       86 |    14 |      0 |      0 |
+| intact        |             0 |    5 |   2 |             0 |     2043 |     2 |      0 |      0 |
 
 Here's an alternative view on the number of mappings normalized to show
 percentage gain. Note that:
@@ -212,16 +214,16 @@ percentage gain. Note that:
 - `NaN` means there were no mappings before inference and continue to be no
   mappings after inference
 
-| source_prefix   |   complexportal |   fplx |    go |   chembl.target |   wikidata |   scomp |   signor |   intact |
-|:----------------|----------------:|-------:|------:|----------------:|-----------:|--------:|---------:|---------:|
-| complexportal   |               0 |   40   | inf   |               0 |          0 |     inf |        0 |      0   |
-| fplx            |              40 |    0   |   8.7 |             nan |        inf |       0 |        0 |    inf   |
-| go              |             inf |    8.7 |   0   |             nan |        inf |     inf |      inf |     66.7 |
-| chembl.target   |               0 |  nan   | nan   |               0 |        nan |     nan |      nan |    nan   |
-| wikidata        |               0 |  inf   | inf   |             nan |        nan |     inf |      inf |    inf   |
-| scomp           |             inf |    0   | inf   |             nan |        inf |       0 |      inf |    inf   |
-| signor          |               0 |    0   | inf   |             nan |        inf |     inf |        0 |    nan   |
-| intact          |               0 |  inf   |  66.7 |             nan |        inf |     inf |      nan |    nan   |
+| source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
+| :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
+| complexportal |             0 |   40 |  inf |             0 |        0 |   inf |      0 |      0 |
+| fplx          |            40 |    0 |  8.7 |           nan |      inf |     0 |      0 |    inf |
+| go            |           inf |  8.7 |    0 |           nan |      inf |   inf |    inf |   66.7 |
+| chembl.target |             0 |  nan |  nan |             0 |      nan |   nan |    nan |    nan |
+| wikidata      |             0 |  inf |  inf |           nan |      nan |   inf |    inf |    inf |
+| scomp         |           inf |    0 |  inf |           nan |      inf |     0 |    inf |    inf |
+| signor        |             0 |    0 |  inf |           nan |      inf |   inf |      0 |    nan |
+| intact        |             0 |  inf | 66.7 |           nan |      inf |   inf |    nan |    nan |
 
 ### Landscape Analysis
 
@@ -231,22 +233,17 @@ estimate how much of the landscape each resource covers.
 
 This estimates a total of 9,121 unique entities.
 
-- 5,278
-  (57.9%) have
-  at least one mapping.
-- 3,843 (42.1%)
-  are unique to a single resource.
-- 0 (0.0%)
-  appear in all 8 resources.
+- 5,278 (57.9%) have at least one mapping.
+- 3,843 (42.1%) are unique to a single resource.
+- 0 (0.0%) appear in all 8 resources.
 
 This estimate is susceptible to several caveats:
 
 - Missing mappings inflates this measurement
 - Generic resources like MeSH contain irrelevant entities that can't be mapped
 
-Because there are 8 prefixes, there are
-255 possible overlaps to
-consider. Therefore, a Venn diagram is not possible, so we use an
+Because there are 8 prefixes, there are 255 possible overlaps to consider.
+Therefore, a Venn diagram is not possible, so we use an
 [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993) (Lex _et
 al._, 2014) as a high-dimensional Venn diagram.
 
@@ -257,11 +254,9 @@ and number that appear in each group of resources.
 
 ![](processed_landscape_histogram.svg)
 
-The landscape of 8 resources has
-9,552 total terms. After
-merging redundant nodes based on mappings, inference, and reasoning, there are
-9,121 unique concepts. Using
-the reduction formula
+The landscape of 8 resources has 9,552 total terms. After merging redundant
+nodes based on mappings, inference, and reasoning, there are 9,121 unique
+concepts. Using the reduction formula
 $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
 this is a 4.51% reduction.
 
@@ -293,4 +288,3 @@ Mappings are licensed according to their primary resources. These are explicitly
 annotated in the SSSOM file on each row (when available) and on the mapping set
 level in the Neo4j graph database artifacts. All original mappings produced by
 SeMRA are licensed under CC0-1.0.
-````

@@ -130,9 +130,7 @@ The prioritization for this output is:
 {%- endfor %}
 </ol>
 
-{#-
-{{ overlap_results.priority_counts_df.to_markdown() }}
-#}
+{#{{ overlap_results.priority_counts_df.to_markdown() }} #}
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -153,11 +151,8 @@ df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
 
-{#-
-Below is a graph-based view on the priority mappings.
-
-![](priority_graph.svg)
--#}
+{# Below is a graph-based view on the priority mappings. #}
+{# ![](priority_graph.svg) #}
 
 ## Web Application
 

@@ -46,6 +46,10 @@ mappings = semra.io.from_jsonl("raw.jsonl.gz")
 mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
 ```
 
+Below is a graph-based view on the raw mappings.
+
+![](raw_graph.svg)
+
 ### Processed Mappings
 
 The processed mappings result from the application of inference, reasoning, and confidence

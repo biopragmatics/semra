@@ -63,12 +63,15 @@ def write_summary(
         )
 
     paths = [
-        configuration.processed_landscape_upset_path,
-        configuration.processed_landscape_histogram_path,
-        configuration.summary_path,
         configuration.raw_counts_path,
+        configuration.raw_graph_path,
+        # processed
         configuration.processed_counts_path,
         configuration.processed_graph_path,
+        configuration.processed_landscape_upset_path,
+        configuration.processed_landscape_histogram_path,
+        # summaries
+        configuration.source_summary_path,
         configuration.readme_path,
         configuration.stats_path,
     ]
@@ -76,7 +79,7 @@ def write_summary(
     summarizer = Summarizer(configuration, show_progress=show_progress)
 
     summary = summarizer.get_summary()
-    summary.summary_df.to_csv(configuration.summary_path, sep="\t")
+    summary.summary_df.to_csv(configuration.source_summary_path, sep="\t")
 
     overlap_results = summarizer.overlap_analysis(
         minimum_count=minimum_count,
@@ -86,7 +89,8 @@ def write_summary(
     overlap_results.processed_counts_df.to_csv(
         configuration.processed_counts_path, sep="\t", index=True
     )
-    configuration.processed_graph_path.write_bytes(overlap_results.counts_drawing)
+    configuration.raw_graph_path.write_bytes(overlap_results.raw_counts_drawing)
+    configuration.processed_graph_path.write_bytes(overlap_results.processed_counts_drawing)
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
@@ -217,21 +221,29 @@ class OverlapResults:
     """Results from mapping analysis."""
 
     raw_mappings: list[Mapping]
+    raw_counts: SymmetricCounter
     raw_counts_df: pd.DataFrame
+
     processed_mappings: list[Mapping]
-    counts: SymmetricCounter
+    processed_counts: SymmetricCounter
     processed_counts_df: pd.DataFrame
+
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
     minimum_count: int | None = None
-    counts_drawing: bytes = field(init=False)
+
+    raw_counts_drawing: bytes = field(init=False)
+    processed_counts_drawing: bytes = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the object by creating a drawing of the counter."""
         if self.minimum_count is None:
             self.minimum_count = 20
-        self.counts_drawing = draw_counter(
-            self.counts, cls=nx.Graph, minimum_count=self.minimum_count
+        self.raw_counts_drawing = draw_counter(
+            self.raw_counts, cls=nx.Graph, minimum_count=self.minimum_count
+        )
+        self.processed_counts_drawing = draw_counter(
+            self.processed_counts, cls=nx.Graph, minimum_count=self.minimum_count
         )
 
     @property
@@ -261,7 +273,7 @@ def overlap_analysis(
     raw_index = get_directed_index(
         raw_mappings, show_progress=show_progress, predicates={EXACT_MATCH, DB_XREF}
     )
-    _, raw_counts_df = get_symmetric_counts_df(
+    raw_counts, raw_counts_df = get_symmetric_counts_df(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
@@ -277,10 +289,12 @@ def overlap_analysis(
 
     return OverlapResults(
         raw_mappings=raw_mappings,
+        raw_counts=raw_counts,
         raw_counts_df=raw_counts_df,
         processed_mappings=processed_mappings,
-        counts=processed_counts,
+        processed_counts=processed_counts,
         processed_counts_df=processed_counts_df,
+        # diffs
         gains_df=gains_df,
         percent_gains_df=percent_gains_df,
         minimum_count=minimum_count,

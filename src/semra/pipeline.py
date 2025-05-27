@@ -262,42 +262,47 @@ class Configuration(BaseModel):
 
     @property
     def processed_landscape_upset_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the processed landscape UpSet plot."""
         return self.directory.joinpath("processed_landscape_upset.svg")
 
     @property
     def processed_landscape_histogram_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the processed landscape histogram plot."""
         return self.directory.joinpath("processed_landscape_histogram.svg")
 
     @property
-    def summary_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
-        return self.directory.joinpath("summary.tsv")
+    def source_summary_path(self) -> Path:
+        """Get the path to the source summary TSV file."""
+        return self.directory.joinpath("source_summary.tsv")
 
     @property
     def raw_counts_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the raw counts summary TSV."""
         return self.directory / "raw_counts.tsv"
 
     @property
     def processed_counts_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the processed counts summary TSV."""
         return self.directory / "processed_counts.tsv"
 
     @property
+    def raw_graph_path(self) -> Path:
+        """Get the path to the raw counts graph depiction."""
+        return self.directory.joinpath("raw_graph.svg")
+
+    @property
     def processed_graph_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the processed counts graph depiction."""
         return self.directory.joinpath("processed_graph.svg")
 
     @property
     def readme_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the summary README file."""
         return self.directory.joinpath("README.md")
 
     @property
     def stats_path(self) -> Path:
-        """Get the name for the raw mappings Neo4j docker image."""
+        """Get the path to the statistics summary JSON file."""
         return self.directory.joinpath("stats.json")
 
     @model_validator(mode="before")

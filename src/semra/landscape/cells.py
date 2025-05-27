@@ -27,7 +27,6 @@ from semra.pipeline import (
     Configuration,
     Input,
     Mutation,
-    _copy_into_landscape_folder,
     get_priority_mappings_from_config,
 )
 from semra.rules import charlie
@@ -131,10 +130,7 @@ def main(
     if build_docker and CONFIGURATION.processed_neo4j_path:
         CONFIGURATION._build_docker()
 
-    _, _, paths = write_summary(
-        CONFIGURATION, output_directory=CONFIGURATION.directory, show_progress=True
-    )
-    _copy_into_landscape_folder(CONFIGURATION, paths)  # copy all paths into landscapes folder
+    write_summary(CONFIGURATION, show_progress=True, copy_to_landscape=True)
 
     if upload:
         CONFIGURATION._safe_upload()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import typing as t
 import warnings
 from collections import Counter
@@ -43,70 +44,59 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+HERE = Path(__file__).parent.resolve()
+
 
 def write_summary(
     configuration: Configuration,
     *,
-    output_directory: str | Path | None = None,
     minimum_count: int | None = None,
     show_progress: bool = False,
+    copy_to_landscape: bool = False,
 ) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
     """Run the landscape analysis inside a Jupyter notebook."""
     import matplotlib.pyplot as plt
-
-    if output_directory is None:
-        output_directory = configuration.directory
-    output_directory = Path(output_directory).expanduser().resolve()
 
     if not configuration.configuration_path.is_file():
         configuration.configuration_path.write_text(
             configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
         )
 
-    processed_landscape_upset_path = output_directory.joinpath("processed_landscape_upset.svg")
-    processed_landscape_histogram_path = output_directory.joinpath(
-        "processed_landscape_histogram.svg"
-    )
-    summary_path = output_directory.joinpath("summary.tsv")
-    raw_counts_path = output_directory / "raw_counts.tsv"
-    processed_counts_path = output_directory / "processed_counts.tsv"
-    processed_graph_path = output_directory.joinpath("processed_graph.svg")
-    readme_path = output_directory.joinpath("README.md")
-    stats_path = output_directory.joinpath("stats.json")
-
     paths = [
-        processed_landscape_upset_path,
-        processed_landscape_histogram_path,
-        summary_path,
-        raw_counts_path,
-        processed_counts_path,
-        processed_graph_path,
-        readme_path,
-        stats_path,
+        configuration.processed_landscape_upset_path,
+        configuration.processed_landscape_histogram_path,
+        configuration.summary_path,
+        configuration.raw_counts_path,
+        configuration.processed_counts_path,
+        configuration.processed_graph_path,
+        configuration.readme_path,
+        configuration.stats_path,
     ]
 
     summarizer = Summarizer(configuration, show_progress=show_progress)
 
     summary = summarizer.get_summary()
-    summary.summary_df.to_csv(summary_path, sep="\t")
+    summary.summary_df.to_csv(configuration.summary_path, sep="\t")
 
     overlap_results = summarizer.overlap_analysis(
         minimum_count=minimum_count,
         show_progress=show_progress,
     )
-    overlap_results.raw_counts_df.to_csv(raw_counts_path, sep="\t", index=True)
-    overlap_results.processed_counts_df.to_csv(processed_counts_path, sep="\t", index=True)
-    processed_graph_path.write_bytes(overlap_results.counts_drawing)
+    overlap_results.raw_counts_df.to_csv(configuration.raw_counts_path, sep="\t", index=True)
+    overlap_results.processed_counts_df.to_csv(
+        configuration.processed_counts_path, sep="\t", index=True
+    )
+    configuration.processed_graph_path.write_bytes(overlap_results.counts_drawing)
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = summarizer.landscape_analysis(overlap_results)
     landscape_results.plot_upset()
-    plt.savefig(processed_landscape_upset_path)
+    plt.savefig(configuration.processed_landscape_upset_path)
 
     landscape_results.plot_distribution()
     plt.tight_layout()
-    plt.savefig(processed_landscape_histogram_path)
+    plt.savefig(configuration.processed_landscape_histogram_path)
 
     template = get_jinja_template("config-summary.md")
     vv = template.render(
@@ -116,8 +106,8 @@ def write_summary(
         overlap_results=overlap_results,
         landscape_results=landscape_results,
     )
-    logger.info("writing summary to %s", readme_path)
-    readme_path.write_text(vv)
+    logger.info("writing summary to %s", configuration.readme_path)
+    configuration.readme_path.write_text(vv)
 
     stats = {
         "raw_term_count": landscape_results.total_term_count,
@@ -125,9 +115,25 @@ def write_summary(
         "reduction": landscape_results.reduction_percent,
         "distribution": landscape_results.distribution,
     }
-    stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
+    configuration.stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
+
+    if copy_to_landscape:
+        _copy_into_landscape_folder(configuration, paths)
 
     return overlap_results, landscape_results, paths
+
+
+def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
+    # copy all paths into landscapes folder
+    landscape_folder = HERE.parent.parent.joinpath("notebooks", "landscape").resolve()
+    if not landscape_folder.is_dir():
+        raise ValueError(
+            f"skipping copying into landscape folder since it doesn't exist at {landscape_folder}"
+        )
+    target_folder = landscape_folder.joinpath(config.key)
+    target_folder.mkdir(exist_ok=True)
+    for path in paths:
+        shutil.copyfile(path, target_folder.joinpath(path.name))
 
 
 class Summarizer:

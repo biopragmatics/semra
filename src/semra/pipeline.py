@@ -260,6 +260,46 @@ class Configuration(BaseModel):
         """Get the name for the raw mappings Neo4j docker image."""
         return f"semra-{self.key}-raw"
 
+    @property
+    def processed_landscape_upset_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("processed_landscape_upset.svg")
+
+    @property
+    def processed_landscape_histogram_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("processed_landscape_histogram.svg")
+
+    @property
+    def summary_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("summary.tsv")
+
+    @property
+    def raw_counts_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory / "raw_counts.tsv"
+
+    @property
+    def processed_counts_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory / "processed_counts.tsv"
+
+    @property
+    def processed_graph_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("processed_graph.svg")
+
+    @property
+    def readme_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("README.md")
+
+    @property
+    def stats_path(self) -> Path:
+        """Get the name for the raw mappings Neo4j docker image."""
+        return self.directory.joinpath("stats.json")
+
     @model_validator(mode="before")
     def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
         """Infer the priority from the input list of not given."""
@@ -497,8 +537,7 @@ class Configuration(BaseModel):
 
             from .summarize import write_summary
 
-            _, _, paths = write_summary(self, output_directory=self.directory, show_progress=True)
-            _copy_into_landscape_folder(self, paths)  # copy all paths into landscapes folder
+            write_summary(self, show_progress=True, copy_to_landscape=True)
 
             if upload:
                 self._safe_upload()
@@ -512,22 +551,6 @@ class Configuration(BaseModel):
             res = self.upload_zenodo()
             url = res.json()["links"]["html"]
             click.echo(f"uploaded to {url}")
-
-
-def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
-    # copy all paths into landscapes folder
-    landscape_folder = HERE.parent.parent.joinpath("notebooks", "landscape").resolve()
-    if not landscape_folder.is_dir():
-        logger.debug(
-            "skipping copying into landscape folder since it doesn't exist at %s", landscape_folder
-        )
-        return None
-    target_folder = landscape_folder.joinpath(config.key)
-    target_folder.mkdir(exist_ok=True)
-    import shutil
-
-    for path in paths:
-        shutil.copyfile(path, target_folder.joinpath(path.name))
 
 
 def get_priority_mappings_from_config(

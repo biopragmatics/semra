@@ -70,6 +70,9 @@ def write_summary(
         configuration.processed_graph_path,
         configuration.processed_landscape_upset_path,
         configuration.processed_landscape_histogram_path,
+        # priority
+        configuration.priority_counts_path,
+        configuration.priority_graph_path,
         # summaries
         configuration.source_summary_path,
         configuration.readme_path,
@@ -78,7 +81,7 @@ def write_summary(
 
     summarizer = Summarizer(configuration, show_progress=show_progress)
 
-    summary = summarizer.get_summary()
+    summary = summarizer.get_source_summary()
     summary.summary_df.to_csv(configuration.source_summary_path, sep="\t")
 
     overlap_results = summarizer.overlap_analysis(
@@ -89,8 +92,12 @@ def write_summary(
     overlap_results.processed_counts_df.to_csv(
         configuration.processed_counts_path, sep="\t", index=True
     )
+    overlap_results.priority_counts_df.to_csv(
+        configuration.priority_counts_path, sep="\t", index=True
+    )
     configuration.raw_graph_path.write_bytes(overlap_results.raw_counts_drawing)
     configuration.processed_graph_path.write_bytes(overlap_results.processed_counts_drawing)
+    configuration.priority_graph_path.write_bytes(overlap_results.priority_counts_drawing)
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
@@ -161,7 +168,9 @@ class Summarizer:
 
         self.terms_observed = get_observed_terms(self.processed_mappings)
 
-    def get_summary(self) -> SummaryResults:
+        self.priority_mappings = configuration.read_priority_mappings()
+
+    def get_source_summary(self) -> SummaryResults:
         """Get a summary."""
         summary_df = get_summary_df(
             prefixes=self.configuration.priority,
@@ -174,15 +183,6 @@ class Summarizer:
             number_pyobo_unavailable=(summary_df["terms"] == 0).sum(),
         )
 
-    def get_summary_df(self) -> pd.DataFrame:
-        """Get a summary dataframe."""
-        return get_summary_df(
-            prefixes=self.configuration.priority,
-            subsets=self.configuration.subsets,
-            terms_exact=self.terms_exact,
-            terms_observed=self.terms_observed,
-        )
-
     def overlap_analysis(
         self, *, minimum_count: int | None = None, show_progress: bool = False
     ) -> OverlapResults:
@@ -192,6 +192,7 @@ class Summarizer:
             self.terms_exact,
             minimum_count=minimum_count,
             processed_mappings=self.processed_mappings,
+            priority_mappings=self.priority_mappings,
             raw_mappings=self.raw_mappings,
             terms_observed=self.terms_observed,
             show_progress=show_progress,
@@ -202,7 +203,7 @@ class Summarizer:
         return landscape_analysis(
             configuration=self.configuration,
             processed_mappings=overlap_results.processed_mappings,
-            priority=overlap_results.processed_counts_df.index,
+            priority=self.configuration.priority,
             terms_exact=self.terms_exact,
             terms_observed=self.terms_observed,
         )
@@ -228,12 +229,17 @@ class OverlapResults:
     processed_counts: SymmetricCounter
     processed_counts_df: pd.DataFrame
 
+    priority_mappings: list[Mapping]
+    priority_counts: SymmetricCounter
+    priority_counts_df: pd.DataFrame
+
     gains_df: pd.DataFrame
     percent_gains_df: pd.DataFrame
     minimum_count: int | None = None
 
     raw_counts_drawing: bytes = field(init=False)
     processed_counts_drawing: bytes = field(init=False)
+    priority_counts_drawing: bytes = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize the object by creating a drawing of the counter."""
@@ -244,6 +250,9 @@ class OverlapResults:
         )
         self.processed_counts_drawing = draw_counter(
             self.processed_counts, cls=nx.Graph, minimum_count=self.minimum_count
+        )
+        self.priority_counts_drawing = draw_counter(
+            self.priority_counts, cls=nx.Graph, minimum_count=self.minimum_count
         )
 
     @property
@@ -263,6 +272,7 @@ def overlap_analysis(
     *,
     terms_observed: PrefixIdentifierDict,
     processed_mappings: list[Mapping],
+    priority_mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
     show_progress: bool = True,
@@ -270,18 +280,32 @@ def overlap_analysis(
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
         raise ValueError("No raw pickle path available")
-    raw_index = get_directed_index(
-        raw_mappings, show_progress=show_progress, predicates={EXACT_MATCH, DB_XREF}
-    )
+
+    predicates = {EXACT_MATCH, DB_XREF}
+
+    raw_index = get_directed_index(raw_mappings, show_progress=show_progress, predicates=predicates)
     raw_counts, raw_counts_df = get_symmetric_counts_df(
-        raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
+        raw_index, terms_exact=terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
     processed_index = get_directed_index(
-        processed_mappings, show_progress=show_progress, predicates={EXACT_MATCH, DB_XREF}
+        processed_mappings, show_progress=show_progress, predicates=predicates
     )
     processed_counts, processed_counts_df = get_symmetric_counts_df(
-        processed_index, terms, priority=configuration.priority, terms_observed=terms_observed
+        processed_index,
+        terms_exact=terms,
+        priority=configuration.priority,
+        terms_observed=terms_observed,
+    )
+
+    priority_index = get_directed_index(
+        priority_mappings, show_progress=show_progress, predicates=predicates
+    )
+    priority_counts, priority_counts_df = get_symmetric_counts_df(
+        priority_index,
+        terms_exact=terms,
+        priority=configuration.priority,
+        terms_observed=terms_observed,
     )
 
     gains_df = processed_counts_df - raw_counts_df
@@ -291,9 +315,14 @@ def overlap_analysis(
         raw_mappings=raw_mappings,
         raw_counts=raw_counts,
         raw_counts_df=raw_counts_df,
+        # processed
         processed_mappings=processed_mappings,
         processed_counts=processed_counts,
         processed_counts_df=processed_counts_df,
+        # priority
+        priority_mappings=priority_mappings,
+        priority_counts=priority_counts,
+        priority_counts_df=priority_counts_df,
         # diffs
         gains_df=gains_df,
         percent_gains_df=percent_gains_df,
@@ -362,14 +391,14 @@ def get_summary_df(
 
 def get_symmetric_counts_df(
     directed: DirectedIndex,
-    terms: PrefixIdentifierDict,
-    priority: list[str],
     *,
+    priority: list[str],
+    terms_exact: PrefixIdentifierDict,
     terms_observed: PrefixIdentifierDict,
 ) -> tuple[SymmetricCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter = get_symmetric_counter(
-        directed=directed, terms_exact=terms, priority=priority, terms_observed=terms_observed
+        directed=directed, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
     )
     df = counter_to_df(counter, priority=priority).fillna(0).astype(int)
     return counter, df

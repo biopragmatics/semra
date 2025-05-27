@@ -59,6 +59,10 @@ mappings = semra.io.from_jsonl("raw.jsonl.gz")
 mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
 ```
 
+Below is a graph-based view on the raw mappings.
+
+![](raw_graph.svg)
+
 ### Processed Mappings
 
 The processed mappings result from the application of inference, reasoning, and confidence
@@ -94,50 +98,37 @@ Below is a graph-based view on the processed mappings.
 
 ### Priority Mappings
 
-Following semantic mapping assembly, connected components of
-equivalent entities are resolved to a single entity based on
-the following prefix prioritization.
+A prioritization mapping is a special subset of processed mappings constructed
+using the prefix priority list. This mapping has the feature that every entity
+appears as a subject exactly once, with the object of its mapping being the
+priority entity. This creates a "star graph" for each priority entity.
+
+The prioritization for this output is:
 
 <ol>
-
-<li>
-Complex Portal (`complexportal`)
-</li>
-
-<li>
-FamPlex (`fplx`)
-</li>
-
-<li>
-Gene Ontology (`go`)
-</li>
-
-<li>
-ChEMBL target (`chembl.target`)
-</li>
-
-<li>
-Wikidata (`wikidata`)
-</li>
-
-<li>
-Selventa Complexes (`scomp`)
-</li>
-
-<li>
-Signaling Network Open Resource (`signor`)
-</li>
-
-<li>
-IntAct protein interaction database (`intact`)
-</li>
-
+<li>Complex Portal (`complexportal`)</li>
+<li>FamPlex (`fplx`)</li>
+<li>Gene Ontology (`go`)</li>
+<li>ChEMBL target (`chembl.target`)</li>
+<li>Wikidata (`wikidata`)</li>
+<li>Selventa Complexes (`scomp`)</li>
+<li>Signaling Network Open Resource (`signor`)</li>
+<li>IntAct protein interaction database (`intact`)</li>
 </ol>
 
-TODO
+| source_prefix   |   complexportal |   fplx |   go |   chembl.target |   wikidata |   scomp |   signor |   intact |
+|:----------------|----------------:|-------:|-----:|----------------:|-----------:|--------:|---------:|---------:|
+| complexportal   |            5031 |      7 |    2 |             203 |       4761 |       2 |      267 |     3325 |
+| fplx            |               7 |    782 |   50 |               0 |        411 |      66 |      118 |        5 |
+| go              |               2 |     50 | 2059 |               0 |         43 |      25 |       11 |        5 |
+| chembl.target   |             203 |      0 |    0 |             689 |          0 |       0 |        0 |        0 |
+| wikidata        |            4761 |    411 |   43 |               0 |          0 |      60 |       86 |     2043 |
+| scomp           |               2 |     66 |   25 |               0 |         60 |     135 |       14 |        2 |
+| signor          |             267 |    118 |   11 |               0 |         86 |      14 |      856 |        0 |
+| intact          |            3325 |      5 |    5 |               0 |       2043 |       2 |        0 |        0 |
 
-- What is a prioritization mapping (i.e., creates a star graph using processed mappings + prioritization order)
-- give example usage in docs
+The processed mappings can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
 import semra.io
@@ -153,6 +144,10 @@ mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
 df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
+
+Below is a graph-based view on the processed mappings.
+
+![](priority_graph.svg)
 
 ## Web Application
 

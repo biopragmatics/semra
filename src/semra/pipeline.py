@@ -286,6 +286,11 @@ class Configuration(BaseModel):
         return self.directory / "processed_counts.tsv"
 
     @property
+    def priority_counts_path(self) -> Path:
+        """Get the path to the priority counts summary TSV."""
+        return self.directory / "priority_counts.tsv"
+
+    @property
     def raw_graph_path(self) -> Path:
         """Get the path to the raw counts graph depiction."""
         return self.directory.joinpath("raw_graph.svg")
@@ -294,6 +299,11 @@ class Configuration(BaseModel):
     def processed_graph_path(self) -> Path:
         """Get the path to the processed counts graph depiction."""
         return self.directory.joinpath("processed_graph.svg")
+
+    @property
+    def priority_graph_path(self) -> Path:
+        """Get the path to the priority counts graph depiction."""
+        return self.directory.joinpath("priority_graph.svg")
 
     @property
     def readme_path(self) -> Path:

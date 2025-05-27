@@ -76,22 +76,23 @@ Below is a graph-based view on the processed mappings.
 
 ### Priority Mappings
 
-Following semantic mapping assembly, connected components of
-equivalent entities are resolved to a single entity based on
-the following prefix prioritization.
+A prioritization mapping is a special subset of processed mappings constructed
+using the prefix priority list. This mapping has the feature that every entity
+appears as a subject exactly once, with the object of its mapping being the
+priority entity. This creates a "star graph" for each priority entity.
+
+The prioritization for this output is:
 
 <ol>
-{% for prefix in configuration.priority %}
-<li>
-{{ bioregistry.get_name(prefix) }} (`{{ prefix }}`)
-</li>
-{% endfor %}
+{%- for prefix in configuration.priority %}
+<li>{{ bioregistry.get_name(prefix) }} (`{{ prefix }}`)</li>
+{%- endfor %}
 </ol>
 
-TODO
+{{ overlap_results.processed_counts_df.to_markdown() }}
 
-- What is a prioritization mapping (i.e., creates a star graph using processed mappings + prioritization order)
-- give example usage in docs
+The processed mappings can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
 import semra.io
@@ -107,6 +108,10 @@ mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
 df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
+
+Below is a graph-based view on the processed mappings.
+
+![](priority_graph.svg)
 
 ## Web Application
 

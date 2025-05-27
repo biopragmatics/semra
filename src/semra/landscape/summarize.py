@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typing as t
+import warnings
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -112,12 +113,18 @@ class OverlapResults:
             self.counts, cls=nx.Graph, minimum_count=self.minimum_count
         )
 
-    def write(self, directory: str | Path) -> None:
+    @property
+    def n_prefixes(self) -> int:
+        """Count the number of prefixes appearing in the processed mappings."""
+        return len(self.processed_counts_df.index)
+
+    @property
+    def number_overlaps(self) -> int:
+        """Calculate the number of overlaps that will appear in the UpSet plot."""
+        return 2**self.n_prefixes - 1
+
+    def write(self, directory: Path) -> None:
         """Write the tables and charts to a directory."""
-        directory = Path(directory).resolve()
-        self.processed_counts_df.to_csv(directory / "counts.tsv", sep="\t", index=True)
-        self.raw_counts_df.to_csv(directory / "raw_counts.tsv", sep="\t", index=True)
-        directory.joinpath("graph.svg").write_bytes(self.counts_drawing)
 
 
 def overlap_analysis(
@@ -405,7 +412,7 @@ class LandscapeResult:
 
     def get_description_markdown(self) -> str:
         """Describe the results in English prose."""
-        return f"""\
+        return dedent(f"""\
             This estimates a total of {self.reduced_term_count:,} unique entities.
 
             - {self.at_least_1_mapping:,}
@@ -420,19 +427,7 @@ class LandscapeResult:
 
             - Missing mappings inflates this measurement
             - Generic resources like MeSH contain irrelevant entities that can't be mapped
-        """
-
-    def get_reduction_text(self, configuration: Configuration) -> str:
-        """Get text summarizing the efficacy of reduction."""
-        return dedent(
-            rf"""\
-            The landscape of {len(configuration.priority)} resources has {self.total_term_count:,} total terms.
-            After merging redundant nodes based on mappings, inference, and reasoning, there
-            are {self.reduced_term_count:,} unique concepts. Using the reduction formula
-            $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-            this is a {self.reduction_percent:.1%} reduction.
-            """
-        )
+        """).strip()
 
     def get_upset_df(self) -> pd.DataFrame:
         """Get an :mod:`upsetplot`-compatible dataframe for the result counter."""
@@ -442,26 +437,34 @@ class LandscapeResult:
 
     def plot_upset(self) -> None:
         """Plot the results with an UpSet plot."""
-        upset_df = self.get_upset_df()
-        """Here's what the output from upsetplot.plot looks like:
+        with warnings.catch_warnings():
+            warnings.simplefilter(action="ignore", category=FutureWarning)
+            # we have to wrap the upset plot functionality with the future
+            # warning catching because it uses deprecated matplotlib and
+            # pandas functionality. unfortunataely, it appears the upstream
+            # https://github.com/jnothman/UpSetPlot is inactive
 
-        {'matrix': <Axes: >,
-         'shading': <Axes: >,
-         'totals': <Axes: >,
-         'intersections': <Axes: ylabel='Intersection size'>}
-        """
-        import upsetplot
+            import upsetplot
 
-        plot_result = upsetplot.plot(
-            upset_df,
-            # show_counts=True,
-        )
-        plot_result["intersections"].set_yscale("log")
-        plot_result["intersections"].set_ylim([1, plot_result["intersections"].get_ylim()[1]])
-        # plot_result["totals"].set_xlabel("Size")
-        mm, _ = plot_result["totals"].get_xlim()
-        plot_result["totals"].set_xlim([mm, 1])
-        plot_result["totals"].set_xscale("log")  # gets domain error
+            upset_df = self.get_upset_df()
+            """Here's what the output from upsetplot.plot looks like:
+
+            {'matrix': <Axes: >,
+             'shading': <Axes: >,
+             'totals': <Axes: >,
+             'intersections': <Axes: ylabel='Intersection size'>}
+            """
+
+            plot_result = upsetplot.plot(
+                upset_df,
+                # show_counts=True,
+            )
+            plot_result["intersections"].set_yscale("log")
+            plot_result["intersections"].set_ylim([1, plot_result["intersections"].get_ylim()[1]])
+            # plot_result["totals"].set_xlabel("Size")
+            mm, _ = plot_result["totals"].get_xlim()
+            plot_result["totals"].set_xlim([mm, 1])
+            plot_result["totals"].set_xscale("log")  # gets domain error
 
     def get_distribution(self) -> t.Counter[int]:
         """Get the distribution of component sizes."""

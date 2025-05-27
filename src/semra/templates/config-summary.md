@@ -2,6 +2,109 @@
 
 {{ configuration.description }}
 
+## Summarize the Resources
+
+We summarize the resources used in the landscape analysis, including their
+[Bioregistry](https://bioregistry.io) prefix, license, current version, and
+number of terms (i.e., named concepts) they contain.
+
+{% if number_pyobo_unavailable %}
+{{ number_pyobo_unavailable }} resources were not available through
+[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the number
+of terms in that resource based on the ones appearing in mappings. Note that these
+are typically an underestimate.
+{% endif %}
+
+{{ summary_df.to_markdown() }}
+
+There are a total of {{ summary_df["terms"].sum() }} terms across the {{ summary_df.index | length }} resources.
+
+## Summarize the Mappings
+
+In order to summarize the mappings, we're going to load them, index them, and count
+the number of mappings between each pair of resources. The self-mapping column is
+the count of terms in the resource. We'll do this to the raw mappings first, then
+to the processed mappings, then compare them.
+
+First, we summarize the raw mappings, i.e., the mappings that are directly available from the sources
+
+{{ overlap_results.raw_counts_df.to_markdown() }}
+
+Next, we summarize the processed mappings, which include inference, reasoning, and confidence filtering.
+
+{{ overlap_results.processed_counts_df.to_markdown() }}
+
+Below is a graph-based view on the processed mappings.
+
+![](graph.svg)
+
+## Comparison
+
+The following comparison shows the absolute number of mappings added by processing/inference.
+Across the board, this process adds large numbers of mappings to most resources, especially
+ones that were previously only connected to a small number of other resources.
+
+{{ overlap_results.gains_df.to_markdown() }}
+
+Here's an alternative view on the number of mappings normalized to show percentage gain. Note:
+
+- `inf` means that there were no mappings before and now there are a non-zero number of
+   mappings
+- `NaN` means there were no mappings before inference and continue to be no mappings after
+   inference
+
+{{ overlap_results.percent_gains_df.round(1).to_markdown() }}
+
+## Landscape Analysis
+
+Before, we looked at the overlaps between each resource. Now, we use that information
+jointly to estimate the number of terms in the landscape itself, and estimate how much
+of the landscape each resource covers.
+
+{{ landscape_results.get_description_markdown() | safe }}
+
+Because there are {{ overlap_results.n_prefixes }} prefixes,
+there are {{ overlap_results.number_overlaps }} possible overlaps to consider.
+Therefore, a Venn diagram is not possible, so
+we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
+(Lex *et al.*, 2014) as a high-dimensional Venn diagram.
+
+![](landscape_upset.svg)
+
+We now aggregate the mappings together to estimate the number of unique entities and number 
+that appear in each group of resources.
+
+![](landscape_histogram.svg)
+
+The landscape of {{ configuration.priority | length }} resources has
+{{ landscape_results.total_term_count }} total terms.
+After merging redundant nodes based on mappings, inference, and reasoning, there
+are {{ landscape_results.reduced_term_count }} unique concepts. Using the reduction formula
+{% raw %}$\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}${% endraw %},
+this is a {{ landscape_results.reduction_percent }} reduction.
+
+This is only an estimate and is susceptible to a few things:
+
+1. It can be artificially high because there are entities that _should_ be mapped, but are not
+2. It can be artificially low because there are entities that are incorrectly mapped, e.g., as
+   a result of inference. The frontend curation interface can help identify and remove these
+3. It can be artificially low because for some vocabularies like SNOMED-CT, it's not possible
+   to load a terms list, and therefore it's not possible to account for terms that aren't
+   mapped. Therefore, we make a lower bound estimate based on the terms that appear in
+   mappings.
+4. It can be artificially high if a vocabulary is used that covers many domains and is not
+   properly subset'd. For example, EFO covers many different domains, so when doing disease
+   landscape analysis, it should be subset to only terms in the disease hierarchy
+   (i.e., appearing under ``efo:0000408``).
+5. It can be affected by terminology issues, such as the confusion between Orphanet and ORDO
+6. It can be affected by the existence of many-to-many mappings, which are filtered out during
+   processing, which makes the estimate artificially high since some subset of those entities
+   could be mapped, but it's not clear which should.
+
+--------
+--------
+--------
+
 ## Configuration
 
 The `configuration.json` stores the sources and workflows applied to assemble mappings.

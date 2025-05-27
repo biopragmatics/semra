@@ -48,6 +48,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
+from semra.summarize import write_summary
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -495,9 +496,14 @@ class Configuration(BaseModel):
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
-            from .summarize import write_summary
+            _, _, paths = write_summary(self, output_directory=self.directory, show_progress=True)
+            # copy all paths into landscapes folder
+            target_folder = HERE.parent.parent.joinpath("notebooks", "landscape", self.key)
+            if target_folder.is_dir():
+                import shutil
 
-            write_summary(self, output_directory=self.directory, show_progress=True)
+                for path in paths:
+                    shutil.copyfile(path, target_folder.joinpath(path.name))
 
             if upload:
                 self._safe_upload()

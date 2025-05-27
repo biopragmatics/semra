@@ -50,7 +50,7 @@ def write_summary(
     output_directory: str | Path | None = None,
     minimum_count: int | None = None,
     show_progress: bool = False,
-) -> tuple[OverlapResults, LandscapeResult]:
+) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
     """Run the landscape analysis inside a Jupyter notebook."""
     import matplotlib.pyplot as plt
 
@@ -63,31 +63,50 @@ def write_summary(
             configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
         )
 
+    processed_landscape_upset_path = output_directory.joinpath("processed_landscape_upset.svg")
+    processed_landscape_histogram_path = output_directory.joinpath(
+        "processed_landscape_histogram.svg"
+    )
+    summary_path = output_directory.joinpath("summary.tsv")
+    raw_counts_path = output_directory / "raw_counts.tsv"
+    processed_counts_path = output_directory / "processed_counts.tsv"
+    processed_graph_path = output_directory.joinpath("processed_graph.svg")
+    readme_path = output_directory.joinpath("README.md")
+    stats_path = output_directory.joinpath("stats.json")
+
+    paths = [
+        processed_landscape_upset_path,
+        processed_landscape_histogram_path,
+        summary_path,
+        raw_counts_path,
+        processed_counts_path,
+        processed_graph_path,
+        readme_path,
+        stats_path,
+    ]
+
     summarizer = Summarizer(configuration, show_progress=show_progress)
 
     summary = summarizer.get_summary()
-    summary.summary_df.to_csv(output_directory.joinpath("summary.tsv"), sep="\t")
+    summary.summary_df.to_csv(summary_path, sep="\t")
 
     overlap_results = summarizer.overlap_analysis(
         minimum_count=minimum_count,
         show_progress=show_progress,
     )
-    overlap_results.processed_counts_df.to_csv(
-        output_directory / "processed_counts.tsv", sep="\t", index=True
-    )
-    overlap_results.raw_counts_df.to_csv(output_directory / "raw_counts.tsv", sep="\t", index=True)
-    output_directory.joinpath("processed_graph.svg").write_bytes(overlap_results.counts_drawing)
+    overlap_results.raw_counts_df.to_csv(raw_counts_path, sep="\t", index=True)
+    overlap_results.processed_counts_df.to_csv(processed_counts_path, sep="\t", index=True)
+    processed_graph_path.write_bytes(overlap_results.counts_drawing)
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = summarizer.landscape_analysis(overlap_results)
-
     landscape_results.plot_upset()
-    plt.savefig(output_directory.joinpath("processed_landscape_upset.svg"))
+    plt.savefig(processed_landscape_upset_path)
 
     landscape_results.plot_distribution()
     plt.tight_layout()
-    plt.savefig(output_directory.joinpath("processed_landscape_histogram.svg"))
+    plt.savefig(processed_landscape_histogram_path)
 
     template = get_jinja_template("config-summary.md")
     vv = template.render(
@@ -97,9 +116,8 @@ def write_summary(
         overlap_results=overlap_results,
         landscape_results=landscape_results,
     )
-    results_path = output_directory.joinpath("README.md")
-    logger.info("writing summary to %s", results_path)
-    results_path.write_text(vv)
+    logger.info("writing summary to %s", readme_path)
+    readme_path.write_text(vv)
 
     stats = {
         "raw_term_count": landscape_results.total_term_count,
@@ -107,10 +125,9 @@ def write_summary(
         "reduction": landscape_results.reduction_percent,
         "distribution": landscape_results.distribution,
     }
-    stats_path = output_directory.joinpath("stats.json")
     stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
 
-    return overlap_results, landscape_results
+    return overlap_results, landscape_results, paths
 
 
 class Summarizer:
@@ -126,6 +143,7 @@ class Summarizer:
 
         self.raw_mappings = configuration.read_raw_mappings()
         self.processed_mappings = configuration.read_processed_mappings()
+        # TODO summarize priority mappings?
         if configuration.subsets:
             hydrated_subsets = configuration.get_hydrated_subsets(show_progress=show_progress)
             self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)

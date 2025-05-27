@@ -819,6 +819,7 @@ def summarize_configuration(
         return vv
     else:
         Path(path).expanduser().resolve().write_text(vv)
+        return None
 
 
 if __name__ == "__main__":

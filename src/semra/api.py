@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Collection, Iterable
-from typing import Literal, TypeVar, cast, overload
+from typing import Literal, TypeAlias, TypeVar, cast, overload
 
 import bioregistry
 import networkx as nx
@@ -35,6 +35,7 @@ __all__ = [
     "DirectedIndex",
     "Index",
     "M2MIndex",
+    "ObservedTerms",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -50,6 +51,7 @@ __all__ = [
     "get_directed_index",
     "get_index",
     "get_many_to_many",
+    "get_observed_terms",
     "get_priority_reference",
     "get_test_evidence",
     "get_test_reference",
@@ -947,7 +949,7 @@ def prioritize_df(
 #: An index from (source prefix, target prefix) to identifiers
 #: in the source vocabulary that have been mappped to the target
 #: vocabulary
-DirectedIndex = dict[tuple[str, str], set[str]]
+DirectedIndex: TypeAlias = dict[tuple[str, str], set[str]]
 
 
 def get_directed_index(
@@ -974,12 +976,39 @@ def get_directed_index(
             ("P3", "P1"): {"X"},
         }
     """
-    index: Iterable[Mapping] = get_index(mappings, progress=show_progress, leave=False)
+    triples: Iterable[Triple] = iter(get_index(mappings, progress=show_progress, leave=False))
     directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     if predicates is not None:
         target_predicates_ = set(predicates)
-        index = (triple for triple in index if triple.predicate in target_predicates_)
-    for triple in index:
+        triples = (triple for triple in triples if triple.predicate in target_predicates_)
+    for triple in triples:
         directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
         directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
     return dict(directed)
+
+
+#: A dictionary from prefixes appearing in subjects/objects
+#: of mappings to the set local unique identifiers appearing
+#: in mappings
+ObservedTerms: TypeAlias = dict[str, set[str]]
+
+
+def get_observed_terms(mappings: t.Iterable[Mapping]) -> ObservedTerms:
+    """Get the set of terms appearing in each prefix.
+
+    :param mappings: An iterable of mappings
+    :return:
+        A dictionary from prefixes appearing in subjects/objects
+        of mappings to the set local unique identifiers appearing
+        in mappings
+
+    >>> m1 = Mapping(subject="chebi:10084", predicate=EXACT_MATCH, object="mesh:C453820")
+    >>> m2 = Mapping(subject="chebi:10100", predicate=EXACT_MATCH, object="mesh:C062735")
+    >>> get_observed_terms([m1, m2])
+    {'chebi': {'10084', '10084'}, 'mesh': {'C453820', 'C062735'}}
+    """
+    entities: defaultdict[str, set[str]] = defaultdict(set)
+    for mapping in mappings:
+        for reference in (mapping.subject, mapping.object):
+            entities[reference.prefix].add(reference.identifier)
+    return dict(entities)

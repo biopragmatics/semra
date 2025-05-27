@@ -3,7 +3,7 @@
 import json
 import typing as t
 import warnings
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
@@ -19,16 +19,18 @@ import upsetplot
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 
-from semra import DB_XREF, EXACT_MATCH, Reference
 from semra.api import (
     DirectedIndex,
+    ObservedTerms,
     count_component_sizes,
     filter_subsets,
     get_directed_index,
+    get_observed_terms,
     hydrate_subsets,
 )
 from semra.pipeline import Configuration, SubsetConfiguration
-from semra.struct import Mapping
+from semra.rules import DB_XREF, EXACT_MATCH
+from semra.struct import Mapping, Reference
 
 __all__ = [
     "counter_to_df",
@@ -41,7 +43,6 @@ __all__ = [
 
 XXCounter = t.Counter[tuple[str, str]]
 XXTerms = t.Mapping[str, t.Mapping[str, str]]
-XXObservedTerms = dict[str, set[str]]
 XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
@@ -312,7 +313,7 @@ def overlap_analysis(
     configuration: Configuration,
     terms: XXTerms,
     *,
-    terms_observed: XXObservedTerms,
+    terms_observed: ObservedTerms,
     processed_mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
@@ -386,7 +387,7 @@ def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> boo
     return Reference(prefix=prefix, identifier=identifier) in subset
 
 
-def _count_terms(prefix: str, terms: XXTerms, terms_observed: XXObservedTerms) -> tuple[int, bool]:
+def _count_terms(prefix: str, terms: XXTerms, terms_observed: ObservedTerms) -> tuple[int, bool]:
     terms_exact = terms.get(prefix)
     if terms_exact:
         exact = True
@@ -405,7 +406,7 @@ def get_summary_df(
     *,
     subsets: SubsetConfiguration | None = None,
     terms: XXTerms,
-    terms_observed: XXObservedTerms,
+    terms_observed: ObservedTerms,
 ) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
@@ -464,7 +465,7 @@ def get_symmetric_counts_df(
     terms: XXTerms,
     priority: list[str],
     *,
-    terms_observed: XXObservedTerms,
+    terms_observed: ObservedTerms,
 ) -> tuple[XXCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter: XXCounter = Counter()
@@ -549,20 +550,11 @@ def counter_to_df(
     return df
 
 
-def get_observed_terms(mappings: t.Iterable[Mapping]) -> dict[str, set[str]]:
-    """Get the set of terms appearing in each prefix."""
-    entities: defaultdict[str, set[str]] = defaultdict(set)
-    for mapping in mappings:
-        for reference in (mapping.subject, mapping.object):
-            entities[reference.prefix].add(reference.identifier)
-    return dict(entities)
-
-
 def count_unobserved(
     *,
     prefixes: t.Collection[str],
     prefix_to_identifiers: XXTerms,
-    prefix_to_observed_identifiers: XXObservedTerms,
+    prefix_to_observed_identifiers: ObservedTerms,
 ) -> t.Counter[frozenset[str]]:
     """Count the number of unobserved entities for each prefix."""
     rv: t.Counter[frozenset[str]] = Counter()
@@ -595,7 +587,7 @@ def landscape_analysis(
     prefix_to_identifiers: XXTerms,
     priority: list[str],
     *,
-    prefix_to_observed_identifiers: XXObservedTerms,
+    prefix_to_observed_identifiers: ObservedTerms,
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
     mapped_counter = count_component_sizes(mappings=processed_mappings, prefix_allowlist=priority)

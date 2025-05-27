@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import typing as t
 import warnings
 from collections import Counter
@@ -29,12 +30,83 @@ from semra.api import (
 from semra.pipeline import Configuration
 from semra.rules import DB_XREF, EXACT_MATCH, SubsetConfiguration
 from semra.struct import Mapping
+from semra.utils import get_jinja_template
 
 __all__ = [
     "LandscapeResult",
     "OverlapResults",
     "Summarizer",
+    "SummaryResults",
+    "write_summary",
 ]
+
+
+def write_summary(
+    configuration: Configuration,
+    *,
+    output_directory: str | Path | None = None,
+    minimum_count: int | None = None,
+    show_progress: bool = False,
+) -> tuple[OverlapResults, LandscapeResult]:
+    """Run the landscape analysis inside a Jupyter notebook."""
+    import matplotlib.pyplot as plt
+
+    if output_directory is None:
+        output_directory = configuration.directory
+    output_directory = Path(output_directory).expanduser().resolve()
+
+    if not configuration.configuration_path.is_file():
+        configuration.configuration_path.write_text(
+            configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
+        )
+
+    summarizer = Summarizer(configuration, show_progress=show_progress)
+
+    summary = summarizer.get_summary()
+    summary.summary_df.to_csv(output_directory.joinpath("summary.tsv"), sep="\t")
+
+    overlap_results = summarizer.overlap_analysis(
+        minimum_count=minimum_count,
+        show_progress=show_progress,
+    )
+    overlap_results.processed_counts_df.to_csv(
+        output_directory / "counts.tsv", sep="\t", index=True
+    )
+    overlap_results.raw_counts_df.to_csv(output_directory / "raw_counts.tsv", sep="\t", index=True)
+    output_directory.joinpath("graph.svg").write_bytes(overlap_results.counts_drawing)
+
+    # note we're using the sliced counts dataframe index instead of the
+    # original priority since we threw a couple prefixes away along the way
+    landscape_results = summarizer.landscape_analysis(overlap_results)
+
+    landscape_results.plot_upset()
+    plt.savefig(output_directory.joinpath("landscape_upset.svg"))
+
+    landscape_results.plot_distribution()
+    plt.tight_layout()
+    plt.savefig(output_directory.joinpath("landscape_histogram.svg"))
+
+    template = get_jinja_template("config-summary.md")
+    vv = template.render(
+        configuration=configuration,
+        bioregistry=bioregistry,
+        summary=summary,
+        overlap_results=overlap_results,
+        landscape_results=landscape_results,
+    )
+    results_path = output_directory.joinpath("README.md")
+    results_path.write_text(vv)
+
+    stats = {
+        "raw_term_count": landscape_results.total_term_count,
+        "unique_term_count": landscape_results.reduced_term_count,
+        "reduction": landscape_results.reduction_percent,
+        "distribution": landscape_results.distribution,
+    }
+    stats_path = output_directory.joinpath("stats.json")
+    stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
+
+    return overlap_results, landscape_results
 
 
 class Summarizer:
@@ -56,6 +128,19 @@ class Summarizer:
             self.processed_mappings = filter_subsets(self.processed_mappings, hydrated_subsets)
 
         self.terms_observed = get_observed_terms(self.processed_mappings)
+
+    def get_summary(self) -> SummaryResults:
+        """Get a summary."""
+        summary_df = get_summary_df(
+            prefixes=self.configuration.priority,
+            subsets=self.configuration.subsets,
+            terms_exact=self.terms_exact,
+            terms_observed=self.terms_observed,
+        )
+        return SummaryResults(
+            summary_df=summary_df,
+            number_pyobo_unavailable=(summary_df["terms"] == 0).sum(),
+        )
 
     def get_summary_df(self) -> pd.DataFrame:
         """Get a summary dataframe."""
@@ -91,6 +176,14 @@ class Summarizer:
         )
 
 
+@dataclass()
+class SummaryResults:
+    """Summary results."""
+
+    summary_df: pd.DataFrame
+    number_pyobo_unavailable: int
+
+
 @dataclass
 class OverlapResults:
     """Results from mapping analysis."""
@@ -121,10 +214,7 @@ class OverlapResults:
     @property
     def number_overlaps(self) -> int:
         """Calculate the number of overlaps that will appear in the UpSet plot."""
-        return 2**self.n_prefixes - 1
-
-    def write(self, directory: Path) -> None:
-        """Write the tables and charts to a directory."""
+        return cast(int, 2**self.n_prefixes) - 1
 
 
 def overlap_analysis(
@@ -286,7 +376,7 @@ def draw_counter(
 
 
 def counter_to_df(
-    counter: SymmetricCounter, priority: list[str], drop_missing: bool = True
+    counter: SymmetricCounter, priority: list[str], *, drop_missing: bool = True
 ) -> pd.DataFrame:
     """Get a dataframe from a counter."""
     rows = [[counter.get((p1, p2), None) for p2 in priority] for p1 in priority]

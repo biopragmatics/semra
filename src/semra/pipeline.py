@@ -7,9 +7,8 @@ import time
 import typing as t
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Literal, overload
+from typing import Any, Literal
 
-import bioregistry
 import click
 import requests
 from pydantic import BaseModel, Field, model_validator
@@ -494,6 +493,7 @@ class Configuration(BaseModel):
             )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
+
             if upload:
                 self._safe_upload()
 
@@ -792,37 +792,3 @@ def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float
         f"(Δ={len(mappings) - before:,}) in %.2f seconds.",
         elapsed,
     )
-
-
-# docstr-coverage: inherited
-@overload
-def summarize_configuration(configuration: Configuration, path: None = ...) -> str: ...
-
-
-# docstr-coverage: inherited
-@overload
-def summarize_configuration(configuration: Configuration, path: str | Path = ...) -> None: ...
-
-
-def summarize_configuration(
-    configuration: Configuration, path: str | Path | None = None
-) -> str | None:
-    """Summarize a configuration."""
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-
-    templates = HERE.joinpath("templates")
-    environment = Environment(loader=FileSystemLoader(templates), autoescape=select_autoescape())
-    template = environment.get_template("config-summary.md")
-    vv = template.render(configuration=configuration, bioregistry=bioregistry)
-
-    if path is None:
-        return vv
-    else:
-        Path(path).expanduser().resolve().write_text(vv)
-        return None
-
-
-if __name__ == "__main__":
-    from semra.landscape import anatomy
-
-    summarize_configuration(anatomy.CONFIGURATION, path="anatomy.md")

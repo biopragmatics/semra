@@ -2,7 +2,7 @@
 
 {{ configuration.description }}
 
-## Summarize the Resources
+## Resource Summary
 
 We summarize the resources used in the landscape analysis, including their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
@@ -15,22 +15,26 @@ of terms in that resource based on the ones appearing in mappings. Note that the
 are typically an underestimate.
 {% endif %}
 
-{{ summary_df.to_markdown() }}
+{{ summary.summary_df.to_markdown() }}
 
-There are a total of {{ summary_df["terms"].sum() }} terms across the {{ summary_df.index | length }} resources.
+There are a total of {{ "{:,}".format(summary.number_pyobo_unavailable) }} terms across
+the {{ summary.summary_df.index | length }} resources.
 
-## Summarize the Mappings
+## Raw Mapping Summary
 
-In order to summarize the mappings, we're going to load them, index them, and count
-the number of mappings between each pair of resources. The self-mapping column is
-the count of terms in the resource. We'll do this to the raw mappings first, then
-to the processed mappings, then compare them.
+The raw mappings are the ones directly read from the {{ configuration.inputs | length }} sources.
 
-First, we summarize the raw mappings, i.e., the mappings that are directly available from the sources
+- This table is symmetric, i.e., taking into account mappings from both the source and target.
+- Diagonals represent the number of entities in the resource (or the number that are observed
+  in the mappings, in some cases)
+- All predicate types are combined in this table.
 
 {{ overlap_results.raw_counts_df.to_markdown() }}
 
-Next, we summarize the processed mappings, which include inference, reasoning, and confidence filtering.
+## Processed Mapping Summary
+
+The processed mappings result from the application of inference, reasoning, and confidence
+filtering.
 
 {{ overlap_results.processed_counts_df.to_markdown() }}
 
@@ -46,12 +50,12 @@ ones that were previously only connected to a small number of other resources.
 
 {{ overlap_results.gains_df.to_markdown() }}
 
-Here's an alternative view on the number of mappings normalized to show percentage gain. Note:
+Here's an alternative view on the number of mappings normalized to show percentage gain. Note that:
 
 - `inf` means that there were no mappings before and now there are a non-zero number of
-   mappings
+  mappings
 - `NaN` means there were no mappings before inference and continue to be no mappings after
-   inference
+  inference
 
 {{ overlap_results.percent_gains_df.round(1).to_markdown() }}
 
@@ -64,24 +68,24 @@ of the landscape each resource covers.
 {{ landscape_results.get_description_markdown() | safe }}
 
 Because there are {{ overlap_results.n_prefixes }} prefixes,
-there are {{ overlap_results.number_overlaps }} possible overlaps to consider.
+there are {{ "{:,}".format(overlap_results.number_overlaps) }} possible overlaps to consider.
 Therefore, a Venn diagram is not possible, so
 we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
 (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
 
 ![](landscape_upset.svg)
 
-We now aggregate the mappings together to estimate the number of unique entities and number 
+We now aggregate the mappings together to estimate the number of unique entities and number
 that appear in each group of resources.
 
 ![](landscape_histogram.svg)
 
 The landscape of {{ configuration.priority | length }} resources has
-{{ landscape_results.total_term_count }} total terms.
+{{ "{:,}".format(landscape_results.total_term_count) }} total terms.
 After merging redundant nodes based on mappings, inference, and reasoning, there
-are {{ landscape_results.reduced_term_count }} unique concepts. Using the reduction formula
+are {{ "{:,}".format(landscape_results.reduced_term_count) }} unique concepts. Using the reduction formula
 {% raw %}$\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}${% endraw %},
-this is a {{ landscape_results.reduction_percent }} reduction.
+this is a {{ "{:.2%}".format(landscape_results.reduction_percent) }} reduction.
 
 This is only an estimate and is susceptible to a few things:
 

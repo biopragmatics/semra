@@ -398,6 +398,7 @@ class LandscapeResult:
         self.counter = self.mapped_counter + self.single_counter
         self.distribution = self.get_distribution()
 
+    @property
     def reduction_percent(self) -> float:
         """Get the reduction percent."""
         return (self.total_term_count - self.reduced_term_count) / self.total_term_count

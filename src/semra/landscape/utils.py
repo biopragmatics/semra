@@ -6,9 +6,12 @@ import json
 import warnings
 from pathlib import Path
 from textwrap import dedent
+from typing import Any
 
+import IPython.display
 import matplotlib.pyplot as plt
-from IPython.display import SVG, Markdown, display
+import pandas as pd
+from IPython.display import SVG, Markdown
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 from semra.landscape.summarize import LandscapeResult, OverlapResults, Summarizer
@@ -20,7 +23,15 @@ __all__ = [
 
 
 def _markdown(x: str) -> None:
-    display(Markdown(dedent(x)))
+    IPython.display.display(Markdown(dedent(x)))
+
+
+def _display(x: Any) -> None:
+    IPython.display.display(x)
+
+
+def _display_df(x: pd.DataFrame) -> None:
+    IPython.display.display(x)
 
 
 def notebook(
@@ -68,7 +79,7 @@ def notebook(
         """
         )
 
-    display(summary_df)
+    _display_df(summary_df)
 
     _summary_total = summary_df["terms"].sum()
     _markdown(
@@ -95,14 +106,14 @@ def notebook(
         "First, we summarize the raw mappings, i.e., the mappings that are directly available "
         "from the sources"
     )
-    display(overlap_results.raw_counts_df)
+    _display_df(overlap_results.raw_counts_df)
     _markdown(
         "Next, we summarize the processed mappings, which include inference, reasoning, and "
         "confidence filtering."
     )
-    display(overlap_results.processed_counts_df)
+    _display_df(overlap_results.processed_counts_df)
     _markdown("Below is an graph-based view on the processed mappings.")
-    display(SVG(overlap_results.counts_drawing))
+    _display(SVG(overlap_results.counts_drawing))
     _markdown(
         """\
     ## Comparison
@@ -112,7 +123,7 @@ def notebook(
     ones that were previously only connected to a small number of other resources.
     """
     )
-    display(overlap_results.gains_df)
+    _display_df(overlap_results.gains_df)
     _markdown(
         """\
     Here's an alternative view on the number of mappings normalized to show percentage gain.
@@ -125,7 +136,7 @@ def notebook(
        inference
     """
     )
-    display(overlap_results.percent_gains_df.round(1))
+    _display_df(overlap_results.percent_gains_df.round(1))
     _markdown(
         """\
         ## Landscape Analysis
@@ -159,6 +170,7 @@ def notebook(
         # pandas functionality. unfortunataely, it appears the upstream
         # https://github.com/jnothman/UpSetPlot is inactive
         landscape_results.plot_upset()
+
     plt.savefig(output_directory.joinpath("landscape_upset.svg"))
     if show:
         plt.show()

@@ -13,7 +13,6 @@ import bioregistry
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-import pyobo
 import seaborn as sns
 import upsetplot
 from IPython.display import SVG, Markdown, display
@@ -21,16 +20,16 @@ from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 from semra.api import (
     DirectedIndex,
-    ObservedTerms,
+    PrefixIdentifierDict,
     count_component_sizes,
     filter_subsets,
     get_directed_index,
     get_observed_terms,
-    hydrate_subsets,
+    get_terms,
 )
 from semra.pipeline import Configuration, SubsetConfiguration
 from semra.rules import DB_XREF, EXACT_MATCH
-from semra.struct import Mapping, Reference
+from semra.struct import Mapping
 
 __all__ = [
     "counter_to_df",
@@ -42,8 +41,6 @@ __all__ = [
 ]
 
 XXCounter = t.Counter[tuple[str, str]]
-XXTerms = t.Mapping[str, t.Mapping[str, str]]
-XXSubsets = t.Mapping[str, t.Collection[str]]
 
 
 def _markdown(x: str) -> None:
@@ -233,7 +230,7 @@ def notebook(
     reduced = landscape_results.total_entity_estimate
     total_terms = 0
     for prefix in configuration.priority:
-        count, _exact = _count_terms(prefix, terms=terms, terms_observed=terms_observed)
+        count, _exact = _count_terms(prefix, terms, terms_observed)
         total_terms += count
     reduction_percent = (total_terms - reduced) / total_terms
     _markdown(
@@ -311,9 +308,9 @@ class OverlapResults:
 
 def overlap_analysis(
     configuration: Configuration,
-    terms: XXTerms,
+    terms: PrefixIdentifierDict,
     *,
-    terms_observed: ObservedTerms,
+    terms_observed: PrefixIdentifierDict,
     processed_mappings: list[Mapping],
     raw_mappings: list[Mapping],
     minimum_count: int | None = None,
@@ -351,50 +348,17 @@ def overlap_analysis(
     )
 
 
-def get_terms(
-    prefixes: list[str],
-    subset_configuration: SubsetConfiguration | None = None,
-    *,
-    show_progress: bool = True,
-) -> XXTerms:
-    """Get the set of identifiers for each of the resources."""
-    prefix_to_identifier_to_name = {}
-    if subset_configuration is None:
-        hydrated_subset_configuration: SubsetConfiguration = {}
-    else:
-        hydrated_subset_configuration = hydrate_subsets(
-            subset_configuration, show_progress=show_progress
-        )
-    for prefix in prefixes:
-        # TODO need to exclude default references here
-        id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
-        subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
-        if subset:
-            prefix_to_identifier_to_name[prefix] = {
-                identifier: name
-                for identifier, name in id_to_name.items()
-                if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
-            }
-        else:
-            prefix_to_identifier_to_name[prefix] = id_to_name
-    return prefix_to_identifier_to_name
-
-
-def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> bool:
-    # check if the identifier is a "default" reference
-    if identifier.startswith(f"{prefix}#"):
-        return False
-    return Reference(prefix=prefix, identifier=identifier) in subset
-
-
-def _count_terms(prefix: str, terms: XXTerms, terms_observed: ObservedTerms) -> tuple[int, bool]:
-    terms_exact = terms.get(prefix)
-    if terms_exact:
+def _count_terms(
+    prefix: str,
+    prefix_to_identifier_exact: PrefixIdentifierDict,
+    prefix_to_identifier_observed: PrefixIdentifierDict,
+) -> tuple[int, bool]:
+    if prefix in prefix_to_identifier_exact:
         exact = True
-        count = len(terms_exact)
-    elif prefix in terms_observed:
+        count = len(prefix_to_identifier_exact[prefix])
+    elif prefix in prefix_to_identifier_observed:
         exact = False
-        count = len(terms_observed[prefix])
+        count = len(prefix_to_identifier_observed[prefix])
     else:
         exact = False
         count = 0
@@ -405,8 +369,8 @@ def get_summary_df(
     prefixes: list[str],
     *,
     subsets: SubsetConfiguration | None = None,
-    terms: XXTerms,
-    terms_observed: ObservedTerms,
+    terms: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
 ) -> pd.DataFrame:
     """Create a summary dataframe for the prefixes in a landscape analysis.
 
@@ -462,10 +426,10 @@ def get_summary_df(
 
 def get_symmetric_counts_df(
     directed: DirectedIndex,
-    terms: XXTerms,
+    terms: PrefixIdentifierDict,
     priority: list[str],
     *,
-    terms_observed: ObservedTerms,
+    terms_observed: PrefixIdentifierDict,
 ) -> tuple[XXCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter: XXCounter = Counter()
@@ -553,8 +517,8 @@ def counter_to_df(
 def count_unobserved(
     *,
     prefixes: t.Collection[str],
-    prefix_to_identifiers: XXTerms,
-    prefix_to_observed_identifiers: ObservedTerms,
+    prefix_to_identifiers: PrefixIdentifierDict,
+    prefix_to_observed_identifiers: PrefixIdentifierDict,
 ) -> t.Counter[frozenset[str]]:
     """Count the number of unobserved entities for each prefix."""
     rv: t.Counter[frozenset[str]] = Counter()
@@ -584,10 +548,10 @@ def count_unobserved(
 def landscape_analysis(
     configuration: Configuration,
     processed_mappings: list[Mapping],
-    prefix_to_identifiers: XXTerms,
+    prefix_to_identifiers: PrefixIdentifierDict,
     priority: list[str],
     *,
-    prefix_to_observed_identifiers: ObservedTerms,
+    prefix_to_observed_identifiers: PrefixIdentifierDict,
 ) -> "LandscapeResult":
     """Run the landscape analysis."""
     mapped_counter = count_component_sizes(mappings=processed_mappings, prefix_allowlist=priority)

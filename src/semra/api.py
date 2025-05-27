@@ -35,7 +35,8 @@ __all__ = [
     "DirectedIndex",
     "Index",
     "M2MIndex",
-    "ObservedTerms",
+    "PrefixIdentifierDict",
+    "PrefixIdentifierDict",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -53,6 +54,7 @@ __all__ = [
     "get_many_to_many",
     "get_observed_terms",
     "get_priority_reference",
+    "get_terms",
     "get_test_evidence",
     "get_test_reference",
     "hydrate_subsets",
@@ -990,10 +992,10 @@ def get_directed_index(
 #: A dictionary from prefixes appearing in subjects/objects
 #: of mappings to the set local unique identifiers appearing
 #: in mappings
-ObservedTerms: TypeAlias = dict[str, set[str]]
+PrefixIdentifierDict: TypeAlias = t.Mapping[str, Collection[str]]
 
 
-def get_observed_terms(mappings: t.Iterable[Mapping]) -> ObservedTerms:
+def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     """Get the set of terms appearing in each prefix.
 
     :param mappings: An iterable of mappings
@@ -1012,3 +1014,41 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> ObservedTerms:
         for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
+
+
+def get_terms(
+    prefixes: list[str],
+    subset_configuration: SubsetConfiguration | None = None,
+    *,
+    show_progress: bool = True,
+) -> PrefixIdentifierDict:
+    """Get the set of identifiers for each of the resources."""
+    import pyobo
+
+    prefix_to_identifier_to_name = {}
+    if subset_configuration is None:
+        hydrated_subset_configuration: SubsetConfiguration = {}
+    else:
+        hydrated_subset_configuration = hydrate_subsets(
+            subset_configuration, show_progress=show_progress
+        )
+    for prefix in prefixes:
+        # TODO need to exclude default references here
+        id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
+        subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
+        if subset:
+            prefix_to_identifier_to_name[prefix] = {
+                identifier
+                for identifier in id_to_name
+                if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
+            }
+        else:
+            prefix_to_identifier_to_name[prefix] = set(id_to_name)
+    return prefix_to_identifier_to_name
+
+
+def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> bool:
+    # check if the identifier is a "default" reference
+    if identifier.startswith(f"{prefix}#"):
+        return False
+    return Reference(prefix=prefix, identifier=identifier) in subset

@@ -391,6 +391,7 @@ class Configuration(BaseModel):
             self.processed_jsonl_path,
             self.priority_sssom_path,
             self.priority_jsonl_path,
+            # TODO add summaries?
         ]
         for path in paths:
             if path is None:
@@ -493,6 +494,10 @@ class Configuration(BaseModel):
             )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
+
+            from .summarize import write_summary
+
+            write_summary(self, output_directory=self.directory, show_progress=True)
 
             if upload:
                 self._safe_upload()

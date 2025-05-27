@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import typing as t
 import warnings
 from collections import Counter
@@ -40,6 +41,8 @@ __all__ = [
     "write_summary",
 ]
 
+logger = logging.getLogger(__name__)
+
 
 def write_summary(
     configuration: Configuration,
@@ -70,21 +73,21 @@ def write_summary(
         show_progress=show_progress,
     )
     overlap_results.processed_counts_df.to_csv(
-        output_directory / "counts.tsv", sep="\t", index=True
+        output_directory / "processed_counts.tsv", sep="\t", index=True
     )
     overlap_results.raw_counts_df.to_csv(output_directory / "raw_counts.tsv", sep="\t", index=True)
-    output_directory.joinpath("graph.svg").write_bytes(overlap_results.counts_drawing)
+    output_directory.joinpath("processed_graph.svg").write_bytes(overlap_results.counts_drawing)
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
     landscape_results = summarizer.landscape_analysis(overlap_results)
 
     landscape_results.plot_upset()
-    plt.savefig(output_directory.joinpath("landscape_upset.svg"))
+    plt.savefig(output_directory.joinpath("processed_landscape_upset.svg"))
 
     landscape_results.plot_distribution()
     plt.tight_layout()
-    plt.savefig(output_directory.joinpath("landscape_histogram.svg"))
+    plt.savefig(output_directory.joinpath("processed_landscape_histogram.svg"))
 
     template = get_jinja_template("config-summary.md")
     vv = template.render(
@@ -95,6 +98,7 @@ def write_summary(
         landscape_results=landscape_results,
     )
     results_path = output_directory.joinpath("README.md")
+    logger.info("writing summary to %s", results_path)
     results_path.write_text(vv)
 
     stats = {

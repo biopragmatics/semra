@@ -40,7 +40,7 @@ filtering.
 
 Below is a graph-based view on the processed mappings.
 
-![](graph.svg)
+![](processed_graph.svg)
 
 ## Comparison
 
@@ -73,12 +73,12 @@ Therefore, a Venn diagram is not possible, so
 we use an [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993)
 (Lex *et al.*, 2014) as a high-dimensional Venn diagram.
 
-![](landscape_upset.svg)
+![](processed_landscape_upset.svg)
 
 We now aggregate the mappings together to estimate the number of unique entities and number
 that appear in each group of resources.
 
-![](landscape_histogram.svg)
+![](processed_landscape_histogram.svg)
 
 The landscape of {{ configuration.priority | length }} resources has
 {{ "{:,}".format(landscape_results.total_term_count) }} total terms.

@@ -62,7 +62,32 @@ prefix blocklist.
 ### Processed Mappings
 
 The processed mappings result from the application of inference, reasoning, and
-confidence filtering.
+confidence filtering. The following prior knowledge was used during processing:
+
+<table>
+<thead>
+<tr>
+<th>Source Prefix</th>
+<th>Target Prefix</th>
+<th>Old Predicate</th>
+<th>New Predicate</th>
+<th align="right">Confidence</th>
+</tr>
+</thead>
+<tbody>
+{% for mutation in configuration.mutations %}
+<tr>
+<td>{{ mutation.source }}</td>
+<td>{{ mutation.target }}</td>
+<td>{{ mutation.old.curie }}</td>
+<td>{{ mutation.new.curie }}</td>
+<td align="right">{{ mutation.confidence }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+This produced a mapping matrix of the following:
 
 {{ overlap_results.processed_counts_df.to_markdown() }}
 
@@ -203,37 +228,8 @@ This is only an estimate and is susceptible to a few things:
    since some subset of those entities could be mapped, but it's not clear which
    should.
 
-## Configuration Summary
-
-### Sources
-
-<ul>
-{% for source in configuration.inputs %}
-<li>{{ source }}</li>
-{% endfor %}
-</ul>
-
-### Prior Knowledge
-
-<ul>
-{% for mutation in configuration.mutations %}
-<li>{{ mutation }}</li>
-{% endfor %}
-</ul>
-
 ## Licensing
 
 Mappings are licensed according to their primary resources. These are explicitly
 annotated in the SSSOM file on each row (when available) and on the mapping set
 level in the Neo4j graph database artifacts.
-
-## Extras
-
-An automatically assembled dataset of raw semantic mappings produced by python
--m semra.database. This incorporates mappings from the following places:
-
-- Ontologies indexed in the Bioregistry (primary)
-- Databases integrated in PyOBO (primary)
-- Biomappings (secondary)
-- Wikidata (primary/secondary)
-- Custom resources integrated in SeMRA (primary)

@@ -117,7 +117,7 @@ def write_summary(
         summary=summary,
         overlap_results=overlap_results,
         landscape_results=landscape_results,
-    )
+    ).strip() + "\n"
     logger.info("writing summary to %s", configuration.readme_path)
     configuration.readme_path.write_text(vv)
 
@@ -267,7 +267,7 @@ class OverlapResults:
     @property
     def number_overlaps(self) -> int:
         """Calculate the number of overlaps that will appear in the UpSet plot."""
-        return cast(int, 2**self.n_prefixes) - 1
+        return cast(int, 2 ** self.n_prefixes) - 1
 
 
 def overlap_analysis(

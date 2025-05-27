@@ -76,7 +76,32 @@ prefix blocklist.
 ### Processed Mappings
 
 The processed mappings result from the application of inference, reasoning, and
-confidence filtering.
+confidence filtering. The following prior knowledge was used during processing:
+
+<table>
+<thead>
+<tr>
+<th>Source Prefix</th>
+<th>Target Prefix</th>
+<th>Old Predicate</th>
+<th>New Predicate</th>
+<th align="right">Confidence</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>go</td>
+<td></td>
+<td>oboinowl:hasDbXref</td>
+<td>skos:exactMatch</td>
+<td align="right">0.95</td>
+</tr>
+
+</tbody>
+</table>
+
+This produced a mapping matrix of the following:
 
 | source_prefix   |   complexportal |   fplx |   go |   chembl.target |   wikidata |   scomp |   signor |   intact |
 |:----------------|----------------:|-------:|-----:|----------------:|-----------:|--------:|---------:|---------:|
@@ -269,53 +294,8 @@ This is only an estimate and is susceptible to a few things:
    since some subset of those entities could be mapped, but it's not clear which
    should.
 
-## Configuration Summary
-
-### Sources
-
-<ul>
-
-<li>source='gilda' prefix=None confidence=1.0 extras={}</li>
-
-<li>source='biomappings' prefix=None confidence=1.0 extras={}</li>
-
-<li>source='pyobo' prefix='fplx' confidence=0.99 extras={}</li>
-
-<li>source='custom' prefix='fplx' confidence=0.99 extras={}</li>
-
-<li>source='custom' prefix='intact_complexportal' confidence=0.99 extras={}</li>
-
-<li>source='pyobo' prefix='complexportal' confidence=0.99 extras={}</li>
-
-<li>source='pyobo' prefix='go' confidence=0.99 extras={}</li>
-
-<li>source='wikidata' prefix='complexportal' confidence=0.99 extras={}</li>
-
-<li>source='wikidata' prefix='reactome' confidence=0.99 extras={}</li>
-
-</ul>
-
-### Prior Knowledge
-
-<ul>
-
-<li>source='go' confidence=0.95 old=NormalizedNamableReference(prefix='oboinowl', identifier='hasDbXref', name='has database cross-reference') new=NormalizedNamableReference(prefix='skos', identifier='exactMatch', name='exact match')</li>
-
-</ul>
-
 ## Licensing
 
 Mappings are licensed according to their primary resources. These are explicitly
 annotated in the SSSOM file on each row (when available) and on the mapping set
 level in the Neo4j graph database artifacts.
-
-## Extras
-
-An automatically assembled dataset of raw semantic mappings produced by python
--m semra.database. This incorporates mappings from the following places:
-
-- Ontologies indexed in the Bioregistry (primary)
-- Databases integrated in PyOBO (primary)
-- Biomappings (secondary)
-- Wikidata (primary/secondary)
-- Custom resources integrated in SeMRA (primary)

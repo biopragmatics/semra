@@ -48,7 +48,6 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
-from semra.summarize import write_summary
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -496,6 +495,8 @@ class Configuration(BaseModel):
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
+            from .summarize import write_summary
+
             _, _, paths = write_summary(self, output_directory=self.directory, show_progress=True)
             _copy_into_landscape_folder(self, paths)  # copy all paths into landscapes folder
 
@@ -515,12 +516,18 @@ class Configuration(BaseModel):
 
 def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
     # copy all paths into landscapes folder
-    target_folder = HERE.parent.parent.joinpath("notebooks", "landscape", config.key)
-    if target_folder.is_dir():
-        import shutil
+    landscape_folder = HERE.parent.parent.joinpath("notebooks", "landscape").resolve()
+    if not landscape_folder.is_dir():
+        logger.debug(
+            "skipping copying into landscape folder since it doesn't exist at %s", landscape_folder
+        )
+        return None
+    target_folder = landscape_folder.joinpath(config.key)
+    target_folder.mkdir(exist_ok=True)
+    import shutil
 
-        for path in paths:
-            shutil.copyfile(path, target_folder.joinpath(path.name))
+    for path in paths:
+        shutil.copyfile(path, target_folder.joinpath(path.name))
 
 
 def get_priority_mappings_from_config(

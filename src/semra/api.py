@@ -8,7 +8,7 @@ import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Collection, Iterable
-from typing import Literal, TypeAlias, TypeVar, cast, overload
+from typing import Literal, NamedTuple, TypeAlias, TypeVar, cast, overload
 
 import bioregistry
 import networkx as nx
@@ -37,6 +37,7 @@ __all__ = [
     "M2MIndex",
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
+    "SymmetricCounter",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -54,6 +55,7 @@ __all__ = [
     "get_many_to_many",
     "get_observed_terms",
     "get_priority_reference",
+    "get_symmetric_counter",
     "get_terms",
     "get_test_evidence",
     "get_test_reference",
@@ -1052,3 +1054,60 @@ def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> boo
     if identifier.startswith(f"{prefix}#"):
         return False
     return Reference(prefix=prefix, identifier=identifier) in subset
+
+
+#: A counter from pairs of prefixes to the maximum number
+#: of observed terms of one or the other. Note that this
+#: estimate is only an upper bound.
+SymmetricCounter = t.Counter[tuple[str, str]]
+
+
+class TermCount(NamedTuple):
+    """A count that's annotated as being exact or not."""
+
+    exact: bool
+    count: int
+
+
+def _count_terms(
+    prefix: str,
+    prefix_to_identifier_exact: PrefixIdentifierDict,
+    prefix_to_identifier_observed: PrefixIdentifierDict,
+) -> TermCount:
+    if prefix in prefix_to_identifier_exact:
+        return TermCount(True, len(prefix_to_identifier_exact[prefix]))
+    elif prefix in prefix_to_identifier_observed:
+        return TermCount(False, len(prefix_to_identifier_observed[prefix]))
+    else:
+        return TermCount(False, 0)
+
+
+def get_symmetric_counter(
+    directed: DirectedIndex,
+    priority: list[str],
+    *,
+    terms_exact: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
+) -> SymmetricCounter:
+    """Create a symmetric mapping counts counter from a directed index."""
+    counter: SymmetricCounter = Counter()
+
+    for left_prefix, right_prefix in directed:
+        left_observed_terms = directed[left_prefix, right_prefix]
+        left_all_terms: t.Collection[str] = terms_exact.get(left_prefix, [])
+        if left_all_terms:
+            left_observed_terms.intersection_update(left_all_terms)
+
+        right_observed_terms = directed[right_prefix, left_prefix]
+        right_all_terms: t.Collection[str] = terms_exact.get(right_prefix, [])
+        if right_all_terms:
+            right_observed_terms.intersection_update(right_all_terms)
+
+        counter[left_prefix, right_prefix] = max(
+            len(left_observed_terms), len(right_observed_terms)
+        )
+
+    for prefix in priority:
+        counter[prefix, prefix] = _count_terms(prefix, terms_exact, terms_observed).count
+
+    return counter

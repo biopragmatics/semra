@@ -46,7 +46,8 @@ mappings = semra.io.from_jsonl("raw.jsonl.gz")
 mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
 ```
 
-Below is a graph-based view on the raw mappings.
+Below is a graph-based view on the raw mappings. Note that this may contain many more prefixes than
+what's relevant for processing. The configuration allows for specifying a prefix allowlist and prefix blocklist.
 
 ![](raw_graph.svg)
 

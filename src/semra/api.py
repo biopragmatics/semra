@@ -1066,7 +1066,7 @@ class TermCount(NamedTuple):
     """A count that's annotated as being exact or not."""
 
     exact: bool
-    count: int
+    count: int  # type:ignore
 
 
 def _count_terms(
@@ -1075,7 +1075,11 @@ def _count_terms(
     prefix_to_identifier_observed: PrefixIdentifierDict,
 ) -> TermCount:
     if prefix in prefix_to_identifier_exact:
-        return TermCount(True, len(prefix_to_identifier_exact[prefix]))
+        count = len(prefix_to_identifier_exact[prefix])
+        # there is a situation where there might be a zero-
+        # returned here because of impedance between pyobo
+        # and bioregistry
+        return TermCount(bool(count) > 0, count)
     elif prefix in prefix_to_identifier_observed:
         return TermCount(False, len(prefix_to_identifier_observed[prefix]))
     else:

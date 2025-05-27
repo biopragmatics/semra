@@ -18,31 +18,27 @@ import seaborn as sns
 import upsetplot
 from IPython.display import SVG, Markdown, display
 from matplotlib_inline.backend_inline import set_matplotlib_formats
-from pyobo.sources.mesh import get_mesh_category_curies
 
-from semra import Reference
+from semra import DB_XREF, EXACT_MATCH, Reference
 from semra.api import (
+    DirectedIndex,
     count_component_sizes,
     filter_subsets,
-    get_index,
+    get_directed_index,
     hydrate_subsets,
 )
 from semra.pipeline import Configuration, SubsetConfiguration
-from semra.rules import DB_XREF, EXACT_MATCH
 from semra.struct import Mapping
 
 __all__ = [
     "counter_to_df",
     "draw_counter",
-    "get_mesh_category_curies",
     "get_symmetric_counts_df",
     "landscape_analysis",
     "notebook",
     "overlap_analysis",
 ]
 
-
-DirectedIndex = dict[tuple[str, str], set[str]]
 XXCounter = t.Counter[tuple[str, str]]
 XXTerms = t.Mapping[str, t.Mapping[str, str]]
 XXObservedTerms = dict[str, set[str]]
@@ -325,12 +321,16 @@ def overlap_analysis(
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
         raise ValueError("No raw pickle path available")
-    raw_index = _get_summary_index(raw_mappings, show_progress=show_progress)
+    raw_index = get_directed_index(
+        raw_mappings, show_progress=show_progress, predicates={EXACT_MATCH, DB_XREF}
+    )
     _, raw_counts_df = get_symmetric_counts_df(
         raw_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    processed_index = _get_summary_index(processed_mappings, show_progress=show_progress)
+    processed_index = get_directed_index(
+        processed_mappings, show_progress=show_progress, predicates={EXACT_MATCH, DB_XREF}
+    )
     processed_counts, processed_counts_df = get_symmetric_counts_df(
         processed_index, terms, priority=configuration.priority, terms_observed=terms_observed
     )
@@ -457,36 +457,6 @@ def get_summary_df(
     )
     df = df.set_index("prefix")
     return df
-
-
-def _get_summary_index(
-    mappings: t.Iterable[Mapping], *, show_progress: bool = True
-) -> DirectedIndex:
-    """Index which entities in each vocabulary have been mapped.
-
-    :param mappings: An iterable of mappings to be indexed
-    :return: A directed index
-
-    For example, if we have the triple P1:1 skos:exactMatch P2:A and P1:1 skos:exactMatch P3:X, we
-    would have the following index:
-
-    .. code-block::
-
-        {
-           ("P1", "P2"): {"1"},
-           ("P2", "P1"): {"A"},
-           ("P1", "P3"): {"1"},
-           ("P3", "P1"): {"X"},
-        }
-    """
-    index = get_index(mappings, progress=show_progress, leave=False)
-    directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
-    target_predicates = {EXACT_MATCH, DB_XREF}
-    for triple in index:
-        if triple.predicate in target_predicates:
-            directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
-            directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
-    return dict(directed)
 
 
 def get_symmetric_counts_df(

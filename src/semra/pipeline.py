@@ -794,10 +794,12 @@ def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float
     )
 
 
+# docstr-coverage: inherited
 @overload
 def summarize_configuration(configuration: Configuration, path: None = ...) -> str: ...
 
 
+# docstr-coverage: inherited
 @overload
 def summarize_configuration(configuration: Configuration, path: str | Path = ...) -> None: ...
 

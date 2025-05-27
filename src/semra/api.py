@@ -7,7 +7,7 @@ import logging
 import typing
 import typing as t
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from typing import Literal, TypeVar, cast, overload
 
 import bioregistry
@@ -32,6 +32,7 @@ from semra.utils import cleanup_prefixes, semra_tqdm
 
 __all__ = [
     "TEST_MAPPING_SET",
+    "DirectedIndex",
     "Index",
     "M2MIndex",
     "assemble_evidences",
@@ -46,6 +47,7 @@ __all__ = [
     "filter_self_matches",
     "filter_subsets",
     "flip",
+    "get_directed_index",
     "get_index",
     "get_many_to_many",
     "get_priority_reference",
@@ -940,3 +942,44 @@ def prioritize_df(
         return curie_remapping.get(norm_curie, norm_curie)
 
     df[target_column] = df[column].map(_map_curie)
+
+
+#: An index from (source prefix, target prefix) to identifiers
+#: in the source vocabulary that have been mappped to the target
+#: vocabulary
+DirectedIndex = dict[tuple[str, str], set[str]]
+
+
+def get_directed_index(
+    mappings: t.Iterable[Mapping],
+    *,
+    show_progress: bool = True,
+    predicates: Collection[Reference] | None = None,
+) -> DirectedIndex:
+    """Index which entities in each vocabulary have been mapped.
+
+    :param mappings: An iterable of mappings to be indexed
+    :param predicates: If given, filter to mappings with these predicates
+    :return: A directed index
+
+    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and
+    ``P1:1 skos:exactMatch P3:X``, we would have the following index:
+
+    .. code-block:: python
+
+        {
+            ("P1", "P2"): {"1"},
+            ("P2", "P1"): {"A"},
+            ("P1", "P3"): {"1"},
+            ("P3", "P1"): {"X"},
+        }
+    """
+    index: Iterable[Mapping] = get_index(mappings, progress=show_progress, leave=False)
+    directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    if predicates is not None:
+        target_predicates_ = set(predicates)
+        index = (triple for triple in index if triple.predicate in target_predicates_)
+    for triple in index:
+        directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
+        directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
+    return dict(directed)

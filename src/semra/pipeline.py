@@ -497,13 +497,7 @@ class Configuration(BaseModel):
                 self._build_docker()
 
             _, _, paths = write_summary(self, output_directory=self.directory, show_progress=True)
-            # copy all paths into landscapes folder
-            target_folder = HERE.parent.parent.joinpath("notebooks", "landscape", self.key)
-            if target_folder.is_dir():
-                import shutil
-
-                for path in paths:
-                    shutil.copyfile(path, target_folder.joinpath(path.name))
+            _copy_into_landscape_folder(self, paths)  # copy all paths into landscapes folder
 
             if upload:
                 self._safe_upload()
@@ -517,6 +511,16 @@ class Configuration(BaseModel):
             res = self.upload_zenodo()
             url = res.json()["links"]["html"]
             click.echo(f"uploaded to {url}")
+
+
+def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
+    # copy all paths into landscapes folder
+    target_folder = HERE.parent.parent.joinpath("notebooks", "landscape", config.key)
+    if target_folder.is_dir():
+        import shutil
+
+        for path in paths:
+            shutil.copyfile(path, target_folder.joinpath(path.name))
 
 
 def get_priority_mappings_from_config(

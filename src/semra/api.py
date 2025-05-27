@@ -32,7 +32,7 @@ from semra.utils import cleanup_prefixes, semra_tqdm
 
 __all__ = [
     "TEST_MAPPING_SET",
-    "DirectedIndex",
+    "IdentifierIndex",
     "Index",
     "M2MIndex",
     "PrefixIdentifierDict",
@@ -51,7 +51,7 @@ __all__ = [
     "filter_subsets",
     "flip",
     "get_asymmetric_counter",
-    "get_directed_index",
+    "get_identifier_index",
     "get_index",
     "get_many_to_many",
     "get_observed_terms",
@@ -954,15 +954,16 @@ def prioritize_df(
 #: An index from (source prefix, target prefix) to identifiers
 #: in the source vocabulary that have been mappped to the target
 #: vocabulary
-DirectedIndex: TypeAlias = dict[tuple[str, str], set[str]]
+IdentifierIndex: TypeAlias = dict[tuple[str, str], set[str]]
 
 
-def get_directed_index(
+def get_identifier_index(
     mappings: t.Iterable[Mapping],
     *,
     show_progress: bool = True,
     predicates: Collection[Reference] | None = None,
-) -> DirectedIndex:
+    directed: bool = False,
+) -> IdentifierIndex:
     """Index which entities in each vocabulary have been mapped.
 
     :param mappings: An iterable of mappings to be indexed
@@ -982,14 +983,15 @@ def get_directed_index(
         }
     """
     triples: Iterable[Triple] = iter(get_index(mappings, progress=show_progress, leave=False))
-    directed: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    index: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     if predicates is not None:
         target_predicates_ = set(predicates)
         triples = (triple for triple in triples if triple.predicate in target_predicates_)
     for triple in triples:
-        directed[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
-        directed[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
-    return dict(directed)
+        index[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
+        if not directed:
+            index[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
+    return dict(index)
 
 
 #: A dictionary from prefixes appearing in subjects/objects
@@ -1088,7 +1090,7 @@ def _count_terms(
 
 
 def get_symmetric_counter(
-    directed: DirectedIndex,
+    index: IdentifierIndex,
     priority: list[str],
     *,
     terms_exact: PrefixIdentifierDict,
@@ -1098,13 +1100,13 @@ def get_symmetric_counter(
     """Create a symmetric mapping counts counter from a directed index."""
     counter: PrefixPairCounter = Counter()
 
-    for left_prefix, right_prefix in directed:
-        left_observed_terms = directed[left_prefix, right_prefix]
+    for left_prefix, right_prefix in index:
+        left_observed_terms = index[left_prefix, right_prefix]
         left_all_terms: t.Collection[str] = terms_exact.get(left_prefix, [])
         if left_all_terms:
             left_observed_terms.intersection_update(left_all_terms)
 
-        right_observed_terms = directed[right_prefix, left_prefix]
+        right_observed_terms = index[right_prefix, left_prefix]
         right_all_terms: t.Collection[str] = terms_exact.get(right_prefix, [])
         if right_all_terms:
             right_observed_terms.intersection_update(right_all_terms)
@@ -1121,7 +1123,7 @@ def get_symmetric_counter(
 
 
 def get_asymmetric_counter(
-    directed: DirectedIndex,
+    index: IdentifierIndex,
     priority: list[str],
     *,
     terms_exact: PrefixIdentifierDict,
@@ -1131,6 +1133,6 @@ def get_asymmetric_counter(
     return Counter(
         {
             (left_prefix, right_prefix): len(identifiers)
-            for (left_prefix, right_prefix), identifiers in directed.items()
+            for (left_prefix, right_prefix), identifiers in index.items()
         }
     )

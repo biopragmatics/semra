@@ -18,14 +18,14 @@ import networkx as nx
 import pandas as pd
 
 from semra.api import (
-    DirectedIndex,
+    IdentifierIndex,
     PrefixIdentifierDict,
     PrefixPairCounter,
     _count_terms,
     count_component_sizes,
     filter_subsets,
     get_asymmetric_counter,
-    get_directed_index,
+    get_identifier_index,
     get_observed_terms,
     get_symmetric_counter,
     get_terms,
@@ -287,13 +287,18 @@ def overlap_analysis(
 
     predicates = {EXACT_MATCH, DB_XREF}
 
-    raw_index = get_directed_index(raw_mappings, show_progress=show_progress, predicates=predicates)
+    raw_index = get_identifier_index(
+        raw_mappings, show_progress=show_progress, predicates=predicates, directed=False
+    )
     raw_counts, raw_counts_df = get_symmetric_counts_df(
         raw_index, terms_exact=terms, priority=configuration.priority, terms_observed=terms_observed
     )
 
-    processed_index = get_directed_index(
-        processed_mappings, show_progress=show_progress, predicates=predicates
+    processed_index = get_identifier_index(
+        processed_mappings,
+        show_progress=show_progress,
+        predicates=predicates,
+        directed=False,
     )
     processed_counts, processed_counts_df = get_symmetric_counts_df(
         processed_index,
@@ -302,8 +307,11 @@ def overlap_analysis(
         terms_observed=terms_observed,
     )
 
-    priority_index = get_directed_index(
-        priority_mappings, show_progress=show_progress, predicates=predicates
+    priority_index = get_identifier_index(
+        priority_mappings,
+        show_progress=show_progress,
+        predicates=predicates,
+        directed=True,
     )
     priority_counts, priority_counts_df = get_asymmetric_counts_df(
         priority_index,
@@ -394,7 +402,7 @@ def get_summary_df(
 
 
 def get_symmetric_counts_df(
-    directed: DirectedIndex,
+    index: IdentifierIndex,
     *,
     priority: list[str],
     terms_exact: PrefixIdentifierDict,
@@ -402,14 +410,14 @@ def get_symmetric_counts_df(
 ) -> tuple[PrefixPairCounter, pd.DataFrame]:
     """Create a symmetric mapping counts dataframe from a directed index."""
     counter = get_symmetric_counter(
-        directed=directed, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
+        index=index, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
     )
     df = counter_to_df(counter, priority=priority).fillna(0).astype(int)
     return counter, df
 
 
 def get_asymmetric_counts_df(
-    directed: DirectedIndex,
+    index: IdentifierIndex,
     *,
     priority: list[str],
     terms_exact: PrefixIdentifierDict,
@@ -417,7 +425,7 @@ def get_asymmetric_counts_df(
 ) -> tuple[PrefixPairCounter, pd.DataFrame]:
     """Create an asymmetric mapping counts dataframe from a directed index."""
     counter = get_asymmetric_counter(
-        directed=directed, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
+        index=index, terms_exact=terms_exact, priority=priority, terms_observed=terms_observed
     )
     df = counter_to_df(counter, priority=priority).fillna(0).astype(int)
     return counter, df
@@ -459,12 +467,15 @@ def draw_counter(
     bottom, top = min(values), max(values)
     rr = top - bottom
 
-    for edge, weight in counter.items():
+    for (source_prefix, target_prefix), weight in counter.items():
         if not weight:
             continue
         x = 1 + scaling_factor * (weight - bottom) / rr
-        if agraph.has_edge(*edge):
-            agraph.get_edge(*edge).attr["penwidth"] = x
+        if agraph.has_edge(source_prefix, target_prefix):
+            edge = agraph.get_edge(source_prefix, target_prefix)
+            edge.attr["penwidth"] = x
+            if directed:
+                edge.attr["arrowhead"] = "normal"
     return cast(bytes, agraph.draw(prog=prog, format=output_format))
 
 

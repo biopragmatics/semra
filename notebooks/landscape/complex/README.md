@@ -127,15 +127,14 @@ The prioritization for this output is:
 <li><a href="https://bioregistry.io/intact">IntAct protein interaction database (<code>intact</code>)</a></li>
 </ol>
 
-| source_prefix   |   complexportal |   fplx |   go |   wikidata |   scomp |   signor |   intact |
-|:----------------|----------------:|-------:|-----:|-----------:|--------:|---------:|---------:|
-| complexportal   |               0 |      7 |    2 |       4759 |       2 |        0 |     3315 |
-| fplx            |               7 |      0 |   47 |        163 |      62 |      118 |        0 |
-| go              |               2 |     47 |    0 |          0 |       0 |        0 |        0 |
-| wikidata        |            4761 |    398 |    0 |          0 |       0 |        0 |        0 |
-| scomp           |               2 |     63 |    0 |          0 |       0 |        0 |        0 |
-| signor          |               0 |    118 |    0 |          0 |       0 |        0 |        0 |
-| intact          |            3315 |      0 |    0 |          0 |       0 |        0 |        0 |
+| source_prefix   |   complexportal |   fplx |
+|:----------------|----------------:|-------:|
+| fplx            |               7 |      0 |
+| go              |               2 |     47 |
+| wikidata        |            4761 |    398 |
+| scomp           |               2 |     63 |
+| signor          |               0 |    118 |
+| intact          |            3315 |      0 |
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -156,7 +155,7 @@ df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
 
-Below is a graph-based view on the processed mappings.
+Below is a graph-based view on the priority mappings.
 
 ![](priority_graph.svg)
 

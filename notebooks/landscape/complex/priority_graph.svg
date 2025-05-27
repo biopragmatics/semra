@@ -36,7 +36,7 @@
 <g id="edge2" class="edge">
 <title>complexportal&#45;&#45;wikidata</title>
 <path fill="none" stroke="black" stroke-width="4" d="M259.26,-79C281.33,-79 305.47,-79 325.31,-79"/>
-<text text-anchor="middle" x="292.22" y="-82.2" font-family="Times,serif" font-size="14.00">4,759</text>
+<text text-anchor="middle" x="292.22" y="-82.2" font-family="Times,serif" font-size="14.00">4,761</text>
 </g>
 <!-- fplx -->
 <g id="node4" class="node">
@@ -47,8 +47,8 @@
 <!-- wikidata&#45;&#45;fplx -->
 <g id="edge3" class="edge">
 <title>wikidata&#45;&#45;fplx</title>
-<path fill="none" stroke="black" stroke-width="1.1" d="M404.75,-69.26C425.21,-63.64 450.39,-56.73 468.64,-51.73"/>
-<text text-anchor="middle" x="439.02" y="-65.2" font-family="Times,serif" font-size="14.00">163</text>
+<path fill="none" stroke="black" stroke-width="1.25" d="M404.75,-69.26C425.21,-63.64 450.39,-56.73 468.64,-51.73"/>
+<text text-anchor="middle" x="439.02" y="-65.2" font-family="Times,serif" font-size="14.00">398</text>
 </g>
 <!-- signor -->
 <g id="node6" class="node">
@@ -84,7 +84,7 @@
 <g id="edge4" class="edge">
 <title>scomp&#45;&#45;fplx</title>
 <path fill="none" stroke="black" stroke-width="1.04" d="M403.63,-27.52C417.79,-28.85 434.33,-30.79 449.15,-33.5 455.67,-34.69 462.65,-36.34 469.09,-38.02"/>
-<text text-anchor="middle" x="439.02" y="-36.7" font-family="Times,serif" font-size="14.00">62</text>
+<text text-anchor="middle" x="439.02" y="-36.7" font-family="Times,serif" font-size="14.00">63</text>
 </g>
 </g>
 </svg>

@@ -120,7 +120,7 @@ df = ...
 semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
 ```
 
-Below is a graph-based view on the processed mappings.
+Below is a graph-based view on the priority mappings.
 
 ![](priority_graph.svg)
 

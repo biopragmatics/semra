@@ -16,11 +16,12 @@ Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
 The following resources are represented in processed mappings generated. They
 are summarized in the following table that includes their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
-number of terms (i.e., named concepts) they contain.2 resources were not
-available through [PyOBO](https://github.com/biopragmatics/pyobo). Therefore,
-the number of terms in that resource are estimated based on the ones that are
-observed in mappings assembled by SeMRA. Note that these are typically an
-underestimate.
+number of terms (i.e., named concepts) they contain.
+
+2 resources were not available through
+[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, the number of terms
+in that resource are estimated based on the ones that are observed in mappings
+assembled by SeMRA. Note that these are typically an underestimate.
 
 | prefix        | name                                | license      | version    | terms | status   |
 | :------------ | :---------------------------------- | :----------- | :--------- | ----: | :------- |

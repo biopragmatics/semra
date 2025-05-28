@@ -26,7 +26,7 @@ are summarized in the following table that includes their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
-{%- if summary.number_pyobo_unavailable %}{{ summary.number_pyobo_unavailable }}
+{% if summary.number_pyobo_unavailable %}{{ summary.number_pyobo_unavailable }}
 resources were not available through
 [PyOBO](https://github.com/biopragmatics/pyobo). Therefore, the number of terms
 in that resource are estimated based on the ones that are observed in mappings

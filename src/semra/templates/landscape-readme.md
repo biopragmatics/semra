@@ -2,15 +2,13 @@
 
 This folder contains results from a workflow for automating the analysis of the
 landscape of a given domain, given a declarative configuration describing the
-resources in that domain. It includes 6 landscape analyses:
+resources in that domain. It includes {{ functions | length }} landscape
+analyses:
 
 <ol>
-<li><a href="taxrank/">SeMRA Taxonomical Ranks Mappings Database</a></li>
-<li><a href="complex/">SeMRA Protein Complex Landscape Analysis</a></li>
-<li><a href="anatomy/">SeMRA Anatomy Mappings Database</a></li>
-<li><a href="cell/">SeMRA Cell and Cell Line Mappings Database</a></li>
-<li><a href="disease/">SeMRA Disease Mappings Database</a></li>
-<li><a href="gene/">SeMRA Gene Mapping Database</a></li>
+{%- for conf, _cli in functions %}
+<li><a href="{{ conf.key }}/">{{ conf.name }}</a></li>
+{%- endfor %}
 </ol>
 
 ## Example
@@ -39,13 +37,7 @@ and how many show up in a few
 
 The summary table over all landscapes can be generated with `semra landscape`.
 
-| Domain  | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
-| :------ | -----------: | --------------: | :-------------- | :-------------------------------------------- |
-| complex |         9552 |            9121 | 4.5%            | https://bioregistry.io/zenodo.record:11091422 |
-| anatomy |        39362 |           33877 | 13.9%           | https://bioregistry.io/zenodo.record:11091803 |
-| cell    |       218557 |          172299 | 21.2%           | https://bioregistry.io/zenodo.record:11091581 |
-| disease |       377250 |          275044 | 27.1%           | https://bioregistry.io/zenodo.record:11091886 |
-| gene    |     58382593 |        57660624 | 1.2%            | https://bioregistry.io/zenodo.record:11092013 |
+{{ df.to_markdown(index=False) }}
 
 ## Rebuild
 

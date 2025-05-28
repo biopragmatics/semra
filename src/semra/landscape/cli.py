@@ -1,6 +1,10 @@
 """CLI for landscape builds."""
 
+import os
+from functools import lru_cache
+
 import click
+import pandas as pd
 from more_click import verbose_option
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -10,12 +14,30 @@ from semra.pipeline import (
     REFRESH_PROCESSED_OPTION,
     REFRESH_RAW_OPTION,
     REFRESH_SOURCE_OPTION,
+    STATS_FILE_NAME,
     UPLOAD_OPTION,
+    Configuration,
 )
+from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 
 __all__ = [
     "landscape",
 ]
+
+
+@lru_cache(1)
+def _get_functions() -> list[tuple[Configuration, click.Command]]:
+    from . import anatomy, cells, complexes, diseases, genes, taxrank
+
+    functions: list[tuple[Configuration, click.Command]] = [
+        (taxrank.CONFIGURATION, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (cells.CONFIGURATION, cells.main),
+        (diseases.CONFIGURATION, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (genes.CONFIGURATION, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),
+    ]
+    return functions
 
 
 @click.command()
@@ -38,21 +60,11 @@ def landscape(
     if build_docker:
         pass  # TODO check if docker is running
 
-    from . import anatomy, cells, complexes, diseases, genes, taxrank
-
-    functions: list[tuple[str, click.Command]] = [
-        (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (cells.CONFIGURATION.key, cells.main),
-        (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),
-    ]
-
+    functions = _get_functions()
     with logging_redirect_tqdm():
-        it = tqdm(functions, unit="configuration", desc="landscape analysis")
-        for label, func in it:
-            tqdm.write(click.style(label, bold=True, fg="green"))
+        tqdm(functions, unit="configuration", desc="landscape analysis")
+        for conf, func in functions:
+            tqdm.write(click.style(conf.key, bold=True, fg="green"))
             ctx.invoke(
                 func,
                 upload=upload,
@@ -61,6 +73,64 @@ def landscape(
                 refresh_processed=refresh_processed,
                 build_docker=build_docker,
             )
+
+
+def _get_metaanalysis_df() -> pd.DataFrame:
+    from ..summarize import Statistics
+
+    rows = []
+
+    for conf, _ in _get_functions():
+        directory = LANDSCAPE_FOLDER.joinpath(conf.key)
+        if not directory.is_dir():
+            click.echo(f"[{conf.key}] directory is missing: {directory}")
+            continue
+
+        statistics_path = directory.joinpath(STATS_FILE_NAME)
+        if not statistics_path.is_file():
+            raise FileNotFoundError(f"missing statistics file: {statistics_path}")
+        statistics = Statistics.model_validate_json(statistics_path.read_text())
+
+        row = {
+            **statistics.model_dump(),
+            "name": conf.key,
+            "zenodo": conf.zenodo_url(),
+        }
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    df = df[["name", "raw_term_count", "unique_term_count", "reduction", "zenodo"]]
+    df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
+    df = df.rename(
+        columns={
+            "name": "Domain",
+            "raw_term_count": "Raw Concepts",
+            "unique_term_count": "Unique Concepts",
+            "reduction": "Reduction Ratio",
+            "zenodo": "Download Link",
+        }
+    )
+    df = df.astype(str)
+    return df
+
+
+def compile_landscape_metaanalysis() -> None:
+    """Compile the landscape meta-analysis and write the README file."""
+    df = _get_metaanalysis_df()
+
+    path = LANDSCAPE_FOLDER.joinpath("README.md")
+
+    template = get_jinja_template("landscape-readme.md")
+    s = template.render(df=df, functions=_get_functions())
+    path.write_text(s)
+    os.system(  # noqa:S605
+        f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'
+    )
+
+    click.echo("\nTable as LaTeX for paper\n")
+    click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
+    click.echo("\nTable as markdown for repo\n")
+    click.echo(df.to_markdown(index=False, floatfmt=(",d", ",.2f")))
 
 
 if __name__ == "__main__":

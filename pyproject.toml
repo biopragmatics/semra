@@ -92,9 +92,7 @@ web = [
     "neo4j",
     "biomappings",
 ]
-landscape-notebooks = [
-    "IPython",
-    "jupyter",
+landscape = [
     "upsetplot",
     "seaborn",
     "matplotlib",

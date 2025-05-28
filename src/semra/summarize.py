@@ -17,6 +17,7 @@ from typing import cast
 import bioregistry
 import networkx as nx
 import pandas as pd
+from pydantic import BaseModel
 
 from semra.api import (
     IdentifierIndex,
@@ -34,19 +35,18 @@ from semra.api import (
 from semra.pipeline import Configuration
 from semra.rules import DB_XREF, EXACT_MATCH, SubsetConfiguration
 from semra.struct import Mapping
-from semra.utils import get_jinja_template
+from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 
 __all__ = [
     "LandscapeResult",
     "OverlapResults",
+    "Statistics",
     "Summarizer",
     "SummaryResults",
     "write_summary",
 ]
 
 logger = logging.getLogger(__name__)
-
-HERE = Path(__file__).parent.resolve()
 
 
 def write_summary(
@@ -128,13 +128,15 @@ def write_summary(
         f'npx --yes prettier --write --prose-wrap always "{configuration.readme_path.as_posix()}"'
     )
 
-    stats = {
-        "raw_term_count": landscape_results.total_term_count,
-        "unique_term_count": landscape_results.reduced_term_count,
-        "reduction": landscape_results.reduction_percent,
-        "distribution": landscape_results.distribution,
-    }
-    configuration.stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True))
+    stats = Statistics.model_validate(
+        {
+            "raw_term_count": landscape_results.total_term_count,
+            "unique_term_count": landscape_results.reduced_term_count,
+            "reduction": landscape_results.reduction_percent,
+            "distribution": landscape_results.distribution,
+        }
+    )
+    configuration.stats_path.write_text(json.dumps(stats.model_dump(), indent=2, sort_keys=True))
 
     if copy_to_landscape:
         _copy_into_landscape_folder(configuration, paths)
@@ -142,14 +144,22 @@ def write_summary(
     return overlap_results, landscape_results, paths
 
 
+class Statistics(BaseModel):
+    """Summary statistics."""
+
+    raw_term_count: int
+    unique_term_count: int
+    reduction: float
+    distribution: dict[int, int]
+
+
 def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
     # copy all paths into landscapes folder
-    landscape_folder = HERE.parent.parent.joinpath("notebooks", "landscape").resolve()
-    if not landscape_folder.is_dir():
+    if not LANDSCAPE_FOLDER.is_dir():
         raise ValueError(
-            f"skipping copying into landscape folder since it doesn't exist at {landscape_folder}"
+            f"skipping copying into landscape folder since it doesn't exist at {LANDSCAPE_FOLDER}"
         )
-    target_folder = landscape_folder.joinpath(config.key)
+    target_folder = LANDSCAPE_FOLDER.joinpath(config.key)
     target_folder.mkdir(exist_ok=True)
     for path in paths:
         shutil.copyfile(path, target_folder.joinpath(path.name))

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     import jinja2
 
 __all__ = [
+    "LANDSCAPE_FOLDER",
     "cleanup_prefixes",
     "get_jinja_environment",
     "get_jinja_template",
@@ -24,6 +25,8 @@ __all__ = [
 
 X = TypeVar("X")
 HERE = Path(__file__).parent.resolve()
+ROOT = HERE.parent.parent.resolve()
+LANDSCAPE_FOLDER = ROOT.joinpath("notebooks", "landscape").resolve()
 
 
 def semra_tqdm(

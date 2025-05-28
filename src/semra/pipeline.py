@@ -76,6 +76,9 @@ REFRESH_SOURCE_OPTION = click.option(
 )
 BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
 
+STATS_FILE_NAME = "stats.json"
+CONFIG_FILE_NAME = "configuration.json"
+
 
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
@@ -238,7 +241,7 @@ class Configuration(BaseModel):
     @property
     def configuration_path(self) -> Path:
         """Get the path to the configuration file."""
-        return self.directory.joinpath("configuration.json")
+        return self.directory.joinpath(CONFIG_FILE_NAME)
 
     @property
     def raw_neo4j_path(self) -> Path:
@@ -313,7 +316,7 @@ class Configuration(BaseModel):
     @property
     def stats_path(self) -> Path:
         """Get the path to the statistics summary JSON file."""
-        return self.directory.joinpath("stats.json")
+        return self.directory.joinpath(STATS_FILE_NAME)
 
     @model_validator(mode="before")
     def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805

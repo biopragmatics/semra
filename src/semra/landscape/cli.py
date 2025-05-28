@@ -104,7 +104,7 @@ def _get_metaanalysis_df() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
     df = df[["name", "raw_term_count", "unique_term_count", "reduction", "zenodo"]]
-    df: pd.DataFrame = df.rename(
+    df = df.rename(
         columns={
             "name": "Domain",
             "raw_term_count": "Raw Concepts",

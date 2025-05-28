@@ -5,26 +5,26 @@ landscape of a given domain, given a declarative configuration describing the
 resources in that domain. It includes 5 landscape analyses:
 
 <ol>
-<li><a href="complex/">Protein Complex</a></li>
-<li><a href="anatomy/">Anatomy</a></li>
-<li><a href="cell/">Cell and Cell Line</a></li>
 <li><a href="disease/">Disease</a></li>
+<li><a href="cell/">Cell and Cell Line</a></li>
+<li><a href="anatomy/">Anatomy</a></li>
+<li><a href="complex/">Protein Complex</a></li>
 <li><a href="gene/">Gene</a></li>
 </ol>
 
 ## Example
 
-Below, we highlight the disease landscape. Each analysis creates a graph of the
-processed mappings.
+The example below highlights the disease landscape. Each analysis creates a
+graph of the processed mappings.
 
 ![](disease/processed_graph.svg)
 
-We're able to automatically generate an UpSet plot like the one in
+SeMRA automatically generates an UpSet plot like the one in
 [How many rare diseases are there? (Haendel _et al._, 2020)](https://doi.org/10.1038/d41573-019-00180-y)
 (a similar plot to the following appears in the
 [supplementary info](https://media.nature.com/original/magazine-assets/d41573-019-00180-y/17308594)
 and an explanation appears on [zenodo](https://zenodo.org/records/3478576)).
-Note that our plot is about all diseases, not specifically rare ones:
+Note that this plot is about all diseases, not specifically rare ones:
 
 ![](disease/processed_landscape_upset.svg)
 
@@ -40,10 +40,10 @@ The summary table over all landscapes can be generated with `semra landscape`.
 
 | Domain  | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
 | :------ | -----------: | --------------: | :-------------- | :-------------------------------------------- |
-| complex |         9552 |            9121 | 4.5%            | https://bioregistry.io/zenodo.record:11091422 |
-| anatomy |        39362 |           33877 | 13.9%           | https://bioregistry.io/zenodo.record:11091803 |
-| cell    |       218557 |          172299 | 21.2%           | https://bioregistry.io/zenodo.record:11091581 |
 | disease |       377250 |          275044 | 27.1%           | https://bioregistry.io/zenodo.record:11091886 |
+| cell    |       218557 |          172299 | 21.2%           | https://bioregistry.io/zenodo.record:11091581 |
+| anatomy |        39362 |           33877 | 13.9%           | https://bioregistry.io/zenodo.record:11091803 |
+| complex |         9552 |            9121 | 4.5%            | https://bioregistry.io/zenodo.record:11091422 |
 | gene    |     58382593 |        57660624 | 1.2%            | https://bioregistry.io/zenodo.record:11092013 |
 
 ## Rebuild

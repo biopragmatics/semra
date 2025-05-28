@@ -30,12 +30,12 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
     from . import anatomy, cells, complexes, diseases, genes, taxrank
 
     functions: list[tuple[Configuration, click.Command]] = [
-        (taxrank.CONFIGURATION, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (cells.CONFIGURATION, cells.main),
         (diseases.CONFIGURATION, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (cells.CONFIGURATION, cells.main),
+        (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
         (genes.CONFIGURATION, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (taxrank.CONFIGURATION, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
     ]
     return functions
 

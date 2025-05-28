@@ -1,18 +1,24 @@
 # SeMRA Protein Complex Landscape Analysis
 
 Analyze the landscape of protein complex nomenclature resources,
-species-agnostic.
+species-agnostic. Created by:
+
+<ul>
+<li>
+[Charles Tapley Hoyt (orcid:0000-0003-4423-4370)](https://bioregistry.io/orcid:0000-0003-4423-4370)
+</li>
+</ul>
 
 ## Resource Summary
 
-We summarize the resources used in the landscape analysis, including their
+The following resources are represented in processed mappings generated. They
+are summarized in the following table that includes their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
-number of terms (i.e., named concepts) they contain.
-
-2 resources were not available through
-[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the
-number of terms in that resource based on the ones appearing in mappings. Note
-that these are typically an underestimate.
+number of terms (i.e., named concepts) they contain.2 resources were not
+available through [PyOBO](https://github.com/biopragmatics/pyobo). Therefore,
+the number of terms in that resource are estimated based on the ones that are
+observed in mappings assembled by SeMRA. Note that these are typically an
+underestimate.
 
 | prefix        | name                                | license      | version    | terms | status   |
 | :------------ | :---------------------------------- | :----------- | :--------- | ----: | :------- |
@@ -91,7 +97,6 @@ confidence filtering. The following prior knowledge was used during processing:
 </tr>
 </thead>
 <tbody>
-
 <tr>
 <td>go</td>
 <td>(all)</td>
@@ -99,9 +104,18 @@ confidence filtering. The following prior knowledge was used during processing:
 <td>skos:exactMatch</td>
 <td align="right">0.95</td>
 </tr>
-
 </tbody>
 </table>
+After processing, only mappings with subjects and objects whose references both
+use the following prefixes were retained:
+- complexportal
+- fplx
+- go
+- chembl.target
+- wikidata
+- scomp
+- signor
+- intact
 
 The processed mappings table has the following qualities:
 
@@ -188,7 +202,7 @@ semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="
 
 ## Analyses
 
-### Comparison
+### Comparison Analysis
 
 The following comparison shows the absolute number of mappings added by
 processing/inference. Across the board, this process adds large numbers of
@@ -227,9 +241,9 @@ percentage gain. Note that:
 
 ### Landscape Analysis
 
-Before, we looked at the overlaps between each resource. Now, we use that
-information jointly to estimate the number of terms in the landscape itself, and
-estimate how much of the landscape each resource covers.
+Above, the comparison looked at the overlaps between each resource. Now, that
+information is used to jointly estimate the number of terms in the landscape
+itself, and estimate how much of the landscape each resource covers.
 
 This estimates a total of 9,121 unique entities.
 
@@ -243,14 +257,14 @@ This estimate is susceptible to several caveats:
 - Generic resources like MeSH contain irrelevant entities that can't be mapped
 
 Because there are 8 prefixes, there are 255 possible overlaps to consider.
-Therefore, a Venn diagram is not possible, so we use an
+Therefore, a Venn diagram is not possible, so an
 [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993) (Lex _et
-al._, 2014) as a high-dimensional Venn diagram.
+al._, 2014) is used as a high-dimensional Venn diagram.
 
 ![](processed_landscape_upset.svg)
 
-We now aggregate the mappings together to estimate the number of unique entities
-and number that appear in each group of resources.
+Next, the mappings are aggregated to estimate the number of unique entities and
+number that appear in each group of resources.
 
 ![](processed_landscape_histogram.svg)
 
@@ -269,7 +283,7 @@ This is only an estimate and is susceptible to a few things:
    help identify and remove these
 1. It can be artificially low because for some vocabularies like SNOMED-CT, it's
    not possible to load a terms list, and therefore it's not possible to account
-   for terms that aren't mapped. Therefore, we make a lower bound estimate based
+   for terms that aren't mapped. Therefore, a lower bound estimate is made based
    on the terms that appear in mappings.
 1. It can be artificially high if a vocabulary is used that covers many domains
    and is not properly subset'd. For example, EFO covers many different domains,

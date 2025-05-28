@@ -2,17 +2,34 @@
 
 {{ configuration.description }}
 
+{%- if configuration.creators %} Created by:
+
+<ul>
+{%- for creator in configuration.creators %}
+<li>
+{%- if creator.name %}
+[{{ creator.name }} ({{ creator.curie }})](https://bioregistry.io/{{ creator.curie }})
+{%- else %}
+[{{ creator.curie }}](https://bioregistry.io/{{ creator.curie }})
+{%- endif %}
+</li>
+{%- endfor %}
+</ul>
+{%- endif %}
+
 ## Resource Summary
 
-We summarize the resources used in the landscape analysis, including their
+The following resources are represented in processed mappings generated. They
+are summarized in the following table that includes their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
-{% if summary.number_pyobo_unavailable %}{{ summary.number_pyobo_unavailable }}
+{%- if summary.number_pyobo_unavailable %}{{ summary.number_pyobo_unavailable }}
 resources were not available through
-[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, we estimate the
-number of terms in that resource based on the ones appearing in mappings. Note
-that these are typically an underestimate. {% endif %}
+[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, the number of terms
+in that resource are estimated based on the ones that are observed in mappings
+assembled by SeMRA. Note that these are typically an underestimate.
+{%- endif %}
 
 {{ summary.summary_df.to_markdown() }}
 
@@ -62,7 +79,28 @@ prefix blocklist.
 ### Processed Mappings
 
 The processed mappings result from the application of inference, reasoning, and
-confidence filtering. The following prior knowledge was used during processing:
+confidence filtering.
+
+{%- if configuration.keep_prefixes %}
+Before processing, only mappings with subjects and objects whose references
+both use the following prefixes were retained:
+
+{%- for prefix in configuration.keep_prefixes %}
+- {{ prefix }}
+{%- endfor %}
+{%- endif %}
+
+{%- if configuration.remove_prefixes %}
+Before processing, mappings with subjects or objects whose references use the
+following prefixes were removed:
+
+{%- for prefix in configuration.remove_prefixes %}
+- {{ prefix }}
+{%- endfor %}
+{%- endif %}
+
+{%- if configuration.mutations %}
+The following prior knowledge was used during processing:
 
 <table>
 <thead>
@@ -75,7 +113,7 @@ confidence filtering. The following prior knowledge was used during processing:
 </tr>
 </thead>
 <tbody>
-{% for mutation in configuration.mutations %}
+{%- for mutation in configuration.mutations %}
 <tr>
 <td>{{ mutation.source }}</td>
 <td>{% if mutation.target %}{{ mutation.target }}{% else %}(all){% endif %}</td>
@@ -83,9 +121,28 @@ confidence filtering. The following prior knowledge was used during processing:
 <td>{{ mutation.new.curie }}</td>
 <td align="right">{{ mutation.confidence }}</td>
 </tr>
-{% endfor %}
+{%- endfor %}
 </tbody>
 </table>
+{%- endif %}
+
+{%- if configuration.post_keep_prefixes %}
+After processing, only mappings with subjects and objects whose references both
+use the following prefixes were retained:
+
+{%- for prefix in configuration.post_keep_prefixes %}
+- {{ prefix }}
+{%- endfor %}
+{%- endif %}
+
+{%- if configuration.post_remove_prefixes %}
+After processing, mappings with subjects or objects whose references use the
+following prefixes were removed:
+
+{%- for prefix in configuration.post_remove_prefixes %}
+- {{ prefix }}
+{%- endfor %}
+{%- endif %}
 
 The processed mappings table has the following qualities:
 
@@ -163,7 +220,7 @@ semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="
 
 ## Analyses
 
-### Comparison
+### Comparison Analysis
 
 The following comparison shows the absolute number of mappings added by
 processing/inference. Across the board, this process adds large numbers of
@@ -184,22 +241,22 @@ percentage gain. Note that:
 
 ### Landscape Analysis
 
-Before, we looked at the overlaps between each resource. Now, we use that
-information jointly to estimate the number of terms in the landscape itself, and
-estimate how much of the landscape each resource covers.
+Above, the comparison looked at the overlaps between each resource. Now, that
+information is used to jointly estimate the number of terms in the landscape
+itself, and estimate how much of the landscape each resource covers.
 
 {{ landscape_results.get_description_markdown() | safe }}
 
 Because there are {{ overlap_results.n_prefixes }} prefixes, there are
 {{ "{:,}".format(overlap_results.number_overlaps) }} possible overlaps to
-consider. Therefore, a Venn diagram is not possible, so we use an
+consider. Therefore, a Venn diagram is not possible, so an
 [UpSet plot](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4720993) (Lex _et
-al._, 2014) as a high-dimensional Venn diagram.
+al._, 2014) is used as a high-dimensional Venn diagram.
 
 ![](processed_landscape_upset.svg)
 
-We now aggregate the mappings together to estimate the number of unique entities
-and number that appear in each group of resources.
+Next, the mappings are aggregated to estimate the number of unique entities and
+number that appear in each group of resources.
 
 ![](processed_landscape_histogram.svg)
 
@@ -221,7 +278,7 @@ This is only an estimate and is susceptible to a few things:
 {%- if summary.number_pyobo_unavailable %}
 1. It can be artificially low because for some vocabularies like SNOMED-CT, it's
    not possible to load a terms list, and therefore it's not possible to account
-   for terms that aren't mapped. Therefore, we make a lower bound estimate based
+   for terms that aren't mapped. Therefore, a lower bound estimate is made based
    on the terms that appear in mappings.
 {%- endif %}
 1. It can be artificially high if a vocabulary is used that covers many domains

@@ -124,7 +124,9 @@ def write_summary(
     )
     logger.info("writing summary to %s", configuration.readme_path)
     configuration.readme_path.write_text(vv)
-    os.system(f'npx --yes prettier --write --prose-wrap always "{configuration.readme_path.as_posix()}"')
+    os.system(  # noqa:S605
+        f'npx --yes prettier --write --prose-wrap always "{configuration.readme_path.as_posix()}"'
+    )
 
     stats = {
         "raw_term_count": landscape_results.total_term_count,
@@ -274,7 +276,7 @@ class OverlapResults:
     @property
     def number_overlaps(self) -> int:
         """Calculate the number of overlaps that will appear in the UpSet plot."""
-        return cast(int, 2 ** self.n_prefixes) - 1
+        return cast(int, 2**self.n_prefixes) - 1
 
 
 def overlap_analysis(

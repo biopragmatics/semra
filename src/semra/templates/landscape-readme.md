@@ -13,17 +13,17 @@ analyses:
 
 ## Example
 
-Below, we highlight the disease landscape. Each analysis creates a graph of the
+The example below highlights the disease landscape. Each analysis creates a graph of the
 processed mappings.
 
 ![](disease/processed_graph.svg)
 
-We're able to automatically generate an UpSet plot like the one in
+SeMRA automatically generates an UpSet plot like the one in
 [How many rare diseases are there? (Haendel _et al._, 2020)](https://doi.org/10.1038/d41573-019-00180-y)
 (a similar plot to the following appears in the
 [supplementary info](https://media.nature.com/original/magazine-assets/d41573-019-00180-y/17308594)
 and an explanation appears on [zenodo](https://zenodo.org/records/3478576)).
-Note that our plot is about all diseases, not specifically rare ones:
+Note that this plot is about all diseases, not specifically rare ones:
 
 ![](disease/processed_landscape_upset.svg)
 

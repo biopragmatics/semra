@@ -5,7 +5,9 @@ species-agnostic. Created by:
 
 <ul>
 <li>
-[Charles Tapley Hoyt (orcid:0000-0003-4423-4370)](https://bioregistry.io/orcid:0000-0003-4423-4370)
+<a href="https://bioregistry.io/orcid:0000-0003-4423-4370">
+Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
+</a>
 </li>
 </ul>
 
@@ -108,14 +110,17 @@ confidence filtering. The following prior knowledge was used during processing:
 </table>
 After processing, only mappings with subjects and objects whose references both
 use the following prefixes were retained:
-- complexportal
-- fplx
-- go
-- chembl.target
-- wikidata
-- scomp
-- signor
-- intact
+
+<ul>
+<li>complexportal</li>
+<li>fplx</li>
+<li>go</li>
+<li>chembl.target</li>
+<li>wikidata</li>
+<li>scomp</li>
+<li>signor</li>
+<li>intact</li>
+</ul>
 
 The processed mappings table has the following qualities:
 

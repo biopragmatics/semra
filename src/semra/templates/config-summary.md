@@ -7,11 +7,13 @@
 <ul>
 {%- for creator in configuration.creators %}
 <li>
+<a href="https://bioregistry.io/{{ creator.curie }}">
 {%- if creator.name %}
-[{{ creator.name }} ({{ creator.curie }})](https://bioregistry.io/{{ creator.curie }})
+{{ creator.name }} ({{ creator.curie }})
 {%- else %}
-[{{ creator.curie }}](https://bioregistry.io/{{ creator.curie }})
+{{ creator.curie }}
 {%- endif %}
+</a>
 </li>
 {%- endfor %}
 </ul>
@@ -85,18 +87,22 @@ confidence filtering.
 Before processing, only mappings with subjects and objects whose references
 both use the following prefixes were retained:
 
+<ul>
 {%- for prefix in configuration.keep_prefixes %}
-- {{ prefix }}
+<li>{{ prefix }}</li>
 {%- endfor %}
+</ul>
 {%- endif %}
 
 {%- if configuration.remove_prefixes %}
 Before processing, mappings with subjects or objects whose references use the
 following prefixes were removed:
 
+<ul>
 {%- for prefix in configuration.remove_prefixes %}
-- {{ prefix }}
+<li>{{ prefix }}</li>
 {%- endfor %}
+</ul>
 {%- endif %}
 
 {%- if configuration.mutations %}
@@ -130,18 +136,22 @@ The following prior knowledge was used during processing:
 After processing, only mappings with subjects and objects whose references both
 use the following prefixes were retained:
 
+<ul>
 {%- for prefix in configuration.post_keep_prefixes %}
-- {{ prefix }}
+<li>{{ prefix }}</li>
 {%- endfor %}
+</ul>
 {%- endif %}
 
 {%- if configuration.post_remove_prefixes %}
 After processing, mappings with subjects or objects whose references use the
 following prefixes were removed:
 
+<ul>
 {%- for prefix in configuration.post_remove_prefixes %}
-- {{ prefix }}
+<li>{{ prefix }}</li>
 {%- endfor %}
+</ul>
 {%- endif %}
 
 The processed mappings table has the following qualities:

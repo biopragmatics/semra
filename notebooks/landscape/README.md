@@ -38,13 +38,13 @@ and how many show up in a few
 
 The summary table over all landscapes can be generated with `semra landscape`.
 
-| Domain  | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
-| :------ | -----------: | --------------: | --------------: | :-------------------------------------------- |
-| disease |      377,250 |         275,044 |           27.1% | https://bioregistry.io/zenodo.record:11091886 |
-| cell    |      218,557 |         172,299 |           21.2% | https://bioregistry.io/zenodo.record:11091581 |
-| anatomy |       39,362 |          33,877 |           13.9% | https://bioregistry.io/zenodo.record:11091803 |
-| complex |        9,552 |           9,121 |            4.5% | https://bioregistry.io/zenodo.record:11091422 |
-| gene    |   58,382,593 |      57,660,624 |            1.2% | https://bioregistry.io/zenodo.record:11092013 |
+| Domain             | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
+| :----------------- | -----------: | --------------: | --------------: | :-------------------------------------------- |
+| Disease            |      377,250 |         275,044 |           27.1% | https://bioregistry.io/zenodo.record:11091886 |
+| Cell and Cell Line |      218,557 |         172,299 |           21.2% | https://bioregistry.io/zenodo.record:11091581 |
+| Anatomy            |       39,362 |          33,877 |           13.9% | https://bioregistry.io/zenodo.record:11091803 |
+| Protein Complex    |        9,552 |           9,121 |            4.5% | https://bioregistry.io/zenodo.record:11091422 |
+| Gene               |   58,382,593 |      57,660,624 |            1.2% | https://bioregistry.io/zenodo.record:11092013 |
 
 ## Rebuild
 

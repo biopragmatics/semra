@@ -75,6 +75,10 @@ def landscape(
             )
 
 
+def _get_name(conf: Configuration) -> str:
+    return conf.name.removeprefix("SeMRA").removesuffix("Mappings Database").strip()
+
+
 def _get_metaanalysis_df() -> pd.DataFrame:
     from ..summarize import Statistics
 
@@ -93,7 +97,7 @@ def _get_metaanalysis_df() -> pd.DataFrame:
 
         row = {
             **statistics.model_dump(),
-            "name": conf.key,
+            "name": _get_name(conf),
             "zenodo": conf.zenodo_url(),
         }
         rows.append(row)
@@ -116,7 +120,7 @@ def compile_landscape_metaanalysis() -> None:
     """Compile the landscape meta-analysis and write the README file."""
     df = _get_metaanalysis_df()
     configurations = [
-        (conf, conf.name.removeprefix("SeMRA").removesuffix("Mappings Database").strip())
+        (conf, _get_name(conf))
         for conf, _ in _get_functions()
         # filter out folders that aren't ready for prime time
         if LANDSCAPE_FOLDER.joinpath(conf.key).is_dir()
@@ -133,8 +137,6 @@ def compile_landscape_metaanalysis() -> None:
 
     click.echo("\nTable as LaTeX for paper\n")
     click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
-    click.echo("\nTable as markdown for repo\n")
-    click.echo(df.to_markdown(index=False, floatfmt=(",d", ",.2f")))
 
 
 if __name__ == "__main__":

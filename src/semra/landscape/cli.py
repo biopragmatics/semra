@@ -80,11 +80,14 @@ def _get_name(conf: Configuration) -> str:
 
 
 def _get_metaanalysis_df() -> pd.DataFrame:
-    from ..summarize import Statistics
+    from ..summarize import Statistics, _copy_into_landscape_folder
 
     rows = []
 
     for conf, _ in _get_functions():
+        if conf.key == "disease":
+            _copy_into_landscape_folder(conf, conf._get_landscape_paths())
+
         directory = LANDSCAPE_FOLDER.joinpath(conf.key)
         if not directory.is_dir():
             click.echo(f"[{conf.key}] directory is missing: {directory}")
@@ -129,7 +132,7 @@ def compile_landscape_metaanalysis() -> None:
     template = get_jinja_template("landscape-readme.md")
     text = template.render(df=df, configurations=configurations)
 
-    path = LANDSCAPE_FOLDER.joinpath("README.md")
+    path = LANDSCAPE_FOLDER.joinpath("README.md").resolve()
     path.write_text(text)
     os.system(  # noqa:S605
         f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'

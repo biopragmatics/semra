@@ -40,7 +40,7 @@ The summary table over all landscapes can be generated with `semra landscape`.
 
 | Domain             | Raw Concepts | Unique Concepts | Reduction Ratio | Download Link                                 |
 | :----------------- | -----------: | --------------: | --------------: | :-------------------------------------------- |
-| Disease            |      377,250 |         275,044 |           27.1% | https://bioregistry.io/zenodo.record:11091886 |
+| Disease            |      355,103 |         249,276 |           29.8% | https://bioregistry.io/zenodo.record:11091886 |
 | Cell and Cell Line |      218,557 |         172,299 |           21.2% | https://bioregistry.io/zenodo.record:11091581 |
 | Anatomy            |       39,362 |          33,877 |           13.9% | https://bioregistry.io/zenodo.record:11091803 |
 | Protein Complex    |        9,552 |           9,121 |            4.5% | https://bioregistry.io/zenodo.record:11091422 |

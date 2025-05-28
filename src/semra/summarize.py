@@ -64,22 +64,7 @@ def write_summary(
             configuration.model_dump_json(indent=2, exclude_none=True, exclude_unset=True)
         )
 
-    paths = [
-        configuration.raw_counts_path,
-        configuration.raw_graph_path,
-        # processed
-        configuration.processed_counts_path,
-        configuration.processed_graph_path,
-        configuration.processed_landscape_upset_path,
-        configuration.processed_landscape_histogram_path,
-        # priority
-        configuration.priority_counts_path,
-        configuration.priority_graph_path,
-        # summaries
-        configuration.source_summary_path,
-        configuration.readme_path,
-        configuration.stats_path,
-    ]
+    paths = configuration._get_landscape_paths()
 
     summarizer = Summarizer(configuration, show_progress=show_progress)
 

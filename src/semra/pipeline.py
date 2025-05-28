@@ -318,6 +318,24 @@ class Configuration(BaseModel):
         """Get the path to the statistics summary JSON file."""
         return self.directory.joinpath(STATS_FILE_NAME)
 
+    def _get_landscape_paths(self) -> list[Path]:
+        return [
+            self.raw_counts_path,
+            self.raw_graph_path,
+            # processed
+            self.processed_counts_path,
+            self.processed_graph_path,
+            self.processed_landscape_upset_path,
+            self.processed_landscape_histogram_path,
+            # priority
+            self.priority_counts_path,
+            self.priority_graph_path,
+            # summaries
+            self.source_summary_path,
+            self.readme_path,
+            self.stats_path,
+        ]
+
     @model_validator(mode="before")
     def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
         """Infer the priority from the input list of not given."""

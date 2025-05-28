@@ -518,11 +518,11 @@ class Configuration(BaseModel):
         )
         click.echo(f"Result: {res}")
 
-    def cli(self, *args: Any) -> None:
+    def cli(self, *args: Any, copy_to_landscape: bool = False) -> None:
         """Get and run a command line interface for this configuration."""
-        self.get_cli()(*args)
+        self.get_cli(copy_to_landscape=copy_to_landscape)(*args)
 
-    def get_cli(self) -> click.Command:
+    def get_cli(self, copy_to_landscape: bool = False) -> click.Command:
         """Get a command line interface for this configuration."""
         import click
         from more_click import verbose_option
@@ -552,7 +552,7 @@ class Configuration(BaseModel):
 
             from .summarize import write_summary
 
-            write_summary(self, show_progress=True, copy_to_landscape=True)
+            write_summary(self, show_progress=True, copy_to_landscape=copy_to_landscape)
 
             if upload:
                 self._safe_upload()

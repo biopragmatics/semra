@@ -41,12 +41,12 @@ def landscape(
     from . import anatomy, cells, complexes, diseases, genes, taxrank
 
     functions: list[tuple[str, click.Command]] = [
-        (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli()),
-        (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli()),
-        (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli()),
+        (taxrank.CONFIGURATION.key, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (complexes.CONFIGURATION.key, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (anatomy.CONFIGURATION.key, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
         (cells.CONFIGURATION.key, cells.main),
-        (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli()),
-        (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli()),
+        (diseases.CONFIGURATION.key, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (genes.CONFIGURATION.key, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),
     ]
 
     with logging_redirect_tqdm():

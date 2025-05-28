@@ -100,8 +100,7 @@ def _get_metaanalysis_df() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
     df = df[["name", "raw_term_count", "unique_term_count", "reduction", "zenodo"]]
-    df["reduction"] = df["reduction"].map(lambda r: f"{r:.1%}")
-    df = df.rename(
+    df: pd.DataFrame = df.rename(
         columns={
             "name": "Domain",
             "raw_term_count": "Raw Concepts",
@@ -110,7 +109,6 @@ def _get_metaanalysis_df() -> pd.DataFrame:
             "zenodo": "Download Link",
         }
     )
-    df = df.astype(str)
     return df
 
 

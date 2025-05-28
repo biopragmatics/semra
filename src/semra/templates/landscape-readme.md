@@ -37,7 +37,7 @@ and how many show up in a few
 
 The summary table over all landscapes can be generated with `semra landscape`.
 
-{{ df.to_markdown(index=False) }}
+{{ df.to_markdown(index=False, intfmt=",", floatfmt=".1%", colalign=["left", "right", "right", "right", "left"]) }}
 
 ## Rebuild
 

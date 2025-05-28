@@ -2,12 +2,12 @@
 
 This folder contains results from a workflow for automating the analysis of the
 landscape of a given domain, given a declarative configuration describing the
-resources in that domain. It includes {{ functions | length }} landscape
+resources in that domain. It includes {{ configurations | length }} landscape
 analyses:
 
 <ol>
-{%- for conf, _cli in functions %}
-<li><a href="{{ conf.key }}/">{{ conf.name }}</a></li>
+{%- for conf, conf_name in configurations %}
+<li><a href="{{ conf.key }}/">{{ conf_name }}</a></li>
 {%- endfor %}
 </ol>
 

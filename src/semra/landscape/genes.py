@@ -32,7 +32,7 @@ PREFIXES = PRIORITY = [
 
 CONFIGURATION = Configuration(
     key="gene",
-    name="SeMRA Gene Mapping Database",
+    name="SeMRA Gene Mappings Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
     creators=[charlie],
     inputs=[

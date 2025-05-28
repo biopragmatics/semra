@@ -2,15 +2,14 @@
 
 This folder contains results from a workflow for automating the analysis of the
 landscape of a given domain, given a declarative configuration describing the
-resources in that domain. It includes 6 landscape analyses:
+resources in that domain. It includes 5 landscape analyses:
 
 <ol>
-<li><a href="taxrank/">SeMRA Taxonomical Ranks Mappings Database</a></li>
-<li><a href="complex/">SeMRA Protein Complex Landscape Analysis</a></li>
-<li><a href="anatomy/">SeMRA Anatomy Mappings Database</a></li>
-<li><a href="cell/">SeMRA Cell and Cell Line Mappings Database</a></li>
-<li><a href="disease/">SeMRA Disease Mappings Database</a></li>
-<li><a href="gene/">SeMRA Gene Mapping Database</a></li>
+<li><a href="complex/">Protein Complex</a></li>
+<li><a href="anatomy/">Anatomy</a></li>
+<li><a href="cell/">Cell and Cell Line</a></li>
+<li><a href="disease/">Disease</a></li>
+<li><a href="gene/">Gene</a></li>
 </ol>
 
 ## Example

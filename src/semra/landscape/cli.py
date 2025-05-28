@@ -117,12 +117,18 @@ def _get_metaanalysis_df() -> pd.DataFrame:
 def compile_landscape_metaanalysis() -> None:
     """Compile the landscape meta-analysis and write the README file."""
     df = _get_metaanalysis_df()
-
-    path = LANDSCAPE_FOLDER.joinpath("README.md")
+    configurations = [
+        (conf, conf.name.removeprefix("SeMRA").removesuffix("Mappings Database").strip())
+        for conf, _ in _get_functions()
+        # filter out folders that aren't ready for prime time
+        if LANDSCAPE_FOLDER.joinpath(conf.key).is_dir()
+    ]
 
     template = get_jinja_template("landscape-readme.md")
-    s = template.render(df=df, functions=_get_functions())
-    path.write_text(s)
+    text = template.render(df=df, configurations=configurations)
+
+    path = LANDSCAPE_FOLDER.joinpath("README.md")
+    path.write_text(text)
     os.system(  # noqa:S605
         f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'
     )

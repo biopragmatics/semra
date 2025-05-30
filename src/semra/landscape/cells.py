@@ -16,21 +16,10 @@ import click
 import pystow
 
 from semra import Reference
-from semra.api import project, str_source_target_counts
+from semra.api import project
 from semra.io import write_sssom
-from semra.pipeline import (
-    BUILD_DOCKER_OPTION,
-    REFRESH_PROCESSED_OPTION,
-    REFRESH_RAW_OPTION,
-    REFRESH_SOURCE_OPTION,
-    UPLOAD_OPTION,
-    Configuration,
-    Input,
-    Mutation,
-    get_priority_mappings_from_config,
-)
+from semra.pipeline import Configuration, Input, MappingPack, Mutation
 from semra.rules import charlie
-from semra.summarize import write_summary
 
 __all__ = [
     "CONFIGURATION",
@@ -107,45 +96,14 @@ CONFIGURATION = Configuration(
 )
 
 
-@click.command()
-@UPLOAD_OPTION
-@REFRESH_RAW_OPTION
-@REFRESH_PROCESSED_OPTION
-@REFRESH_SOURCE_OPTION
-@BUILD_DOCKER_OPTION
-def main(
-    upload: bool,
-    refresh_source: bool,
-    refresh_raw: bool,
-    refresh_processed: bool,
-    build_docker: bool,
-) -> None:
-    """Build the mapping database for cell and cell line terms."""
-    priority_mappings = get_priority_mappings_from_config(
-        CONFIGURATION,
-        refresh_raw=refresh_raw,
-        refresh_processed=refresh_processed,
-        refresh_source=refresh_source,
-    )
-    if build_docker and CONFIGURATION.processed_neo4j_path:
-        CONFIGURATION._build_docker()
-
-    write_summary(CONFIGURATION, show_progress=True, copy_to_landscape=True)
-
-    if upload:
-        CONFIGURATION._safe_upload()
-
-    click.echo(f"Processing returned {len(priority_mappings):,} prioritized mappings")
-    click.echo(str_source_target_counts(priority_mappings))
-
+def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
+    """Write consolidation mappings from CCLE to EFO and DepMap."""
     # Produce consolidation mappings
     for s_prefix, t_prefix in [
         ("ccle", "efo"),
         ("ccle", "depmap"),
     ]:
-        consolidation_mappings, sus = project(
-            priority_mappings, s_prefix, t_prefix, return_sus=True
-        )
+        consolidation_mappings, sus = project(pack.processed, s_prefix, t_prefix, return_sus=True)
         click.echo(
             f"Consolidated to {len(consolidation_mappings):,} mappings between "
             f"{s_prefix} and {t_prefix}"
@@ -160,4 +118,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    CONFIGURATION.cli(hooks=[cell_consolidation_hook])

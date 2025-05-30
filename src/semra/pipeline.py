@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import enum
 import logging
 import time
 import typing as t
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple, overload
 
 import click
 import requests
@@ -54,6 +55,7 @@ if t.TYPE_CHECKING:
 
 __all__ = [
     "Configuration",
+    "GetMappingReturnType",
     "Input",
     "Mutation",
     "SubsetConfiguration",
@@ -78,6 +80,14 @@ BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
 
 STATS_FILE_NAME = "stats.json"
 CONFIG_FILE_NAME = "configuration.json"
+
+
+class GetMappingReturnType(enum.Enum):
+    """An enumeration for the return values for :func:`get_priority_mappings_from_config`."""
+
+    none = enum.auto()
+    all = enum.auto()
+    priority = enum.auto()
 
 
 class Input(BaseModel):
@@ -371,19 +381,54 @@ class Configuration(BaseModel):
             inputs.append(Input(source="gilda"))
         return cls(key=key, name=name, inputs=inputs, directory=directory)
 
+    # docstr-coverage: inherited
+    @overload
     def get_mappings(
         self,
         *,
         refresh_raw: bool = False,
         refresh_processed: bool = False,
         refresh_source: bool = False,
-    ) -> list[Mapping]:
+        return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+    ) -> None: ...
+
+    # docstr-coverage: inherited
+    @overload
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+    ) -> MappingPack: ...
+
+    # docstr-coverage: inherited
+    @overload
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+    ) -> list[Mapping]: ...
+
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: GetMappingReturnType = GetMappingReturnType.none,
+    ) -> list[Mapping] | MappingPack | None:
         """Run assembly based on this configuration."""
-        return get_priority_mappings_from_config(
+        return get_priority_mappings_from_config(  # type:ignore[no-any-return,call-overload]
             self,
             refresh_source=refresh_source,
             refresh_raw=refresh_raw,
             refresh_processed=refresh_processed,
+            return_type=return_type,
         )
 
     def read_raw_mappings(self) -> list[Mapping]:
@@ -539,11 +584,21 @@ class Configuration(BaseModel):
         )
         click.echo(f"Result: {res}")
 
-    def cli(self, *args: Any, copy_to_landscape: bool = False) -> None:
+    def cli(
+        self,
+        *args: Any,
+        copy_to_landscape: bool = False,
+        hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
+    ) -> None:
         """Get and run a command line interface for this configuration."""
         self.get_cli(copy_to_landscape=copy_to_landscape)(*args)
 
-    def get_cli(self, copy_to_landscape: bool = False) -> click.Command:
+    def get_cli(
+        self,
+        *,
+        copy_to_landscape: bool = False,
+        hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
+    ) -> click.Command:
         """Get a command line interface for this configuration."""
         import click
         from more_click import verbose_option
@@ -563,17 +618,28 @@ class Configuration(BaseModel):
             build_docker: bool,
         ) -> None:
             """Build the mapping database terms."""
-            self.get_mappings(
+            pack = self.get_mappings(
                 refresh_source=refresh_source,
                 refresh_raw=refresh_raw,
                 refresh_processed=refresh_processed,
+                return_type=GetMappingReturnType.all,
             )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
             from .summarize import write_summary
 
-            write_summary(self, show_progress=True, copy_to_landscape=copy_to_landscape)
+            write_summary(
+                self,
+                show_progress=True,
+                copy_to_landscape=copy_to_landscape,
+                raw_mappings=pack.raw,
+                processed_mappings=pack.processed,
+                priority_mappings=pack.priority,
+            )
+
+            for hook in hooks or []:
+                hook(self, pack)
 
             if upload:
                 self._safe_upload()
@@ -589,13 +655,58 @@ class Configuration(BaseModel):
             click.echo(f"uploaded to {url}")
 
 
+class MappingPack(NamedTuple):
+    """A tuple of raw, processed, and priority mappings."""
+
+    raw: list[Mapping]
+    processed: list[Mapping]
+    priority: list[Mapping]
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+) -> None: ...
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+) -> MappingPack: ...
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+) -> list[Mapping]: ...
+
+
 def get_priority_mappings_from_config(
     configuration: Configuration,
     *,
     refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
-) -> list[Mapping]:
+    return_type: GetMappingReturnType = GetMappingReturnType.none,
+) -> None | list[Mapping] | MappingPack:
     """Get prioritized mappings based on an assembly configuration."""
     if refresh_source:
         refresh_raw = True
@@ -603,7 +714,21 @@ def get_priority_mappings_from_config(
         refresh_processed = True
 
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
-        return configuration.read_priority_mappings()
+        match return_type:
+            case GetMappingReturnType.none:
+                return None
+            case GetMappingReturnType.all:
+                if not configuration.has_raw_path():
+                    raise FileNotFoundError
+                if not configuration.has_processed_path():
+                    raise FileNotFoundError
+                return MappingPack(
+                    raw=configuration.read_raw_mappings(),
+                    processed=configuration.read_processed_mappings(),
+                    priority=configuration.read_priority_mappings(),
+                )
+            case GetMappingReturnType.priority:
+                return configuration.read_priority_mappings()
 
     if configuration.has_processed_path() and not refresh_raw and not refresh_processed:
         processed_mappings = configuration.read_processed_mappings()
@@ -689,7 +814,21 @@ def get_priority_mappings_from_config(
         add_labels=configuration.add_labels,
     )
 
-    return prioritized_mappings
+    match return_type:
+        case GetMappingReturnType.none:
+            return None
+        case GetMappingReturnType.all:
+            if not configuration.has_raw_path():
+                raise FileNotFoundError
+            if not configuration.has_processed_path():
+                raise FileNotFoundError
+            return MappingPack(
+                raw=raw_mappings,
+                processed=processed_mappings,
+                priority=prioritized_mappings,
+            )
+        case GetMappingReturnType.priority:
+            return prioritized_mappings
 
 
 def _get_equivalence_classes(

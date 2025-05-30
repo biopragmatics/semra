@@ -31,7 +31,12 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
 
     functions: list[tuple[Configuration, click.Command]] = [
         (diseases.CONFIGURATION, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (cells.CONFIGURATION, cells.main),
+        (
+            cells.CONFIGURATION,
+            cells.CONFIGURATION.get_cli(
+                copy_to_landscape=True, hooks=[cells.cell_consolidation_hook]
+            ),
+        ),
         (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
         (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
         (genes.CONFIGURATION, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),

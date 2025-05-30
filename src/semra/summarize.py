@@ -55,6 +55,9 @@ def write_summary(
     minimum_count: int | None = None,
     show_progress: bool = False,
     copy_to_landscape: bool = False,
+    raw_mappings: list[Mapping] | None = None,
+    processed_mappings: list[Mapping] | None = None,
+    priority_mappings: list[Mapping] | None = None,
 ) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
     """Run the landscape analysis inside a Jupyter notebook."""
     import matplotlib.pyplot as plt
@@ -66,7 +69,13 @@ def write_summary(
 
     paths = configuration._get_landscape_paths()
 
-    summarizer = Summarizer(configuration, show_progress=show_progress)
+    summarizer = Summarizer(
+        configuration,
+        raw_mappings=raw_mappings,
+        processed_mappings=processed_mappings,
+        priority_mappings=priority_mappings,
+        show_progress=show_progress,
+    )
 
     summary = summarizer.get_source_summary()
     summary.summary_df.to_csv(configuration.source_summary_path, sep="\t")
@@ -153,7 +162,15 @@ def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> Non
 class Summarizer:
     """An object that encapsulates the state for the overlap analysis."""
 
-    def __init__(self, configuration: Configuration, *, show_progress: bool = False) -> None:
+    def __init__(
+        self,
+        configuration: Configuration,
+        *,
+        show_progress: bool = False,
+        raw_mappings: list[Mapping] | None = None,
+        processed_mappings: list[Mapping] | None = None,
+        priority_mappings: list[Mapping] | None = None,
+    ) -> None:
         """Initialize the summarizer wrapper."""
         self.configuration = configuration
 
@@ -161,9 +178,14 @@ class Summarizer:
             configuration.priority, configuration.subsets, show_progress=show_progress
         )
 
-        self.raw_mappings = configuration.read_raw_mappings()
-        self.processed_mappings = configuration.read_processed_mappings()
-        # TODO summarize priority mappings?
+        self.raw_mappings = (
+            configuration.read_raw_mappings() if raw_mappings is None else raw_mappings
+        )
+        self.processed_mappings = (
+            configuration.read_processed_mappings()
+            if processed_mappings is None
+            else processed_mappings
+        )
         if configuration.subsets:
             hydrated_subsets = configuration.get_hydrated_subsets(show_progress=show_progress)
             self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)
@@ -171,7 +193,11 @@ class Summarizer:
 
         self.terms_observed = get_observed_terms(self.processed_mappings)
 
-        self.priority_mappings = configuration.read_priority_mappings()
+        self.priority_mappings = (
+            configuration.read_priority_mappings()
+            if priority_mappings is None
+            else priority_mappings
+        )
 
     def get_source_summary(self) -> SummaryResults:
         """Get a summary."""
@@ -193,11 +219,11 @@ class Summarizer:
         """Get overlap analysis results."""
         return overlap_analysis(
             self.configuration,
-            self.terms_exact,
+            terms_exact=self.terms_exact,
             minimum_count=minimum_count,
+            raw_mappings=self.raw_mappings,
             processed_mappings=self.processed_mappings,
             priority_mappings=self.priority_mappings,
-            raw_mappings=self.raw_mappings,
             terms_observed=self.terms_observed,
             show_progress=show_progress,
         )
@@ -274,14 +300,22 @@ class OverlapResults:
         return cast(int, 2**self.n_prefixes) - 1
 
 
+def _calculate_gains_df(
+    raw_counts_df: pd.DataFrame, processed_counts_df: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    gains_df = processed_counts_df - raw_counts_df
+    percent_gains_df = 100.0 * (processed_counts_df - raw_counts_df) / raw_counts_df
+    return gains_df, percent_gains_df
+
+
 def overlap_analysis(
     configuration: Configuration,
-    terms: PrefixIdentifierDict,
     *,
+    terms_exact: PrefixIdentifierDict,
     terms_observed: PrefixIdentifierDict,
+    raw_mappings: list[Mapping],
     processed_mappings: list[Mapping],
     priority_mappings: list[Mapping],
-    raw_mappings: list[Mapping],
     minimum_count: int | None = None,
     show_progress: bool = True,
 ) -> OverlapResults:
@@ -295,7 +329,10 @@ def overlap_analysis(
         raw_mappings, show_progress=show_progress, predicates=predicates, directed=False
     )
     raw_counts, raw_counts_df = get_symmetric_counts_df(
-        raw_index, terms_exact=terms, priority=configuration.priority, terms_observed=terms_observed
+        raw_index,
+        terms_exact=terms_exact,
+        priority=configuration.priority,
+        terms_observed=terms_observed,
     )
 
     processed_index = get_identifier_index(
@@ -306,7 +343,7 @@ def overlap_analysis(
     )
     processed_counts, processed_counts_df = get_symmetric_counts_df(
         processed_index,
-        terms_exact=terms,
+        terms_exact=terms_exact,
         priority=configuration.priority,
         terms_observed=terms_observed,
     )
@@ -319,13 +356,12 @@ def overlap_analysis(
     )
     priority_counts, priority_counts_df = get_asymmetric_counts_df(
         priority_index,
-        terms_exact=terms,
+        terms_exact=terms_exact,
         priority=configuration.priority,
         terms_observed=terms_observed,
     )
 
-    gains_df = processed_counts_df - raw_counts_df
-    percent_gains_df = 100.0 * (processed_counts_df - raw_counts_df) / raw_counts_df
+    gains_df, percent_gains_df = _calculate_gains_df(raw_counts_df, processed_counts_df)
 
     return OverlapResults(
         raw_mappings=raw_mappings,

@@ -7,6 +7,7 @@ import logging
 import time
 import typing as t
 from collections.abc import Callable, Iterable
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, overload
 
@@ -431,10 +432,10 @@ class Configuration(BaseModel):
             return_type=return_type,
         )
 
-    def read_raw_mappings(self) -> list[Mapping]:
+    def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.raw_jsonl_path, from_jsonl),
+            (self.raw_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.raw_pickle_path, from_pickle),
             (self.raw_sssom_path, from_sssom),
         ]
@@ -444,10 +445,10 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"raw mappings have not yet been cached in {self.directory}")
 
-    def read_processed_mappings(self) -> list[Mapping]:
+    def read_processed_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.processed_jsonl_path, from_jsonl),
+            (self.processed_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.processed_pickle_path, from_pickle),
             (self.processed_sssom_path, from_sssom),
         ]
@@ -457,10 +458,10 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"processed mappings have not yet been cached in {self.directory}")
 
-    def read_priority_mappings(self) -> list[Mapping]:
+    def read_priority_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read priority mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.priority_jsonl_path, from_jsonl),
+            (self.priority_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.priority_pickle_path, from_pickle),
             (self.priority_sssom_path, from_sssom),
         ]
@@ -723,9 +724,9 @@ def get_priority_mappings_from_config(
                 if not configuration.has_processed_path():
                     raise FileNotFoundError
                 return MappingPack(
-                    raw=configuration.read_raw_mappings(),
-                    processed=configuration.read_processed_mappings(),
-                    priority=configuration.read_priority_mappings(),
+                    raw=configuration.read_raw_mappings(show_progress=True),
+                    processed=configuration.read_processed_mappings(show_progress=True),
+                    priority=configuration.read_priority_mappings(show_progress=True),
                 )
             case GetMappingReturnType.priority:
                 return configuration.read_priority_mappings()

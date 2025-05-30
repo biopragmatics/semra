@@ -1015,7 +1015,7 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     {'chebi': {'10084', '10084'}, 'mesh': {'C453820', 'C062735'}}
     """
     entities: defaultdict[str, set[str]] = defaultdict(set)
-    for mapping in mappings:
+    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):
         for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
@@ -1037,7 +1037,8 @@ def get_terms(
         hydrated_subset_configuration = hydrate_subsets(
             subset_configuration, show_progress=show_progress
         )
-    for prefix in prefixes:
+    for prefix in tqdm(prefixes, desc="Getting terms"):
+        tqdm.write(f"[{prefix}] getting terms")
         # TODO need to exclude default references here
         id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])

@@ -1,4 +1,4 @@
-# SeMRA Protein Complex Landscape Analysis
+# SeMRA Protein Complex Mappings Database
 
 Analyze the landscape of protein complex nomenclature resources,
 species-agnostic. Created by:

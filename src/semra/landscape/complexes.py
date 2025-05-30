@@ -43,8 +43,8 @@ CONFIGURATION = Configuration(
         Input(source="biomappings"),
         Input(prefix="fplx", source="pyobo", confidence=0.99),
         Input(prefix="fplx", source="custom", confidence=0.99),
-        Input(prefix="intact_complexportal", source="custom", confidence=0.99),
         Input(prefix="complexportal", source="pyobo", confidence=0.99),
+        Input(prefix="intact", source="pyobo", confidence=0.99),
         Input(prefix="go", source="pyobo", confidence=0.99),
         # Wikidata has mappings as well
         Input(prefix="complexportal", source="wikidata", confidence=0.99),

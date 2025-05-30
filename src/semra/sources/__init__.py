@@ -17,7 +17,6 @@ from semra.sources.clo import get_clo_mappings
 from semra.sources.compath import get_compath_mappings
 from semra.sources.famplex import get_fplx_mappings
 from semra.sources.gilda import get_gilda_mappings
-from semra.sources.intact import get_intact_complexportal_mappings, get_intact_reactome_mappings
 from semra.sources.ncit import (
     get_ncit_chebi_mappings,
     get_ncit_go_mappings,
@@ -40,8 +39,6 @@ __all__ = [
     "get_custom",
     "get_fplx_mappings",
     "get_gilda_mappings",
-    "get_intact_complexportal_mappings",
-    "get_intact_reactome_mappings",
     "get_ncit_chebi_mappings",
     "get_ncit_go_mappings",
     "get_ncit_hgnc_mappings",
@@ -53,8 +50,6 @@ __all__ = [
 
 SOURCE_RESOLVER: FunctionResolver[[], list[Mapping]] = FunctionResolver(
     [
-        get_intact_reactome_mappings,
-        get_intact_complexportal_mappings,
         get_fplx_mappings,
         get_pubchem_mesh_mappings,
         get_ncit_chebi_mappings,

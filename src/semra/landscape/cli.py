@@ -39,7 +39,11 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
         ),
         (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
         (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (genes.CONFIGURATION, genes.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (
+            genes.CONFIGURATION,
+            # don't write the summary because resource is too big to run on local machine
+            genes.CONFIGURATION.get_cli(copy_to_landscape=True, write_summary=False),
+        ),
         (taxrank.CONFIGURATION, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
     ]
     return functions
@@ -90,7 +94,7 @@ def _get_metaanalysis_df() -> pd.DataFrame:
     rows = []
 
     for conf, _ in _get_functions():
-        if conf.key == "disease":
+        if conf.key not in {"gene", "taxrank"}:
             _copy_into_landscape_folder(conf, conf._get_landscape_paths())
 
         directory = LANDSCAPE_FOLDER.joinpath(conf.key)

@@ -191,7 +191,11 @@ class Summarizer:
             self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)
             self.processed_mappings = filter_subsets(self.processed_mappings, hydrated_subsets)
 
-        self.terms_observed = get_observed_terms(self.processed_mappings)
+        # TODO skip indexing observed terms if there are already exact
+        #  terms available
+        # important to use raw mappings for getting observed terms
+        # in case things are filtered out later
+        self.terms_observed = get_observed_terms(self.raw_mappings)
 
         self.priority_mappings = (
             configuration.read_priority_mappings()

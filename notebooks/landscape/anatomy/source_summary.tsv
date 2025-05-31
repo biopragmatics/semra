@@ -1,0 +1,7 @@
+prefix	name	license	version	terms	status
+uberon	Uber Anatomy Ontology	CC-BY-3.0	2025-04-09	15693	full
+mesh	Medical Subject Headings	CC0-1.0	2025	1797	subset
+bto	BRENDA Tissue Ontology	CC-BY-4.0	2021-10-26	6566	full
+caro	Common Anatomy Reference Ontology	CC-BY-4.0	2023-03-15	90	full
+ncit	NCI Thesaurus	CC-BY-4.0	25.05d	7579	subset
+umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2025AA	7719	subset

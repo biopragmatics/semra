@@ -18,23 +18,18 @@ are summarized in the following table that includes their
 [Bioregistry](https://bioregistry.io) prefix, license, current version, and
 number of terms (i.e., named concepts) they contain.
 
-2 resources were not available through
-[PyOBO](https://github.com/biopragmatics/pyobo). Therefore, the number of terms
-in that resource are estimated based on the ones that are observed in mappings
-assembled by SeMRA. Note that these are typically an underestimate.
-
 | prefix        | name                                | license      | version    | terms | status   |
 | :------------ | :---------------------------------- | :----------- | :--------- | ----: | :------- |
 | complexportal | Complex Portal                      | CC0-1.0      | 2025-03-28 |  5031 | full     |
 | fplx          | FamPlex                             | CC0-1.0      |            |   782 | full     |
 | go            | Gene Ontology                       | CC-BY-4.0    | 2025-03-16 |  2059 | subset   |
 | chembl.target | ChEMBL target                       | CC-BY-SA-3.0 | 35         |   689 | subset   |
-| wikidata      | Wikidata                            | CC0-1.0      |            |     0 | observed |
+| wikidata      | Wikidata                            | CC0-1.0      |            | 48581 | observed |
 | scomp         | Selventa Complexes                  | Apache-2.0   |            |   135 | full     |
 | signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-04-01 |   856 | full     |
-| intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |     0 | observed |
+| intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |  3766 | full     |
 
-There are a total of 9,552 terms across the 8 resources.
+There are a total of 61,899 terms across the 8 resources.
 
 ## Mapping Summary and Usage
 
@@ -50,14 +45,14 @@ The raw mappings are the ones directly read from the 9 sources.
 
 | source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
 | :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
-| complexportal |          5031 |    5 |    0 |           203 |     4759 |     0 |    267 |   3325 |
+| complexportal |          5031 |    5 |    0 |           203 |     4759 |     0 |    267 |   3315 |
 | fplx          |             5 |  782 |   46 |             0 |        0 |    66 |    118 |      0 |
 | go            |             0 |   46 | 2059 |             0 |        0 |     0 |      0 |      3 |
 | chembl.target |           203 |    0 |    0 |           689 |        0 |     0 |      0 |      0 |
-| wikidata      |          4759 |    0 |    0 |             0 |        0 |     0 |      0 |      0 |
+| wikidata      |          4759 |    0 |    0 |             0 |    48581 |     0 |      0 |      0 |
 | scomp         |             0 |   66 |    0 |             0 |        0 |   135 |      0 |      0 |
 | signor        |           267 |  118 |    0 |             0 |        0 |     0 |    856 |      0 |
-| intact        |          3325 |    0 |    3 |             0 |        0 |     0 |      0 |      0 |
+| intact        |          3315 |    0 |    3 |             0 |        0 |     0 |      0 |   3766 |
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -133,14 +128,14 @@ The processed mappings table has the following qualities:
 
 | source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
 | :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
-| complexportal |          5031 |    7 |    2 |           203 |     4761 |     2 |    267 |   3325 |
+| complexportal |          5031 |    7 |    2 |           203 |     4761 |     2 |    267 |   3315 |
 | fplx          |             7 |  782 |   50 |             0 |      411 |    66 |    118 |      5 |
 | go            |             2 |   50 | 2059 |             0 |       43 |    25 |     11 |      5 |
 | chembl.target |           203 |    0 |    0 |           689 |        0 |     0 |      0 |      0 |
-| wikidata      |          4761 |  411 |   43 |             0 |        0 |    60 |     86 |   2043 |
+| wikidata      |          4761 |  411 |   43 |             0 |    48581 |    60 |     86 |   2043 |
 | scomp         |             2 |   66 |   25 |             0 |       60 |   135 |     14 |      2 |
 | signor        |           267 |  118 |   11 |             0 |       86 |    14 |    856 |      0 |
-| intact        |          3325 |    5 |    5 |             0 |     2043 |     2 |      0 |      0 |
+| intact        |          3315 |    5 |    5 |             0 |     2043 |     2 |      0 |   3766 |
 
 The processed mappings can be accessed via the
 [SeMRA](https://github.com/biopragmatics/semra) Python Package using the
@@ -240,10 +235,10 @@ percentage gain. Note that:
 | fplx          |            40 |    0 |  8.7 |           nan |      inf |     0 |      0 |    inf |
 | go            |           inf |  8.7 |    0 |           nan |      inf |   inf |    inf |   66.7 |
 | chembl.target |             0 |  nan |  nan |             0 |      nan |   nan |    nan |    nan |
-| wikidata      |             0 |  inf |  inf |           nan |      nan |   inf |    inf |    inf |
+| wikidata      |             0 |  inf |  inf |           nan |        0 |   inf |    inf |    inf |
 | scomp         |           inf |    0 |  inf |           nan |      inf |     0 |    inf |    inf |
 | signor        |             0 |    0 |  inf |           nan |      inf |   inf |      0 |    nan |
-| intact        |             0 |  inf | 66.7 |           nan |      inf |   inf |    nan |    nan |
+| intact        |             0 |  inf | 66.7 |           nan |      inf |   inf |    nan |      0 |
 
 ### Landscape Analysis
 
@@ -251,10 +246,10 @@ Above, the comparison looked at the overlaps between each resource. Now, that
 information is used to jointly estimate the number of terms in the landscape
 itself, and estimate how much of the landscape each resource covers.
 
-This estimates a total of 9,121 unique entities.
+This estimates a total of 8,475 unique entities.
 
-- 5,278 (57.9%) have at least one mapping.
-- 3,843 (42.1%) are unique to a single resource.
+- 5,278 (62.3%) have at least one mapping.
+- 3,197 (37.7%) are unique to a single resource.
 - 0 (0.0%) appear in all 8 resources.
 
 This estimate is susceptible to several caveats:
@@ -274,11 +269,11 @@ number that appear in each group of resources.
 
 ![](processed_landscape_histogram.svg)
 
-The landscape of 8 resources has 9,552 total terms. After merging redundant
-nodes based on mappings, inference, and reasoning, there are 9,121 unique
+The landscape of 8 resources has 61,899 total terms. After merging redundant
+nodes based on mappings, inference, and reasoning, there are 8,475 unique
 concepts. Using the reduction formula
 $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-this is a 4.51% reduction.
+this is a 86.31% reduction.
 
 This is only an estimate and is susceptible to a few things:
 
@@ -287,10 +282,6 @@ This is only an estimate and is susceptible to a few things:
 1. It can be artificially low because there are entities that are incorrectly
    mapped, e.g., as a result of inference. The frontend curation interface can
    help identify and remove these
-1. It can be artificially low because for some vocabularies like SNOMED-CT, it's
-   not possible to load a terms list, and therefore it's not possible to account
-   for terms that aren't mapped. Therefore, a lower bound estimate is made based
-   on the terms that appear in mappings.
 1. It can be artificially high if a vocabulary is used that covers many domains
    and is not properly subset'd. For example, EFO covers many different domains,
    so when doing disease landscape analysis, it should be subset to only terms

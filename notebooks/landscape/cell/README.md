@@ -24,15 +24,15 @@ number of terms (i.e., named concepts) they contain.
 | mesh        | Medical Subject Headings                                  | CC0-1.0                                                                                              | 2025       |    636 | subset |
 | efo         | Experimental Factor Ontology                              | Apache-2.0                                                                                           | 3.77.0     |     27 | subset |
 | cellosaurus | Cellosaurus                                               | CC-BY-4.0                                                                                            | 52.0       | 163868 | full   |
-| ccle        | Cancer Cell Line Encyclopedia Cells                       | ODbL-1.0                                                                                             |            |   1061 | full   |
+| ccle        | Cancer Cell Line Encyclopedia Cells                       | ODbL-1.0                                                                                             |            |   1739 | full   |
 | depmap      | DepMap Cell Lines                                         | CC-BY-4.0                                                                                            | 24Q4       |   1814 | full   |
 | bto         | BRENDA Tissue Ontology                                    | CC-BY-4.0                                                                                            | 2021-10-26 |   6566 | full   |
 | cl          | Cell Ontology                                             | CC-BY-4.0                                                                                            | 2025-04-10 |   3095 | full   |
 | clo         | Cell Line Ontology                                        | CC-BY-3.0                                                                                            | 2.1.188    |  39099 | full   |
-| ncit        | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.04d     |    503 | subset |
+| ncit        | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.05d     |    503 | subset |
 | umls        | Unified Medical Language System Concept Unique Identifier | https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html | 2025AA     |   6341 | subset |
 
-There are a total of 223,010 terms across the 10 resources.
+There are a total of 223,688 terms across the 10 resources.
 
 ## Mapping Summary and Usage
 
@@ -50,9 +50,9 @@ The raw mappings are the ones directly read from the 11 sources.
 | :------------ | ---: | --: | ----------: | ---: | -----: | ---: | ---: | ----: | ---: | ---: |
 | mesh          |  636 |   3 |          30 |    0 |      0 |    0 |   85 |    34 |    6 |  433 |
 | efo           |    3 |  27 |           4 |    0 |      0 |    2 |    0 |     3 |    1 |    0 |
-| cellosaurus   |   30 |   4 |      163868 |  113 |   1895 | 2436 |    0 | 34152 |    0 |    0 |
-| ccle          |    0 |   0 |         113 | 1061 |   1628 |    2 |    0 |     0 |    0 |    0 |
-| depmap        |    0 |   0 |        1895 | 1628 |   1814 |    0 |    0 |     0 |    0 |    0 |
+| cellosaurus   |   30 |   4 |      163868 |  114 |   1895 | 2436 |    0 | 34152 |    0 |    0 |
+| ccle          |    0 |   0 |         114 | 1739 |   1700 |    2 |    0 |     0 |    0 |    0 |
+| depmap        |    0 |   0 |        1895 | 1700 |   1814 |    0 |    0 |     0 |    0 |    0 |
 | bto           |    0 |   2 |        2436 |    2 |      0 | 6566 |  330 |     6 |    0 |    0 |
 | cl            |   85 |   0 |           0 |    0 |      0 |  330 | 3095 |     0 |    6 |    0 |
 | clo           |   34 |   3 |       34152 |    0 |      0 |    6 |    0 | 39099 |    0 |    0 |
@@ -193,10 +193,10 @@ The processed mappings table has the following qualities:
 | :------------ | ---: | --: | ----------: | ---: | -----: | ---: | ---: | ----: | ---: | ---: |
 | mesh          |  636 |   3 |          32 |    6 |      6 |   62 |   85 |    34 |    7 |  433 |
 | efo           |    3 |  27 |           4 |    0 |      0 |    2 |    0 |     5 |    1 |    1 |
-| cellosaurus   |   32 |   4 |      163868 | 1655 |   1913 | 2436 |    1 | 34153 |    0 |    0 |
-| ccle          |    6 |   0 |        1655 | 1061 |   1629 |  641 |    0 |  1417 |    0 |    0 |
-| depmap        |    6 |   0 |        1913 | 1629 |   1814 |  668 |    0 |  1473 |    0 |    0 |
-| bto           |   62 |   2 |        2436 |  641 |    668 | 6566 |  330 |  1436 |    7 |    7 |
+| cellosaurus   |   32 |   4 |      163868 | 1699 |   1913 | 2436 |    1 | 34153 |    0 |    0 |
+| ccle          |    6 |   0 |        1699 | 1739 |   1700 |  648 |    0 |  1417 |    0 |    0 |
+| depmap        |    6 |   0 |        1913 | 1700 |   1814 |  668 |    0 |  1473 |    0 |    0 |
+| bto           |   62 |   2 |        2436 |  648 |    668 | 6566 |  330 |  1436 |    7 |    7 |
 | cl            |   85 |   0 |           1 |    0 |      0 |  330 | 3095 |     0 |    8 |    8 |
 | clo           |   34 |   5 |       34153 | 1417 |   1473 | 1436 |    0 | 39099 |    0 |    0 |
 | ncit          |    7 |   1 |           0 |    0 |      0 |    7 |    8 |     0 |  503 |  497 |
@@ -281,10 +281,10 @@ to a small number of other resources.
 | :------------ | ---: | --: | ----------: | ---: | -----: | ---: | --: | ---: | ---: | ---: |
 | mesh          |    0 |   0 |           2 |    6 |      6 |   62 |   0 |    0 |    1 |    0 |
 | efo           |    0 |   0 |           0 |    0 |      0 |    0 |   0 |    2 |    0 |    1 |
-| cellosaurus   |    2 |   0 |           0 | 1542 |     18 |    0 |   1 |    1 |    0 |    0 |
-| ccle          |    6 |   0 |        1542 |    0 |      1 |  639 |   0 | 1417 |    0 |    0 |
-| depmap        |    6 |   0 |          18 |    1 |      0 |  668 |   0 | 1473 |    0 |    0 |
-| bto           |   62 |   0 |           0 |  639 |    668 |    0 |   0 | 1430 |    7 |    7 |
+| cellosaurus   |    2 |   0 |           0 | 1585 |     18 |    0 |   1 |    1 |    0 |    0 |
+| ccle          |    6 |   0 |        1585 |    0 |      0 |  646 |   0 | 1417 |    0 |    0 |
+| depmap        |    6 |   0 |          18 |    0 |      0 |  668 |   0 | 1473 |    0 |    0 |
+| bto           |   62 |   0 |           0 |  646 |    668 |    0 |   0 | 1430 |    7 |    7 |
 | cl            |    0 |   0 |           1 |    0 |      0 |    0 |   0 |    0 |    2 |    8 |
 | clo           |    0 |   2 |           1 | 1417 |   1473 | 1430 |   0 |    0 |    0 |    0 |
 | ncit          |    1 |   0 |           0 |    0 |      0 |    7 |   2 |    0 |    0 |    0 |
@@ -302,10 +302,10 @@ percentage gain. Note that:
 | :------------ | ---: | ---: | ----------: | -----: | -----: | ------: | ---: | ------: | ---: | ---: |
 | mesh          |    0 |    0 |         6.7 |    inf |    inf |     inf |    0 |       0 | 16.7 |    0 |
 | efo           |    0 |    0 |           0 |    nan |    nan |       0 |  nan |    66.7 |    0 |  inf |
-| cellosaurus   |  6.7 |    0 |           0 | 1364.6 |    0.9 |       0 |  inf |       0 |  nan |  nan |
-| ccle          |  inf |  nan |      1364.6 |      0 |    0.1 |   31950 |  nan |     inf |  nan |  nan |
-| depmap        |  inf |  nan |         0.9 |    0.1 |      0 |     inf |  nan |     inf |  nan |  nan |
-| bto           |  inf |    0 |           0 |  31950 |    inf |       0 |    0 | 23833.3 |  inf |  inf |
+| cellosaurus   |  6.7 |    0 |           0 | 1390.4 |    0.9 |       0 |  inf |       0 |  nan |  nan |
+| ccle          |  inf |  nan |      1390.4 |      0 |      0 |   32300 |  nan |     inf |  nan |  nan |
+| depmap        |  inf |  nan |         0.9 |      0 |      0 |     inf |  nan |     inf |  nan |  nan |
+| bto           |  inf |    0 |           0 |  32300 |    inf |       0 |    0 | 23833.3 |  inf |  inf |
 | cl            |    0 |  nan |         inf |    nan |    nan |       0 |    0 |     nan | 33.3 |  inf |
 | clo           |    0 | 66.7 |           0 |    inf |    inf | 23833.3 |  nan |       0 |  nan |  nan |
 | ncit          | 16.7 |    0 |         nan |    nan |    nan |     inf | 33.3 |     nan |    0 |    0 |
@@ -317,10 +317,10 @@ Above, the comparison looked at the overlaps between each resource. Now, that
 information is used to jointly estimate the number of terms in the landscape
 itself, and estimate how much of the landscape each resource covers.
 
-This estimates a total of 182,139 unique entities.
+This estimates a total of 44,114 unique entities.
 
-- 35,711 (19.6%) have at least one mapping.
-- 146,428 (80.4%) are unique to a single resource.
+- 35,711 (81.0%) have at least one mapping.
+- 8,403 (19.0%) are unique to a single resource.
 - 0 (0.0%) appear in all 10 resources.
 
 This estimate is susceptible to several caveats:
@@ -340,11 +340,11 @@ number that appear in each group of resources.
 
 ![](processed_landscape_histogram.svg)
 
-The landscape of 10 resources has 223,010 total terms. After merging redundant
-nodes based on mappings, inference, and reasoning, there are 182,139 unique
+The landscape of 10 resources has 223,688 total terms. After merging redundant
+nodes based on mappings, inference, and reasoning, there are 44,114 unique
 concepts. Using the reduction formula
 $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-this is a 18.33% reduction.
+this is a 80.28% reduction.
 
 This is only an estimate and is susceptible to a few things:
 

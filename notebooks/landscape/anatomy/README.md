@@ -24,7 +24,7 @@ number of terms (i.e., named concepts) they contain.
 | mesh   | Medical Subject Headings                                  | CC0-1.0                                                                                              | 2025       |  1797 | subset |
 | bto    | BRENDA Tissue Ontology                                    | CC-BY-4.0                                                                                            | 2021-10-26 |  6566 | full   |
 | caro   | Common Anatomy Reference Ontology                         | CC-BY-4.0                                                                                            | 2023-03-15 |    90 | full   |
-| ncit   | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.04d     |  7579 | subset |
+| ncit   | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.05d     |  7579 | subset |
 | umls   | Unified Medical Language System Concept Unique Identifier | https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html | 2025AA     |  7719 | subset |
 
 There are a total of 39,444 terms across the 6 resources.
@@ -260,10 +260,10 @@ Above, the comparison looked at the overlaps between each resource. Now, that
 information is used to jointly estimate the number of terms in the landscape
 itself, and estimate how much of the landscape each resource covers.
 
-This estimates a total of 33,600 unique entities.
+This estimates a total of 18,067 unique entities.
 
-- 3,554 (10.6%) have at least one mapping.
-- 30,046 (89.4%) are unique to a single resource.
+- 3,554 (19.7%) have at least one mapping.
+- 14,513 (80.3%) are unique to a single resource.
 - 1 (0.0%) appear in all 6 resources.
 
 This estimate is susceptible to several caveats:
@@ -284,10 +284,10 @@ number that appear in each group of resources.
 ![](processed_landscape_histogram.svg)
 
 The landscape of 6 resources has 39,444 total terms. After merging redundant
-nodes based on mappings, inference, and reasoning, there are 33,600 unique
+nodes based on mappings, inference, and reasoning, there are 18,067 unique
 concepts. Using the reduction formula
 $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-this is a 14.82% reduction.
+this is a 54.20% reduction.
 
 This is only an estimate and is susceptible to a few things:
 

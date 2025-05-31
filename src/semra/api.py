@@ -1030,7 +1030,7 @@ def get_terms(
     """Get the set of identifiers for each of the resources."""
     import pyobo
 
-    prefix_to_identifier_to_name = {}
+    prefix_to_identifiers: dict[str, set[str]] = {}
     if subset_configuration is None:
         hydrated_subset_configuration: SubsetConfiguration = {}
     else:
@@ -1039,18 +1039,19 @@ def get_terms(
         )
     for prefix in tqdm(prefixes, desc="Getting terms"):
         tqdm.write(f"[{prefix}] getting terms")
-        # TODO need to exclude default references here
-        id_to_name = pyobo.get_id_name_mapping(prefix, use_tqdm=show_progress)
+        identifiers = pyobo.get_ids(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
-            prefix_to_identifier_to_name[prefix] = {
+            prefix_to_identifiers[prefix] = {
                 identifier
-                for identifier in id_to_name
+                for identifier in identifiers
                 if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
             }
+        elif not identifiers:
+            tqdm.write(f"[{prefix}] PyOBO did not return any IDs")
         else:
-            prefix_to_identifier_to_name[prefix] = set(id_to_name)
-    return prefix_to_identifier_to_name
+            prefix_to_identifiers[prefix] = identifiers
+    return prefix_to_identifiers
 
 
 def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> bool:
@@ -1087,6 +1088,14 @@ def _count_terms(
     elif prefix in prefix_to_identifier_observed:
         return TermCount(False, len(prefix_to_identifier_observed[prefix]))
     else:
+        # TODO this might need to be a raise exception, since something is wrong
+        msg = (
+            f"The prefix {prefix} was neither indexed in the exact term list nor"
+            f"the observed term list.\n\n\texact: {sorted(prefix_to_identifier_exact)}"
+            f"\n\n\tobserved: {sorted(prefix_to_identifier_observed)}"
+        )
+        tqdm.write(msg)
+        # raise KeyError(msg)
         return TermCount(False, 0)
 
 

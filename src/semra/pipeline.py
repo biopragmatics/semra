@@ -588,15 +588,17 @@ class Configuration(BaseModel):
     def cli(
         self,
         *args: Any,
+        write_summary: bool = True,
         copy_to_landscape: bool = False,
         hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
     ) -> None:
         """Get and run a command line interface for this configuration."""
-        self.get_cli(copy_to_landscape=copy_to_landscape)(*args)
+        self.get_cli(copy_to_landscape=copy_to_landscape, write_summary=write_summary)(*args)
 
     def get_cli(
         self,
         *,
+        write_summary: bool = True,
         copy_to_landscape: bool = False,
         hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
     ) -> click.Command:
@@ -628,16 +630,17 @@ class Configuration(BaseModel):
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
-            from .summarize import write_summary
+            if write_summary:
+                from . import summarize
 
-            write_summary(
-                self,
-                show_progress=True,
-                copy_to_landscape=copy_to_landscape,
-                raw_mappings=pack.raw,
-                processed_mappings=pack.processed,
-                priority_mappings=pack.priority,
-            )
+                summarize.write_summary(
+                    self,
+                    show_progress=True,
+                    copy_to_landscape=copy_to_landscape,
+                    raw_mappings=pack.raw,
+                    processed_mappings=pack.processed,
+                    priority_mappings=pack.priority,
+                )
 
             for hook in hooks or []:
                 hook(self, pack)

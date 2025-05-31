@@ -1,0 +1,9 @@
+prefix	name	license	version	terms	status
+complexportal	Complex Portal	CC0-1.0	2025-03-28	5031	full
+fplx	FamPlex	CC0-1.0		782	full
+go	Gene Ontology	CC-BY-4.0	2025-03-16	2059	subset
+chembl.target	ChEMBL target	CC-BY-SA-3.0	35	689	subset
+wikidata	Wikidata	CC0-1.0		48581	observed
+scomp	Selventa Complexes	Apache-2.0		135	full
+signor	Signaling Network Open Resource	CC-BY-NC-4.0	2025-04-01	856	full
+intact	IntAct protein interaction database	CC-BY-4.0	2025-03-28	3766	full

@@ -58,7 +58,7 @@ dependencies = [
     "more_itertools",
     "networkx",
     "bioregistry>=0.12.7",
-    "pyobo>=0.12.3",
+    "pyobo>=0.12.4",
     "bioontologies>=0.7.2",
     "typing_extensions",
     "zenodo_client",

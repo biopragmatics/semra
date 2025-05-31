@@ -1,9 +1,0 @@
-source_prefix	complexportal	fplx	go	chembl.target	wikidata	scomp	signor	intact
-complexportal	4921	7	2	203	4761	2	268	3325
-fplx	7	782	50	0	411	66	118	5
-go	2	50	2064	0	43	25	11	5
-chembl.target	203	0	0	689	0	0	0	0
-wikidata	4761	411	43	0	5164	60	86	2042
-scomp	2	66	25	0	60	135	14	2
-signor	268	118	11	0	86	14	852	0
-intact	3325	5	5	0	2042	2	0	3325

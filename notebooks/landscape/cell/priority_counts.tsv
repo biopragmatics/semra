@@ -1,0 +1,10 @@
+source_prefix	mesh	efo	cellosaurus	ccle	bto	cl	ncit
+efo	3	0	0	0	0	0	0
+cellosaurus	3	4	0	0	0	0	0
+ccle	6	0	1686	0	0	0	0
+depmap	6	0	1906	8	0	0	0
+bto	62	2	2421	0	0	0	0
+cl	81	0	1	0	275	0	0
+clo	13	5	34113	0	0	0	0
+ncit	7	1	0	0	4	1	0
+umls	0	1	0	0	4	1	479

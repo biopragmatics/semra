@@ -13,8 +13,8 @@ analyses:
 
 ## Example
 
-The example below highlights the disease landscape. Each analysis creates a graph of the
-processed mappings.
+The example below highlights the disease landscape. Each analysis creates a
+graph of the processed mappings.
 
 ![](disease/processed_graph.svg)
 

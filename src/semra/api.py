@@ -7,8 +7,8 @@ import logging
 import typing
 import typing as t
 from collections import Counter, defaultdict
-from collections.abc import Iterable
-from typing import Literal, TypeVar, cast, overload
+from collections.abc import Collection, Iterable
+from typing import Literal, NamedTuple, TypeAlias, TypeVar, cast, overload
 
 import bioregistry
 import networkx as nx
@@ -32,8 +32,12 @@ from semra.utils import cleanup_prefixes, semra_tqdm
 
 __all__ = [
     "TEST_MAPPING_SET",
+    "IdentifierIndex",
     "Index",
     "M2MIndex",
+    "PrefixIdentifierDict",
+    "PrefixIdentifierDict",
+    "PrefixPairCounter",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -46,9 +50,14 @@ __all__ = [
     "filter_self_matches",
     "filter_subsets",
     "flip",
+    "get_asymmetric_counter",
+    "get_identifier_index",
     "get_index",
     "get_many_to_many",
+    "get_observed_terms",
     "get_priority_reference",
+    "get_symmetric_counter",
+    "get_terms",
     "get_test_evidence",
     "get_test_reference",
     "hydrate_subsets",
@@ -940,3 +949,208 @@ def prioritize_df(
         return curie_remapping.get(norm_curie, norm_curie)
 
     df[target_column] = df[column].map(_map_curie)
+
+
+#: An index from (source prefix, target prefix) to identifiers
+#: in the source vocabulary that have been mappped to the target
+#: vocabulary
+IdentifierIndex: TypeAlias = dict[tuple[str, str], set[str]]
+
+
+def get_identifier_index(
+    mappings: t.Iterable[Mapping],
+    *,
+    show_progress: bool = True,
+    predicates: Collection[Reference] | None = None,
+    directed: bool = False,
+) -> IdentifierIndex:
+    """Index which entities in each vocabulary have been mapped.
+
+    :param mappings: An iterable of mappings to be indexed
+    :param predicates: If given, filter to mappings with these predicates
+    :return: A directed index
+
+    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and
+    ``P1:1 skos:exactMatch P3:X``, we would have the following index:
+
+    .. code-block:: python
+
+        {
+            ("P1", "P2"): {"1"},
+            ("P2", "P1"): {"A"},
+            ("P1", "P3"): {"1"},
+            ("P3", "P1"): {"X"},
+        }
+    """
+    triples: Iterable[Triple] = iter(get_index(mappings, progress=show_progress, leave=False))
+    index: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    if predicates is not None:
+        target_predicates_ = set(predicates)
+        triples = (triple for triple in triples if triple.predicate in target_predicates_)
+    for triple in triples:
+        index[triple.subject.prefix, triple.object.prefix].add(triple.subject.identifier)
+        if not directed:
+            index[triple.object.prefix, triple.subject.prefix].add(triple.object.identifier)
+    return dict(index)
+
+
+#: A dictionary from prefixes appearing in subjects/objects
+#: of mappings to the set local unique identifiers appearing
+#: in mappings
+PrefixIdentifierDict: TypeAlias = t.Mapping[str, Collection[str]]
+
+
+def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
+    """Get the set of terms appearing in each prefix.
+
+    :param mappings: An iterable of mappings
+    :return:
+        A dictionary from prefixes appearing in subjects/objects
+        of mappings to the set local unique identifiers appearing
+        in mappings
+
+    >>> m1 = Mapping(
+    ...     subject=Reference.from_curie("chebi:10084"),
+    ...     predicate=EXACT_MATCH,
+    ...     object=Reference.from_curie("mesh:C453820"),
+    ... )
+    >>> m2 = Mapping(
+    ...     subject=Reference.from_curie("chebi:10100"),
+    ...     predicate=EXACT_MATCH,
+    ...     object=Reference.from_curie("mesh:C062735"),
+    ... )
+    >>> {k: sorted(v) for k, v in get_observed_terms([m1, m2]).items()}
+    {'chebi': ['10084', '10100'], 'mesh': ['C062735', 'C453820']}
+    """
+    entities: defaultdict[str, set[str]] = defaultdict(set)
+    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):
+        for reference in (mapping.subject, mapping.object):
+            entities[reference.prefix].add(reference.identifier)
+    return dict(entities)
+
+
+def get_terms(
+    prefixes: list[str],
+    subset_configuration: SubsetConfiguration | None = None,
+    *,
+    show_progress: bool = True,
+) -> PrefixIdentifierDict:
+    """Get the set of identifiers for each of the resources."""
+    import pyobo
+
+    prefix_to_identifiers: dict[str, set[str]] = {}
+    if subset_configuration is None:
+        hydrated_subset_configuration: SubsetConfiguration = {}
+    else:
+        hydrated_subset_configuration = hydrate_subsets(
+            subset_configuration, show_progress=show_progress
+        )
+    for prefix in tqdm(prefixes, desc="Getting terms"):
+        tqdm.write(f"[{prefix}] getting terms")
+        identifiers = pyobo.get_ids(prefix, use_tqdm=show_progress)
+        subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
+        if subset:
+            prefix_to_identifiers[prefix] = {
+                identifier
+                for identifier in identifiers
+                if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
+            }
+        elif not identifiers:
+            tqdm.write(f"[{prefix}] PyOBO did not return any IDs")
+        else:
+            prefix_to_identifiers[prefix] = identifiers
+    return prefix_to_identifiers
+
+
+def _keep_in_subset(prefix: str, identifier: str, subset: set[Reference]) -> bool:
+    # check if the identifier is a "default" reference
+    if identifier.startswith(f"{prefix}#"):
+        return False
+    return Reference(prefix=prefix, identifier=identifier) in subset
+
+
+#: A counter from pairs of prefixes to the maximum number
+#: of observed terms of one or the other. Note that this
+#: estimate is only an upper bound.
+PrefixPairCounter: TypeAlias = t.Counter[tuple[str, str]]
+
+
+class TermCount(NamedTuple):
+    """A count that's annotated as being exact or not."""
+
+    exact: bool
+    count: int  # type:ignore
+
+
+def _count_terms(
+    prefix: str,
+    prefix_to_identifier_exact: PrefixIdentifierDict,
+    prefix_to_identifier_observed: PrefixIdentifierDict,
+) -> TermCount:
+    if prefix in prefix_to_identifier_exact:
+        count = len(prefix_to_identifier_exact[prefix])
+        # there is a situation where there might be a zero-
+        # returned here because of impedance between pyobo
+        # and bioregistry
+        return TermCount(bool(count) > 0, count)
+    elif prefix in prefix_to_identifier_observed:
+        return TermCount(False, len(prefix_to_identifier_observed[prefix]))
+    else:
+        # TODO this might need to be a raise exception, since something is wrong
+        msg = (
+            f"The prefix {prefix} was neither indexed in the exact term list nor"
+            f"the observed term list.\n\n\texact: {sorted(prefix_to_identifier_exact)}"
+            f"\n\n\tobserved: {sorted(prefix_to_identifier_observed)}"
+        )
+        tqdm.write(msg)
+        # raise KeyError(msg)
+        return TermCount(False, 0)
+
+
+def get_symmetric_counter(
+    index: IdentifierIndex,
+    priority: list[str],
+    *,
+    terms_exact: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
+    include_diag: bool = True,
+) -> PrefixPairCounter:
+    """Create a symmetric mapping counts counter from a directed index."""
+    counter: PrefixPairCounter = Counter()
+
+    for left_prefix, right_prefix in index:
+        left_observed_terms = index[left_prefix, right_prefix]
+        left_all_terms: t.Collection[str] = terms_exact.get(left_prefix, [])
+        if left_all_terms:
+            left_observed_terms.intersection_update(left_all_terms)
+
+        right_observed_terms = index[right_prefix, left_prefix]
+        right_all_terms: t.Collection[str] = terms_exact.get(right_prefix, [])
+        if right_all_terms:
+            right_observed_terms.intersection_update(right_all_terms)
+
+        if include_diag:
+            counter[left_prefix, right_prefix] = max(
+                len(left_observed_terms), len(right_observed_terms)
+            )
+
+    for prefix in priority:
+        counter[prefix, prefix] = _count_terms(prefix, terms_exact, terms_observed).count
+
+    return counter
+
+
+def get_asymmetric_counter(
+    index: IdentifierIndex,
+    priority: list[str],
+    *,
+    terms_exact: PrefixIdentifierDict,
+    terms_observed: PrefixIdentifierDict,
+) -> PrefixPairCounter:
+    """Create a symmetric mapping counts counter from a directed index."""
+    return Counter(
+        {
+            (left_prefix, right_prefix): len(identifiers)
+            for (left_prefix, right_prefix), identifiers in index.items()
+        }
+    )

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import enum
 import logging
 import time
 import typing as t
 from collections.abc import Callable, Iterable
+from functools import partial
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple, overload
 
 import click
 import requests
@@ -54,6 +56,7 @@ if t.TYPE_CHECKING:
 
 __all__ = [
     "Configuration",
+    "GetMappingReturnType",
     "Input",
     "Mutation",
     "SubsetConfiguration",
@@ -64,6 +67,8 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+HERE = Path(__file__).parent.resolve()
+
 UPLOAD_OPTION = click.option("--upload", is_flag=True)
 REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
 REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
@@ -73,6 +78,17 @@ REFRESH_SOURCE_OPTION = click.option(
     help="Enable this to fully re-process source data, e.g., parse source OBO files and re-build mapping caches",
 )
 BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
+
+STATS_FILE_NAME = "stats.json"
+CONFIG_FILE_NAME = "configuration.json"
+
+
+class GetMappingReturnType(enum.Enum):
+    """An enumeration for the return values for :func:`get_priority_mappings_from_config`."""
+
+    none = enum.auto()
+    all = enum.auto()
+    priority = enum.auto()
 
 
 class Input(BaseModel):
@@ -236,7 +252,7 @@ class Configuration(BaseModel):
     @property
     def configuration_path(self) -> Path:
         """Get the path to the configuration file."""
-        return self.directory.joinpath("configuration.json")
+        return self.directory.joinpath(CONFIG_FILE_NAME)
 
     @property
     def raw_neo4j_path(self) -> Path:
@@ -257,6 +273,79 @@ class Configuration(BaseModel):
     def raw_neo4j_name(self) -> str:
         """Get the name for the raw mappings Neo4j docker image."""
         return f"semra-{self.key}-raw"
+
+    @property
+    def processed_landscape_upset_path(self) -> Path:
+        """Get the path to the processed landscape UpSet plot."""
+        return self.directory.joinpath("processed_landscape_upset.svg")
+
+    @property
+    def processed_landscape_histogram_path(self) -> Path:
+        """Get the path to the processed landscape histogram plot."""
+        return self.directory.joinpath("processed_landscape_histogram.svg")
+
+    @property
+    def source_summary_path(self) -> Path:
+        """Get the path to the source summary TSV file."""
+        return self.directory.joinpath("source_summary.tsv")
+
+    @property
+    def raw_counts_path(self) -> Path:
+        """Get the path to the raw counts summary TSV."""
+        return self.directory / "raw_counts.tsv"
+
+    @property
+    def processed_counts_path(self) -> Path:
+        """Get the path to the processed counts summary TSV."""
+        return self.directory / "processed_counts.tsv"
+
+    @property
+    def priority_counts_path(self) -> Path:
+        """Get the path to the priority counts summary TSV."""
+        return self.directory / "priority_counts.tsv"
+
+    @property
+    def raw_graph_path(self) -> Path:
+        """Get the path to the raw counts graph depiction."""
+        return self.directory.joinpath("raw_graph.svg")
+
+    @property
+    def processed_graph_path(self) -> Path:
+        """Get the path to the processed counts graph depiction."""
+        return self.directory.joinpath("processed_graph.svg")
+
+    @property
+    def priority_graph_path(self) -> Path:
+        """Get the path to the priority counts graph depiction."""
+        return self.directory.joinpath("priority_graph.svg")
+
+    @property
+    def readme_path(self) -> Path:
+        """Get the path to the summary README file."""
+        return self.directory.joinpath("README.md")
+
+    @property
+    def stats_path(self) -> Path:
+        """Get the path to the statistics summary JSON file."""
+        return self.directory.joinpath(STATS_FILE_NAME)
+
+    def _get_landscape_paths(self) -> list[Path]:
+        return [
+            self.raw_counts_path,
+            self.raw_graph_path,
+            # processed
+            self.processed_counts_path,
+            self.processed_graph_path,
+            self.processed_landscape_upset_path,
+            self.processed_landscape_histogram_path,
+            # priority
+            self.priority_counts_path,
+            self.priority_graph_path,
+            # summaries
+            self.source_summary_path,
+            self.readme_path,
+            self.stats_path,
+        ]
 
     @model_validator(mode="before")
     def infer_priority(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa:N805
@@ -293,25 +382,60 @@ class Configuration(BaseModel):
             inputs.append(Input(source="gilda"))
         return cls(key=key, name=name, inputs=inputs, directory=directory)
 
+    # docstr-coverage: inherited
+    @overload
     def get_mappings(
         self,
         *,
         refresh_raw: bool = False,
         refresh_processed: bool = False,
         refresh_source: bool = False,
-    ) -> list[Mapping]:
+        return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+    ) -> None: ...
+
+    # docstr-coverage: inherited
+    @overload
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+    ) -> MappingPack: ...
+
+    # docstr-coverage: inherited
+    @overload
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+    ) -> list[Mapping]: ...
+
+    def get_mappings(
+        self,
+        *,
+        refresh_raw: bool = False,
+        refresh_processed: bool = False,
+        refresh_source: bool = False,
+        return_type: GetMappingReturnType = GetMappingReturnType.none,
+    ) -> list[Mapping] | MappingPack | None:
         """Run assembly based on this configuration."""
-        return get_priority_mappings_from_config(
+        return get_priority_mappings_from_config(  # type:ignore[no-any-return,call-overload]
             self,
             refresh_source=refresh_source,
             refresh_raw=refresh_raw,
             refresh_processed=refresh_processed,
+            return_type=return_type,
         )
 
-    def read_raw_mappings(self) -> list[Mapping]:
+    def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.raw_jsonl_path, from_jsonl),
+            (self.raw_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.raw_pickle_path, from_pickle),
             (self.raw_sssom_path, from_sssom),
         ]
@@ -321,10 +445,10 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"raw mappings have not yet been cached in {self.directory}")
 
-    def read_processed_mappings(self) -> list[Mapping]:
+    def read_processed_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.processed_jsonl_path, from_jsonl),
+            (self.processed_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.processed_pickle_path, from_pickle),
             (self.processed_sssom_path, from_sssom),
         ]
@@ -334,10 +458,10 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"processed mappings have not yet been cached in {self.directory}")
 
-    def read_priority_mappings(self) -> list[Mapping]:
+    def read_priority_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read priority mappings from pickle, if already cached."""
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.priority_jsonl_path, from_jsonl),
+            (self.priority_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
             (self.priority_pickle_path, from_pickle),
             (self.priority_sssom_path, from_sssom),
         ]
@@ -389,6 +513,7 @@ class Configuration(BaseModel):
             self.processed_jsonl_path,
             self.priority_sssom_path,
             self.priority_jsonl_path,
+            # TODO add summaries?
         ]
         for path in paths:
             if path is None:
@@ -460,11 +585,23 @@ class Configuration(BaseModel):
         )
         click.echo(f"Result: {res}")
 
-    def cli(self, *args: Any) -> None:
+    def cli(
+        self,
+        *args: Any,
+        write_summary: bool = True,
+        copy_to_landscape: bool = False,
+        hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
+    ) -> None:
         """Get and run a command line interface for this configuration."""
-        self.get_cli()(*args)
+        self.get_cli(copy_to_landscape=copy_to_landscape, write_summary=write_summary)(*args)
 
-    def get_cli(self) -> click.Command:
+    def get_cli(
+        self,
+        *,
+        write_summary: bool = True,
+        copy_to_landscape: bool = False,
+        hooks: list[Callable[[Configuration, MappingPack], None]] | None = None,
+    ) -> click.Command:
         """Get a command line interface for this configuration."""
         import click
         from more_click import verbose_option
@@ -484,13 +621,30 @@ class Configuration(BaseModel):
             build_docker: bool,
         ) -> None:
             """Build the mapping database terms."""
-            self.get_mappings(
+            pack = self.get_mappings(
                 refresh_source=refresh_source,
                 refresh_raw=refresh_raw,
                 refresh_processed=refresh_processed,
+                return_type=GetMappingReturnType.all,
             )
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
+
+            if write_summary:
+                from . import summarize
+
+                summarize.write_summary(
+                    self,
+                    show_progress=True,
+                    copy_to_landscape=copy_to_landscape,
+                    raw_mappings=pack.raw,
+                    processed_mappings=pack.processed,
+                    priority_mappings=pack.priority,
+                )
+
+            for hook in hooks or []:
+                hook(self, pack)
+
             if upload:
                 self._safe_upload()
 
@@ -505,13 +659,58 @@ class Configuration(BaseModel):
             click.echo(f"uploaded to {url}")
 
 
+class MappingPack(NamedTuple):
+    """A tuple of raw, processed, and priority mappings."""
+
+    raw: list[Mapping]
+    processed: list[Mapping]
+    priority: list[Mapping]
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+) -> None: ...
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+) -> MappingPack: ...
+
+
+# docstr-coverage: inherited
+@overload
+def get_priority_mappings_from_config(
+    configuration: Configuration,
+    *,
+    refresh_source: bool = ...,
+    refresh_raw: bool = ...,
+    refresh_processed: bool = ...,
+    return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+) -> list[Mapping]: ...
+
+
 def get_priority_mappings_from_config(
     configuration: Configuration,
     *,
     refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
-) -> list[Mapping]:
+    return_type: GetMappingReturnType = GetMappingReturnType.none,
+) -> None | list[Mapping] | MappingPack:
     """Get prioritized mappings based on an assembly configuration."""
     if refresh_source:
         refresh_raw = True
@@ -519,7 +718,21 @@ def get_priority_mappings_from_config(
         refresh_processed = True
 
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
-        return configuration.read_priority_mappings()
+        match return_type:
+            case GetMappingReturnType.none:
+                return None
+            case GetMappingReturnType.all:
+                if not configuration.has_raw_path():
+                    raise FileNotFoundError
+                if not configuration.has_processed_path():
+                    raise FileNotFoundError
+                return MappingPack(
+                    raw=configuration.read_raw_mappings(show_progress=True),
+                    processed=configuration.read_processed_mappings(show_progress=True),
+                    priority=configuration.read_priority_mappings(show_progress=True),
+                )
+            case GetMappingReturnType.priority:
+                return configuration.read_priority_mappings()
 
     if configuration.has_processed_path() and not refresh_raw and not refresh_processed:
         processed_mappings = configuration.read_processed_mappings()
@@ -605,7 +818,21 @@ def get_priority_mappings_from_config(
         add_labels=configuration.add_labels,
     )
 
-    return prioritized_mappings
+    match return_type:
+        case GetMappingReturnType.none:
+            return None
+        case GetMappingReturnType.all:
+            if not configuration.has_raw_path():
+                raise FileNotFoundError
+            if not configuration.has_processed_path():
+                raise FileNotFoundError
+            return MappingPack(
+                raw=raw_mappings,
+                processed=processed_mappings,
+                priority=prioritized_mappings,
+            )
+        case GetMappingReturnType.priority:
+            return prioritized_mappings
 
 
 def _get_equivalence_classes(

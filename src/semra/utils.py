@@ -6,18 +6,27 @@ import gzip
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast
 
 import bioregistry
 from tqdm.auto import tqdm
 
+if TYPE_CHECKING:
+    import jinja2
+
 __all__ = [
+    "LANDSCAPE_FOLDER",
     "cleanup_prefixes",
+    "get_jinja_environment",
+    "get_jinja_template",
     "gzip_path",
     "semra_tqdm",
 ]
 
 X = TypeVar("X")
+HERE = Path(__file__).parent.resolve()
+ROOT = HERE.parent.parent.resolve()
+LANDSCAPE_FOLDER = ROOT.joinpath("notebooks", "landscape").resolve()
 
 
 def semra_tqdm(
@@ -56,3 +65,18 @@ def gzip_path(path: str | Path) -> Path:
         shutil.copyfileobj(ip, op)
     path.unlink()
     return rv
+
+
+def get_jinja_environment() -> jinja2.Environment:
+    """Get the jinja environment."""
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    templates = HERE.joinpath("templates")
+    environment = Environment(loader=FileSystemLoader(templates), autoescape=select_autoescape())
+    return environment
+
+
+def get_jinja_template(name: str) -> jinja2.Template:
+    """Get a jinja template."""
+    environment = get_jinja_environment()
+    return environment.get_template(name)

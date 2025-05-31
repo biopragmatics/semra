@@ -1019,8 +1019,8 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     ...     predicate=EXACT_MATCH,
     ...     object=Reference.from_curie("mesh:C062735"),
     ... )
-    >>> get_observed_terms([m1, m2])
-    {'chebi': {'10084', '10100'}, 'mesh': {'C453820', 'C062735'}}
+    >>> {k: sorted(v) for k, v in get_observed_terms([m1, m2]).items()}
+    {'chebi': ['10084', '10100'], 'mesh': ['C062735', 'C453820']}
     """
     entities: defaultdict[str, set[str]] = defaultdict(set)
     for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):

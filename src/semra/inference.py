@@ -62,7 +62,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     >>> r1, r2 = get_test_reference(2)
     >>> e1 = get_test_evidence()
     >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
-    >>> mappings = infer_reversible([m1])
+    >>> mappings = infer_reversible([m1], progress=False)
     >>> len(mappings)
     2
     >>> assert mappings[0] == m1

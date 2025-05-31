@@ -1009,10 +1009,18 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
         of mappings to the set local unique identifiers appearing
         in mappings
 
-    >>> m1 = Mapping(subject="chebi:10084", predicate=EXACT_MATCH, object="mesh:C453820")
-    >>> m2 = Mapping(subject="chebi:10100", predicate=EXACT_MATCH, object="mesh:C062735")
+    >>> m1 = Mapping(
+    ...     subject=Reference.from_curie("chebi:10084"),
+    ...     predicate=EXACT_MATCH,
+    ...     object=Reference.from_curie("mesh:C453820"),
+    ... )
+    >>> m2 = Mapping(
+    ...     subject=Reference.from_curie("chebi:10100"),
+    ...     predicate=EXACT_MATCH,
+    ...     object=Reference.from_curie("mesh:C062735"),
+    ... )
     >>> get_observed_terms([m1, m2])
-    {'chebi': {'10084', '10084'}, 'mesh': {'C453820', 'C062735'}}
+    {'chebi': {'10084', '10100'}, 'mesh': {'C453820', 'C062735'}}
     """
     entities: defaultdict[str, set[str]] = defaultdict(set)
     for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):

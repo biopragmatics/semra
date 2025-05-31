@@ -53,17 +53,17 @@ r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic
 r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
 
 mapping = Mapping(
-   subject=r1, predicate=EXACT_MATCH, object=r2,
-   evidence=[
-      SimpleEvidence(
-         justification=MANUAL_MAPPING,
-         confidence=0.99,
-         author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
-         mapping_set=MappingSet(
-            name="biomappings", license="CC0", confidence=0.90,
-         ),
-      )
-   ]
+    subject=r1, predicate=EXACT_MATCH, object=r2,
+    evidence=[
+        SimpleEvidence(
+            justification=MANUAL_MAPPING,
+            confidence=0.99,
+            author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
+            mapping_set=MappingSet(
+                name="biomappings", license="CC0", confidence=0.90,
+            ),
+        )
+    ]
 )
 ```
 
@@ -78,13 +78,13 @@ import semra.io
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
 mappings = semra.io.from_sssom(
-   sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
+    sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
 )
 
 # alternatively, metadata can be passed via a file/URL
 mappings_alt = semra.io.from_sssom(
-   sssom_url,
-   metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
+    sssom_url,
+    metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
 )
 
 # load mappings from the Gene Ontology (via OBO format)
@@ -226,7 +226,7 @@ chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 # of the star is determined by the equivalent entity with the
 # highest priority based on the given list
 priority_mapping = prioritize(mappings, priority=[
-   "chebi", "chembl.compound", "pubchem.compound", "drugbank",
+    "chebi", "chembl.compound", "pubchem.compound", "drugbank",
 ])
 ```
 
@@ -251,11 +251,11 @@ graph LR
 We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
 five biomedical entity types:
 
-1. [Disease](notebooks/landscape/disease/disease-landscape.ipynb)
-2. [Cell & Cell Line](notebooks/landscape/cell/cell-landscape.ipynb)
-3. [Anatomy](notebooks/landscape/anatomy/anatomy-landscape.ipynb)
-4. [Protein Complex](notebooks/landscape/complex/complex-landscape.ipynb)
-5. [Gene](notebooks/landscape/gene/gene-landscape.ipynb)
+1. [Disease](notebooks/landscape/disease/)
+2. [Cell & Cell Line](notebooks/landscape/)
+3. [Anatomy](notebooks/landscape/anatomy/)
+4. [Protein Complex](notebooks/landscape/complex/)
+5. [Gene](notebooks/landscape/gene/)
 
 These analyses are based on
 [declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)

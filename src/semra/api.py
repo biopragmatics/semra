@@ -530,13 +530,10 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     """
     original_mappings = len(mappings)
     mappings_by_subj_obj = {
-        (m.subject.curie, m.object.curie): m for m in mappings
-        if m.predicate == EXACT_MATCH
+        (m.subject.curie, m.object.curie): m for m in mappings if m.predicate == EXACT_MATCH
     }
     # Gather all the references by CURIE
-    references_by_curie = {
-        ref.curie: ref for m in mappings for ref in (m.subject, m.object)
-    }
+    references_by_curie = {ref.curie: ref for m in mappings for ref in (m.subject, m.object)}
 
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
@@ -544,9 +541,7 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     graph = to_simple_graph(mappings)
     rv: list[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
-        component_references = [
-            references_by_curie[curie] for curie in component
-        ]
+        component_references = [references_by_curie[curie] for curie in component]
         o = get_priority_reference(component_references, priority)
         if o is None:
             continue

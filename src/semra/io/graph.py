@@ -16,8 +16,8 @@ __all__ = [
     "from_digraph",
     "from_multidigraph",
     "to_digraph",
-    "to_simple_graph",
     "to_multidigraph",
+    "to_simple_graph",
 ]
 
 #: The key inside the data dictionary for a SeMRA mapping graph
@@ -67,8 +67,7 @@ def to_simple_graph(mappings: t.Iterable[Mapping]) -> nx.Graph:
         the relationships between subject and object CURIEs in mappings.
     """
     graph = nx.Graph()
-    edges = {(mapping.subject.curie, mapping.object.curie)
-             for mapping in mappings}
+    edges = {(mapping.subject.curie, mapping.object.curie) for mapping in mappings}
     graph.add_edges_from(edges)
     return graph
 

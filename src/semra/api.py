@@ -17,7 +17,7 @@ import ssslm
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
-from semra.io.graph import _from_digraph_edge, to_digraph
+from semra.io.graph import to_digraph, to_simple_graph
 from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
 from semra.struct import (
     Evidence,
@@ -529,24 +529,34 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
            and the priority reference is the object (skip the self mapping)
     """
     original_mappings = len(mappings)
-    mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
+    mappings_by_subj_obj = {
+        (m.subject.curie, m.object.curie): m for m in mappings
+        if m.predicate == EXACT_MATCH
+    }
+    # Gather all the references by CURIE
+    references_by_curie = {
+        ref.curie: ref for m in mappings for ref in (m.subject, m.object)
+    }
+
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
 
-    graph = to_digraph(mappings).to_undirected()
+    graph = to_simple_graph(mappings)
     rv: list[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
-        o = get_priority_reference(component, priority)
+        component_references = [
+            references_by_curie[curie] for curie in component
+        ]
+        o = get_priority_reference(component_references, priority)
         if o is None:
             continue
         rv.extend(
-            mapping
+            mappings_by_subj_obj[(s.curie, o.curie)]
             # TODO should this work even if s-o edge not exists?
             #  can also do "inference" here, but also might be
             #  because of negative edge filtering
-            for s in component
+            for s in component_references
             if s != o and graph.has_edge(s, o)
-            for mapping in _from_digraph_edge(graph, s, o)
         )
 
     # sort such that the mappings are ordered by object by priority order

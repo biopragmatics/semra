@@ -508,7 +508,9 @@ def assert_projection(mappings: list[Mapping]) -> None:
     )
 
 
-def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
+def prioritize(
+    mappings: list[Mapping], priority: list[str], *, progress: bool = True
+) -> list[Mapping]:
     """Get a priority star graph.
 
     :param mappings: An iterable of mappings
@@ -535,7 +537,9 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
 
     graph = to_digraph(mappings).to_undirected()
     rv: list[Mapping] = []
-    for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
+    for component in tqdm(
+        nx.connected_components(graph), unit="component", unit_scale=True, disable=not progress
+    ):
         o = get_priority_reference(component, priority)
         if o is None:
             continue

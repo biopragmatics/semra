@@ -84,13 +84,16 @@ docs = [
     "autodoc_pydantic",
     "texext",
 ]
+biomappings = [
+    "biomappings>=0.4.0",
+]
 web = [
+    "semra[biomappings]",
     "fastapi",
     "uvicorn",
     "flask",
     "bootstrap_flask",
     "neo4j",
-    "biomappings",
 ]
 landscape = [
     "upsetplot",

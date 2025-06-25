@@ -17,6 +17,7 @@ import pydantic
 import requests
 import yaml
 from tqdm.autonotebook import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from .io_utils import (
     CONFIDENCE_PRECISION,
@@ -640,8 +641,9 @@ def _get_sssom_row(
         raise TypeError
 
     if add_labels:
-        subject_label = mapping.subject.name or get_name_by_curie(mapping.subject.curie)
-        object_label = mapping.object.name or get_name_by_curie(mapping.object.curie)
+        with logging_redirect_tqdm():
+            subject_label = mapping.subject.name or get_name_by_curie(mapping.subject.curie)
+            object_label = mapping.object.name or get_name_by_curie(mapping.object.curie)
     else:
         subject_label = mapping.subject.name or ""
         object_label = mapping.object.name or ""

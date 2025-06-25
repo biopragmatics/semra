@@ -700,13 +700,13 @@ def write_sssom(
     stream: bool = False,
 ) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
-    if not add_labels and not prune:
+    if not prune:
         if stream:
-            return _write_sssom_stream(mappings, file, stream=stream)
+            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
         else:
-            return _write_sssom_stream(mappings, file, stream=stream)
+            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
     elif stream:
-        raise ValueError
+        raise ValueError("can not prune and stream at the same time")
     else:
         df = get_sssom_df(mappings, add_labels=add_labels)
         df.to_csv(file, sep="\t", index=False)

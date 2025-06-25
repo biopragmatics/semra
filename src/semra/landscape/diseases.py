@@ -45,6 +45,7 @@ SUBSETS = {
     ],
 }
 
+#: Configuration for the disease mappings database
 CONFIGURATION = Configuration(
     key="disease",
     name="SeMRA Disease Mappings Database",

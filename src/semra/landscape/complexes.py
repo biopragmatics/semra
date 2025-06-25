@@ -32,6 +32,7 @@ SUBSETS = {
     ],
 }
 
+#: Configuration for the protein complex mappings database
 CONFIGURATION = Configuration(
     key="complex",
     name="SeMRA Protein Complex Mappings Database",

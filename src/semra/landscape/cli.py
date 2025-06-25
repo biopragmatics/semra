@@ -21,6 +21,7 @@ from semra.pipeline import (
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 
 __all__ = [
+    "compile_landscape_metaanalysis",
     "landscape",
 ]
 
@@ -83,9 +84,34 @@ def landscape(
                 build_docker=build_docker,
             )
 
+    compile_landscape_metaanalysis()
 
-def _get_name(conf: Configuration) -> str:
-    return conf.name.removeprefix("SeMRA").removesuffix("Mappings Database").strip()
+
+def compile_landscape_metaanalysis() -> None:
+    """Compile the landscape meta-analysis and write the README file.
+
+    This function is also run as part of the :func:`landscape` CLI
+    functionality.
+    """
+    df = _get_metaanalysis_df()
+    configurations = [
+        (conf, _get_name(conf))
+        for conf, _ in _get_functions()
+        # filter out folders that aren't ready for prime time
+        if LANDSCAPE_FOLDER.joinpath(conf.key).is_dir()
+    ]
+
+    template = get_jinja_template("landscape-readme.md")
+    text = template.render(df=df, configurations=configurations)
+
+    path = LANDSCAPE_FOLDER.joinpath("README.md").resolve()
+    path.write_text(text)
+    os.system(  # noqa:S605
+        f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'
+    )
+
+    click.echo("\nTable as LaTeX for paper\n")
+    click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
 
 
 def _get_metaanalysis_df() -> pd.DataFrame:
@@ -128,27 +154,8 @@ def _get_metaanalysis_df() -> pd.DataFrame:
     return df
 
 
-def compile_landscape_metaanalysis() -> None:
-    """Compile the landscape meta-analysis and write the README file."""
-    df = _get_metaanalysis_df()
-    configurations = [
-        (conf, _get_name(conf))
-        for conf, _ in _get_functions()
-        # filter out folders that aren't ready for prime time
-        if LANDSCAPE_FOLDER.joinpath(conf.key).is_dir()
-    ]
-
-    template = get_jinja_template("landscape-readme.md")
-    text = template.render(df=df, configurations=configurations)
-
-    path = LANDSCAPE_FOLDER.joinpath("README.md").resolve()
-    path.write_text(text)
-    os.system(  # noqa:S605
-        f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'
-    )
-
-    click.echo("\nTable as LaTeX for paper\n")
-    click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
+def _get_name(conf: Configuration) -> str:
+    return conf.name.removeprefix("SeMRA").removesuffix("Mappings Database").strip()
 
 
 if __name__ == "__main__":

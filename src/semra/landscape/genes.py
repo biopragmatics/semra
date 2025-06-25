@@ -30,6 +30,7 @@ PREFIXES = PRIORITY = [
     "wikidata",
 ]
 
+#: Configuration for the gene mappings database
 CONFIGURATION = Configuration(
     key="gene",
     name="SeMRA Gene Mappings Database",

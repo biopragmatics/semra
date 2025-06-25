@@ -90,8 +90,7 @@ def landscape(
 def compile_landscape_metaanalysis() -> None:
     """Compile the landscape meta-analysis and write the README file.
 
-    This function is also run as part of the :func:`landscape` CLI
-    functionality.
+    This function is also run as part of the :func:`landscape` CLI functionality.
     """
     df = _get_metaanalysis_df()
     configurations = [

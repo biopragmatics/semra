@@ -379,7 +379,7 @@ as label, count UNION ALL
         query = "MATCH (e:concept) WHERE e.prefix <> 'orcid' RETURN e.prefix, count(e.prefix)"
         return Counter(
             {
-                (prefix, t.cast(str, bioregistry.get_name(prefix))): count
+                (prefix, bioregistry.get_name(prefix, strict=True)): count
                 for prefix, count in self.read_query(query)
             }
         )

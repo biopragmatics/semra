@@ -642,8 +642,8 @@ def _get_sssom_row(
 
     if add_labels:
         with logging_redirect_tqdm():
-            subject_label = mapping.subject.name or get_name_by_curie(mapping.subject.curie)
-            object_label = mapping.object.name or get_name_by_curie(mapping.object.curie)
+            subject_label = mapping.subject.name or get_name_by_curie(mapping.subject.curie) or ""
+            object_label = mapping.object.name or get_name_by_curie(mapping.object.curie) or ""
     else:
         subject_label = mapping.subject.name or ""
         object_label = mapping.object.name or ""

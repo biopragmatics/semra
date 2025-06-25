@@ -488,6 +488,10 @@ def draw_counter(
     direction: str = "LR",
 ) -> bytes:
     """Draw a source/target prefix pair counter as a network."""
+    values = [v for v in counter.values() if v is not None and v > 0]
+    if not values:
+        return b""
+
     graph = cls()
     renames = {}
     for (source_prefix, target_prefix), count in counter.items():
@@ -507,7 +511,6 @@ def draw_counter(
     agraph.graph_attr["rankdir"] = direction
     agraph.graph_attr["directed"] = "true" if directed else "false"
 
-    values = [v for v in counter.values() if v is not None and v > 0]
     bottom, top = min(values), max(values)
     rr = top - bottom
 

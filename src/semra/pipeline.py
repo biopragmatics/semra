@@ -104,6 +104,7 @@ class Mutation(BaseModel):
     """Represents a mutation operation on a mapping set."""
 
     source: str = Field(..., description="The source type")
+    target: str | list[str] | None = Field(None, description="limit mutation to these")
     confidence: float = 1.0
     old: Reference = Field(default=DB_XREF)
     new: Reference = Field(default=EXACT_MATCH)
@@ -387,9 +388,9 @@ class Configuration(BaseModel):
     def get_mappings(
         self,
         *,
-        refresh_raw: bool = False,
-        refresh_processed: bool = False,
-        refresh_source: bool = False,
+        refresh_raw: bool = ...,
+        refresh_processed: bool = ...,
+        refresh_source: bool = ...,
         return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
     ) -> None: ...
 
@@ -398,9 +399,9 @@ class Configuration(BaseModel):
     def get_mappings(
         self,
         *,
-        refresh_raw: bool = False,
-        refresh_processed: bool = False,
-        refresh_source: bool = False,
+        refresh_raw: bool = ...,
+        refresh_processed: bool = ...,
+        refresh_source: bool = ...,
         return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
     ) -> MappingPack: ...
 
@@ -409,9 +410,9 @@ class Configuration(BaseModel):
     def get_mappings(
         self,
         *,
-        refresh_raw: bool = False,
-        refresh_processed: bool = False,
-        refresh_source: bool = False,
+        refresh_raw: bool = ...,
+        refresh_processed: bool = ...,
+        refresh_source: bool = ...,
         return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
     ) -> list[Mapping]: ...
 
@@ -777,9 +778,11 @@ def get_priority_mappings_from_config(
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
         processed_mappings = process(
             raw_mappings,
+            # TODO more configuration of different mutation types
             upgrade_prefixes=[  # TODO more carefully compile a set of mutations together for applying
                 m.source for m in configuration.mutations
             ],
+            mutations=configuration.mutations,
             remove_prefix_set=configuration.remove_prefixes,
             keep_prefix_set=configuration.keep_prefixes,
             post_remove_prefixes=configuration.post_remove_prefixes,
@@ -914,6 +917,7 @@ def get_raw_mappings(
 def process(
     mappings: list[Mapping],
     upgrade_prefixes: t.Collection[str] | None = None,
+    mutations: t.Collection[Mutation] | None = None,
     remove_prefix_set: t.Collection[str] | None = None,
     keep_prefix_set: t.Collection[str] | None = None,
     post_remove_prefixes: t.Collection[str] | None = None,
@@ -960,6 +964,9 @@ def process(
     # start = time.time()
     # mappings = filter_self_matches(mappings)
     # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
+
+    if mutations:
+        raise NotImplementedError
 
     if upgrade_prefixes and len(upgrade_prefixes) > 1:
         logger.info("Inferring mapping upgrades")

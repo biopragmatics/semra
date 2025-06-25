@@ -16,6 +16,7 @@ PRIORITY = [
     "ncbitaxon",
     "tdwg.taxonrank",
 ]
+SUBSETS = {"ncbitaxon": [semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank")]}
 
 CONFIGURATION = semra.Configuration(
     key="taxrank",
@@ -25,6 +26,7 @@ CONFIGURATION = semra.Configuration(
     inputs=[
         semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
     ],
+    subsets=SUBSETS,
     add_labels=False,
     priority=PRIORITY,
     remove_imprecise=False,

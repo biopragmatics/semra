@@ -612,7 +612,7 @@ class Aggregator:
 
     def __init__(self, priority: Iterable[str]) -> None:
         """Initialize an aggregator."""
-        priority = _clean_priority_prefixes(priority)
+        priority = [bioregistry.normalize_prefix(prefix, strict=True) for prefix in priority]
         # sort such that the mappings are ordered by object by priority order
         # then identifier of object, then subject prefix in alphabetical order
         self.pos = {prefix: i for i, prefix in enumerate(priority)}
@@ -627,10 +627,6 @@ class Aggregator:
     def get_priority_reference(self, nodes: Iterable[Reference]) -> Reference:
         """Get a unique priority reference from a set of references."""
         return min(nodes, key=self.get_reference_key)
-
-
-def _clean_priority_prefixes(priority: Iterable[str]) -> list[str]:
-    return [bioregistry.normalize_prefix(prefix, strict=True) for prefix in priority]
 
 
 def get_priority_reference(

@@ -18,6 +18,7 @@ from semra.api import (
     get_index,
     get_many_to_many,
     keep_prefixes,
+    prioritize,
     prioritize_df,
     project,
 )
@@ -483,6 +484,44 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(
             [b1.curie, b2.curie],
             list(df["curie_prioritized"]),
+        )
+
+    def test_prioritize(self) -> None:
+        """Test prioritize."""
+        a1 = Reference(prefix=PREFIX_A, identifier="0000001")
+        b1 = Reference(prefix=PREFIX_B, identifier="0000002")
+        c1 = Reference(prefix=PREFIX_C, identifier="0000003")
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m1_rev = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m2_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m3 = Mapping(subject=a1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m3_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+
+        # can't address priority
+        self.assert_same_triples(
+            [],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D], progress=False),
+        )
+
+        # has unusable priority first, but then defaults
+        self.assert_same_triples(
+            [m1_rev, m3_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D, PREFIX_A], progress=False),
+        )
+
+        self.assert_same_triples(
+            [m1_rev, m3_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [m1, m2_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [m2, m3],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_C], progress=False),
         )
 
 

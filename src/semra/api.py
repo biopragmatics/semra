@@ -556,7 +556,7 @@ def prioritize(
     >>> mappings = [m1, m2, m3]
     >>> mappings = infer_reversible(mappings)
     >>> mappings = infer_chains(mappings)
-    >>> prioritize(mappings, ['mesh', 'doid', 'umls'])
+    >>> prioritize(mappings, ["mesh", "doid", "umls"])
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.predicate == EXACT_MATCH]

@@ -50,6 +50,7 @@ SUBSETS = {
     ],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
 }
 
+#: Configuration for the cell and cell type mappings database
 CONFIGURATION = Configuration(
     key="cell",
     name="SeMRA Cell and Cell Line Mappings Database",

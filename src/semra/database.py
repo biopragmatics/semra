@@ -22,7 +22,7 @@ from zenodo_client import update_zenodo
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
-from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
+from semra.pipeline import REFRESH_SOURCE_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.utils import gzip_path
@@ -91,13 +91,21 @@ skip_pyobo = {
 @click.option(
     "--include-wikidata/--no-include-wikidata", is_flag=True, show_default=True, default=True
 )
-@click.option("--write-labels", is_flag=True)
+@click.option(
+    "--write-labels",
+    is_flag=True,
+    help="If set to true, writes subject and object labels in the SSSOM file.",
+)
 @click.option(
     "--prune-sssom",
     is_flag=True,
-    help="If true, will try and prune unused SSSOM columns during output",
+    help="If true, will try and prune unused SSSOM columns during output. Note that this significantly increases memory requirement during construction, but results in a smaller database file.",
 )
-@UPLOAD_OPTION
+@click.option(
+    "--upload",
+    is_flag=True,
+    help="If set to true, upload the generated artifacts to the SeMRA Raw Mapping Database record on Zenodo (https://doi.org/10.5281/zenodo.11082038)",
+)
 @REFRESH_SOURCE_OPTION
 def build(
     include_wikidata: bool,
@@ -106,7 +114,7 @@ def build(
     write_labels: bool,
     prune_sssom: bool,
 ) -> None:
-    """Construct the full SeMRA database."""
+    """Construct the SeMRA Raw Mapping Database."""
     ontology_resources: list[bioregistry.Resource] = []
     pyobo_resources: list[bioregistry.Resource] = []
     for resource in bioregistry.resources():

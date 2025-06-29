@@ -513,8 +513,16 @@ def prioritize(
 ) -> list[Mapping]:
     """Get a priority star graph.
 
-    :param mappings: An iterable of mappings
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
+    :param mappings: An iterable of mappings.
+
+        .. warning::
+
+            This assumes that inference and inversion have already been run.
+            This means that if there exists any exact match mapping path between
+            ``A`` and ``B``, then there exists an edge `A, exact, B``. Further,
+            if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
+
+    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
     :return:
         A list of mappings representing a "prioritization", meaning that each element only
         appears as subject once. This condition means that the prioritization mapping can be applied
@@ -524,11 +532,31 @@ def prioritize(
 
     1. Get the subset of exact matches from the input mapping list
     2. Convert the exact matches to an undirected mapping graph
-    3. Extract connected components
+    3. Extract connected components.
+
+        .. note::
+
+            because of construction, connected components might contain
+            just two mappings, ``A, exact, B`` and ``B, exact A``.
+
     4. For each component
         1. Get the "priority" reference using :func:`get_priority_reference`
         2. Construct new mappings where all references in the component are the subject
            and the priority reference is the object (skip the self mapping)
+
+    Here's an example usage, where inference is run ahead of prioritization.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.inference import infer_reversible, infer_chains
+    >>> curies = "doid:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, EXACT_MATCH, r2))
+    >>> m2 = Mapping.from_triple((r2, EXACT_MATCH, r3))
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r3))
+    >>> mappings = [m1, m2, m3]
+    >>> mappings = infer_reversible(mappings)
+    >>> mappings = infer_chains(mappings)
+    >>> prioritize(mappings, ["mesh", "doid", "umls"])
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
@@ -543,15 +571,19 @@ def prioritize(
         o = get_priority_reference(component, priority)
         if o is None:
             continue
-        rv.extend(
-            mapping
-            # TODO should this work even if s-o edge not exists?
-            #  can also do "inference" here, but also might be
-            #  because of negative edge filtering
-            for s in component
-            if s != o and graph.has_edge(s, o)
-            for mapping in _from_digraph_edge(graph, s, o)
-        )
+        for s in component:
+            if s == o:  # don't add self-edges
+                continue
+            if not graph.has_edge(s, o):
+                # TODO should this work even if s-o edge not exists?
+                #  can also do "inference" here, but also might be
+                #  because of negative edge filtering
+                raise NotImplementedError(
+                    "prioritize() should only be called on fully inferred graphs, meaning "
+                    "that in a given component, it is a full clique (i.e., there are edges "
+                    "in both directions between all nodes)"
+                )
+            rv.extend(_from_digraph_edge(graph, s, o))
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order

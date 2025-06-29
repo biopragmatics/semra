@@ -22,7 +22,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from .io_utils import (
     CONFIDENCE_PRECISION,
     get_confidence_str,
-    get_name_by_curie,
+    get_name_by_reference,
     safe_open,
     safe_open_writer,
 )
@@ -642,8 +642,8 @@ def _get_sssom_row(
 
     if add_labels:
         with logging_redirect_tqdm():
-            subject_label = mapping.subject.name or get_name_by_curie(mapping.subject.curie) or ""
-            object_label = mapping.object.name or get_name_by_curie(mapping.object.curie) or ""
+            subject_label = mapping.subject.name or get_name_by_reference(mapping.subject) or ""
+            object_label = mapping.object.name or get_name_by_reference(mapping.object) or ""
     else:
         subject_label = mapping.subject.name or ""
         object_label = mapping.object.name or ""

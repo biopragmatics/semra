@@ -543,6 +543,20 @@ def prioritize(
         1. Get the "priority" reference using :func:`get_priority_reference`
         2. Construct new mappings where all references in the component are the subject
            and the priority reference is the object (skip the self mapping)
+
+    Here's an example usage, where inference is run ahead of prioritization.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.inference import infer_reversible, infer_chains
+    >>> curies = "doid:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, EXACT_MATCH, r2))
+    >>> m2 = Mapping.from_triple((r2, EXACT_MATCH, r3))
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r3))
+    >>> mappings = [m1, m2, m3]
+    >>> mappings = infer_reversible(mappings)
+    >>> mappings = infer_chains(mappings)
+    >>> prioritize(mappings, ['mesh', 'doid', 'umls'])
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.predicate == EXACT_MATCH]

@@ -13,12 +13,13 @@ from typing import TextIO, cast
 import bioregistry
 import pyobo
 import requests
+from curies import Reference
 
 from ..struct import ConfidenceMixin
 
 __all__ = [
     "get_confidence_str",
-    "get_name_by_curie",
+    "get_name_by_reference",
     "get_orcid_name",
     "safe_open",
     "safe_open_writer",
@@ -35,13 +36,13 @@ SKIP_PREFIXES = {
 SKIP_PREFIXES.update(cast(bioregistry.Collection, bioregistry.get_collection("0000004")).resources)
 
 
-def get_name_by_curie(curie: str) -> str | None:
+def get_name_by_reference(reference: Reference) -> str | None:
     """Get a name from a CURIE."""
-    if any(curie.startswith(p) for p in SKIP_PREFIXES):
+    if any(reference.prefix == p for p in SKIP_PREFIXES):
         return None
-    if curie.startswith("orcid:"):
-        return get_orcid_name(curie)
-    return pyobo.get_name_by_curie(curie)
+    if reference.prefix == "orcid":
+        return get_orcid_name(reference.identifier)
+    return pyobo.get_name(reference)
 
 
 @cache

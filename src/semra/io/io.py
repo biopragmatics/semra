@@ -22,7 +22,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from .io_utils import (
     CONFIDENCE_PRECISION,
     get_confidence_str,
-    get_name_by_curie,
+    get_name_by_reference,
     safe_open,
     safe_open_writer,
 )
@@ -596,23 +596,13 @@ def get_sssom_df(
     """
     fallback_mapping_set_id = _get_fallback_mapping_set_id()
     rows = [
-        _get_sssom_row(mapping, evidence, fallback_mapping_set_id)
+        _get_sssom_row(mapping, evidence, fallback_mapping_set_id, add_labels=add_labels)
         for mapping in tqdm(
             mappings, desc="Preparing SSSOM", leave=False, unit="mapping", unit_scale=True
         )
         for evidence in mapping.evidence
     ]
     df = pd.DataFrame(rows, columns=SSSOM_DEFAULT_COLUMNS)
-    if add_labels:
-        with logging_redirect_tqdm():
-            for label_column, id_column in [
-                ("subject_label", "subject_id"),
-                ("object_label", "object_id"),
-            ]:
-                df[label_column] = [
-                    name or get_name_by_curie(curie)
-                    for curie, name in df[[id_column, label_column]].values
-                ]
 
     if prune:
         # remove empty columns
@@ -627,7 +617,9 @@ def _format_confidence(confidence: float) -> str:
     return str(round(confidence, CONFIDENCE_PRECISION))
 
 
-def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) -> SSSOMRow:
+def _get_sssom_row(
+    mapping: Mapping, e: Evidence, fallback_mapping_set_id: str, *, add_labels: bool = False
+) -> SSSOMRow:
     if isinstance(e, SimpleEvidence):
         if e.mapping_set.purl:
             mapping_set_id = e.mapping_set.purl
@@ -649,13 +641,21 @@ def _get_sssom_row(mapping: Mapping, e: Evidence, fallback_mapping_set_id: str) 
     else:
         raise TypeError
 
+    if add_labels:
+        with logging_redirect_tqdm():
+            subject_label = mapping.subject.name or get_name_by_reference(mapping.subject) or ""
+            object_label = mapping.object.name or get_name_by_reference(mapping.object) or ""
+    else:
+        subject_label = mapping.subject.name or ""
+        object_label = mapping.object.name or ""
+
     return SSSOMRow(
         record_id=e.get_reference(triple=mapping),
         subject_id=mapping.subject.curie,
-        subject_label=mapping.subject.name or "",
+        subject_label=subject_label,
         predicate_id=mapping.predicate.curie,
         object_id=mapping.object.curie,
-        object_label=mapping.object.name or "",
+        object_label=object_label,
         mapping_justification=e.justification.curie,
         mapping_set_id=mapping_set_id,
         mapping_set_title=mapping_set_title,
@@ -702,13 +702,13 @@ def write_sssom(
     stream: bool = False,
 ) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
-    if not add_labels and not prune:
+    if not prune:
         if stream:
-            return _write_sssom_stream(mappings, file, stream=stream)
+            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
         else:
-            return _write_sssom_stream(mappings, file, stream=stream)
+            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
     elif stream:
-        raise ValueError
+        raise ValueError("can not prune and stream at the same time")
     else:
         df = get_sssom_df(mappings, add_labels=add_labels)
         df.to_csv(file, sep="\t", index=False)
@@ -718,41 +718,57 @@ def write_sssom(
 # docstr-coverage:excused `overload`
 @overload
 def _write_sssom_stream(
-    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[False] = False
+    mappings: Iterable[Mapping],
+    file: str | Path | TextIO,
+    *,
+    stream: Literal[False] = False,
+    add_labels: bool = ...,
 ) -> None: ...
 
 
 # docstr-coverage:excused `overload`
 @overload
 def _write_sssom_stream(
-    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: Literal[True] = True
+    mappings: Iterable[Mapping],
+    file: str | Path | TextIO,
+    *,
+    stream: Literal[True] = True,
+    add_labels: bool = ...,
 ) -> Generator[Mapping]: ...
 
 
 def _write_sssom_stream(
-    mappings: Iterable[Mapping], file: str | Path | TextIO, *, stream: bool = False
+    mappings: Iterable[Mapping],
+    file: str | Path | TextIO,
+    *,
+    stream: bool = False,
+    add_labels: bool = False,
 ) -> Generator[Mapping] | None:
     fallback_mapping_set_id = _get_fallback_mapping_set_id()
     it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
     if stream:
-        return _stream_write_sssom(file, it, fallback_mapping_set_id)
+        return _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels)
     else:
-        with safe_open_writer(file) as writer:
-            writer.writerow(SSSOM_DEFAULT_COLUMNS)
-            for mapping in it:
-                for evidence in mapping.evidence:
-                    writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
-            return None
+        for _ in _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels):
+            pass
+        return None
 
 
 def _stream_write_sssom(
-    path: str | Path | TextIO, mappings: Iterable[Mapping], fallback_mapping_set_id: str
+    path: str | Path | TextIO,
+    mappings: Iterable[Mapping],
+    fallback_mapping_set_id: str,
+    add_labels: bool = False,
 ) -> Generator[Mapping]:
     with safe_open_writer(path) as writer:
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         for mapping in mappings:
             for evidence in mapping.evidence:
-                writer.writerow(_get_sssom_row(mapping, evidence, fallback_mapping_set_id))
+                writer.writerow(
+                    _get_sssom_row(
+                        mapping, evidence, fallback_mapping_set_id, add_labels=add_labels
+                    )
+                )
             yield mapping
 
 

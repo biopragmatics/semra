@@ -17,6 +17,7 @@ __all__ = [
     "from_multidigraph",
     "to_digraph",
     "to_multidigraph",
+    "to_simple_graph",
 ]
 
 #: The key inside the data dictionary for a SeMRA mapping graph
@@ -53,6 +54,21 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
         edges[mapping.subject, mapping.object][mapping.predicate].extend(mapping.evidence)
     for (s, o), data in edges.items():
         graph.add_edge(s, o, **{DIGRAPH_DATA_KEY: data})
+    return graph
+
+
+def to_simple_graph(mappings: t.Iterable[Mapping]) -> nx.Graph:
+    """Return an undirected graph capturing only the structure of mappings.
+
+    :param mappings: An iterable of mappings
+
+    :returns: An undirected graph in which the nodes are simple string CURIEs
+        corresponding to References. The edges are undirected and represent
+        the relationships between subject and object CURIEs in mappings.
+    """
+    graph = nx.Graph()
+    edges = {(mapping.subject.curie, mapping.object.curie) for mapping in mappings}
+    graph.add_edges_from(edges)
     return graph
 
 

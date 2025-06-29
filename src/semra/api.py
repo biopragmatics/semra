@@ -17,7 +17,7 @@ import ssslm
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
-from semra.io.graph import _from_digraph_edge, to_digraph
+from semra.io.graph import to_digraph, to_simple_graph
 from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
 from semra.struct import (
     Evidence,
@@ -559,19 +559,31 @@ def prioritize(
     >>> prioritize(mappings, ["mesh", "doid", "umls"])
     """
     original_mappings = len(mappings)
-    mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
+    mappings_by_subj_obj: dict[tuple[str, str], Mapping] = {
+        (mapping.subject.curie, mapping.object.curie): mapping
+        for mapping in mappings
+        if mapping.predicate == EXACT_MATCH
+    }
+    # Gather all the references by CURIE
+    curie_to_reference: dict[str, Reference] = {
+        reference.curie: reference
+        for mapping in mappings
+        for reference in (mapping.subject, mapping.object)
+    }
+
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
 
-    graph = to_digraph(mappings).to_undirected()
+    graph = to_simple_graph(mappings)
     rv: list[Mapping] = []
     for component in tqdm(
         nx.connected_components(graph), unit="component", unit_scale=True, disable=not progress
     ):
-        o = get_priority_reference(component, priority)
+        component_references = [curie_to_reference[curie] for curie in component]
+        o = get_priority_reference(component_references, priority)
         if o is None:
             continue
-        for s in component:
+        for s in component_references:
             if s == o:  # don't add self-edges
                 continue
             if not graph.has_edge(s, o):
@@ -583,7 +595,7 @@ def prioritize(
                     "that in a given component, it is a full clique (i.e., there are edges "
                     "in both directions between all nodes)"
                 )
-            rv.extend(_from_digraph_edge(graph, s, o))
+            rv.append(mappings_by_subj_obj[s.curie, o.curie])
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order

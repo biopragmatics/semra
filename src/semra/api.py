@@ -581,7 +581,8 @@ def prioritize(
         o = get_priority_reference(component_references, priority)
         if o is None:
             continue
-        for s in component:
+        for s_curie in component:
+            s = curie_to_reference[s_curie]
             if s == o:  # don't add self-edges
                 continue
             if not graph.has_edge(s, o):
@@ -593,7 +594,7 @@ def prioritize(
                     "that in a given component, it is a full clique (i.e., there are edges "
                     "in both directions between all nodes)"
                 )
-            rv.append(mappings_by_subj_obj[s.curie, o.curie])
+            rv.append(mappings_by_subj_obj[s_curie, o.curie])
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order

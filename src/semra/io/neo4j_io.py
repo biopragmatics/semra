@@ -10,8 +10,9 @@ import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
+from .io_utils import get_confidence_str, get_name_by_reference, safe_open_writer
 from ..rules import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
@@ -329,7 +330,8 @@ def _concept_to_row(
 ) -> Sequence[str]:
     concept_curie = concept.curie
     if add_labels:
-        name = concept.name or get_name_by_curie(concept_curie) or ""
+        with logging_redirect_tqdm():
+            name = concept.name or get_name_by_reference(concept) or ""
     else:
         name = concept.name or ""
     return (

@@ -85,7 +85,7 @@ docs = [
     "texext",
 ]
 biomappings = [
-    "biomappings>=0.4.0",
+    "biomappings>=0.4.1",
 ]
 web = [
     "semra[biomappings]",

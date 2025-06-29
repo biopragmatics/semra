@@ -47,6 +47,7 @@ __all__ = [
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
     "PrefixPairCounter",
+    "apply_mutations",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -69,7 +70,6 @@ __all__ = [
     "get_terms",
     "get_test_evidence",
     "get_test_reference",
-    "handle_mutations",
     "hydrate_subsets",
     "keep_object_prefixes",
     "keep_prefixes",
@@ -1226,31 +1226,44 @@ class Mutation(BaseModel):
         raise NotImplementedError
 
 
-def handle_mutations(
+#: A data structure for fast access to mutations.
+MutationIndex: TypeAlias = dict[str, Mutation]
+
+
+def apply_mutations(
     mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
 ) -> Iterable[Mapping]:
     """Apply mutations."""
-    mutation_index = {}
-    for mutation__ in mutations:
-        if mutation__.source in mutation_index:
-            raise KeyError(f"got multiple configured mutations for source: {mutation__.source}")
-        mutation_index[mutation__.source] = mutation__
+    mutation_index = _index_mutations(mutations)
     for mapping in tqdm(mappings, disable=not progress):
-        mutation = mutation_index.get(mapping.subject.prefix)
-        if not mutation:
-            yield mapping
-        elif not mutation.should_apply_to(mapping):
-            yield mapping
-        else:
-            yield Mapping(
-                subject=mapping.subject,
-                predicate=mutation.new,
-                object=mapping.object,
-                evidence=[
-                    ReasonedEvidence(
-                        justification=KNOWLEDGE_MAPPING,
-                        mappings=[mapping],
-                        confidence_factor=mutation.confidence,
-                    )
-                ],
-            )
+        yield _handle_mutation(mapping, mutation_index)
+
+
+def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:
+    mutation_index = {}
+    for mutation in mutations:
+        if mutation.source in mutation_index:
+            raise KeyError(f"got multiple configured mutations for source: {mutation.source}")
+        mutation_index[mutation.source] = mutation
+    return mutation_index
+
+
+def _handle_mutation(mapping: Mapping, mutation_index: MutationIndex) -> Mapping:
+    mutation = mutation_index.get(mapping.subject.prefix)
+    if not mutation:
+        return mapping
+    elif not mutation.should_apply_to(mapping):
+        return mapping
+    else:
+        return Mapping(
+            subject=mapping.subject,
+            predicate=mutation.new,
+            object=mapping.object,
+            evidence=[
+                ReasonedEvidence(
+                    justification=KNOWLEDGE_MAPPING,
+                    mappings=[mapping],
+                    confidence_factor=mutation.confidence,
+                )
+            ],
+        )

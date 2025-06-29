@@ -19,12 +19,12 @@ from typing_extensions import Self
 
 from semra.api import (
     Mutation,
+    apply_mutations,
     assemble_evidences,
     filter_mappings,
     filter_prefixes,
     filter_self_matches,
     filter_subsets,
-    handle_mutations,
     hydrate_subsets,
     keep_prefixes,
     prioritize,
@@ -969,7 +969,7 @@ def process(
         logger.info("Applying mutations")
         before = len(mappings)
         start = time.time()
-        mappings = list(handle_mutations(mappings, mutations, progress=progress))
+        mappings = list(apply_mutations(mappings, mutations, progress=progress))
         _log_diff(before, mappings, verb="Applied mutations", elapsed=time.time() - start)
 
     if upgrade_prefixes and len(upgrade_prefixes) > 1:

@@ -18,11 +18,13 @@ from tqdm.auto import tqdm
 from typing_extensions import Self
 
 from semra.api import (
+    Mutation,
     assemble_evidences,
     filter_mappings,
     filter_prefixes,
     filter_self_matches,
     filter_subsets,
+    handle_mutations,
     hydrate_subsets,
     keep_prefixes,
     prioritize,
@@ -40,7 +42,7 @@ from semra.io import (
     write_neo4j,
     write_sssom,
 )
-from semra.rules import DB_XREF, EXACT_MATCH, IMPRECISE, SubsetConfiguration
+from semra.rules import IMPRECISE, SubsetConfiguration
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.biopragmatics import (
     from_biomappings_negative,
@@ -98,16 +100,6 @@ class Input(BaseModel):
     prefix: str | None = None
     confidence: float = 1.0
     extras: dict[str, Any] = Field(default_factory=dict)
-
-
-class Mutation(BaseModel):
-    """Represents a mutation operation on a mapping set."""
-
-    source: str = Field(..., description="The source type")
-    target: str | list[str] | None = Field(None, description="limit mutation to these")
-    confidence: float = 1.0
-    old: Reference = Field(default=DB_XREF)
-    new: Reference = Field(default=EXACT_MATCH)
 
 
 class Configuration(BaseModel):
@@ -974,7 +966,11 @@ def process(
     # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
     if mutations:
-        raise NotImplementedError
+        logger.info("Applying mutations")
+        before = len(mappings)
+        start = time.time()
+        mappings = list(handle_mutations(mappings, mutations, progress=progress))
+        _log_diff(before, mappings, verb="Applied mutations", elapsed=time.time() - start)
 
     if upgrade_prefixes and len(upgrade_prefixes) > 1:
         logger.info("Inferring mapping upgrades")

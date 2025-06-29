@@ -14,11 +14,19 @@ import bioregistry
 import networkx as nx
 import pandas as pd
 import ssslm
+from pydantic import BaseModel, Field
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
-from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
+from semra.rules import (
+    DB_XREF,
+    EXACT_MATCH,
+    FLIP,
+    INVERSION_MAPPING,
+    KNOWLEDGE_MAPPING,
+    SubsetConfiguration,
+)
 from semra.struct import (
     Evidence,
     Mapping,
@@ -35,6 +43,7 @@ __all__ = [
     "IdentifierIndex",
     "Index",
     "M2MIndex",
+    "Mutation",
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
     "PrefixPairCounter",
@@ -60,6 +69,7 @@ __all__ = [
     "get_terms",
     "get_test_evidence",
     "get_test_reference",
+    "handle_mutations",
     "hydrate_subsets",
     "keep_object_prefixes",
     "keep_prefixes",
@@ -1190,3 +1200,57 @@ def get_asymmetric_counter(
             for (left_prefix, right_prefix), identifiers in index.items()
         }
     )
+
+
+class Mutation(BaseModel):
+    """Represents a mutation operation on a mapping set."""
+
+    source: str = Field(..., description="The source type")
+    target: str | list[str] | None = Field(None, description="limit mutation to these")
+    confidence: float = 1.0
+    old: Reference = Field(default=DB_XREF)
+    new: Reference = Field(default=EXACT_MATCH)
+
+    def should_apply_to(self, mapping: Mapping) -> bool:
+        """Check if the mutation should be applied."""
+        if mapping.subject.prefix != self.source:
+            return False
+        if mapping.predicate != self.old:
+            return False
+        if self.target is None:
+            return True
+        elif isinstance(self.target, str):
+            return self.target == mapping.object.prefix
+        elif isinstance(self.target, list):
+            return any(t == mapping.object.prefix for t in self.target)
+        raise NotImplementedError
+
+
+def handle_mutations(
+    mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
+) -> Iterable[Mapping]:
+    """Apply mutations."""
+    mutation_index = {}
+    for mutation__ in mutations:
+        if mutation__.source in mutation_index:
+            raise KeyError(f"got multiple configured mutations for source: {mutation__.source}")
+        mutation_index[mutation__.source] = mutation__
+    for mapping in tqdm(mappings, disable=not progress):
+        mutation = mutation_index.get(mapping.subject.prefix)
+        if not mutation:
+            yield mapping
+        elif not mutation.should_apply_to(mapping):
+            yield mapping
+        else:
+            yield Mapping(
+                subject=mapping.subject,
+                predicate=mutation.new,
+                object=mapping.object,
+                evidence=[
+                    ReasonedEvidence(
+                        justification=KNOWLEDGE_MAPPING,
+                        mappings=[mapping],
+                        confidence_factor=mutation.confidence,
+                    )
+                ],
+            )

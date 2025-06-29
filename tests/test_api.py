@@ -499,9 +499,28 @@ class TestOperations(unittest.TestCase):
         m3 = Mapping(subject=a1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
         m3_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
 
+        # Test on component with 1 edge
+        ###############################
+
+        self.assert_same_triples(
+            [m1_rev],
+            prioritize([m1, m1_rev], [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [m1],
+            prioritize([m1, m1_rev], [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [m1_rev],
+            prioritize([m1, m1_rev], [PREFIX_C], progress=False),
+        )
+
+        # Test on component with 2 edges
+        ################################
+
         # can't address priority
         self.assert_same_triples(
-            [],
+            [m1_rev, m3_rev],
             prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D], progress=False),
         )
 
@@ -524,30 +543,11 @@ class TestOperations(unittest.TestCase):
             prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_C], progress=False),
         )
 
-        # test on component with only 1
-        self.assert_same_triples(
-            [m1_rev],
-            prioritize([m1, m1_rev], [PREFIX_A], progress=False),
-        )
-        self.assert_same_triples(
-            [m1],
-            prioritize([m1, m1_rev], [PREFIX_B], progress=False),
-        )
-        self.assert_same_triples(
-            [],
-            prioritize([m1, m1_rev], [PREFIX_C], progress=False),
-        )
-
-        # the following three tests reflect that the prioritize() function
-        # is not implemented in cases when inference hasn't been fully done
-        with self.assertRaises(NotImplementedError):
-            prioritize([m1, m2], [PREFIX_A], progress=False)
-        with self.assertRaises(NotImplementedError):
-            prioritize([m1, m2], [PREFIX_C], progress=False)
-
-        # this one is able to complete, by chance, but it's not part of
-        # the contract, so just left here for later
-        # self.assertEqual([m1, m2_rev], prioritize([m1, m2], [PREFIX_B], progress=False))
+        # FIXME note that in the following three cases, some mappings get thrown away. need to check if there's
+        #  an inverse in these cases
+        self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_A], progress=False))
+        self.assert_same_triples([m1], prioritize([m1, m2], [PREFIX_B], progress=False))
+        self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_C], progress=False))
 
 
 class TestUpgrades(unittest.TestCase):

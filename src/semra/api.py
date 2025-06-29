@@ -17,7 +17,7 @@ import ssslm
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
-from semra.io.graph import _from_digraph_edge, to_digraph
+from semra.io.graph import to_digraph
 from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
 from semra.struct import (
     Evidence,
@@ -509,7 +509,11 @@ def assert_projection(mappings: list[Mapping]) -> None:
 
 
 def prioritize(
-    mappings: list[Mapping], priority: list[str], *, progress: bool = True
+    mappings: list[Mapping],
+    priority: list[str],
+    *,
+    progress: bool = True,
+    sort: bool = True,
 ) -> list[Mapping]:
     """Get a priority star graph.
 
@@ -523,6 +527,7 @@ def prioritize(
             if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
 
     :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
+    :param sort: Sort by object then subject?
     :return:
         A list of mappings representing a "prioritization", meaning that each element only
         appears as subject once. This condition means that the prioritization mapping can be applied
@@ -531,7 +536,13 @@ def prioritize(
     This algorithm works in the following way
 
     1. Get the subset of exact matches from the input mapping list
-    2. Convert the exact matches to an undirected mapping graph
+    2. Convert the exact matches to an index that's like undirected mapping graph.
+
+       .. warning::
+
+            This assumes that all evidences have been aggregated into a single mapping!
+            Make sure you run :func:`assemble_evidences` first
+
     3. Extract connected components.
 
         .. note::
@@ -558,45 +569,36 @@ def prioritize(
     >>> mappings = infer_chains(mappings)
     >>> prioritize(mappings, ["mesh", "doid", "umls"])
     """
-    original_mappings = len(mappings)
-    mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
-    exact_mappings = len(mappings)
-    priority = _clean_priority_prefixes(priority)
-
-    graph = to_digraph(mappings).to_undirected()
     rv: list[Mapping] = []
-    for component in tqdm(
-        nx.connected_components(graph), unit="component", unit_scale=True, disable=not progress
-    ):
-        o = get_priority_reference(component, priority)
-        if o is None:
-            continue
-        for s in component:
-            if s == o:  # don't add self-edges
-                continue
-            if not graph.has_edge(s, o):
-                # TODO should this work even if s-o edge not exists?
-                #  can also do "inference" here, but also might be
-                #  because of negative edge filtering
-                raise NotImplementedError(
-                    "prioritize() should only be called on fully inferred graphs, meaning "
-                    "that in a given component, it is a full clique (i.e., there are edges "
-                    "in both directions between all nodes)"
-                )
-            rv.extend(_from_digraph_edge(graph, s, o))
 
-    # sort such that the mappings are ordered by object by priority order
-    # then identifier of object, then subject prefix in alphabetical order
-    pos = {prefix: i for i, prefix in enumerate(priority)}
-    rv = sorted(
-        rv,
-        key=lambda m: (
-            pos[m.object.prefix],
-            m.object.identifier,
-            m.subject.prefix,
-            m.subject.identifier,
-        ),
-    )
+    original_mappings = 0
+    exact_mappings = 0
+
+    aggregator = Aggregator(priority)
+
+    subject_object_mapping: defaultdict[Reference, dict[Reference, Mapping]] = defaultdict(dict)
+    for m in mappings:
+        original_mappings += 1
+        if m.predicate == EXACT_MATCH:
+            exact_mappings += 1
+            subject_object_mapping[m.subject][m.object] = m
+
+    for s, object_mapping in subject_object_mapping.items():
+        potential_objects = set(object_mapping) | {s}
+        o: Reference = aggregator.get_priority_reference(potential_objects)
+        if o == s:
+            continue
+        rv.append(subject_object_mapping[s][o])
+
+    if sort:
+        rv = sorted(
+            rv,
+            key=lambda m: (
+                aggregator.get_reference_key(m.object),
+                m.subject.prefix,
+                m.subject.identifier,
+            ),
+        )
 
     end_mappings = len(rv)
     logger.info(
@@ -605,7 +607,29 @@ def prioritize(
     return rv
 
 
-def _clean_priority_prefixes(priority: list[str]) -> list[str]:
+class Aggregator:
+    """A class for aggregating nodes based on a priority list."""
+
+    def __init__(self, priority: Iterable[str]) -> None:
+        """Initialize an aggregator."""
+        priority = _clean_priority_prefixes(priority)
+        # sort such that the mappings are ordered by object by priority order
+        # then identifier of object, then subject prefix in alphabetical order
+        self.pos = {prefix: i for i, prefix in enumerate(priority)}
+        self.n = len(self.pos) + 1
+
+    def get_reference_key(self, node: Reference) -> tuple[int, str, str]:
+        """Get a sort key for a node based on priority, prefix, then identifier."""
+        # sort by both prefix priority, then also prefix to tiebrake
+        # when none are prioritized, then identifier within vocabulary
+        return self.pos.get(node.prefix, self.n), node.prefix, node.identifier
+
+    def get_priority_reference(self, nodes: Iterable[Reference]) -> Reference:
+        """Get a unique priority reference from a set of references."""
+        return min(nodes, key=self.get_reference_key)
+
+
+def _clean_priority_prefixes(priority: Iterable[str]) -> list[str]:
     return [bioregistry.normalize_prefix(prefix, strict=True) for prefix in priority]
 
 
@@ -631,20 +655,7 @@ def get_priority_reference(
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
 
     """
-    prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
-    for reference in component:
-        prefix_to_references[reference.prefix].append(reference)
-    for prefix in _clean_priority_prefixes(priority):
-        references = prefix_to_references.get(prefix, [])
-        if not references:
-            continue
-        if len(references) == 1:
-            return references[0]
-        # TODO multiple - I guess let's just return the first
-        logger.debug("multiple references for %s", prefix)
-        return references[0]
-    # nothing found in priority, don't return at all.
-    return None
+    return Aggregator(priority).get_priority_reference(component)
 
 
 def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:

@@ -5,14 +5,18 @@ from __future__ import annotations
 import typing as t
 from typing import cast
 
-import bioregistry
 import flask
 import werkzeug
+from bioregistry import NormalizedNamableReference
 from curies import Reference
 from flask import Blueprint, current_app, render_template
 
 from semra.client import BaseClient
+from semra.rules import EXACT_MATCH, MANUAL_MAPPING
 from semra.web.shared import State, _figure_number
+
+if t.TYPE_CHECKING:
+    import biomappings.resources
 
 __all__ = [
     "flask_blueprint",
@@ -86,31 +90,28 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
         return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
 
     client = _flask_get_client()
+    state = _flask_get_state()
 
     import biomappings.resources
-    from biomappings.wsgi import _manual_source
 
-    source_reference = Reference.from_curie(source)
-    target_reference = Reference.from_curie(target)
+    subject_reference = NormalizedNamableReference.from_curie(
+        source, name=client.get_concept_name(source)
+    )
+    target_reference = NormalizedNamableReference.from_curie(
+        target, name=client.get_concept_name(target)
+    )
 
-    mapping: dict[str, str] = {
-        "source prefix": source_reference.prefix,
-        "source identifier": source_reference.identifier,
-        "target prefix": target_reference.prefix,
-        "target identifier": target_reference.identifier,
-        "relation": "skos:exactMatch",
-        "type": "semapv:ManualMappingCuration",
-        "source": _manual_source(),
-        "prediction_type": "",
-        "prediction_source": "semra",
-        "prediction_confidence": "",
-    }
-    if source_name := client.get_concept_name(source):
-        mapping["source name"] = source_name
-    if target_name := client.get_concept_name(target):
-        mapping["target name"] = target_name
+    mapping = biomappings.resources.SemanticMapping.model_validate(
+        {
+            "subject": subject_reference,
+            "predicate": EXACT_MATCH,
+            "object": target_reference,
+            "mapping_justification": MANUAL_MAPPING,
+            "author": state.current_author,
+            "mapping_tool": "semra",
+        }
+    )
 
-    mapping = biomappings.resources._standardize_mapping(mapping)
     biomappings.resources.append_false_mappings([mapping])
     index_biomapping(_flask_get_false_mapping_index(), mapping)
 
@@ -152,15 +153,12 @@ def _flask_get_false_mapping_index() -> set[tuple[str, str]]:
 
 
 def index_biomapping(
-    mapping_index: set[tuple[str, str]], mapping_dict: t.Mapping[str, str]
+    mapping_index: set[tuple[str, str]], mapping: biomappings.resources.SemanticMapping
 ) -> None:
     """Index a mapping from biomappings."""
-    if mapping_dict["relation"] != "skos:exactMatch":
+    if mapping.predicate.curie != "skos:exactMatch":
         return
-    sp, si = mapping_dict["source prefix"], mapping_dict["source identifier"]
-    tp, ti = mapping_dict["target prefix"], mapping_dict["target identifier"]
-    si = bioregistry.standardize_identifier(sp, si)
-    ti = bioregistry.standardize_identifier(tp, ti)
-    s, t = f"{sp}:{si}", f"{tp}:{ti}"
-    mapping_index.add((s, t))
-    mapping_index.add((t, s))
+    subject_curie = mapping.subject.curie
+    object_curie = mapping.object.curie
+    mapping_index.add((subject_curie, object_curie))
+    mapping_index.add((object_curie, subject_curie))

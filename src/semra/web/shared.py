@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from bioregistry import NormalizedNamedReference
+
 from semra.client import BaseClient, ExampleMapping, FullSummary
 
 __all__ = [
@@ -22,6 +24,7 @@ class State:
     summary: FullSummary
     biomappings_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = field(default_factory=set)
+    current_author: NormalizedNamedReference | None = None
 
     def example_mappings(self) -> list[ExampleMapping]:
         """Extract example mappings."""

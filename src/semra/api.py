@@ -513,8 +513,16 @@ def prioritize(
 ) -> list[Mapping]:
     """Get a priority star graph.
 
-    :param mappings: An iterable of mappings
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
+    :param mappings: An iterable of mappings.
+
+        .. warning::
+
+            This assumes that inference and inversion have already been run.
+            This means that if there exists any exact match mapping path between
+            ``A`` and ``B``, then there exists an edge `A, exact, B``. Further,
+            if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
+
+    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
     :return:
         A list of mappings representing a "prioritization", meaning that each element only
         appears as subject once. This condition means that the prioritization mapping can be applied
@@ -524,7 +532,13 @@ def prioritize(
 
     1. Get the subset of exact matches from the input mapping list
     2. Convert the exact matches to an undirected mapping graph
-    3. Extract connected components
+    3. Extract connected components.
+
+        .. note::
+
+            because of construction, connected components might contain
+            just two mappings, ``A, exact, B`` and ``B, exact A``.
+
     4. For each component
         1. Get the "priority" reference using :func:`get_priority_reference`
         2. Construct new mappings where all references in the component are the subject

@@ -538,6 +538,17 @@ class TestOperations(unittest.TestCase):
             prioritize([m1, m1_rev], [PREFIX_C], progress=False),
         )
 
+        # the following three tests reflect that the prioritize() function
+        # is not implemented in cases when inference hasn't been fully done
+        with self.assertRaises(NotImplementedError):
+            prioritize([m1, m2], [PREFIX_A], progress=False)
+        with self.assertRaises(NotImplementedError):
+            prioritize([m1, m2], [PREFIX_C], progress=False)
+
+        # this one is able to complete, by chance, but it's not part of
+        # the contract, so just left here for later
+        # self.assertEqual([m1, m2_rev], prioritize([m1, m2], [PREFIX_B], progress=False))
+
 
 class TestUpgrades(unittest.TestCase):
     """Test inferring mutations."""

@@ -6,6 +6,7 @@ import os
 from typing import Literal, overload
 
 import fastapi
+from bioregistry import NormalizedNamedReference
 from flask import Flask
 from flask_bootstrap import Bootstrap5
 from starlette.middleware.wsgi import WSGIMiddleware
@@ -45,9 +46,11 @@ def get_app(
 
     biomappings_git_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = set()
+    current_author: NormalizedNamedReference | None = None
 
     if use_biomappings:
         try:
+            import biomappings.resources
             import biomappings.utils
         except ImportError:
             pass
@@ -56,11 +59,14 @@ def get_app(
             for m in biomappings.load_false_mappings():
                 index_biomapping(false_mapping_index, m)
 
+            current_author = biomappings.resources.get_current_curator(strict=True)
+
     state = State(
         client=client,
         summary=client.get_full_summary(),
         false_mapping_index=false_mapping_index,
         biomappings_hash=biomappings_git_hash,
+        current_author=current_author,
     )
 
     flask_app = Flask(__name__)

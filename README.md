@@ -252,7 +252,7 @@ We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
 five biomedical entity types:
 
 1. [Disease](notebooks/landscape/disease/)
-2. [Cell & Cell Line](notebooks/landscape/)
+2. [Cell & Cell Line](notebooks/landscape/cell/)
 3. [Anatomy](notebooks/landscape/anatomy/)
 4. [Protein Complex](notebooks/landscape/complex/)
 5. [Gene](notebooks/landscape/gene/)

@@ -36,6 +36,7 @@ from semra.rules import (
     UNSPECIFIED_MAPPING,
     charlie,
 )
+from semra.sources.biopragmatics import from_biomappings_negative
 from semra.struct import Triple
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
@@ -304,6 +305,14 @@ class TestIO(unittest.TestCase):
                 with self.subTest(msg="reconstitution"):
                     # TODO update to also work for reasoned?
                     self.assertEqual(_filter_simple(self.mappings), _filter_simple(new_mappings))
+
+    def test_from_biomappings(self) -> None:
+        """Test loading from Biomappings."""
+        res = from_biomappings_negative(remote_only=False)
+        self.assertNotEqual(0, len(res))
+
+        res = from_biomappings_negative(remote_only=True)
+        self.assertNotEqual(0, len(res))
 
 
 def _filter_simple(mappings: list[Mapping]) -> list[Mapping]:

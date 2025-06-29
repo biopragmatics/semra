@@ -543,15 +543,19 @@ def prioritize(
         o = get_priority_reference(component, priority)
         if o is None:
             continue
-        rv.extend(
-            mapping
-            # TODO should this work even if s-o edge not exists?
-            #  can also do "inference" here, but also might be
-            #  because of negative edge filtering
-            for s in component
-            if s != o and graph.has_edge(s, o)
-            for mapping in _from_digraph_edge(graph, s, o)
-        )
+        for s in component:
+            if s == o:  # don't add self-edges
+                continue
+            if not graph.has_edge(s, o):
+                # TODO should this work even if s-o edge not exists?
+                #  can also do "inference" here, but also might be
+                #  because of negative edge filtering
+                raise NotImplementedError(
+                    "prioritize() should only be called on fully inferred graphs, meaning "
+                    "that in a given component, it is a full clique (i.e., there are edges "
+                    "in both directions between all nodes)"
+                )
+            rv.extend(_from_digraph_edge(graph, s, o))
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order

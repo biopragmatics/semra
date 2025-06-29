@@ -524,6 +524,20 @@ class TestOperations(unittest.TestCase):
             prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_C], progress=False),
         )
 
+        # test on component with only 1
+        self.assert_same_triples(
+            [m1_rev],
+            prioritize([m1, m1_rev], [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [m1],
+            prioritize([m1, m1_rev], [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [],
+            prioritize([m1, m1_rev], [PREFIX_C], progress=False),
+        )
+
 
 class TestUpgrades(unittest.TestCase):
     """Test inferring mutations."""

@@ -1,0 +1,4 @@
+prefix	name	license	version	terms	status
+taxrank	Taxonomic rank vocabulary	CC0-1.0	2024-11-28	74	full
+ncbitaxon	NCBI Taxonomy	CC0-1.0	2025-03-13	44	subset
+tdwg.taxonrank	TDWG Taxon Rank LSID Ontology			53	observed

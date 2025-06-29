@@ -11,8 +11,8 @@ from bioregistry import NormalizedNamableReference
 from curies import Reference
 from flask import Blueprint, current_app, render_template
 
-from semra import EXACT_MATCH
 from semra.client import BaseClient
+from semra.rules import EXACT_MATCH, MANUAL_MAPPING
 from semra.web.shared import State, _figure_number
 
 if t.TYPE_CHECKING:
@@ -93,19 +93,20 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     state = _flask_get_state()
 
     import biomappings.resources
-    from biomappings.utils import MANUAL_MAPPING_CURATION
 
-    subject = NormalizedNamableReference.from_curie(source, name=client.get_concept_name(source))
+    subject_reference = NormalizedNamableReference.from_curie(
+        source, name=client.get_concept_name(source)
+    )
     target_reference = NormalizedNamableReference.from_curie(
         target, name=client.get_concept_name(target)
     )
 
     mapping = biomappings.resources.SemanticMapping.model_validate(
         {
-            "subject": subject,
+            "subject": subject_reference,
             "predicate": EXACT_MATCH,
             "object": target_reference,
-            "mapping_justification": MANUAL_MAPPING_CURATION,
+            "mapping_justification": MANUAL_MAPPING,
             "author": state.current_author,
             "mapping_tool": "semra",
         }

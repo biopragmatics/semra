@@ -777,10 +777,6 @@ def get_priority_mappings_from_config(
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
         processed_mappings = process(
             raw_mappings,
-            # TODO more configuration of different mutation types
-            upgrade_prefixes=[  # TODO more carefully compile a set of mutations together for applying
-                m.source for m in configuration.mutations
-            ],
             mutations=configuration.mutations,
             remove_prefix_set=configuration.remove_prefixes,
             keep_prefix_set=configuration.keep_prefixes,

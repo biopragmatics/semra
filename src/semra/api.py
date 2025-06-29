@@ -594,14 +594,6 @@ def prioritize(
                     "in both directions between all nodes)"
                 )
             rv.append(mappings_by_subj_obj[s.curie, o.curie])
-        rv.extend(
-            mappings_by_subj_obj[s.curie, o.curie]
-            # TODO should this work even if s-o edge not exists?
-            #  can also do "inference" here, but also might be
-            #  because of negative edge filtering
-            for s in component_references
-            if s != o and graph.has_edge(s, o)
-        )
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order

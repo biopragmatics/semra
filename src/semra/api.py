@@ -529,11 +529,15 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
            and the priority reference is the object (skip the self mapping)
     """
     original_mappings = len(mappings)
-    mappings_by_subj_obj = {
-        (m.subject.curie, m.object.curie): m for m in mappings if m.predicate == EXACT_MATCH
+    mappings_by_subj_obj: dict[tuple[str, str], Mapping] = {
+        (mapping.subject.curie, mapping.object.curie): mapping
+        for mapping in mappings
+        if mapping.predicate == EXACT_MATCH
     }
     # Gather all the references by CURIE
-    references_by_curie = {ref.curie: ref for m in mappings for ref in (m.subject, m.object)}
+    curie_to_reference: dict[str, Reference] = {
+        reference.curie: reference for mapping in mappings for reference in (mapping.subject, mapping.object)
+    }
 
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
@@ -541,12 +545,12 @@ def prioritize(mappings: list[Mapping], priority: list[str]) -> list[Mapping]:
     graph = to_simple_graph(mappings)
     rv: list[Mapping] = []
     for component in tqdm(nx.connected_components(graph), unit="component", unit_scale=True):
-        component_references = [references_by_curie[curie] for curie in component]
+        component_references = [curie_to_reference[curie] for curie in component]
         o = get_priority_reference(component_references, priority)
         if o is None:
             continue
         rv.extend(
-            mappings_by_subj_obj[(s.curie, o.curie)]
+            mappings_by_subj_obj[s.curie, o.curie]
             # TODO should this work even if s-o edge not exists?
             #  can also do "inference" here, but also might be
             #  because of negative edge filtering

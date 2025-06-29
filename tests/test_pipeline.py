@@ -2,14 +2,17 @@
 
 import tempfile
 import unittest
+from collections.abc import Collection
 from pathlib import Path
 from typing import cast
 
-from curies import Reference
+from curies import Triple
 
-from semra import EXACT_MATCH, Mapping, MappingSet, SimpleEvidence
+import semra
+from semra import DB_XREF, EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.api import get_index
 from semra.io import write_sssom
-from semra.pipeline import Configuration, Input, get_raw_mappings
+from semra.pipeline import Configuration, GetMappingReturnType, Input, MappingPack, get_raw_mappings
 from semra.rules import MANUAL_MAPPING, charlie
 from semra.sources import SOURCE_RESOLVER
 from tests.constants import a1, b1
@@ -67,15 +70,16 @@ class TestPipeline(unittest.TestCase):
     def test_custom(self) -> None:
         """Test using custom sources in the configuration."""
         inp = Input(source="custom", prefix="get_test_mappings")
-        config = Configuration(
-            inputs=[inp],
-            priority=["chebi", "mesh"],
-            key="test",
-            name="Test Configuration",
-            description="Tests using custom sources",
-            directory=Path("."),  # dummy
-        )
-        mappings = get_raw_mappings(config, show_progress=False)
+        with tempfile.TemporaryDirectory() as directory:
+            config = Configuration(
+                inputs=[inp],
+                priority=["chebi", "mesh"],
+                key="test",
+                name="Test Configuration",
+                description="Tests using custom sources",
+                directory=Path(directory),
+            )
+            mappings = get_raw_mappings(config, show_progress=False)
         self.assert_test_mappings(mappings)
 
     def test_sssom(self) -> None:
@@ -92,7 +96,7 @@ class TestPipeline(unittest.TestCase):
                 key="test",
                 name="Test Configuration",
                 description="Tests using SSSOM sources",
-                directory=Path("."),  # dummy
+                directory=Path(d).joinpath("output"),
             )
             mappings = get_raw_mappings(config, show_progress=False)
             self.assert_test_mappings(mappings)
@@ -102,3 +106,78 @@ class TestPipeline(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d).resolve().joinpath("test.sssom.tsv")
             write_sssom(TEST_MAPPINGS, path, prune=False, add_labels=False)
+
+    def test_taxrank(self) -> None:
+        """A configuration for assembling mappings for taxonomical rank terms."""
+        priority = [
+            "taxrank",
+            "ncbitaxon",
+            "tdwg.taxonrank",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            configuration = semra.Configuration(
+                key="taxrank",
+                name="Taxonomical Ranks",
+                inputs=[
+                    semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
+                ],
+                negative_inputs=[],
+                priority=priority,
+                mutations=[
+                    # This means, take all mappings where either the subject or object is taxrank,
+                    # and the predicicate is dbxref and upgrade it to be exact match
+                    semra.Mutation(source="taxrank", confidence=0.99, old=DB_XREF, new=EXACT_MATCH),
+                ],
+                directory=Path(directory),
+                remove_imprecise=True,
+            )
+            m: MappingPack = configuration.get_mappings(
+                return_type=GetMappingReturnType.all,
+                refresh_processed=True,
+            )
+
+        self.assertNotEqual([], m.raw, msg="empty raw mappings")
+        msg_part = "\n".join(" - ".join(m.as_str_triple()) for m in m.raw)
+        self.assertNotEqual(
+            [],
+            m.processed,
+            msg=f"empty processed mappings. had {len(m.raw):,} raw mappings:\n\n{msg_part}",
+        )
+        self.assertNotEqual([], m.priority, msg="empty priority mappings")
+
+        index = get_index(m.processed, progress=False)
+
+        self.assert_triple_not_in(
+            Triple(
+                subject=Reference.from_curie("taxrank:0000001"),
+                predicate=DB_XREF,
+                object=Reference.from_curie("ncbitaxon:phylum"),
+            ),
+            index,
+            msg="should not have oboInOwl database cross-reference relations",
+        )
+
+        self.assert_triple_in(
+            Triple(
+                subject=Reference.from_curie("taxrank:0000001"),
+                predicate=EXACT_MATCH,
+                object=Reference.from_curie("ncbitaxon:phylum"),
+            ),
+            index,
+        )
+
+    def assert_triple_in(
+        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
+    ) -> None:
+        """Assert triples."""
+        triple_strs = {t.as_str_triple() for t in triples}
+        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
+        self.assertIn(triple.as_str_triple(), triple_strs, msg=msg)
+
+    def assert_triple_not_in(
+        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
+    ) -> None:
+        """Assert triples."""
+        triple_strs = {t.as_str_triple() for t in triples}
+        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
+        self.assertNotIn(triple.as_str_triple(), triple_strs, msg=msg)

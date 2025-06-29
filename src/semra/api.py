@@ -14,11 +14,19 @@ import bioregistry
 import networkx as nx
 import pandas as pd
 import ssslm
+from pydantic import BaseModel, Field
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
-from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
+from semra.rules import (
+    DB_XREF,
+    EXACT_MATCH,
+    FLIP,
+    INVERSION_MAPPING,
+    KNOWLEDGE_MAPPING,
+    SubsetConfiguration,
+)
 from semra.struct import (
     Evidence,
     Mapping,
@@ -35,9 +43,11 @@ __all__ = [
     "IdentifierIndex",
     "Index",
     "M2MIndex",
+    "Mutation",
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
     "PrefixPairCounter",
+    "apply_mutations",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -1190,3 +1200,70 @@ def get_asymmetric_counter(
             for (left_prefix, right_prefix), identifiers in index.items()
         }
     )
+
+
+class Mutation(BaseModel):
+    """Represents a mutation operation on a mapping set."""
+
+    source: str = Field(..., description="The source type")
+    target: str | list[str] | None = Field(None, description="limit mutation to these")
+    confidence: float = 1.0
+    old: Reference = Field(default=DB_XREF)
+    new: Reference = Field(default=EXACT_MATCH)
+
+    def should_apply_to(self, mapping: Mapping) -> bool:
+        """Check if the mutation should be applied."""
+        if mapping.subject.prefix != self.source:
+            return False
+        if mapping.predicate != self.old:
+            return False
+        if self.target is None:
+            return True
+        elif isinstance(self.target, str):
+            return self.target == mapping.object.prefix
+        elif isinstance(self.target, list):
+            return any(t == mapping.object.prefix for t in self.target)
+        raise NotImplementedError
+
+
+#: A data structure for fast access to mutations.
+MutationIndex: TypeAlias = dict[str, Mutation]
+
+
+def apply_mutations(
+    mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
+) -> Iterable[Mapping]:
+    """Apply mutations."""
+    mutation_index = _index_mutations(mutations)
+    for mapping in tqdm(mappings, disable=not progress):
+        yield _handle_mutation(mapping, mutation_index)
+
+
+def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:
+    mutation_index = {}
+    for mutation in mutations:
+        if mutation.source in mutation_index:
+            raise KeyError(f"got multiple configured mutations for source: {mutation.source}")
+        mutation_index[mutation.source] = mutation
+    return mutation_index
+
+
+def _handle_mutation(mapping: Mapping, mutation_index: MutationIndex) -> Mapping:
+    mutation = mutation_index.get(mapping.subject.prefix)
+    if not mutation:
+        return mapping
+    elif not mutation.should_apply_to(mapping):
+        return mapping
+    else:
+        return Mapping(
+            subject=mapping.subject,
+            predicate=mutation.new,
+            object=mapping.object,
+            evidence=[
+                ReasonedEvidence(
+                    justification=KNOWLEDGE_MAPPING,
+                    mappings=[mapping],
+                    confidence_factor=mutation.confidence,
+                )
+            ],
+        )

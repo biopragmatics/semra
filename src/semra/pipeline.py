@@ -422,6 +422,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = False,
         refresh_source: bool = False,
         return_type: GetMappingReturnType = GetMappingReturnType.none,
+        progress: bool = True,
     ) -> list[Mapping] | MappingPack | None:
         """Run assembly based on this configuration."""
         return get_priority_mappings_from_config(  # type:ignore[no-any-return,call-overload]
@@ -430,6 +431,7 @@ class Configuration(BaseModel):
             refresh_raw=refresh_raw,
             refresh_processed=refresh_processed,
             return_type=return_type,
+            progress=progress,
         )
 
     def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
@@ -710,6 +712,7 @@ def get_priority_mappings_from_config(
     refresh_raw: bool = False,
     refresh_processed: bool = False,
     return_type: GetMappingReturnType = GetMappingReturnType.none,
+    progress: bool = True,
 ) -> None | list[Mapping] | MappingPack:
     """Get prioritized mappings based on an assembly configuration."""
     if refresh_source:
@@ -727,9 +730,9 @@ def get_priority_mappings_from_config(
                 if not configuration.has_processed_path():
                     raise FileNotFoundError
                 return MappingPack(
-                    raw=configuration.read_raw_mappings(show_progress=True),
-                    processed=configuration.read_processed_mappings(show_progress=True),
-                    priority=configuration.read_priority_mappings(show_progress=True),
+                    raw=configuration.read_raw_mappings(show_progress=progress),
+                    processed=configuration.read_processed_mappings(show_progress=progress),
+                    priority=configuration.read_priority_mappings(show_progress=progress),
                 )
             case GetMappingReturnType.priority:
                 return configuration.read_priority_mappings()
@@ -749,11 +752,13 @@ def get_priority_mappings_from_config(
             configuration.configuration_path.write_text(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
-            raw_mappings = get_raw_mappings(configuration, refresh_source=refresh_source)
+            raw_mappings = get_raw_mappings(
+                configuration, refresh_source=refresh_source, show_progress=progress
+            )
             if not raw_mappings:
                 raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
             if configuration.validate_raw:
-                validate_mappings(raw_mappings)
+                validate_mappings(raw_mappings, progress=progress)
 
             # TODO stream?
             write_sssom(
@@ -764,6 +769,7 @@ def get_priority_mappings_from_config(
             write_jsonl(
                 raw_mappings,
                 configuration.raw_jsonl_path,
+                show_progress=progress,
             )
             if configuration.write_raw_neo4j:
                 write_neo4j(
@@ -772,6 +778,7 @@ def get_priority_mappings_from_config(
                     docker_name=configuration.raw_neo4j_name,
                     add_labels=False,  # configuration.add_labels,
                     compress=configuration.neo4j_gzip,
+                    use_tqdm=progress,
                 )
 
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -786,9 +793,10 @@ def get_priority_mappings_from_config(
             post_keep_prefixes=configuration.post_keep_prefixes,
             remove_imprecise=configuration.remove_imprecise,
             subsets=configuration.get_hydrated_subsets(),
+            progress=progress,
         )
 
-    prioritized_mappings = prioritize(processed_mappings, configuration.priority)
+    prioritized_mappings = prioritize(processed_mappings, configuration.priority, progress=progress)
     equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
     write_sssom(
         processed_mappings,
@@ -798,6 +806,7 @@ def get_priority_mappings_from_config(
     write_jsonl(
         processed_mappings,
         configuration.processed_jsonl_path,
+        show_progress=progress,
     )
     write_neo4j(
         processed_mappings,
@@ -806,12 +815,10 @@ def get_priority_mappings_from_config(
         equivalence_classes=equivalence_classes,
         add_labels=configuration.add_labels,
         compress=configuration.neo4j_gzip,
+        use_tqdm=progress,
     )
 
-    write_jsonl(
-        prioritized_mappings,
-        configuration.priority_jsonl_path,
-    )
+    write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, show_progress=progress)
     write_sssom(
         prioritized_mappings,
         configuration.priority_sssom_path,
@@ -921,15 +928,16 @@ def process(
     subsets: SubsetConfiguration | None = None,
     *,
     remove_imprecise: bool = True,
+    progress: bool = True,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
     from semra.sources.biopragmatics import from_biomappings_negative
 
     if keep_prefix_set:
-        mappings = keep_prefixes(mappings, keep_prefix_set)
+        mappings = keep_prefixes(mappings, keep_prefix_set, progress=progress)
 
     if remove_prefix_set:
-        mappings = filter_prefixes(mappings, remove_prefix_set)
+        mappings = filter_prefixes(mappings, remove_prefix_set, progress=progress)
 
     if subsets:
         mappings = list(filter_subsets(mappings, subsets))
@@ -940,13 +948,13 @@ def process(
 
     before = len(mappings)
     start = time.time()
-    mappings = filter_mappings(mappings, negatives)
+    mappings = filter_mappings(mappings, negatives, progress=progress)
     _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
 
     # deduplicate
     before = len(mappings)
     start = time.time()
-    mappings = assemble_evidences(mappings)
+    mappings = assemble_evidences(mappings, progress=progress)
     _log_diff(before, mappings, verb="Assembled", elapsed=time.time() - start)
 
     # only keep relevant prefixes
@@ -967,7 +975,9 @@ def process(
         # resources to each other are exact matches, rewrite the prefixes
         before = len(mappings)
         start = time.time()
-        mappings = infer_mutual_dbxref_mutations(mappings, upgrade_prefixes, confidence=0.95)
+        mappings = infer_mutual_dbxref_mutations(
+            mappings, upgrade_prefixes, confidence=0.95, progress=progress
+        )
         _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
 
     # remove database cross-references
@@ -982,30 +992,30 @@ def process(
     logger.info("Inferring reverse mappings")
     before = len(mappings)
     start = time.time()
-    mappings = infer_reversible(mappings)
+    mappings = infer_reversible(mappings, progress=progress)
     _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
 
     logger.info("Inferring based on chains")
     before = len(mappings)
     time.time()
-    mappings = infer_chains(mappings)
+    mappings = infer_chains(mappings, progress=progress)
     _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
 
     # 4/5. Filtering negative
     logger.info("Filtering out negative mappings")
     before = len(mappings)
     start = time.time()
-    mappings = filter_mappings(mappings, negatives)
+    mappings = filter_mappings(mappings, negatives, progress=progress)
     _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
 
     # filter out self mappings again, just in case
-    mappings = filter_self_matches(mappings)
+    mappings = filter_self_matches(mappings, progress=progress)
 
     if post_keep_prefixes:
-        mappings = keep_prefixes(mappings, post_keep_prefixes)
+        mappings = keep_prefixes(mappings, post_keep_prefixes, progress=progress)
 
     if post_remove_prefixes:
-        mappings = filter_prefixes(mappings, post_remove_prefixes)
+        mappings = filter_prefixes(mappings, post_remove_prefixes, progress=progress)
 
     return mappings
 

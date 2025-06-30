@@ -1,6 +1,11 @@
 """Reusable assets for testing."""
 
-from semra import Reference
+from __future__ import annotations
+
+import unittest
+
+from semra import Mapping, Reference
+from semra.api import Index, get_index
 
 a1_curie = "CHEBI:10084"  # Xylopinine
 a2_curie = "CHEBI:10100"  # zafirlukast
@@ -16,3 +21,33 @@ b1, b2 = (
 )
 
 TEST_CURIES = {a1, a2, b1, b2}
+
+
+class BaseTestCase(unittest.TestCase):
+    """A test case with functionality for testing mapping equivalence."""
+
+    def assert_same_triples(
+        self,
+        expected_mappings: Index | list[Mapping],
+        actual_mappings: Index | list[Mapping],
+        msg: str | None = None,
+    ) -> None:
+        """Assert that two sets of mappings are the same."""
+        if not isinstance(expected_mappings, dict):
+            expected_mappings = get_index(expected_mappings, progress=False)
+        if not isinstance(actual_mappings, dict):
+            actual_mappings = get_index(actual_mappings, progress=False)
+
+        self.assertEqual(
+            self._clean_index(expected_mappings),
+            self._clean_index(actual_mappings),
+            msg=msg,
+        )
+
+    @staticmethod
+    def _clean_index(index: Index) -> list[str]:
+        triples = sorted(set(index))
+        return [
+            f"<{triple.subject.curie}, {triple.predicate.curie}, {triple.object.curie}>"
+            for triple in triples
+        ]

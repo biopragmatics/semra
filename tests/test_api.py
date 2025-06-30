@@ -40,6 +40,7 @@ from semra.struct import (
     SimpleEvidence,
     line,
 )
+from tests import constants
 
 PREFIX_A = "go"
 PREFIX_B = "mondo"
@@ -75,7 +76,7 @@ EV = SimpleEvidence(
 MS = MappingSet(name="test", confidence=0.95)
 
 
-class TestOperations(unittest.TestCase):
+class TestOperations(constants.BaseTestCase):
     """Test mapping operations."""
 
     def test_path(self) -> None:
@@ -165,14 +166,6 @@ class TestOperations(unittest.TestCase):
             self._clean_index(actual_mappings),
             msg=msg,
         )
-
-    @staticmethod
-    def _clean_index(index: Index) -> list[str]:
-        triples = sorted(set(index))
-        return [
-            f"<{triple.subject.curie}, {triple.predicate.curie}, {triple.object.curie}>"
-            for triple in triples
-        ]
 
     def test_infer_exact_match(self) -> None:
         """Test inference through the transitivity of SKOS exact matches."""
@@ -486,68 +479,91 @@ class TestOperations(unittest.TestCase):
             list(df["curie_prioritized"]),
         )
 
-    def test_prioritize(self) -> None:
-        """Test prioritize."""
+
+class TestPrioritize(constants.BaseTestCase):
+    """Test prioritization."""
+
+    def setUp(self) -> None:
+        """Set up the prioritization test case."""
         a1 = Reference(prefix=PREFIX_A, identifier="0000001")
         b1 = Reference(prefix=PREFIX_B, identifier="0000002")
         c1 = Reference(prefix=PREFIX_C, identifier="0000003")
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
-        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
-        m1_rev = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
-        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
-        m2_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
-        m3 = Mapping(subject=a1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
-        m3_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        self.m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        self.m1_rev = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        self.m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        self.m2_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        self.m3 = Mapping(subject=a1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        self.m3_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        self.full = [self.m1, self.m1_rev, self.m2, self.m2_rev, self.m3, self.m3_rev]
 
-        # Test on component with 1 edge
-        ###############################
-
+    def test_minimal_connected_component(self) -> None:
+        """Test a minimal (complete) component with 2 nodes and 2 edges."""
         self.assert_same_triples(
-            [m1_rev],
-            prioritize([m1, m1_rev], [PREFIX_A], progress=False),
+            [self.m1_rev],
+            prioritize([self.m1, self.m1_rev], [PREFIX_A], progress=False),
         )
         self.assert_same_triples(
-            [m1],
-            prioritize([m1, m1_rev], [PREFIX_B], progress=False),
+            [self.m1],
+            prioritize([self.m1, self.m1_rev], [PREFIX_B], progress=False),
         )
         self.assert_same_triples(
-            [m1_rev],
-            prioritize([m1, m1_rev], [PREFIX_C], progress=False),
+            [self.m1_rev],
+            prioritize([self.m1, self.m1_rev], [PREFIX_C], progress=False),
         )
 
-        # Test on component with 2 edges
-        ################################
+    def test_minimal_incomplete(self) -> None:
+        """Test an incomplete component with 2 nodes and only a single edge."""
+        # test when the priority is on the subject
+        self.assert_same_triples([self.m1_rev], prioritize([self.m1], [PREFIX_A], progress=False))
+
+        # test when the priority is on the object
+        self.assert_same_triples([self.m1], prioritize([self.m1], [PREFIX_B], progress=False))
+
+        # test irrelevant prioritization prefix, this relies on sort order of the prefix
+        p = self.m1 if self.m1.subject.prefix > self.m1.object.prefix else self.m1_rev
+        self.assert_same_triples([p], prioritize([self.m1], [PREFIX_C], progress=False))
+
+    def test_connected_component_size(self) -> None:
+        """Test a complete component with 3 nodes and 3 edges."""
+        self.assert_same_triples(
+            [self.m1_rev, self.m3_rev],
+            prioritize(self.full, [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [self.m1, self.m2_rev],
+            prioritize(self.full, [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [self.m2, self.m3],
+            prioritize(self.full, [PREFIX_C], progress=False),
+        )
 
         # can't address priority
         self.assert_same_triples(
-            [m1_rev, m3_rev],
-            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D], progress=False),
+            [self.m1_rev, self.m3_rev],
+            prioritize(self.full, [PREFIX_D], progress=False),
         )
 
         # has unusable priority first, but then defaults
         self.assert_same_triples(
-            [m1_rev, m3_rev],
-            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D, PREFIX_A], progress=False),
+            [self.m1_rev, self.m3_rev],
+            prioritize(self.full, [PREFIX_D, PREFIX_A], progress=False),
         )
 
-        self.assert_same_triples(
-            [m1_rev, m3_rev],
-            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_A], progress=False),
-        )
-        self.assert_same_triples(
-            [m1, m2_rev],
-            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_B], progress=False),
-        )
-        self.assert_same_triples(
-            [m2, m3],
-            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_C], progress=False),
-        )
-
+    def test_incomplete(self) -> None:
+        """Test prioritize."""
         # FIXME note that in the following three cases, some mappings get thrown away. need to check if there's
         #  an inverse in these cases
-        self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_A], progress=False))
-        self.assert_same_triples([m1], prioritize([m1, m2], [PREFIX_B], progress=False))
-        self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_C], progress=False))
+        self.assert_same_triples(
+            [self.m2], prioritize([self.m1, self.m2], [PREFIX_A], progress=False)
+        )
+        self.assert_same_triples(
+            [self.m1], prioritize([self.m1, self.m2], [PREFIX_B], progress=False)
+        )
+        self.assert_same_triples(
+            [self.m2], prioritize([self.m1, self.m2], [PREFIX_C], progress=False)
+        )
 
 
 class TestUpgrades(unittest.TestCase):

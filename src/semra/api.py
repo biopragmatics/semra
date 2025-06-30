@@ -55,7 +55,6 @@ __all__ = [
     "get_index",
     "get_many_to_many",
     "get_observed_terms",
-    "get_priority_reference",
     "get_symmetric_counter",
     "get_terms",
     "get_test_evidence",
@@ -571,24 +570,25 @@ def prioritize(
     """
     rv: list[Mapping] = []
 
-    original_mappings = 0
-    exact_mappings = 0
-
     aggregator = Aggregator(priority)
-
-    subject_object_mapping: defaultdict[Reference, dict[Reference, Mapping]] = defaultdict(dict)
-    for m in mappings:
-        original_mappings += 1
-        if m.predicate == EXACT_MATCH:
-            exact_mappings += 1
-            subject_object_mapping[m.subject][m.object] = m
+    subject_object_mapping, original_mappings, exact_mappings = _get_index(mappings)
 
     for s, object_mapping in subject_object_mapping.items():
-        potential_objects = set(object_mapping) | {s}
-        o: Reference = aggregator.get_priority_reference(potential_objects)
+        o_key, o = aggregator.get_priority_reference(object_mapping)
         if o == s:
             continue
-        rv.append(subject_object_mapping[s][o])
+
+        s_key = aggregator.get_reference_key(s)
+
+        # when the object key is smaller than the subject key,
+        # we prioritized in the right direction
+        if s_key > o_key:
+            rv.append(subject_object_mapping[s][o])
+        elif o in subject_object_mapping and s in subject_object_mapping[o]:
+            raise NotImplementedError
+        else:
+            flipped_mapping = flip(subject_object_mapping[s][o], strict=True)
+            rv.append(flipped_mapping)
 
     if sort:
         rv = sorted(
@@ -607,6 +607,28 @@ def prioritize(
     return rv
 
 
+def _get_index(
+    mappings: Iterable[Mapping],
+) -> tuple[dict[Reference, dict[Reference, Mapping]], int, int]:
+    original_mappings = 0
+    exact_mappings = 0
+
+    subject_object_mapping: defaultdict[Reference, dict[Reference, Mapping]] = defaultdict(dict)
+    for mapping in mappings:
+        original_mappings += 1
+        if mapping.predicate == EXACT_MATCH:
+            exact_mappings += 1
+            subject_object_mapping[mapping.subject][mapping.object] = mapping
+
+    # need to rasterize, otherwise dictionary size could
+    # change during iteration in case we try and access
+    # an element that doesn't exist
+    return dict(subject_object_mapping), original_mappings, exact_mappings
+
+
+ReferenceKey: TypeAlias = tuple[int, str, str]
+
+
 class Aggregator:
     """A class for aggregating nodes based on a priority list."""
 
@@ -618,40 +640,31 @@ class Aggregator:
         self.pos = {prefix: i for i, prefix in enumerate(priority)}
         self.n = len(self.pos) + 1
 
-    def get_reference_key(self, node: Reference) -> tuple[int, str, str]:
+    def get_reference_key(self, node: Reference) -> ReferenceKey:
         """Get a sort key for a node based on priority, prefix, then identifier."""
         # sort by both prefix priority, then also prefix to tiebrake
         # when none are prioritized, then identifier within vocabulary
         return self.pos.get(node.prefix, self.n), node.prefix, node.identifier
 
-    def get_priority_reference(self, nodes: Iterable[Reference]) -> Reference:
-        """Get a unique priority reference from a set of references."""
-        return min(nodes, key=self.get_reference_key)
+    def get_priority_reference(self, nodes: Iterable[Reference]) -> tuple[ReferenceKey, Reference]:
+        """Get a unique priority reference from a set of references.
 
+        :param nodes: The collection of references to get the priority reference from
+        :returns: A pair of the "reference key" and the priority reference
 
-def get_priority_reference(
-    component: t.Iterable[Reference], priority: list[str]
-) -> Reference | None:
-    """Get the priority reference from a component.
-
-    :param component: A set of references with the pre-condition that they're all "equivalent"
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
-    :returns:
-        Returns the reference with the prefix that has the highest priority.
-        If multiple references have the highest priority prefix, returns the first one encountered.
-        If none have a priority prefix, return None.
-
-    >>> from semra import Reference
-    >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
-    >>> references = [Reference.from_curie(curie) for curie in curies]
-    >>> get_priority_reference(references, ["mesh", "umls"]).curie
-    'mesh:C562966'
-    >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
-    'doid:0050577'
-    >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
-
-    """
-    return Aggregator(priority).get_priority_reference(component)
+        Example:
+        >>> from semra import Reference
+        >>> from semra.api import Aggregator
+        >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
+        >>> references = [Reference.from_curie(curie) for curie in curies]
+        >>> Aggregator(["mesh", "umls"]).get_priority_reference(references)[1].curie
+        'mesh:C562966'
+        >>> Aggregator(["DOID", "mesh", "umls"]).get_priority_reference(references)[1].curie
+        'doid:0050577'
+        >>> Aggregator(["hpo", "ordo", "symp"]).get_priority_reference(references)[1].curie
+        'doid:0050577'
+        """
+        return min((self.get_reference_key(n), n) for n in nodes)
 
 
 def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:

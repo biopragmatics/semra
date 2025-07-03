@@ -1,5 +1,4 @@
 """
-
 The SeMRA Raw Mappings Database contains unprocessed semantic mappings
 assembled from hundreds of ontologies and databases through :mod:`pyobo`.
 
@@ -24,6 +23,9 @@ a database of unprocessed mappings.
 
     Processing and analysis can be run overnight on commodity hardware
     (e.g., a 2023 MacBook Pro with 36GB RAM).
+
+Web Application
+***************
 
 The SeMRA Raw Mappings Database can be downloaded from Zenodo at |raw|.
 After downloading all files and unzipping then, a web application wrapping

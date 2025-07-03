@@ -17,6 +17,16 @@ Prefix                                               Name
 `umls <https://bioregistry.io/umls>`_                Unified Medical Language System Concept Unique Identifier
 ===================================================  =========================================================
 
+Results
+*******
+The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |cellimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/cell <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_
+folder.
+
 Reproduction
 ************
 
@@ -50,8 +60,8 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091581.svg
-    :target: https://doi.org/10.5281/zenodo.11091581
+.. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
+    :target: https://doi.org/10.5281/zenodo.11091580
 
 """  # noqa:D205,D400
 
@@ -134,7 +144,7 @@ CELL_CONFIGURATION = Configuration(
         Mutation(source="umls", confidence=0.7),
     ],
     add_labels=True,
-    zenodo_record=11091581,
+    zenodo_record=11091580,
     directory=MODULE.base,
 )
 

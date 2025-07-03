@@ -43,11 +43,14 @@ Features
 Artifacts Overview
 ------------------
 
-SeMRA was used to produce a comprehensive raw mappings database and five domain-specific
-mapping databases (each with a landscape analysis).
+SeMRA was used to produce the `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_,
+a comprehensive raw mappings database, and five domain-specific
+mapping databases (each with a landscape analysis). The results of the
+domain-specific landscape analyses can be found on the SeMRA `GitHub
+repository <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_.
 
 ================== ============================== ================= =========================================================================================================
-Domain             Module                         Database Download Analysis
+Domain             Docs and Reproduction          Database Download Analysis
 ================== ============================== ================= =========================================================================================================
 Raw                :mod:`semra.database`          |raw|              N/A
 Disease            :mod:`semra.landscape.disease` |disease|         `Disease Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
@@ -75,8 +78,6 @@ Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analys
 .. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
   :target: https://doi.org/10.5281/zenodo.11082038
 
-The results of the domain-specific landscape analyses can be found on the SeMRA `GitHub
-repository <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_
 
 Table of Contents
 -----------------

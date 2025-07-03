@@ -26,6 +26,16 @@ Prefix                                                   Name
 `icdo <https://bioregistry.io/icdo>`_                    International Classification of Diseases for Oncology
 =======================================================  ================================================================================
 
+Results
+*******
+The SeMRA Disease Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |diseaseimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/disease <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
+folder.
+
 Reproduction
 ************
 
@@ -59,8 +69,8 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |diseaseimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091886.svg
-    :target: https://doi.org/10.5281/zenodo.11091886
+.. |diseaseimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091885.svg
+    :target: https://doi.org/10.5281/zenodo.11091885
 
 """  # noqa:D205,D400
 
@@ -148,7 +158,7 @@ DISEASE_CONFIGURATION = Configuration(
         Mutation(source="orphanet", confidence=0.7),
         # Mutation(source="hp", confidence=0.7),
     ],
-    zenodo_record=11091886,
+    zenodo_record=11091885,
     directory=MODULE.base,
 )
 

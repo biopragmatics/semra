@@ -4,6 +4,16 @@ resources:
 
 {{ table }}
 
+Results
+*******
+The {{configuration.name }} is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |{{ configuration.key }}img|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/{{ configuration.key }} <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/{{ configuration.key }}#readme>`_
+folder.
+
 Reproduction
 ************
 

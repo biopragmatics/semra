@@ -13,6 +13,16 @@ Prefix                                     Name
 `umls <https://bioregistry.io/umls>`_      Unified Medical Language System Concept Unique Identifier
 =========================================  =========================================================
 
+Results
+*******
+The SeMRA Anatomy Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |anatomyimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/anatomy <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme>`_
+folder.
+
 Reproduction
 ************
 
@@ -46,8 +56,8 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |anatomyimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091803.svg
-    :target: https://doi.org/10.5281/zenodo.11091803
+.. |anatomyimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
+    :target: https://doi.org/10.5281/zenodo.11091802
 
 """  # noqa:D205,D400
 
@@ -131,7 +141,7 @@ ANATOMY_CONFIGURATION = semra.Configuration(
         semra.Mutation(source="ncit", confidence=0.7),
         semra.Mutation(source="umls", confidence=0.7),
     ],
-    zenodo_record=11091803,
+    zenodo_record=11091802,
     directory=MODULE.base,
 )
 

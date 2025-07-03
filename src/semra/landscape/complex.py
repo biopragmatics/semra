@@ -15,6 +15,16 @@ Prefix                                                   Name
 `intact <https://bioregistry.io/intact>`_                IntAct protein interaction database
 =======================================================  ===================================
 
+Results
+*******
+The SeMRA Protein Complex Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |compleximg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/complex <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme>`_
+folder.
+
 Reproduction
 ************
 
@@ -48,8 +58,8 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |compleximg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091422.svg
-    :target: https://doi.org/10.5281/zenodo.11091422
+.. |compleximg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg
+    :target: https://doi.org/10.5281/zenodo.11091421
 
 """  # noqa:D205,D400
 
@@ -111,7 +121,7 @@ COMPLEX_CONFIGURATION = Configuration(
     mutations=[
         Mutation(source="go", confidence=0.95),
     ],
-    zenodo_record=11091422,
+    zenodo_record=11091421,
     directory=MODULE.base,
 )
 

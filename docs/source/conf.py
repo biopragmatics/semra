@@ -248,6 +248,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "sssom": ("https://mapping-commons.github.io/sssom-py/", None),
     "bioregistry": ("https://bioregistry.readthedocs.io/en/stable/", None),
+    "pyobo": ("https://pyobo.readthedocs.io/en/stable/", None),
     "biomappings": ("https://biomappings.readthedocs.io/en/stable/", None),
     "curies": ("https://curies.readthedocs.io/en/stable/", None),
     "flask": ("https://flask.palletsprojects.com/", None),

@@ -20,6 +20,16 @@ Prefix                                           Name
 `wikidata <https://bioregistry.io/wikidata>`_    Wikidata
 ===============================================  =========================================================
 
+Results
+*******
+The SeMRA Gene Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |geneimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/gene <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme>`_
+folder.
+
 Reproduction
 ************
 
@@ -53,8 +63,8 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |geneimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092013.svg
-    :target: https://doi.org/10.5281/zenodo.11092013
+.. |geneimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092012.svg
+    :target: https://doi.org/10.5281/zenodo.11092012
 
 """  # noqa:D205,D400
 
@@ -122,7 +132,7 @@ GENE_CONFIGURATION = Configuration(
         Mutation(source="umls", confidence=0.8),
         Mutation(source="ncit", confidence=0.8),
     ],
-    zenodo_record=11092013,
+    zenodo_record=11092012,
     directory=MODULE.base,
 )
 

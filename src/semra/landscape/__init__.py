@@ -22,7 +22,7 @@ database construction, landscape analyses, and the meta-landscape analysis.
 The results can be found here:
 
 ================== ============================== ================= =========================================================================================================
-Domain             Module                         Database Download Analysis
+Domain             Docs and Reproduction          Database Download Analysis
 ================== ============================== ================= =========================================================================================================
 Disease            :mod:`semra.landscape.disease` |disease|         `Disease Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
 Cell and Cell Line :mod:`semra.landscape.cell`    |cell|            `Cell Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_

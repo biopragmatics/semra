@@ -10,6 +10,16 @@ Prefix                                                     Name
 `tdwg.taxonrank <https://bioregistry.io/tdwg.taxonrank>`_  TDWG Taxon Rank LSID Ontology
 =========================================================  =============================
 
+Results
+*******
+The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |taxrankimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/taxrank <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/taxrank#readme>`_
+folder.
+
 Reproduction
 ************
 

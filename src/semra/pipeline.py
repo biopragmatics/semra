@@ -714,7 +714,28 @@ def get_priority_mappings_from_config(
     return_type: GetMappingReturnType = GetMappingReturnType.none,
     progress: bool = True,
 ) -> None | list[Mapping] | MappingPack:
-    """Get prioritized mappings based on an assembly configuration."""
+    """Get prioritized mappings based on an assembly configuration.
+
+    :param configuration: The mapping assembly configuration
+    :param refresh_raw:
+    :param refresh_processed:
+        This the medium aggressive option, where the processing
+    :param refresh_source:
+        This is the most aggressive option, where the
+        data sources are re-downloaded (and the other options ``refresh_processed``
+        and ``refresh_raw`` are automatically switched to true)
+    :param return_type:
+        What artifacts should be returned? This is controlled with the values in
+        the :class:`GetMappingReturnType` enumeration.
+
+        - :data:`GetMappingReturnType.none` returns nothing
+        - :data:`GetMappingReturnType.priority` returns the priority mapping set
+        - :data:`GetMappingReturnType.all` returns a data structure containing
+          the raw mappings, processed mappings, and priority mappings as three
+          seperate lists.
+    :param progress: Should progress bars be shown during processing? Defaults to true.
+    :return: Returns based on the ``return_type``. By default, returns ``None``
+    """
     if refresh_source:
         refresh_raw = True
     if refresh_raw:

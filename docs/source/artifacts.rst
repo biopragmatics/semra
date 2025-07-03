@@ -1,5 +1,5 @@
-Raw Mapping Database
-====================
+SeMRA Raw Semantic Mappings Database
+====================================
 
 .. automodapi:: semra.database
     :no-heading:

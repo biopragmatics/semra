@@ -100,8 +100,8 @@ as input for such tools.
 Artifacts Overview
 ------------------
 
-SeMRA was used to produce the `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_,
-a comprehensive raw mappings database, and five domain-specific
+SeMRA was used to produce the `SeMRA Raw Semantic Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_,
+a comprehensive raw semantic mappings database, and five domain-specific
 mapping databases (each with a landscape analysis). The results of the
 domain-specific landscape analyses can be found on the SeMRA `GitHub
 repository <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_.

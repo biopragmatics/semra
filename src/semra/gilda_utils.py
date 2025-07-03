@@ -19,7 +19,7 @@ from semra.api import assert_projection
 from semra.struct import Mapping
 
 __all__ = [
-    "update_terms",
+    "update_gilda_terms",
 ]
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ GILDA_TO_BIOREGISTRY = {
 REVERSE_GILDA_MAP = {v: k for k, v in GILDA_TO_BIOREGISTRY.items()}
 
 
-def update_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda.Term]:
+def update_gilda_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda.Term]:
     """Use a priority mapping to re-write terms with priority groundings.
 
     :param terms: A list of Gilda term objects
@@ -93,7 +93,7 @@ def update_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda
         source_terms = terms_index.pop(mapping.subject.pair, None)
         if source_terms:
             terms_index[mapping.object.pair].extend(
-                make_new_term(term, mapping.object.prefix, mapping.object.identifier)
+                make_new_gilda_term(term, mapping.object.prefix, mapping.object.identifier)
                 for term in source_terms
             )
 
@@ -102,16 +102,16 @@ def update_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list[gilda
     return cast(list[gilda.Term], gilda.term.filter_out_duplicates(new_terms))
 
 
-def standardize_terms(
+def standardize_gilda_terms(
     terms: t.Iterable[gilda.Term], *, multiprocessing: bool = True
 ) -> list[gilda.Term]:
     """Standardize a list of terms."""
     if not multiprocessing:
-        return [standardize_term(t) for t in terms]
+        return [standardize_gilda_term(t) for t in terms]
     return cast(
         list[gilda.Term],
         process_map(
-            standardize_term,
+            standardize_gilda_term,
             terms,
             unit="term",
             unit_scale=True,
@@ -121,7 +121,7 @@ def standardize_terms(
     )
 
 
-def standardize_term(term: gilda.Term) -> gilda.Term:
+def standardize_gilda_term(term: gilda.Term) -> gilda.Term:
     """Standardize a term's prefix and identifier to the Bioregistry standard."""
     prefix = bioregistry.normalize_prefix(term.db)
     if prefix is None:
@@ -137,7 +137,7 @@ def standardize_term(term: gilda.Term) -> gilda.Term:
     return term
 
 
-def make_new_term(
+def make_new_gilda_term(
     term: gilda.Term,
     target_db: str,
     target_id: str,

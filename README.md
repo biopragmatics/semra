@@ -71,29 +71,29 @@ mapping = Mapping(
 
 ### Assembly
 
-Mappings can be assembled from many source formats using functions in the
-`semra.io` submodule:
+Mappings can be assembled from many source formats using I/O functions exposed
+through the top-level `semra` submodule:
 
 ```python
-import semra.io
+import semra
 
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-mappings = semra.io.from_sssom(
+mappings = semra.from_sssom(
     sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
 )
 
 # alternatively, metadata can be passed via a file/URL
-mappings_alt = semra.io.from_sssom(
+mappings_alt = semra.from_sssom(
     sssom_url,
     metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
 )
 
 # load mappings from the Gene Ontology (via OBO format)
-go_mappings = semra.io.from_pyobo("go")
+go_mappings = semra.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
-uberon_mappings = semra.io.from_bioontologies("uberon")
+uberon_mappings = semra.from_bioontologies("uberon")
 ```
 
 SeMRA also implements custom importers in the `semra.sources` submodule. It's
@@ -281,7 +281,7 @@ these references can be standardized in a deterministic and principled way.
 
 ```python
 import chembl_downloader
-import semra.io
+import semra
 from semra.api import prioritize_df
 
 # A dataframe of indication-disease pairs, where the
@@ -291,7 +291,7 @@ df = chembl_downloader.query("SELECT DISTINCT drugind_id, efo_id FROM DRUG_INDIC
 # a pre-calculated prioritization of diseases and phenotypes from MONDO, DOID,
 # HPO, ICD, GARD, and more.
 url = "https://zenodo.org/records/15164180/files/priority.sssom.tsv?download=1"
-mappings = semra.io.from_sssom(url)
+mappings = semra.from_sssom(url)
 
 # the dataframe will now have a new column with standardized references
 prioritize_df(mappings, df, column="efo_id", target_column="priority_indication_curie")

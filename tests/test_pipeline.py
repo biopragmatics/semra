@@ -11,7 +11,7 @@ from curies import Triple
 import semra
 from semra.api import get_index
 from semra.io import write_sssom
-from semra.pipeline import Configuration, GetMappingReturnType, Input, MappingPack, get_raw_mappings
+from semra.pipeline import AssembleReturnType, Configuration, Input, MappingPack, get_raw_mappings
 from semra.sources import SOURCE_RESOLVER
 from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
 from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
@@ -132,7 +132,7 @@ class TestPipeline(unittest.TestCase):
                 remove_imprecise=True,
             )
             m: MappingPack = configuration.get_mappings(
-                return_type=GetMappingReturnType.all,
+                return_type=AssembleReturnType.all,
                 refresh_processed=True,
             )
 

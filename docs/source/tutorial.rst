@@ -1,12 +1,5 @@
-Usage
-=====
-
-1. I/O
-2. How to make a configuration and run it
-3. How to apply results
-
-Data Science Tutorial
----------------------
+Prioritizing CURIEs in a Dataframe
+==================================
 
 SeMRA provides tools for data scientists to standardize references using semantic
 mappings.

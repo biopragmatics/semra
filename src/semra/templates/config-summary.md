@@ -76,13 +76,13 @@ The processed mappings can be accessed via the
 following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("raw.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("raw.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("raw.sssom.tsv.gz")
 ```
 
 <details>
@@ -187,13 +187,13 @@ The processed mappings can be accessed via the
 following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("processed.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("processed.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("processed.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("processed.sssom.tsv.gz")
 ```
 
 Below is a graph-based view on the processed mappings.
@@ -222,18 +222,18 @@ The processed mappings can be accessed via the
 following examples:
 
 ```python
-import semra.io
+import semra
 import semra.api
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("priority.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("priority.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
 ```
 
 {# Below is a graph-based view on the priority mappings. #}

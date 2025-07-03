@@ -14,7 +14,8 @@ Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
 
 ## Reproduction
 
-The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following commands:
+The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
+commands:
 
 ```console
 $ git clone https://github.com/biopragmatics/semra.git
@@ -24,11 +25,11 @@ $ python -m semra.landscape.cell
 ```
 
 Note that downloading raw data resources can take on the order of hours to tens
-of hours depending on your internet connection and the reliability of
-the resources' respective servers.
+of hours depending on your internet connection and the reliability of the
+resources' respective servers.
 
-Processing and analysis can be run overnight on commodity hardware
-(e.g., a 2023 MacBook Pro with 36GB RAM).
+Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+MacBook Pro with 36GB RAM).
 
 ## Resource Summary
 

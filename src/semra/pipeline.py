@@ -44,9 +44,7 @@ In the following demo, which closely resembles the configuration in
                 confidence=0.99,
                 extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
             ),
-            Input(
-                prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}
-            ),
+            Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
             Input(prefix="ncit", source="pyobo", confidence=0.99),
             Input(prefix="umls", source="pyobo", confidence=0.99),
         ],
@@ -121,7 +119,7 @@ In the following demo, which closely resembles the configuration in
 
 For reference, the :mod:`semra.landscape` module contains several pipeline
 configurations.
-"""  # noqa: D205
+"""
 
 from __future__ import annotations
 

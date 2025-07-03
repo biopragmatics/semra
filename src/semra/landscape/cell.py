@@ -22,7 +22,7 @@ from semra.pipeline import Configuration, Input, MappingPack, Mutation
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
+    "CELL_CONFIGURATION",
     "MODULE",
 ]
 
@@ -51,7 +51,7 @@ SUBSETS = {
 }
 
 #: Configuration for the cell and cell type mappings database
-CONFIGURATION = Configuration(
+CELL_CONFIGURATION = Configuration(
     key="cell",
     name="SeMRA Cell and Cell Line Mappings Database",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
@@ -119,4 +119,4 @@ def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli(hooks=[cell_consolidation_hook])
+    CELL_CONFIGURATION.cli(hooks=[cell_consolidation_hook])

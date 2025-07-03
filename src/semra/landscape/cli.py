@@ -27,24 +27,26 @@ __all__ = [
 
 @lru_cache(1)
 def _get_functions() -> list[tuple[Configuration, click.Command]]:
-    from . import anatomy, cells, complexes, diseases, genes, taxrank
+    from . import (
+        ANATOMY_CONFIGURATION,
+        CELL_CONFIGURATION,
+        COMPLEX_CONFIGURATION,
+        DISEASE_CONFIGURATION,
+        GENE_CONFIGURATION,
+        TAXRANK_CONFIGURATION,
+    )
+    from .cell import cell_consolidation_hook
 
     functions: list[tuple[Configuration, click.Command]] = [
-        (diseases.CONFIGURATION, diseases.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (DISEASE_CONFIGURATION, DISEASE_CONFIGURATION.get_cli(copy_to_landscape=True)),
         (
-            cells.CONFIGURATION,
-            cells.CONFIGURATION.get_cli(
-                copy_to_landscape=True, hooks=[cells.cell_consolidation_hook]
-            ),
+            CELL_CONFIGURATION,
+            CELL_CONFIGURATION.get_cli(copy_to_landscape=True, hooks=[cell_consolidation_hook]),
         ),
-        (anatomy.CONFIGURATION, anatomy.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (complexes.CONFIGURATION, complexes.CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (
-            genes.CONFIGURATION,
-            # don't write the summary because resource is too big to run on local machine
-            genes.CONFIGURATION.get_cli(copy_to_landscape=True, write_summary=False),
-        ),
-        (taxrank.CONFIGURATION, taxrank.CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (ANATOMY_CONFIGURATION, ANATOMY_CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (COMPLEX_CONFIGURATION, COMPLEX_CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (GENE_CONFIGURATION, GENE_CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (TAXRANK_CONFIGURATION, TAXRANK_CONFIGURATION.get_cli(copy_to_landscape=True)),
     ]
     return functions
 

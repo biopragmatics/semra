@@ -27,7 +27,7 @@ from semra import Reference
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
+    "ANATOMY_CONFIGURATION",
     "MODULE",
 ]
 
@@ -74,7 +74,7 @@ SUBSETS = {
 }
 
 #: Configuration for the anatomy mappings database
-CONFIGURATION = semra.Configuration(
+ANATOMY_CONFIGURATION = semra.Configuration(
     key="anatomy",
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
@@ -106,4 +106,4 @@ CONFIGURATION = semra.Configuration(
 )
 
 if __name__ == "__main__":
-    CONFIGURATION.cli()
+    ANATOMY_CONFIGURATION.cli()

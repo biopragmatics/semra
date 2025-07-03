@@ -6,8 +6,8 @@ import semra
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
     "MODULE",
+    "TAXRANK_CONFIGURATION",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "taxranks")
@@ -18,7 +18,7 @@ PRIORITY = [
 ]
 SUBSETS = {"ncbitaxon": [semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank")]}
 
-CONFIGURATION = semra.Configuration(
+TAXRANK_CONFIGURATION = semra.Configuration(
     key="taxrank",
     name="SeMRA Taxonomical Ranks Mappings Database",
     description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
@@ -37,4 +37,4 @@ CONFIGURATION = semra.Configuration(
 )
 
 if __name__ == "__main__":
-    CONFIGURATION.cli()
+    TAXRANK_CONFIGURATION.cli()

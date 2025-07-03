@@ -8,7 +8,7 @@ from semra.pipeline import Configuration, Input, Mutation
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
+    "DISEASE_CONFIGURATION",
     "MODULE",
 ]
 
@@ -52,7 +52,7 @@ SUBSETS = {
 }
 
 #: Configuration for the disease mappings database
-CONFIGURATION = Configuration(
+DISEASE_CONFIGURATION = Configuration(
     key="disease",
     name="SeMRA Disease Mappings Database",
     description="Supports the analysis of the landscape of disease nomenclature resources.",
@@ -91,4 +91,4 @@ CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli()
+    DISEASE_CONFIGURATION.cli()

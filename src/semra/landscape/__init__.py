@@ -50,11 +50,12 @@ Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analys
 
 """  # noqa:D205,D400
 
-from .anatomy import CONFIGURATION as ANATOMY_CONFIGURATION
-from .cell import CONFIGURATION as CELL_CONFIGURATION
-from .complex import CONFIGURATION as COMPLEX_CONFIGURATION
-from .disease import CONFIGURATION as DISEASE_CONFIGURATION
-from .gene import CONFIGURATION as GENE_CONFIGURATION
+from .anatomy import ANATOMY_CONFIGURATION
+from .cell import CELL_CONFIGURATION
+from .complex import COMPLEX_CONFIGURATION
+from .disease import DISEASE_CONFIGURATION
+from .gene import GENE_CONFIGURATION
+from .taxrank import TAXRANK_CONFIGURATION
 
 __all__ = [
     "ANATOMY_CONFIGURATION",
@@ -62,4 +63,5 @@ __all__ = [
     "COMPLEX_CONFIGURATION",
     "DISEASE_CONFIGURATION",
     "GENE_CONFIGURATION",
+    "TAXRANK_CONFIGURATION",
 ]

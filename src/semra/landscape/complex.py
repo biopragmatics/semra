@@ -7,7 +7,7 @@ from semra.pipeline import Configuration, Input, Mutation
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
+    "COMPLEX_CONFIGURATION",
     "MODULE",
 ]
 
@@ -33,7 +33,7 @@ SUBSETS = {
 }
 
 #: Configuration for the protein complex mappings database
-CONFIGURATION = Configuration(
+COMPLEX_CONFIGURATION = Configuration(
     key="complex",
     name="SeMRA Protein Complex Mappings Database",
     description="Analyze the landscape of protein complex nomenclature "
@@ -65,4 +65,4 @@ CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli()
+    COMPLEX_CONFIGURATION.cli()

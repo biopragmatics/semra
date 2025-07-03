@@ -7,7 +7,7 @@ from semra.pipeline import Configuration, Input, Mutation
 from semra.rules import charlie
 
 __all__ = [
-    "CONFIGURATION",
+    "GENE_CONFIGURATION",
     "MODULE",
 ]
 
@@ -31,7 +31,7 @@ PREFIXES = PRIORITY = [
 ]
 
 #: Configuration for the gene mappings database
-CONFIGURATION = Configuration(
+GENE_CONFIGURATION = Configuration(
     key="gene",
     name="SeMRA Gene Mappings Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
@@ -71,4 +71,4 @@ CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli()
+    GENE_CONFIGURATION.cli()

@@ -733,27 +733,23 @@ def get_priority_mappings_from_config(
     """Get prioritized mappings based on an assembly configuration.
 
     :param configuration: The mapping assembly configuration
-    :param refresh_processed:
-        This the least aggressive option, where raw mappings are re-used if
-        available and only re-processing and re-prioritization is done.
-    :param refresh_raw:
-        This is the medium aggressive option, where raw mappings are re-generaged by
-        processing the source data.
-    :param refresh_source:
-        This is the most aggressive option, where the
-        data sources are re-downloaded (and the other options ``refresh_processed``
-        and ``refresh_raw`` are automatically switched to true)
-    :param return_type:
-        What artifacts should be returned? This is controlled with the values in
-        the :class:`GetMappingReturnType` enumeration.
+    :param refresh_processed: This the least aggressive option, where raw mappings are
+        re-used if available and only re-processing and re-prioritization is done.
+    :param refresh_raw: This is the medium aggressive option, where raw mappings are
+        re-generaged by processing the source data.
+    :param refresh_source: This is the most aggressive option, where the data sources
+        are re-downloaded (and the other options ``refresh_processed`` and
+        ``refresh_raw`` are automatically switched to true)
+    :param return_type: What artifacts should be returned? This is controlled with the
+        values in the :class:`GetMappingReturnType` enumeration.
 
         - :data:`GetMappingReturnType.none` returns nothing
         - :data:`GetMappingReturnType.priority` returns the priority mapping set
-        - :data:`GetMappingReturnType.all` returns a data structure containing
-          the raw mappings, processed mappings, and priority mappings as three
-          seperate lists.
+        - :data:`GetMappingReturnType.all` returns a data structure containing the raw
+          mappings, processed mappings, and priority mappings as three seperate lists.
     :param progress: Should progress bars be shown during processing? Defaults to true.
-    :return: Returns based on the ``return_type``. By default, returns ``None``
+
+    :returns: Returns based on the ``return_type``. By default, returns ``None``
     """
     if refresh_source:
         refresh_raw = True

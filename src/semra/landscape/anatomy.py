@@ -1,4 +1,24 @@
-"""A configuration for assembling mappings for anatomical terms."""
+"""A configuration for assembling mappings for anatomical terms.
+
+The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
+
+.. code-block:: console
+
+    $ git clone https://github.com/biopragmatics/semra.git
+    $ cd semra
+    $ uv pip install .[landscape]
+    $ python -m semra.landscape.anatomy
+
+The artifacts can be downloaded from `Zenodo
+<https://doi.org/10.5281/zenodo.11091802>`_. After running Docker locally, downloading
+all files, and unzipping then, the SeMRA web application can be run with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+Navigate to http://localhost:8773 to see the web application.
+"""
 
 import pystow
 

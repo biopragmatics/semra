@@ -14,16 +14,16 @@ Domain-specific Processed Mapping Databases
     :include-all-objects:
     :no-heading:
 
-.. automodapi:: semra.landscape.diseases
+.. automodapi:: semra.landscape.disease
     :include-all-objects:
 
-.. automodapi:: semra.landscape.cells
+.. automodapi:: semra.landscape.cell
     :include-all-objects:
 
-.. automodapi:: semra.landscape.complexes
+.. automodapi:: semra.landscape.complex
     :include-all-objects:
 
-.. automodapi:: semra.landscape.genes
+.. automodapi:: semra.landscape.gene
     :include-all-objects:
 
 .. automodapi:: semra.landscape.anatomy

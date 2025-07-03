@@ -9,18 +9,39 @@ The Semantic Mapping Reasoner and Assembler (SeMRA) is a Python package that pro
 4. A confidence model granular at the curator-level, mapping set-level, and community
    feedback-level
 
+Artifacts Overview
+------------------
+
 SeMRA was used to produce a comprehensive raw mappings database and five domain-specific mapping databases (each with a landscape analysis).
 
-================== ================================ =========================================================== ===================================================================================
-Domain             Module                           Database Download                                           Analysis
-================== ================================ =========================================================== ===================================================================================
-Raw                :mod:`semra.database`            `11082038 <https://bioregistry.io/zenodo.record:11082038>`_ N/A
-Disease            :mod:`semra.landscape.disease`   `11091886 <https://bioregistry.io/zenodo.record:11091886>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme
-Cell and Cell Line :mod:`semra.landscape.cells`     `11091581 <https://bioregistry.io/zenodo.record:11091581>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme
-Anatomy            :mod:`semra.landscape.anatomy`   `11091803 <https://bioregistry.io/zenodo.record:11091803>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme
-Protein Complex    :mod:`semra.landscape.complexes` `11091422 <https://bioregistry.io/zenodo.record:11091422>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme
-Gene               :mod:`semra.landscape.genes`     `11092013 <https://bioregistry.io/zenodo.record:11092013>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme
-================== ================================ =========================================================== ===================================================================================
+================== ============================== ================= =========================================================================================================
+Domain             Module                         Database Download Analysis
+================== ============================== ================= =========================================================================================================
+Raw                :mod:`semra.database`          |raw|              N/A
+Disease            :mod:`semra.landscape.disease` |disease|         `Disease Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
+Cell and Cell Line :mod:`semra.landscape.cell`    |cell|            `Cell Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_
+Anatomy            :mod:`semra.landscape.anatomy` |anatomy|         `Anatomy Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme>`_
+Protein Complex    :mod:`semra.landscape.complex` |complex|         `Complex Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme>`_
+Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme>`_
+================== ============================== ================= =========================================================================================================
+
+.. |disease| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091885.svg
+  :target: https://doi.org/10.5281/zenodo.11091885
+
+.. |cell| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
+  :target: https://doi.org/10.5281/zenodo.11091580
+
+.. |anatomy| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
+  :target: https://doi.org/10.5281/zenodo.11091802
+
+.. |complex| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg
+  :target: https://doi.org/10.5281/zenodo.11091421
+
+.. |gene| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092012.svg
+  :target: https://doi.org/10.5281/zenodo.11092012
+
+.. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
+  :target: https://doi.org/10.5281/zenodo.11082038
 
 The results of the domain-specific landscape analyses can be found on the SeMRA `GitHub repository
 <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_

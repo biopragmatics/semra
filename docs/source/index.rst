@@ -27,7 +27,44 @@ by a variety of people:
    outputting semantic mappings.
 
 SeMRA is generally applicable in **any domain**, from biomedicine to particle physics to
-the digital humanities.
+the digital humanities. Get started by loading external mappings:
+
+.. code-block:: python
+
+    import semra.io
+
+    # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
+    sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
+    mappings = semra.io.from_sssom(
+        sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
+    )
+
+Or by creating your own mappings:
+
+.. code-block:: python
+
+    from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
+
+    r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+    r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
+    mapping = Mapping(
+        subject=r1,
+        predicate=EXACT_MATCH,
+        object=r2,
+        evidence=[
+            SimpleEvidence(
+                justification=MANUAL_MAPPING,
+                confidence=0.99,
+                author=Reference(
+                    prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"
+                ),
+                mapping_set=MappingSet(
+                    name="biomappings", license="CC0", confidence=0.90,
+                ),
+            )
+        ]
+    )
 
 Features
 --------
@@ -39,6 +76,26 @@ Features
 3. A provenance model for automatically generated mappings
 4. A confidence model granular at the curator-level, mapping set-level, and community
    feedback-level
+
+What SeMRA Isn't
+----------------
+SeMRA isn't a tool for predicting semantic mappings like
+`Logmap <https://github.com/ernestojimenezruiz/logmap-matcher>`_,
+`LOOM <https://www.bioontology.org/wiki/LOOM>`_, or `K-Boom <https://www.biorxiv.org/content/10.1101/048843v3>`_.
+Further, it's not a tool for reviewing predicted semantic mappings like
+`MapperGPT <https://arxiv.org/abs/2310.03666>`_. However, any of the outputs
+from these workflows could be used as inputs to SeMRA's assembly and inference
+pipeline.
+
+SeMRA isn't a service that lives on the web, but it does allow you to deploy a local
+web application for your use-case specific mapping database.
+
+SeMRA isn't itself a curation tool, but it has the option to integrate :mod:`biomappings`
+in deployments of its local web application for curation purposes.
+
+SeMRA isn't an tool for merging ontologies like `CoMerger <https://arxiv.org/abs/2005.02659>`_,
+but it outputs detailed and comprehensive semantic mappings that are critical
+as input for such tools.
 
 Artifacts Overview
 ------------------

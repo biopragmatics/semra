@@ -313,7 +313,7 @@ def from_sssom(
         )
     """
     # FIXME use sssom-py for this
-    df = pd.read_csv(path, sep="\t", dtype=str)
+    df = pd.read_csv(path, sep="\t", dtype=str, engine="python", comment="#")
     return from_sssom_df(
         df,
         mapping_set_id=mapping_set_id,

@@ -26,10 +26,15 @@ by a variety of people:
    want to make their toolchain more generic for loading, assembling, processing, and
    outputting semantic mappings.
 
+SeMRA is generally applicable in **any domain**, from biomedicine to particle physics to
+the digital humanities.
+
 Features
 --------
 
-1. An object model for semantic mappings (based on SSSOM)
+1. An object model for semantic mappings (based on the `Simple Standard for Sharing
+   Ontological Mappings (SSSOM) <https://mapping-commons.github.io/sssom/>`_ and
+   :mod:`sssom`)
 2. Functionality for assembling and reasoning over semantic mappings at scale
 3. A provenance model for automatically generated mappings
 4. A confidence model granular at the curator-level, mapping set-level, and community

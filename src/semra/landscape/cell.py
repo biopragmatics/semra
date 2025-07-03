@@ -1,16 +1,59 @@
-"""A configuration for assembling mappings for cell and cell line terms.
-
-This configuration can be used to reproduce the results from the Biomappings paper by
-doing the following:
-
-1. Load positive mappings - PyOBO: EFO, DepMap, CCLE - Custom: Cellosaurus - Biomappings
-2. Upgrade mappings from dbxrefs to skos:exactMatch
-3. Use transitive closure to infer new mappings
-4. Load negative mappings from Biomappings
-5. Filter out negative mappings
-6. Subset a CCLE->EFO consolidation set
-7. Output SSSOM
 """
+The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following
+resources:
+
+===================================================  =========================================================
+Prefix                                               Name
+===================================================  =========================================================
+`mesh <https://bioregistry.io/mesh>`_                Medical Subject Headings
+`efo <https://bioregistry.io/efo>`_                  Experimental Factor Ontology
+`cellosaurus <https://bioregistry.io/cellosaurus>`_  Cellosaurus
+`ccle <https://bioregistry.io/ccle>`_                Cancer Cell Line Encyclopedia Cells
+`depmap <https://bioregistry.io/depmap>`_            DepMap Cell Lines
+`bto <https://bioregistry.io/bto>`_                  BRENDA Tissue Ontology
+`cl <https://bioregistry.io/cl>`_                    Cell Ontology
+`clo <https://bioregistry.io/clo>`_                  Cell Line Ontology
+`ncit <https://bioregistry.io/ncit>`_                NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_                Unified Medical Language System Concept Unique Identifier
+===================================================  =========================================================
+
+Reproduction
+************
+
+The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following commands:
+
+.. code-block:: console
+
+    $ git clone https://github.com/biopragmatics/semra.git
+    $ cd semra
+    $ uv pip install .[landscape]
+    $ python -m semra.landscape.cell
+
+Web Application
+***************
+The pre-built artifacts for this mapping database can be downloaded from Zenodo
+at |cell| and unzipped. The web application can be run
+locally on Docker from inside the folder where the data was unzipped with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+If you reproduced the database yourself, you can ``cd``
+to the right folder and run with:
+
+.. code-block:: console
+
+    $ cd ~/.data/semra/case-studies/cell
+    $ sh run_on_docker.sh
+
+Finally, navigate in your web browser to http://localhost:8773 to see the web
+application.
+
+.. |cell| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091581.svg
+    :target: https://doi.org/10.5281/zenodo.11091581
+
+"""  # noqa:D205,D400
 
 import click
 import pystow
@@ -23,7 +66,6 @@ from semra.rules import charlie
 
 __all__ = [
     "CELL_CONFIGURATION",
-    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "cells")

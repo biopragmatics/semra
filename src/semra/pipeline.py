@@ -11,6 +11,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, overload
 
+import bioregistry
 import click
 import requests
 from pydantic import BaseModel, Field, model_validator
@@ -52,6 +53,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
+from semra.utils import get_jinja_template
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -189,6 +191,22 @@ class Configuration(BaseModel):
     )
 
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
+
+    def _get_header_text(self) -> str:
+        """Get header text for SemRA built-in configuration."""
+        from tabulate import tabulate
+
+        template = get_jinja_template("landscape-header.rst")
+        rows = [
+            (
+                f"`{prefix} <https://bioregistry.io/{prefix}>`_",
+                bioregistry.get_name(prefix, strict=True),
+            )
+            for prefix in self.priority
+        ]
+        return template.render(
+            configuration=self, table=tabulate(rows, tablefmt="rst", headers=["Prefix", "Name"])
+        )
 
     @property
     def raw_pickle_path(self) -> Path:

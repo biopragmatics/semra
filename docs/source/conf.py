@@ -246,6 +246,13 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "sssom": ("https://mapping-commons.github.io/sssom-py/", None),
+    "bioregistry": ("https://bioregistry.readthedocs.io/en/stable/", None),
+    "biomappings": ("https://biomappings.readthedocs.io/en/stable/", None),
+    "curies": ("https://curies.readthedocs.io/en/stable/", None),
+    "flask": ("https://flask.palletsprojects.com/", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "rdflib": ("https://rdflib.readthedocs.io/en/stable/", None),
 }
 
 autoclass_content = "both"

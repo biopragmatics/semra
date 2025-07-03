@@ -4,9 +4,7 @@ reconstructed with the following commands:
 
 .. code-block:: console
 
-    $ git clone https://github.com/biopragmatics/semra.git
-    $ cd semra
-    $ uv pip install .[landscape]
+    $ uv pip install semra[landscape]
     $ semra landscape
 
 The ``semra landscape`` command runs all pre-configured domain-specific mapping
@@ -56,11 +54,23 @@ from .complex import COMPLEX_CONFIGURATION
 from .disease import DISEASE_CONFIGURATION
 from .gene import GENE_CONFIGURATION
 from .taxrank import TAXRANK_CONFIGURATION
+from ..pipeline import Configuration
+
+#: A list of domain-specific configurations
+CONFIGURATIONS: list[Configuration] = [
+    ANATOMY_CONFIGURATION,
+    CELL_CONFIGURATION,
+    COMPLEX_CONFIGURATION,
+    DISEASE_CONFIGURATION,
+    GENE_CONFIGURATION,
+    TAXRANK_CONFIGURATION,
+]
 
 __all__ = [
     "ANATOMY_CONFIGURATION",
     "CELL_CONFIGURATION",
     "COMPLEX_CONFIGURATION",
+    "CONFIGURATIONS",
     "DISEASE_CONFIGURATION",
     "GENE_CONFIGURATION",
     "TAXRANK_CONFIGURATION",

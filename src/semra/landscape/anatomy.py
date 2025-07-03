@@ -1,4 +1,20 @@
-"""A configuration for assembling mappings for anatomical terms.
+"""
+The SeMRA Anatomy Mappings Database assembles semantic mappings to the following
+resources:
+
+=========================================  =========================================================
+Prefix                                     Name
+=========================================  =========================================================
+`uberon <https://bioregistry.io/uberon>`_  Uber Anatomy Ontology
+`mesh <https://bioregistry.io/mesh>`_      Medical Subject Headings
+`bto <https://bioregistry.io/bto>`_        BRENDA Tissue Ontology
+`caro <https://bioregistry.io/caro>`_      Common Anatomy Reference Ontology
+`ncit <https://bioregistry.io/ncit>`_      NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_      Unified Medical Language System Concept Unique Identifier
+=========================================  =========================================================
+
+Reproduction
+************
 
 The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
 
@@ -9,16 +25,31 @@ The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
     $ uv pip install .[landscape]
     $ python -m semra.landscape.anatomy
 
-The artifacts can be downloaded from `Zenodo
-<https://doi.org/10.5281/zenodo.11091802>`_. After running Docker locally, downloading
-all files, and unzipping then, the SeMRA web application can be run with:
+Web Application
+***************
+The pre-built artifacts for this mapping database can be downloaded from Zenodo
+at |anatomy| and unzipped. The web application can be run
+locally on Docker from inside the folder where the data was unzipped with:
 
 .. code-block:: console
 
     $ sh run_on_docker.sh
 
-Navigate to http://localhost:8773 to see the web application.
-"""
+If you reproduced the database yourself, you can ``cd``
+to the right folder and run with:
+
+.. code-block:: console
+
+    $ cd ~/.data/semra/case-studies/anatomy
+    $ sh run_on_docker.sh
+
+Finally, navigate in your web browser to http://localhost:8773 to see the web
+application.
+
+.. |anatomy| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091803.svg
+    :target: https://doi.org/10.5281/zenodo.11091803
+
+"""  # noqa:D205,D400
 
 import pystow
 
@@ -28,7 +59,6 @@ from semra.rules import charlie
 
 __all__ = [
     "ANATOMY_CONFIGURATION",
-    "MODULE",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "anatomy")

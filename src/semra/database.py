@@ -4,7 +4,34 @@ The raw mapping database can be reconstructed with the following command:
 
 .. code-block:: console
 
+    $ uv pip install semra
     $ semra build
+
+The ``semra build`` command downloads and process all resource and constructs
+a database of unprocessed mappings.
+
+.. note::
+
+    Downloading raw data resources can take on the order of hours to tens
+    of hours depending on your internet connection and the reliability of
+    the resources' respective servers.
+
+    Processing and analysis can be run overnight on commodity hardware
+    (e.g., a 2023 MacBook Pro with 36GB RAM).
+
+The SeMRA Raw Mappings Database can be downloaded from Zenodo at |raw|.
+After downloading all files and unzipping then, a web application wrapping
+the SeMRA Raw Mappings Database run locally on Docker with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+Navigate to http://localhost:8773 to see the web application.
+
+.. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
+  :target: https://doi.org/10.5281/zenodo.11082038
+
 """
 
 import subprocess

@@ -57,6 +57,7 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
 @UPLOAD_OPTION
 @BUILD_DOCKER_OPTION
 @verbose_option  # type:ignore
+@click.option("--only", help="if given, only runs this configuration", multiple=True)
 @click.pass_context
 def landscape(
     ctx: click.Context,
@@ -65,6 +66,7 @@ def landscape(
     refresh_raw: bool,
     refresh_processed: bool,
     build_docker: bool,
+    only: list[str] | None,
 ) -> None:
     """Run all landscape builds."""
     if build_docker:
@@ -74,6 +76,8 @@ def landscape(
     with logging_redirect_tqdm():
         tqdm(functions, unit="configuration", desc="landscape analysis")
         for conf, func in functions:
+            if only and conf.key not in only:
+                continue
             tqdm.write(click.style(conf.key, bold=True, fg="green"))
             ctx.invoke(
                 func,

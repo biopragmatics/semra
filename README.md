@@ -38,7 +38,8 @@ provides:
 4. A confidence model granular at the curator-level, mapping set-level, and
    community feedback-level
 
-We also provide an accompanying raw semantic mapping database on Zenodo at
+We also provide the SeMRA Raw Mappings Database, a set of pre-assembled semantic
+mappings from hundreds of ontologies and databases, on Zenodo at
 https://doi.org/10.5281/zenodo.11082038 that can be rebuilt with `semra build`.
 More information [here](https://semra.readthedocs.io/en/latest/artifacts.html).
 

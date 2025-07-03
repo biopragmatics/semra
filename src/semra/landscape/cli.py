@@ -15,7 +15,6 @@ from semra.pipeline import (
     REFRESH_RAW_OPTION,
     REFRESH_SOURCE_OPTION,
     STATS_FILE_NAME,
-    UPLOAD_OPTION,
     Configuration,
 )
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
@@ -54,7 +53,11 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
 @REFRESH_SOURCE_OPTION
 @REFRESH_RAW_OPTION
 @REFRESH_PROCESSED_OPTION
-@UPLOAD_OPTION
+@click.option(
+    "--upload",
+    is_flag=True,
+    help="If enabled, upload each landscape to their respective Zenodo records.",
+)
 @BUILD_DOCKER_OPTION
 @verbose_option  # type:ignore
 @click.option("--only", help="if given, only runs this configuration", multiple=True)
@@ -68,7 +71,7 @@ def landscape(
     build_docker: bool,
     only: list[str] | None,
 ) -> None:
-    """Run all landscape builds."""
+    """Construct pre-configured domain-specific mapping databases and run landscape analyses."""
     if build_docker:
         pass  # TODO check if docker is running
 

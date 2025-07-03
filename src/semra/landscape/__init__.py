@@ -1,4 +1,11 @@
-"""Landscape Analysis."""
+"""
+The domain-specific processed mapping databases and meta-landscape analysis can be
+reconstructed with the following command:
+
+.. code-block:: console
+
+    $ semra landscape
+"""
 
 from .anatomy import CONFIGURATION as ANATOMY_CONFIGURATION
 from .cells import CONFIGURATION as CELL_CONFIGURATION

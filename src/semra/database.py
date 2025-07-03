@@ -1,4 +1,11 @@
-"""Assemble a database."""
+"""Assemble a database.
+
+The raw mapping database can be reconstructed with the following command:
+
+.. code-block:: console
+
+    $ semra build
+"""
 
 import subprocess
 import time
@@ -27,6 +34,10 @@ from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.utils import gzip_path
 
+__all__ = [
+    "build",
+]
+
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
 LOGS = MODULE.module("logs")
@@ -48,7 +59,8 @@ class SummaryRow(NamedTuple):
     label: str
 
 
-EMPTY = []
+#: A list of prefixes that did not produce any semantic mappings
+EMPTY: list[str] = []
 summaries: list[SummaryRow] = []
 
 skip = {

@@ -1,7 +1,6 @@
 """A configuration for assembling mappings for anatomical terms."""
 
 import pystow
-from pyobo.sources.mesh import get_mesh_category_references
 
 import semra
 from semra import Reference
@@ -23,7 +22,29 @@ PRIORITY = [
 ]
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {
-    "mesh": get_mesh_category_references("A", skip=["A11"]),
+    # this mesh list is created with a call to pyobo.sources.mesh.get_mesh_category_references("A", skip=["A11"])
+    "mesh": [
+        Reference(prefix="mesh", identifier="D001829"),
+        Reference(prefix="mesh", identifier="D009141"),
+        Reference(prefix="mesh", identifier="D004064"),
+        Reference(prefix="mesh", identifier="D012137"),
+        Reference(prefix="mesh", identifier="D014566"),
+        Reference(prefix="mesh", identifier="D004703"),
+        Reference(prefix="mesh", identifier="D002319"),
+        Reference(prefix="mesh", identifier="D009420"),
+        Reference(prefix="mesh", identifier="D012679"),
+        Reference(prefix="mesh", identifier="D014024"),
+        Reference(prefix="mesh", identifier="D005441"),
+        Reference(prefix="mesh", identifier="D000825"),
+        Reference(prefix="mesh", identifier="D013284"),
+        Reference(prefix="mesh", identifier="D006424"),
+        Reference(prefix="mesh", identifier="D004628"),
+        Reference(prefix="mesh", identifier="D034582"),
+        Reference(prefix="mesh", identifier="D018514"),
+        Reference(prefix="mesh", identifier="D056229"),
+        Reference(prefix="mesh", identifier="D056226"),
+        Reference(prefix="mesh", identifier="D056224"),
+    ],
     "ncit": [Reference.from_curie("ncit:C12219")],
     "umls": [
         # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
@@ -63,7 +84,6 @@ CONFIGURATION = semra.Configuration(
     zenodo_record=11091803,
     directory=MODULE.base,
 )
-
 
 if __name__ == "__main__":
     CONFIGURATION.cli()

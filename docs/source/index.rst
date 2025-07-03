@@ -9,20 +9,20 @@ The Semantic Mapping Reasoner and Assembler (SeMRA) is a Python package that pro
 4. A confidence model granular at the curator-level, mapping set-level, and community
    feedback-level
 
-We produced five domain-specific mapping analyses, each with a reusable database.
+SeMRA was used to produce a comprehensive raw mappings database and five domain-specific mapping databases (each with a landscape analysis).
 
-================== ================================ =============================================
-Domain             Module                           Data Download
-================== ================================ =============================================
-Raw
-Disease            :mod:`semra.landscape.disease`   https://bioregistry.io/zenodo.record:11091886
-Cell and Cell Line :mod:`semra.landscape.cells`     https://bioregistry.io/zenodo.record:11091581
-Anatomy            :mod:`semra.landscape.anatomy`   https://bioregistry.io/zenodo.record:11091803
-Protein Complex    :mod:`semra.landscape.complexes` https://bioregistry.io/zenodo.record:11091422
-Gene               :mod:`semra.landscape.genes`     https://bioregistry.io/zenodo.record:11092013
-================== ================================ =============================================
+================== ================================ =========================================================== ===================================================================================
+Domain             Module                           Database Download                                           Analysis
+================== ================================ =========================================================== ===================================================================================
+Raw                :mod:`semra.database`            `11082038 <https://bioregistry.io/zenodo.record:11082038>`_ N/A
+Disease            :mod:`semra.landscape.disease`   `11091886 <https://bioregistry.io/zenodo.record:11091886>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme
+Cell and Cell Line :mod:`semra.landscape.cells`     `11091581 <https://bioregistry.io/zenodo.record:11091581>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme
+Anatomy            :mod:`semra.landscape.anatomy`   `11091803 <https://bioregistry.io/zenodo.record:11091803>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme
+Protein Complex    :mod:`semra.landscape.complexes` `11091422 <https://bioregistry.io/zenodo.record:11091422>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme
+Gene               :mod:`semra.landscape.genes`     `11092013 <https://bioregistry.io/zenodo.record:11092013>`_ https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme
+================== ================================ =========================================================== ===================================================================================
 
-More information can be found on the SeMRA `GitHub repository
+The results of the domain-specific landscape analyses can be found on the SeMRA `GitHub repository
 <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_
 
 Table of Contents

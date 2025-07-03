@@ -2,7 +2,6 @@
 
 import bioregistry
 import pystow
-from pyobo.sources.mesh import get_mesh_category_references
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
@@ -32,7 +31,14 @@ PREFIXES = PRIORITY = [
 ]
 # some resources are generic, so we want to cut to a relevant subset
 SUBSETS = {
-    "mesh": [*get_mesh_category_references("C"), *get_mesh_category_references("F")],
+    # created with [*get_mesh_category_references("C"), *get_mesh_category_references("F")]
+    "mesh": [
+        Reference(prefix="mesh", identifier="D007239"),
+        Reference(prefix="mesh", identifier="D001520"),
+        Reference(prefix="mesh", identifier="D011579"),
+        Reference(prefix="mesh", identifier="D001523"),
+        Reference(prefix="mesh", identifier="D004191"),
+    ],
     "efo": [Reference.from_curie("efo:0000408")],
     "ncit": [Reference.from_curie("ncit:C2991")],
     "umls": [

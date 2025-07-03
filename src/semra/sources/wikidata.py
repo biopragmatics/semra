@@ -10,9 +10,9 @@ import pystow
 import requests
 from tqdm import tqdm
 
-from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
 from semra.version import get_version
+from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_wikidata_mappings",

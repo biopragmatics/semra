@@ -11,7 +11,6 @@ import pandas as pd
 import sssom.io
 import sssom.validators
 
-from semra import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.api import assemble_evidences
 from semra.io import (
     from_digraph,
@@ -27,17 +26,17 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.rules import (
-    BEN_ORCID,
+from semra.sources.biopragmatics import from_biomappings_negative
+from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence, Triple
+from semra.vocabulary import (
+    BEN_REFERENCE,
     CHAIN_MAPPING,
+    CHARLIE,
     EXACT_MATCH,
     LEXICAL_MAPPING,
     MANUAL_MAPPING,
     UNSPECIFIED_MAPPING,
-    charlie,
 )
-from semra.sources.biopragmatics import from_biomappings_negative
-from semra.struct import Triple
 from tests.constants import a1, a1_curie, a2, a2_curie, b1, b1_curie, b2, b2_curie
 
 LOCAL = getpass.getuser() == "cthoyt"
@@ -215,17 +214,20 @@ class TestIO(unittest.TestCase):
         lexical_ms = MappingSet(purl="https://example.org/test-2", name="lexical", confidence=0.90)
 
         m1_e1 = SimpleEvidence(
-            mapping_set=biomappings, justification=MANUAL_MAPPING, author=charlie, confidence=0.99
+            mapping_set=biomappings, justification=MANUAL_MAPPING, author=CHARLIE, confidence=0.99
         )
 
         # check that making an identical evidence gives the same hex digest
         m1_e1_copy = SimpleEvidence(
-            mapping_set=biomappings, justification=MANUAL_MAPPING, author=charlie, confidence=0.99
+            mapping_set=biomappings, justification=MANUAL_MAPPING, author=CHARLIE, confidence=0.99
         )
         self.assertEqual(m1_e1.hexdigest(t1), m1_e1_copy.hexdigest(t1))
 
         m1_e2 = SimpleEvidence(
-            mapping_set=biomappings, justification=MANUAL_MAPPING, author=BEN_ORCID, confidence=0.94
+            mapping_set=biomappings,
+            justification=MANUAL_MAPPING,
+            author=BEN_REFERENCE,
+            confidence=0.94,
         )
         m1_e3 = SimpleEvidence(
             mapping_set=lexical_ms, justification=LEXICAL_MAPPING, confidence=0.8

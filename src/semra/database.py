@@ -1,4 +1,46 @@
-"""Assemble a database."""
+"""
+The SeMRA Raw Mappings Database contains unprocessed semantic mappings
+assembled from hundreds of ontologies and databases through :mod:`pyobo`.
+
+Reproduction
+************
+
+The SeMRA Raw Mappings Database can be rebuilt with the following commands:
+
+.. code-block:: console
+
+    $ uv pip install semra
+    $ semra build
+
+The ``semra build`` command downloads and process all resource and constructs
+a database of unprocessed mappings.
+
+.. note::
+
+    Downloading raw data resources can take on the order of hours to tens
+    of hours depending on your internet connection and the reliability of
+    the resources' respective servers.
+
+    Processing and analysis can be run overnight on commodity hardware
+    (e.g., a 2023 MacBook Pro with 36GB RAM).
+
+Web Application
+***************
+
+The SeMRA Raw Mappings Database can be downloaded from Zenodo at |raw|.
+After downloading all files and unzipping then, a web application wrapping
+the SeMRA Raw Mappings Database run locally on Docker with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+Navigate to http://localhost:8773 to see the web application.
+
+.. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
+  :target: https://doi.org/10.5281/zenodo.11082038
+
+"""  # noqa: D205
 
 import subprocess
 import time
@@ -22,10 +64,14 @@ from zenodo_client import update_zenodo
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
-from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
+from semra.pipeline import REFRESH_SOURCE_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.utils import gzip_path
+
+__all__ = [
+    "build",
+]
 
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
@@ -48,7 +94,8 @@ class SummaryRow(NamedTuple):
     label: str
 
 
-EMPTY = []
+#: A list of prefixes that did not produce any semantic mappings
+EMPTY: list[str] = []
 summaries: list[SummaryRow] = []
 
 skip = {
@@ -91,13 +138,21 @@ skip_pyobo = {
 @click.option(
     "--include-wikidata/--no-include-wikidata", is_flag=True, show_default=True, default=True
 )
-@click.option("--write-labels", is_flag=True)
+@click.option(
+    "--write-labels",
+    is_flag=True,
+    help="If set to true, writes subject and object labels in the SSSOM file.",
+)
 @click.option(
     "--prune-sssom",
     is_flag=True,
-    help="If true, will try and prune unused SSSOM columns during output",
+    help="If true, will try and prune unused SSSOM columns during output. Note that this significantly increases memory requirement during construction, but results in a smaller database file.",
 )
-@UPLOAD_OPTION
+@click.option(
+    "--upload",
+    is_flag=True,
+    help="If set to true, upload the generated artifacts to the SeMRA Raw Mapping Database record on Zenodo (https://doi.org/10.5281/zenodo.11082038)",
+)
 @REFRESH_SOURCE_OPTION
 def build(
     include_wikidata: bool,
@@ -106,7 +161,7 @@ def build(
     write_labels: bool,
     prune_sssom: bool,
 ) -> None:
-    """Construct the full SeMRA database."""
+    """Construct the SeMRA Raw Mapping Database."""
     ontology_resources: list[bioregistry.Resource] = []
     pyobo_resources: list[bioregistry.Resource] = []
     for resource in bioregistry.resources():

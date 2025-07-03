@@ -1,7 +1,8 @@
 """Semantic Mapping Reasoner and Assembler."""
 
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import (
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,
     EQUIVALENT_TO,
@@ -12,7 +13,6 @@ from semra.rules import (
     REPLACED_BY,
     UNSPECIFIED_MAPPING,
 )
-from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "BROAD_MATCH",

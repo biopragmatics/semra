@@ -13,7 +13,7 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from .io_utils import get_confidence_str, get_name_by_reference, safe_open_writer
-from ..rules import (
+from ..constants import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
     SEMRA_MAPPING_SET_PREFIX,

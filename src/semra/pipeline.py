@@ -11,6 +11,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, overload
 
+import bioregistry
 import click
 import requests
 from pydantic import BaseModel, Field, model_validator
@@ -52,6 +53,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference
+from semra.utils import get_jinja_template
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -71,15 +73,32 @@ logger = logging.getLogger(__name__)
 
 HERE = Path(__file__).parent.resolve()
 
-UPLOAD_OPTION = click.option("--upload", is_flag=True)
-REFRESH_RAW_OPTION = click.option("--refresh-raw", is_flag=True)
-REFRESH_PROCESSED_OPTION = click.option("--refresh-processed", is_flag=True)
+REFRESH_PROCESSED_OPTION = click.option(
+    "--refresh-processed",
+    is_flag=True,
+    help="Re-process raw mappings. This is the least aggressive 'refresh' option.",
+)
+REFRESH_RAW_OPTION = click.option(
+    "--refresh-raw",
+    is_flag=True,
+    help="Re-process mapping sources to produce raw mappings and process them "
+    "again. This is more aggressive than --refresh-process.",
+)
 REFRESH_SOURCE_OPTION = click.option(
     "--refresh-source",
     is_flag=True,
-    help="Enable this to fully re-process source data, e.g., parse source OBO files and re-build mapping caches",
+    help="Enable this to fully re-process source data, e.g., parse source OBO "
+    "files and re-build mapping caches. This is more aggressive than "
+    "--refresh-process and --refresh-raw",
 )
-BUILD_DOCKER_OPTION = click.option("--build-docker", is_flag=True)
+
+BUILD_DOCKER_OPTION = click.option(
+    "--build-docker",
+    is_flag=True,
+    help="If activated, `docker build` is invoked as a test to make sure that "
+    "the construction of the Neo4j database works correctly. E.g., this can "
+    "catch data issues that result in invalid Neo4j nodes or edges files.",
+)
 
 STATS_FILE_NAME = "stats.json"
 CONFIG_FILE_NAME = "configuration.json"
@@ -172,6 +191,22 @@ class Configuration(BaseModel):
     )
 
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
+
+    def _get_header_text(self) -> str:
+        """Get header text for SemRA built-in configuration."""
+        from tabulate import tabulate
+
+        template = get_jinja_template("landscape-header.rst")
+        rows = [
+            (
+                f"`{prefix} <https://bioregistry.io/{prefix}>`_",
+                bioregistry.get_name(prefix, strict=True),
+            )
+            for prefix in self.priority
+        ]
+        return template.render(
+            configuration=self, table=tabulate(rows, tablefmt="rst", headers=["Prefix", "Name"])
+        )
 
     @property
     def raw_pickle_path(self) -> Path:
@@ -417,7 +452,7 @@ class Configuration(BaseModel):
         return_type: GetMappingReturnType = GetMappingReturnType.none,
         progress: bool = True,
     ) -> list[Mapping] | MappingPack | None:
-        """Run assembly based on this configuration."""
+        """Run assembly based on this configuration, see :func:`get_priority_mappings_from_config`."""
         return get_priority_mappings_from_config(  # type:ignore[no-any-return,call-overload]
             self,
             refresh_source=refresh_source,
@@ -602,7 +637,13 @@ class Configuration(BaseModel):
         from more_click import verbose_option
 
         @click.command()
-        @UPLOAD_OPTION
+        @click.option(
+            "--upload",
+            is_flag=True,
+            help=f"If true, uploads to {self.zenodo_url()}"
+            if self.zenodo_record
+            else "Is disregaded, because this configuration does not specify a `zenodo_record`",
+        )
         @REFRESH_SOURCE_OPTION
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
@@ -707,7 +748,27 @@ def get_priority_mappings_from_config(
     return_type: GetMappingReturnType = GetMappingReturnType.none,
     progress: bool = True,
 ) -> None | list[Mapping] | MappingPack:
-    """Get prioritized mappings based on an assembly configuration."""
+    """Get prioritized mappings based on an assembly configuration.
+
+    :param configuration: The mapping assembly configuration
+    :param refresh_processed: This the least aggressive option, where raw mappings are
+        re-used if available and only re-processing and re-prioritization is done.
+    :param refresh_raw: This is the medium aggressive option, where raw mappings are
+        re-generaged by processing the source data.
+    :param refresh_source: This is the most aggressive option, where the data sources
+        are re-downloaded (and the other options ``refresh_processed`` and
+        ``refresh_raw`` are automatically switched to true)
+    :param return_type: What artifacts should be returned? This is controlled with the
+        values in the :class:`GetMappingReturnType` enumeration.
+
+        - :data:`GetMappingReturnType.none` returns nothing
+        - :data:`GetMappingReturnType.priority` returns the priority mapping set
+        - :data:`GetMappingReturnType.all` returns a data structure containing the raw
+          mappings, processed mappings, and priority mappings as three seperate lists.
+    :param progress: Should progress bars be shown during processing? Defaults to true.
+
+    :returns: Returns based on the ``return_type``. By default, returns ``None``
+    """
     if refresh_source:
         refresh_raw = True
     if refresh_raw:

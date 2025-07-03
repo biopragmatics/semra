@@ -7,8 +7,8 @@ import click
 from pyobo import Reference
 from tqdm.auto import tqdm
 
-from semra.rules import DB_XREF, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]
 

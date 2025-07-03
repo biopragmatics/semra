@@ -38,8 +38,10 @@ provides:
 4. A confidence model granular at the curator-level, mapping set-level, and
    community feedback-level
 
-We also provide an accompanying raw semantic mapping database on Zenodo at
-https://doi.org/10.5281/zenodo.11082038.
+We also provide the SeMRA Raw Mappings Database, a set of pre-assembled semantic
+mappings from hundreds of ontologies and databases, on Zenodo at
+https://doi.org/10.5281/zenodo.11082038 that can be rebuilt with `semra build`.
+More information [here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 💪 Getting Started
 
@@ -260,7 +262,9 @@ five biomedical entity types:
 These analyses are based on
 [declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)
 for sources, processing rules, and inference rules that can be found in the
-`semra.landscape` module of the source code.
+`semra.landscape` module of the source code. These can be rebuilt with
+`semra landscape`, with more documentation
+[here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 🤖 Tools for Data Scientists
 

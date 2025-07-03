@@ -9,8 +9,8 @@ import pyobo
 import requests
 from pyobo import Reference
 
-from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_pubchem_mesh_mappings",

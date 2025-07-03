@@ -19,14 +19,7 @@ from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
-from semra.rules import (
-    DB_XREF,
-    EXACT_MATCH,
-    FLIP,
-    INVERSION_MAPPING,
-    KNOWLEDGE_MAPPING,
-    SubsetConfiguration,
-)
+from semra.rules import FLIP, SubsetConfiguration
 from semra.struct import (
     Evidence,
     Mapping,
@@ -37,6 +30,7 @@ from semra.struct import (
     Triple,
 )
 from semra.utils import cleanup_prefixes, semra_tqdm
+from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 
 __all__ = [
     "TEST_MAPPING_SET",

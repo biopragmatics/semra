@@ -9,8 +9,8 @@ import pandas as pd
 from pyobo import Reference
 
 from semra.api import validate_mappings
-from semra.rules import BEN_ORCID, EXACT_MATCH, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import BEN_REFERENCE, EXACT_MATCH, MANUAL_MAPPING
 
 __all__ = [
     "get_fplx_mappings",
@@ -36,7 +36,7 @@ def get_fplx_mappings() -> list[Mapping]:
             ),
             evidence=[
                 SimpleEvidence(
-                    justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_ORCID
+                    justification=MANUAL_MAPPING, mapping_set=MAPPING_SET, author=BEN_REFERENCE
                 )
             ],
         )

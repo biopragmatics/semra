@@ -16,7 +16,7 @@ from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pyobo import Reference
 
-from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 
 __all__ = [
     "Evidence",

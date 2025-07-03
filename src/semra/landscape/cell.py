@@ -1,16 +1,78 @@
-"""A configuration for assembling mappings for cell and cell line terms.
-
-This configuration can be used to reproduce the results from the Biomappings paper by
-doing the following:
-
-1. Load positive mappings - PyOBO: EFO, DepMap, CCLE - Custom: Cellosaurus - Biomappings
-2. Upgrade mappings from dbxrefs to skos:exactMatch
-3. Use transitive closure to infer new mappings
-4. Load negative mappings from Biomappings
-5. Filter out negative mappings
-6. Subset a CCLE->EFO consolidation set
-7. Output SSSOM
 """
+The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following
+resources:
+
+===================================================  =========================================================
+Prefix                                               Name
+===================================================  =========================================================
+`mesh <https://bioregistry.io/mesh>`_                Medical Subject Headings
+`efo <https://bioregistry.io/efo>`_                  Experimental Factor Ontology
+`cellosaurus <https://bioregistry.io/cellosaurus>`_  Cellosaurus
+`ccle <https://bioregistry.io/ccle>`_                Cancer Cell Line Encyclopedia Cells
+`depmap <https://bioregistry.io/depmap>`_            DepMap Cell Lines
+`bto <https://bioregistry.io/bto>`_                  BRENDA Tissue Ontology
+`cl <https://bioregistry.io/cl>`_                    Cell Ontology
+`clo <https://bioregistry.io/clo>`_                  Cell Line Ontology
+`ncit <https://bioregistry.io/ncit>`_                NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_                Unified Medical Language System Concept Unique Identifier
+===================================================  =========================================================
+
+Results
+*******
+The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON, and
+in a format ready for loading into a Neo4j graph database
+on Zenodo at |cellimg|.
+
+A summary of the results can be viewed on the SeMRA GitHub repository in the
+`notebooks/landscape/cell <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_
+folder.
+
+Reproduction
+************
+
+The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following commands:
+
+.. code-block:: console
+
+    $ git clone https://github.com/biopragmatics/semra.git
+    $ cd semra
+    $ uv pip install .[landscape]
+    $ python -m semra.landscape.cell
+
+.. note::
+
+    Downloading raw data resources can take on the order of hours to tens
+    of hours depending on your internet connection and the reliability of
+    the resources' respective servers.
+
+    Processing and analysis can be run overnight on commodity hardware
+    (e.g., a 2023 MacBook Pro with 36GB RAM).
+
+Web Application
+***************
+The pre-built artifacts for this mapping database can be downloaded from Zenodo
+at |cellimg| and unzipped. The web application can be run
+locally on Docker from inside the folder where the data was unzipped with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+If you reproduced the database yourself, you can ``cd``
+to the right folder and run with:
+
+.. code-block:: console
+
+    $ cd ~/.data/semra/case-studies/cell
+    $ sh run_on_docker.sh
+
+Finally, navigate in your web browser to http://localhost:8773 to see the web
+application.
+
+.. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
+    :target: https://doi.org/10.5281/zenodo.11091580
+
+"""  # noqa:D205,D400
 
 import click
 import pystow
@@ -19,11 +81,10 @@ from semra import Reference
 from semra.api import project
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, MappingPack, Mutation
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
-    "CONFIGURATION",
-    "MODULE",
+    "CELL_CONFIGURATION",
 ]
 
 MODULE = pystow.module("semra", "case-studies", "cells")
@@ -50,13 +111,14 @@ SUBSETS = {
     ],  # see https://uts.nlm.nih.gov/uts/umls/semantic-network/root
 }
 
-CONFIGURATION = Configuration(
+#: Configuration for the cell and cell type mappings database
+CELL_CONFIGURATION = Configuration(
     key="cell",
     name="SeMRA Cell and Cell Line Mappings Database",
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
     "the Biomappings paper, this configuration imports several different cell and cell line "
     "resources and identifies mappings between them.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
@@ -91,7 +153,7 @@ CONFIGURATION = Configuration(
         Mutation(source="umls", confidence=0.7),
     ],
     add_labels=True,
-    zenodo_record=11091581,
+    zenodo_record=11091580,
     directory=MODULE.base,
 )
 
@@ -118,4 +180,4 @@ def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
 
 
 if __name__ == "__main__":
-    CONFIGURATION.cli(hooks=[cell_consolidation_hook])
+    CELL_CONFIGURATION.cli(hooks=[cell_consolidation_hook])

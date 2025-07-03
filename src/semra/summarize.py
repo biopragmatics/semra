@@ -33,9 +33,10 @@ from semra.api import (
     get_terms,
 )
 from semra.pipeline import Configuration
-from semra.rules import DB_XREF, EXACT_MATCH, SubsetConfiguration
+from semra.rules import SubsetConfiguration
 from semra.struct import Mapping
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
+from semra.vocabulary import DB_XREF, EXACT_MATCH
 
 __all__ = [
     "LandscapeResult",

@@ -1,13 +1,6 @@
 Usage
 =====
 
-.. automodapi:: semra.struct
-    :skip: Reference
-
-.. automodapi:: semra.pipeline
-
-.. automodapi:: semra.rules
-
-.. automodapi:: semra.api
-
-.. automodapi:: semra.io
+1. I/O
+2. How to make a configuration and run it
+3. How to apply results

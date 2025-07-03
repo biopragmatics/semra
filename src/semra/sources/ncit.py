@@ -11,8 +11,8 @@ from pydantic import ValidationError
 from pyobo import Reference
 from tqdm.asyncio import tqdm
 
-from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_ncit_chebi_mappings",

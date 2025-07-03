@@ -25,14 +25,6 @@ from semra.api import (
 )
 from semra.inference import infer_chains, infer_mutations, infer_reversible
 from semra.io.graph import from_digraph, to_digraph
-from semra.rules import (
-    BROAD_MATCH,
-    DB_XREF,
-    EXACT_MATCH,
-    KNOWLEDGE_MAPPING,
-    MANUAL_MAPPING,
-    NARROW_MATCH,
-)
 from semra.struct import (
     Mapping,
     MappingSet,
@@ -40,6 +32,14 @@ from semra.struct import (
     Reference,
     SimpleEvidence,
     line,
+)
+from semra.vocabulary import (
+    BROAD_MATCH,
+    DB_XREF,
+    EXACT_MATCH,
+    KNOWLEDGE_MAPPING,
+    MANUAL_MAPPING,
+    NARROW_MATCH,
 )
 
 PREFIX_A = "go"

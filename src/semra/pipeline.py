@@ -1,4 +1,7 @@
-"""Declarative acquisition and processing of mapping sets."""
+"""Declarative acquisition and processing of mapping sets.
+
+.. image:: img/pipeline.svg
+"""
 
 from __future__ import annotations
 

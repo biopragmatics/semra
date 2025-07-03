@@ -77,6 +77,10 @@ Features
 4. A confidence model granular at the curator-level, mapping set-level, and community
    feedback-level
 
+Here's a conceptual diagram of SeMRA's architecture:
+
+.. image:: img/architecture.svg
+
 What SeMRA Isn't
 ----------------
 SeMRA isn't a tool for predicting semantic mappings like
@@ -145,11 +149,13 @@ Table of Contents
     :name: start
 
     installation
+    tutorial
     io
-    usage
-    cli
+    pipeline
     artifacts
+    struct
     reference
+    cli
 
 Indices and Tables
 ------------------

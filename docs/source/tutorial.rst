@@ -5,19 +5,18 @@ Usage
 2. How to make a configuration and run it
 3. How to apply results
 
-
 Data Science Tutorial
 ---------------------
-SeMRA provides tools for data scientists to standardize references using
-semantic mappings.
 
-For example, the drug indications table in ChEMBL contains a variety of
-references to EFO, MONDO, DOID, and other controlled vocabularies (described in
-detail in
-`this blog post <https://cthoyt.com/2025/04/17/chembl-indications-efo-exploration.html>`_).
-Using SeMRA's pre-constructed
-`disease and phenotype prioritization mapping <https://doi.org/10.5281/zenodo.11091885>`_,
-these references can be standardized in a deterministic and principled way.
+SeMRA provides tools for data scientists to standardize references using semantic
+mappings.
+
+For example, the drug indications table in ChEMBL contains a variety of references to
+EFO, MONDO, DOID, and other controlled vocabularies (described in detail in `this blog
+post <https://cthoyt.com/2025/04/17/chembl-indications-efo-exploration.html>`_). Using
+SeMRA's pre-constructed `disease and phenotype prioritization mapping
+<https://doi.org/10.5281/zenodo.11091885>`_, these references can be standardized in a
+deterministic and principled way.
 
 .. code-block:: python
 

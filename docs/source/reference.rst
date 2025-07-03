@@ -1,16 +1,9 @@
 Reference
 =========
 
-.. automodapi:: semra.struct
-    :skip: Reference
-
-.. automodapi:: semra.pipeline
-
 .. automodapi:: semra.api
 
-
-Constants
----------
+.. automodapi:: semra.inference
 
 .. automodapi:: semra.rules
     :include-all-objects:

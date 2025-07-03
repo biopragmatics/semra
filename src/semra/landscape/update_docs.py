@@ -1,9 +1,10 @@
 """Update the module level docstrings for landscape configurations."""
 
-from semra.landscape import CONFIGURATIONS
-
 from pathlib import Path
+
 import click
+
+from semra.landscape import CONFIGURATIONS
 
 __all__ = [
     "update_landscape_module_docstrings",
@@ -21,8 +22,8 @@ def update_landscape_module_docstrings() -> None:
         lines = text.splitlines()
         idx = min(i for i, line in enumerate(lines[1:], start=1) if line.startswith('"""'))
         new = conf._get_header_text()
-        path.write_text(new + "\n".join(lines[idx + 1:]) + "\n")
+        path.write_text(new + "\n".join(lines[idx + 1 :]) + "\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     update_landscape_module_docstrings()

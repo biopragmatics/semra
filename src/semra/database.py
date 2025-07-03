@@ -1,6 +1,12 @@
-"""Assemble a database.
+"""
 
-The raw mapping database can be reconstructed with the following command:
+The SeMRA Raw Mappings Database contains unprocessed semantic mappings
+assembled from hundreds of ontologies and databases through :mod:`pyobo`.
+
+Reproduction
+************
+
+The SeMRA Raw Mappings Database can be rebuilt with the following commands:
 
 .. code-block:: console
 
@@ -32,7 +38,7 @@ Navigate to http://localhost:8773 to see the web application.
 .. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
   :target: https://doi.org/10.5281/zenodo.11082038
 
-"""
+"""  # noqa: D205
 
 import subprocess
 import time

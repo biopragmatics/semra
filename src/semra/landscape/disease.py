@@ -64,7 +64,6 @@ application.
 
 """  # noqa:D205,D400
 
-
 import bioregistry
 import pystow
 

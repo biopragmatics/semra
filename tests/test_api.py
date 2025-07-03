@@ -10,6 +10,7 @@ import pandas as pd
 from semra import api
 from semra.api import (
     Index,
+    Mutation,
     count_component_sizes,
     count_coverage_sizes,
     filter_mappings,
@@ -585,3 +586,39 @@ class TestUpgrades(unittest.TestCase):
         self.assertIsNotNone(new_confidence)
         self.assertEqual(1 - (1 - original_confidence) * (1 - mutation_confidence), new_confidence)
         self.assertEqual(KNOWLEDGE_MAPPING, new_evidence.justification)
+
+    def test_apply_mutations(self) -> None:
+        """Test applying mutations."""
+        (a1,) = _get_references(1, prefix=PREFIX_A)
+        (b1,) = _get_references(1, prefix=PREFIX_B)
+        (c1,) = _get_references(1, prefix=PREFIX_C)
+        (d1,) = _get_references(1, prefix=PREFIX_D)
+
+        m1 = Mutation(source=PREFIX_A, target=PREFIX_B)
+        self.assertTrue(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+
+        self.assertFalse(m1.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=a1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=b1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=d1)))
+
+        m2 = Mutation(source=PREFIX_A, target=[PREFIX_B, PREFIX_C])
+        self.assertTrue(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+        self.assertTrue(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=c1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=c1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=c1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=d1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=b1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=c1)))
+
+        m3 = Mutation(source=PREFIX_A)
+        self.assertTrue(m3.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+        self.assertTrue(m3.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+
+        self.assertFalse(m3.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=c1)))
+        self.assertFalse(m3.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=c1)))

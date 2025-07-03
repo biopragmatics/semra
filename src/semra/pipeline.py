@@ -1,7 +1,34 @@
-"""Declarative acquisition and processing of mapping sets.
+"""
+
+The SeMRA assembly pipeline is a declarative way to say which
+sources should be used, which prior knowledge should be injected
+into processing, and how entities should be "prioritized" on output.
+
+The assembly and inference of semantic mappings can solve the problem
+illustrated in the image below where a combination of incomplete mappings
+can can lead to the prioritization of an entity from a target namespace,
+and the creation of a priorization mapping set (i.e., a star graph).
 
 .. image:: img/pipeline.svg
-"""
+
+.. code-block:: python
+
+    from semra import Configuration
+    from semra.pipeline import get_priority_mappings_from_config, GetMappingReturnType
+
+    configuration = Configuration(...)
+
+    # these mappings induce a star graph based on the prioritization
+    priority_mappings = get_priority_mappings_from_config(configuration)
+
+    # raw and processed mappings can be returned as well
+    mapping_pack = get_priority_mappings_from_config(
+        configuration,
+        return_type=GetMappingReturnType.all,
+    )
+
+For reference, the :mod:`semra.landscape` module contains several pipeline configurations.
+"""  # noqa: D205
 
 from __future__ import annotations
 
@@ -69,7 +96,7 @@ __all__ = [
     "SubsetConfiguration",
     "get_priority_mappings_from_config",
     "get_raw_mappings",
-    "process",
+    "process_raw_mappings",
 ]
 
 logger = logging.getLogger(__name__)
@@ -839,7 +866,7 @@ def get_priority_mappings_from_config(
                 )
 
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-        processed_mappings = process(
+        processed_mappings = process_raw_mappings(
             raw_mappings,
             mutations=configuration.mutations,
             remove_prefix_set=configuration.remove_prefixes,
@@ -973,7 +1000,7 @@ def get_raw_mappings(
     return mappings
 
 
-def process(
+def process_raw_mappings(
     mappings: list[Mapping],
     upgrade_prefixes: t.Collection[str] | None = None,
     mutations: t.Collection[Mutation] | None = None,

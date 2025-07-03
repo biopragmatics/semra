@@ -80,7 +80,7 @@ example, we justify the inverse mapping from the first one:
 
     These mappings can be produced with :func:`semra.api.flip` for a single mapping or
     with :func:`semra.inference.infer_reversible` for a mapping set.
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 from __future__ import annotations
 
@@ -206,6 +206,14 @@ class MappingSet(
 
     Mostly corresponds to the concept of a SSSOM mapping set, documented in
     https://mapping-commons.github.io/sssom/MappingSet.
+
+    There are the following optional fields:
+
+    1. ``name``
+    2. ``purl`` (not optional if you're writing to SSSOM)
+    3. ``version``
+    4. ``license``
+    5. ``confidence``
     """
 
     model_config = ConfigDict(frozen=True)
@@ -228,7 +236,7 @@ class MappingSet(
     )
     confidence: float = Field(
         default=1.0,
-        description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
+        description="Mapping set level confidence. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_confidence/",
     )
 
     def key(self) -> MappingSetKey:

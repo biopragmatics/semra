@@ -10,8 +10,8 @@ from pyobo import Reference
 from tqdm.auto import tqdm
 
 from semra.api import validate_mappings
-from semra.rules import BEN_ORCID, EXACT_MATCH, LEXICAL_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import BEN_REFERENCE, EXACT_MATCH, LEXICAL_MAPPING
 
 __all__ = [
     "get_gilda_mappings",
@@ -52,7 +52,7 @@ def get_gilda_mappings(confidence: float = 0.95) -> list[Mapping]:
                 SimpleEvidence(
                     justification=LEXICAL_MAPPING,
                     mapping_set=MappingSet(name="gilda_mesh", confidence=confidence, license="CC0"),
-                    author=BEN_ORCID,
+                    author=BEN_REFERENCE,
                 )
             ],
         )

@@ -88,7 +88,7 @@ import pystow
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
     "DISEASE_CONFIGURATION",
@@ -138,7 +138,7 @@ DISEASE_CONFIGURATION = Configuration(
     key="disease",
     name="SeMRA Disease Mappings Database",
     description="Supports the analysis of the landscape of disease nomenclature resources.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

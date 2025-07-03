@@ -74,7 +74,7 @@ import pystow
 
 import semra
 from semra import Reference
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
     "ANATOMY_CONFIGURATION",
@@ -127,7 +127,7 @@ ANATOMY_CONFIGURATION = semra.Configuration(
     key="anatomy",
     name="SeMRA Anatomy Mappings Database",
     description="Supports the analysis of the landscape of anatomy nomenclature resources.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         semra.Input(source="biomappings"),
         semra.Input(source="gilda"),

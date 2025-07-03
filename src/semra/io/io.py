@@ -26,8 +26,9 @@ from .io_utils import (
     safe_open,
     safe_open_writer,
 )
-from ..rules import CURIE_TO_JUSTIFICATION, CURIE_TO_RELATION, UNSPECIFIED_MAPPING
+from ..rules import CURIE_TO_JUSTIFICATION, CURIE_TO_RELATION
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from ..vocabulary import UNSPECIFIED_MAPPING
 
 __all__ = [
     "from_bioontologies",

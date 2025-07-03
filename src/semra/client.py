@@ -17,14 +17,9 @@ import pydantic
 from neo4j import ManagedTransaction, unit_of_work
 from typing_extensions import Self
 
-import semra
-from semra import Evidence, MappingSet, Reference, SimpleEvidence
-from semra.rules import (
-    RELATIONS,
-    SEMRA_EVIDENCE_PREFIX,
-    SEMRA_MAPPING_PREFIX,
-    SEMRA_MAPPING_SET_PREFIX,
-)
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
+from semra.rules import RELATIONS
+from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
 
 __all__ = [
     "BaseClient",
@@ -60,7 +55,7 @@ CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LI
 class BaseClient:
     """An abstract class defining all of the functionality for a mapping client."""
 
-    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
+    def get_mapping(self, curie: ReferenceHint) -> Mapping | None:
         """Get a mapping.
 
         :param curie: Either a Reference object, a string representing a curie with
@@ -262,7 +257,7 @@ class Neo4jClient(BaseClient):
         res = self.read_query(query, curie=curie)
         return cast(Node, res[0][0])
 
-    def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
+    def get_mapping(self, curie: ReferenceHint) -> Mapping | None:
         """Get a mapping.
 
         :param curie: Either a Reference object, a string representing a curie with
@@ -300,7 +295,7 @@ class Neo4jClient(BaseClient):
                 evidence_dict.pop("mapping_justification")
             )
             evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
-        return semra.Mapping(
+        return Mapping(
             subject=Reference.from_curie(source_curie),
             predicate=Reference.from_curie(mapping["predicate"]),
             object=Reference.from_curie(target_curie),
@@ -542,7 +537,7 @@ class ExampleMapping(NamedTuple):
     object_name: str
 
     @classmethod
-    def from_mapping(cls, mapping: semra.Mapping) -> Self:
+    def from_mapping(cls, mapping: Mapping) -> Self:
         """Get from a mapping."""
         return cls(
             mapping.curie,

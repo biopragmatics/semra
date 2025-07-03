@@ -81,7 +81,7 @@ import pystow
 
 from semra import Reference
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
     "GENE_CONFIGURATION",
@@ -111,7 +111,7 @@ GENE_CONFIGURATION = Configuration(
     key="gene",
     name="SeMRA Gene Mappings Database",
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(prefix="hgnc", source="pyobo", confidence=0.99),
         Input(prefix="mgi", source="pyobo", confidence=0.99),

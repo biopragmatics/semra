@@ -14,18 +14,17 @@ from tqdm.asyncio import tqdm
 
 from semra.api import assemble_evidences, flip
 from semra.io.graph import MULTIDIGRAPH_DATA_KEY, to_multidigraph
-from semra.rules import (
+from semra.rules import FLIP, GENERALIZATIONS
+from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference
+from semra.utils import cleanup_prefixes, semra_tqdm
+from semra.vocabulary import (
     BROAD_MATCH,
     CHAIN_MAPPING,
     DB_XREF,
     EXACT_MATCH,
-    FLIP,
-    GENERALIZATIONS,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
-from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference
-from semra.utils import cleanup_prefixes, semra_tqdm
 
 __all__ = [
     "infer_chains",
@@ -350,8 +349,7 @@ def infer_mutations(
     ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
     so the example mapping ``m2`` comes along for the ride.
 
-    >>> from semra import DB_XREF, EXACT_MATCH, Reference
-    >>> from semra.rules import KNOWLEDGE_MAPPING
+    >>> from semra.vocabulary import KNOWLEDGE_MAPPING    >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))

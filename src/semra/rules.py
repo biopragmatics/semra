@@ -5,25 +5,39 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TypeAlias
 
-import bioregistry
-import curies
-from curies import vocabulary as v
 from pyobo import Reference
 
+from semra.vocabulary import (
+    BROAD_MATCH,
+    CHAIN_MAPPING,
+    CLOSE_MATCH,
+    DB_XREF,
+    EQUIVALENT_TO,
+    EXACT_MATCH,
+    INVERSION_MAPPING,
+    KNOWLEDGE_MAPPING,
+    LEXICAL_MAPPING,
+    MANUAL_MAPPING,
+    NARROW_MATCH,
+    REPLACED_BY,
+    SUBCLASS,
+    UNSPECIFIED_MAPPING,
+)
 
-def _f(r: curies.NamedReference) -> Reference:
-    return Reference(prefix=r.prefix, identifier=r.identifier, name=r.name)
+__all__ = [
+    "CURIE_TO_JUSTIFICATION",
+    "CURIE_TO_RELATION",
+    "DIRECTIONLESS",
+    "FLIP",
+    "GENERALIZATIONS",
+    "IMPRECISE",
+    "JUSTIFICATIONS",
+    "RELATIONS",
+    "TRANSITIVE",
+    "TWO_STEP",
+]
 
-
-EXACT_MATCH = _f(v.exact_match)
-BROAD_MATCH = _f(v.broad_match)
-NARROW_MATCH = _f(v.narrow_match)
-CLOSE_MATCH = _f(v.close_match)
-SUBCLASS = _f(v.is_a)
-DB_XREF = _f(v.has_dbxref)
-EQUIVALENT_TO = Reference(prefix="owl", identifier="equivalentTo")
-REPLACED_BY = _f(v.term_replaced_by)
-
+#: A list of mapping predicates suggested by SSSOM.
 RELATIONS: list[Reference] = [
     EXACT_MATCH,
     DB_XREF,
@@ -34,9 +48,13 @@ RELATIONS: list[Reference] = [
     REPLACED_BY,
     SUBCLASS,
 ]
+#: A mapping from CURIEs to reference objects for mapping predicates
 CURIE_TO_RELATION = {r.curie: r for r in RELATIONS}
 
+#: A set of mappings that are not considered as precise
 IMPRECISE: set[Reference] = {DB_XREF, CLOSE_MATCH}
+
+#: A mapping of inverse relationships that can be applied when inversting mappings
 FLIP = {
     BROAD_MATCH: NARROW_MATCH,
     NARROW_MATCH: BROAD_MATCH,
@@ -65,13 +83,7 @@ GENERALIZATIONS = {
     SUBCLASS: BROAD_MATCH,
 }
 
-MANUAL_MAPPING = _f(v.manual_mapping_curation)
-LEXICAL_MAPPING = _f(v.lexical_matching_process)
-UNSPECIFIED_MAPPING = _f(v.unspecified_matching_process)
-INVERSION_MAPPING = _f(v.mapping_inversion)
-CHAIN_MAPPING = _f(v.mapping_chaining)
-KNOWLEDGE_MAPPING = _f(v.background_knowledge_based_matching_process)
-
+#: A list of references that can be used as mapping justifications in SSSOM
 JUSTIFICATIONS = [
     MANUAL_MAPPING,
     LEXICAL_MAPPING,
@@ -80,27 +92,8 @@ JUSTIFICATIONS = [
     CHAIN_MAPPING,
     KNOWLEDGE_MAPPING,
 ]
+#: A mapping from CURIEs to mapping justifications
 CURIE_TO_JUSTIFICATION = {j.curie: j for j in JUSTIFICATIONS}
 
-charlie = _f(v.charlie)
-BEN_ORCID = Reference.from_curie("orcid:0000-0001-9439-5346", name="Benjamin M. Gyori")
-
+#: A type represing a subset configuration
 SubsetConfiguration: TypeAlias = Mapping[str, list[Reference]]
-
-SEMRA_NEO4J_MAPPING_LABEL = "mapping"
-SEMRA_NEO4J_CONCEPT_LABEL = "concept"
-SEMRA_NEO4J_EVIDENCE_LABEL = "evidence"
-SEMRA_NEO4J_MAPPING_SET_LABEL = "mappingset"
-
-SEMRA_MAPPING_PREFIX = "semra.mapping"
-SEMRA_MAPPING = bioregistry.Resource(prefix=SEMRA_MAPPING_PREFIX, name="SeMRA Mapping")
-
-SEMRA_EVIDENCE_PREFIX = "semra.evidence"
-SEMRA_EVIDENCE = bioregistry.Resource(prefix=SEMRA_EVIDENCE_PREFIX, name="SeMRA Evidence")
-
-SEMRA_MAPPING_SET_PREFIX = "semra.mappingset"
-SEMRA_MAPPING_SET = bioregistry.Resource(prefix=SEMRA_MAPPING_SET_PREFIX, name="SeMRA Mapping Set")
-
-for resource in [SEMRA_MAPPING, SEMRA_EVIDENCE, SEMRA_MAPPING_SET]:
-    bioregistry.manager.synonyms[resource.prefix] = resource.prefix
-    bioregistry.manager.registry[resource.prefix] = resource

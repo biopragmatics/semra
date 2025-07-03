@@ -9,12 +9,12 @@ from typing import cast
 from curies import Triple
 
 import semra
-from semra import DB_XREF, EXACT_MATCH, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.api import get_index
 from semra.io import write_sssom
 from semra.pipeline import Configuration, GetMappingReturnType, Input, MappingPack, get_raw_mappings
-from semra.rules import MANUAL_MAPPING, charlie
 from semra.sources import SOURCE_RESOLVER
+from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
+from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
 from tests.constants import a1, b1
 
 TEST_MAPPING_SET = MappingSet(
@@ -30,7 +30,7 @@ TEST_MAPPINGS = [
             SimpleEvidence(
                 justification=MANUAL_MAPPING,
                 mapping_set=TEST_MAPPING_SET,
-                author=charlie,
+                author=CHARLIE,
             )
         ],
     )
@@ -61,7 +61,7 @@ class TestPipeline(unittest.TestCase):
         self.assertIsInstance(ev, SimpleEvidence)
         self.assertEqual(MANUAL_MAPPING, ev.justification)
         self.assertIsNotNone(ev.author)
-        self.assertEqual(charlie.pair, cast(Reference, ev.author).pair)
+        self.assertEqual(CHARLIE.pair, cast(Reference, ev.author).pair)
         self.assertIsNotNone(ev.mapping_set)
         mapping_set: MappingSet = cast(MappingSet, ev.mapping_set)
         self.assertEqual("test", mapping_set.name)

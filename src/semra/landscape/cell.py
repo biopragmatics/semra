@@ -81,7 +81,7 @@ from semra import Reference
 from semra.api import project
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, MappingPack, Mutation
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
     "CELL_CONFIGURATION",
@@ -118,7 +118,7 @@ CELL_CONFIGURATION = Configuration(
     description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
     "the Biomappings paper, this configuration imports several different cell and cell line "
     "resources and identifies mappings between them.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),

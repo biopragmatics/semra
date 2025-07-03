@@ -12,7 +12,7 @@ from curies import Reference
 from flask import Blueprint, current_app, render_template
 
 from semra.client import BaseClient
-from semra.rules import EXACT_MATCH, MANUAL_MAPPING
+from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
 from semra.web.shared import State, _figure_number
 
 if t.TYPE_CHECKING:

@@ -62,7 +62,7 @@ application.
 import pystow
 
 import semra
-from semra.rules import charlie
+from semra.vocabulary import CHARLIE
 
 __all__ = [
     "TAXRANK_CONFIGURATION",
@@ -80,7 +80,7 @@ TAXRANK_CONFIGURATION = semra.Configuration(
     key="taxrank",
     name="SeMRA Taxonomical Ranks Mappings Database",
     description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
-    creators=[charlie],
+    creators=[CHARLIE],
     inputs=[
         semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
     ],

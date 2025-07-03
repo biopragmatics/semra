@@ -145,9 +145,11 @@ Table of Contents
     :name: start
 
     installation
+    io
     usage
     cli
     artifacts
+    reference
 
 Indices and Tables
 ------------------

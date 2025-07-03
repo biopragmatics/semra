@@ -41,7 +41,7 @@ The SeMRA Disease Mappings Database can be rebuilt with the following commands:
 Web Application
 ***************
 The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |disease| and unzipped. The web application can be run
+at |diseaseimg| and unzipped. The web application can be run
 locally on Docker from inside the folder where the data was unzipped with:
 
 .. code-block:: console
@@ -59,7 +59,7 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |disease| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091886.svg
+.. |diseaseimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091886.svg
     :target: https://doi.org/10.5281/zenodo.11091886
 
 """  # noqa:D205,D400

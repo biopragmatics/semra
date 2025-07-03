@@ -32,7 +32,7 @@ The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
 Web Application
 ***************
 The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |cell| and unzipped. The web application can be run
+at |cellimg| and unzipped. The web application can be run
 locally on Docker from inside the folder where the data was unzipped with:
 
 .. code-block:: console
@@ -50,7 +50,7 @@ to the right folder and run with:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |cell| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091581.svg
+.. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091581.svg
     :target: https://doi.org/10.5281/zenodo.11091581
 
 """  # noqa:D205,D400

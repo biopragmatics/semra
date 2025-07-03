@@ -35,7 +35,7 @@ with the following commands:
 Finally, navigate in your web browser to http://localhost:8773 to see the web
 application.
 
-.. |taxrank| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.None.svg
+.. |taxrankimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.None.svg
     :target: https://doi.org/10.5281/zenodo.None
 
 """  # noqa:D205,D400

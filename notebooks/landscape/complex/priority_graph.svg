@@ -48,7 +48,7 @@
 <g id="edge3" class="edge">
 <title>wikidata&#45;&#45;fplx</title>
 <path fill="none" stroke="black" stroke-width="1.24" d="M404.75,-69.26C425.21,-63.64 450.39,-56.73 468.64,-51.73"/>
-<text xml:space="preserve" text-anchor="middle" x="439.02" y="-65.2" font-family="Times,serif" font-size="14.00">388</text>
+<text xml:space="preserve" text-anchor="middle" x="439.02" y="-65.2" font-family="Times,serif" font-size="14.00">387</text>
 </g>
 <!-- signor -->
 <g id="node6" class="node">
@@ -72,7 +72,7 @@
 <g id="edge6" class="edge">
 <title>fplx&#45;&#45;go</title>
 <path fill="none" stroke="black" stroke-width="1.03" d="M520.15,-39.14C539.47,-34.61 566.09,-28.37 585.4,-23.85"/>
-<text xml:space="preserve" text-anchor="middle" x="549.27" y="-37.12" font-family="Times,serif" font-size="14.00">46</text>
+<text xml:space="preserve" text-anchor="middle" x="549.27" y="-37.12" font-family="Times,serif" font-size="14.00">47</text>
 </g>
 <!-- scomp -->
 <g id="node5" class="node">
@@ -84,7 +84,7 @@
 <g id="edge4" class="edge">
 <title>scomp&#45;&#45;fplx</title>
 <path fill="none" stroke="black" stroke-width="1.04" d="M403.63,-27.52C417.79,-28.85 434.33,-30.79 449.15,-33.5 455.67,-34.69 462.65,-36.34 469.09,-38.02"/>
-<text xml:space="preserve" text-anchor="middle" x="439.02" y="-36.7" font-family="Times,serif" font-size="14.00">63</text>
+<text xml:space="preserve" text-anchor="middle" x="439.02" y="-36.7" font-family="Times,serif" font-size="14.00">64</text>
 </g>
 </g>
 </svg>

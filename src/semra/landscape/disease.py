@@ -146,7 +146,7 @@ DISEASE_CONFIGURATION = Configuration(
         Input(prefix="mondo", source="bioontologies", confidence=0.99),
         Input(prefix="efo", source="bioontologies", confidence=0.99),
         Input(prefix="mesh", source="pyobo", confidence=0.99),
-        Input(prefix="ncit", source="bioontologies", confidence=0.85),
+        Input(prefix="ncit", source="pyobo", confidence=0.85),
         Input(prefix="umls", source="pyobo", confidence=0.9),
         Input(prefix="orphanet.ordo", source="bioontologies", confidence=0.9),
         # Input(prefix="orphanet", source="bioontologies", confidence=0.9),

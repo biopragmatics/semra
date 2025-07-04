@@ -11,6 +11,9 @@ Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
 </li>
 </ul>
 
+Artifacts from this resource can be downloaded from Zenodo at
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg)](https://doi.org/10.5281/zenodo.11091802).
+
 ## Reproduction
 
 The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
@@ -26,8 +29,8 @@ Note that downloading raw data resources can take on the order of hours to tens
 of hours depending on your internet connection and the reliability of the
 resources' respective servers.
 
-Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
-MacBook Pro with 36GB RAM).
+A full resource refresh (i.e., re-download of resources) was run in an hour on
+commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 
 ## Resource Summary
 
@@ -38,11 +41,11 @@ number of terms (i.e., named concepts) they contain.
 
 | prefix | name                                                      | license                                                                                              | version    | terms | status |
 | :----- | :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- | :--------- | ----: | :----- |
-| uberon | Uber Anatomy Ontology                                     | CC-BY-3.0                                                                                            | 2025-04-09 | 15693 | full   |
+| uberon | Uber Anatomy Ontology                                     | CC-BY-3.0                                                                                            | 2025-05-28 | 15693 | full   |
 | mesh   | Medical Subject Headings                                  | CC0-1.0                                                                                              | 2025       |  1797 | subset |
 | bto    | BRENDA Tissue Ontology                                    | CC-BY-4.0                                                                                            | 2021-10-26 |  6566 | full   |
 | caro   | Common Anatomy Reference Ontology                         | CC-BY-4.0                                                                                            | 2023-03-15 |    90 | full   |
-| ncit   | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.05d     |  7579 | subset |
+| ncit   | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.06e     |  7579 | subset |
 | umls   | Unified Medical Language System Concept Unique Identifier | https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html | 2025AA     |  7719 | subset |
 
 There are a total of 39,444 terms across the 6 resources.
@@ -68,18 +71,19 @@ The raw mappings are the ones directly read from the 8 sources.
 | ncit          |   2527 |   28 |    0 |    0 | 7579 |  519 |
 | umls          |    280 |  159 |    0 |    0 |  519 | 7719 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The raw mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg)](https://doi.org/10.5281/zenodo.11091802).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("raw.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("raw.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("raw.sssom.tsv.gz")
 ```
 
 <details>
@@ -168,25 +172,26 @@ The processed mappings table has the following qualities:
 
 | source_prefix | uberon | mesh |  bto | caro | ncit | umls |
 | :------------ | -----: | ---: | ---: | ---: | ---: | ---: |
-| uberon        |  15693 | 1082 | 1465 |    0 | 2532 |  310 |
-| mesh          |   1082 | 1797 |   55 |    0 |   74 |  159 |
-| bto           |   1465 |   55 | 6566 |    0 |  806 |  122 |
+| uberon        |  15693 | 1107 | 1465 |    0 | 2536 |  344 |
+| mesh          |   1107 | 1797 |  602 |    0 |  859 |  170 |
+| bto           |   1465 |  602 | 6566 |    0 |  813 |  150 |
 | caro          |      0 |    0 |    0 |   90 |    0 |    0 |
-| ncit          |   2532 |   74 |  806 |    0 | 7579 |  530 |
-| umls          |    310 |  159 |  122 |    0 |  530 | 7719 |
+| ncit          |   2536 |  859 |  813 |    0 | 7579 |  547 |
+| umls          |    344 |  170 |  150 |    0 |  547 | 7719 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The processed mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg)](https://doi.org/10.5281/zenodo.11091802).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("processed.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("processed.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("processed.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("processed.sssom.tsv.gz")
 ```
 
 Below is a graph-based view on the processed mappings.
@@ -211,28 +216,31 @@ The prioritization for this output is:
 <li><a href="https://bioregistry.io/umls">Unified Medical Language System Concept Unique Identifier (<code>umls</code>)</a></li>
 </ol>
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The priority mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg)](https://doi.org/10.5281/zenodo.11091802).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 import semra.api
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("priority.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("priority.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
 ```
 
 ## Web Application
 
-1. Download all artifacts into a folder and `cd` into it
+1. Download all artifacts from
+   [![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg)](https://doi.org/10.5281/zenodo.11091802)
+   into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
 3. Navigate to http://localhost:8773 to see the SeMRA dashboard or to
    http://localhost:7474 for direct access to the Neo4j graph database
@@ -248,12 +256,12 @@ to a small number of other resources.
 
 | source_prefix | uberon | mesh | bto | caro | ncit | umls |
 | :------------ | -----: | ---: | --: | ---: | ---: | ---: |
-| uberon        |      0 |    2 |   0 |    0 |    5 |   30 |
-| mesh          |      2 |    0 |  55 |    0 |   46 |    0 |
-| bto           |      0 |   55 |   0 |    0 |  806 |  122 |
+| uberon        |      0 |   27 |   0 |    0 |    9 |   64 |
+| mesh          |     27 |    0 | 602 |    0 |  831 |   11 |
+| bto           |      0 |  602 |   0 |    0 |  813 |  150 |
 | caro          |      0 |    0 |   0 |    0 |    0 |    0 |
-| ncit          |      5 |   46 | 806 |    0 |    0 |   11 |
-| umls          |     30 |    0 | 122 |    0 |   11 |    0 |
+| ncit          |      9 |  831 | 813 |    0 |    0 |   28 |
+| umls          |     64 |   11 | 150 |    0 |   28 |    0 |
 
 Here's an alternative view on the number of mappings normalized to show
 percentage gain. Note that:
@@ -263,14 +271,14 @@ percentage gain. Note that:
 - `NaN` means there were no mappings before inference and continue to be no
   mappings after inference
 
-| source_prefix | uberon |  mesh | bto | caro |  ncit | umls |
-| :------------ | -----: | ----: | --: | ---: | ----: | ---: |
-| uberon        |      0 |   0.2 |   0 |  nan |   0.2 | 10.7 |
-| mesh          |    0.2 |     0 | inf |  nan | 164.3 |    0 |
-| bto           |      0 |   inf |   0 |  nan |   inf |  inf |
-| caro          |    nan |   nan | nan |    0 |   nan |  nan |
-| ncit          |    0.2 | 164.3 | inf |  nan |     0 |  2.1 |
-| umls          |   10.7 |     0 | inf |  nan |   2.1 |    0 |
+| source_prefix | uberon |   mesh | bto | caro |   ncit | umls |
+| :------------ | -----: | -----: | --: | ---: | -----: | ---: |
+| uberon        |      0 |    2.5 |   0 |  nan |    0.4 | 22.9 |
+| mesh          |    2.5 |      0 | inf |  nan | 2967.9 |  6.9 |
+| bto           |      0 |    inf |   0 |  nan |    inf |  inf |
+| caro          |    nan |    nan | nan |    0 |    nan |  nan |
+| ncit          |    0.4 | 2967.9 | inf |  nan |      0 |  5.4 |
+| umls          |   22.9 |    6.9 | inf |  nan |    5.4 |    0 |
 
 ### Landscape Analysis
 

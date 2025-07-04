@@ -30,7 +30,7 @@ Note that downloading raw data resources can take on the order of hours to tens
 of hours depending on your internet connection and the reliability of the
 resources' respective servers.
 
-A full resource refresh (i.e., re-download of resources) was run in 4 minutes on
+A full resource refresh (i.e., re-download of resources) was run in 3 minutes on
 commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 
 ## Resource Summary

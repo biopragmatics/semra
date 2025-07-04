@@ -155,4 +155,4 @@ ANATOMY_CONFIGURATION = semra.Configuration(
 )
 
 if __name__ == "__main__":
-    ANATOMY_CONFIGURATION.cli()
+    ANATOMY_CONFIGURATION.cli(copy_to_landscape=True)

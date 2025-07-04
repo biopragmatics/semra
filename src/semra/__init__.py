@@ -1,5 +1,6 @@
 """Semantic Mapping Reasoner and Assembler."""
 
+from semra.io import from_bioontologies, from_jsonl, from_pyobo, from_sssom
 from semra.pipeline import Configuration, Input, Mutation
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.vocabulary import (
@@ -33,4 +34,8 @@ __all__ = [
     "ReasonedEvidence",
     "Reference",
     "SimpleEvidence",
+    "from_bioontologies",
+    "from_jsonl",
+    "from_pyobo",
+    "from_sssom",
 ]

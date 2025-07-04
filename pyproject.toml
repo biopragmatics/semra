@@ -100,6 +100,7 @@ landscape = [
     "seaborn",
     "matplotlib",
     "pygraphviz",
+    "humanize",
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls

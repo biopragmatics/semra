@@ -136,4 +136,4 @@ COMPLEX_CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    COMPLEX_CONFIGURATION.cli()
+    COMPLEX_CONFIGURATION.cli(copy_to_landscape=True)

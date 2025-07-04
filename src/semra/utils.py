@@ -69,10 +69,12 @@ def gzip_path(path: str | Path) -> Path:
 
 def get_jinja_environment() -> jinja2.Environment:
     """Get the jinja environment."""
+    from humanize.time import naturaldelta
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
     templates = HERE.joinpath("templates")
     environment = Environment(loader=FileSystemLoader(templates), autoescape=select_autoescape())
+    environment.globals.update(naturaldelta=naturaldelta)
     return environment
 
 

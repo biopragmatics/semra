@@ -1,4 +1,125 @@
-"""Declarative acquisition and processing of mapping sets."""
+"""The SeMRA assembly pipeline is a declarative way to say which sources should be used, which prior knowledge should be injected into processing, and how entities should be "prioritized" on output.
+
+The assembly and inference of semantic mappings can solve the problem illustrated in the
+image below where a combination of incomplete mappings can can lead to the
+prioritization of an entity from a target namespace, and the creation of a priorization
+mapping set (i.e., a star graph).
+
+.. image:: img/pipeline.svg
+
+In the following demo, which closely resembles the configuration in
+:data:`semra.landscape.cell`, we show how to fill out a configuration in the Python DSL.
+
+.. code-block:: python
+
+    import pystow
+
+    from semra import Configuration, Reference
+    from semra.pipeline import AssembleReturnType, Input, Mutation, assemble
+    from semra.vocabulary import CHARLIE
+
+    configuration = Configuration(
+        # the key is a short name for the configuration. this is required
+        key="cell",
+        # the name is a human-readable representation of the configuration
+        name="SeMRA Cell and Cell Line Mappings Database",
+        # an (optional) description of the reason the configuration was created
+        description="Originally a reproduction of the EFO/Cellosaurus/DepMap/CCLE scenario posed in "
+        "the Biomappings paper, this configuration imports several different cell and cell line "
+        "resources and identifies mappings between them.",
+        # an (optional) list of references for creators
+        creators=[CHARLIE],
+        # the places where data should be acquired
+        inputs=[
+            Input(source="biomappings"),
+            Input(source="gilda"),
+            Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
+            Input(prefix="bto", source="bioontologies", confidence=0.99),
+            Input(prefix="cl", source="bioontologies", confidence=0.99),
+            Input(prefix="clo", source="custom", confidence=0.65),
+            Input(prefix="efo", source="pyobo", confidence=0.99),
+            Input(
+                prefix="depmap",
+                source="pyobo",
+                confidence=0.99,
+                extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
+            ),
+            Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
+            Input(prefix="ncit", source="pyobo", confidence=0.99),
+            Input(prefix="umls", source="pyobo", confidence=0.99),
+        ],
+        # configuration for how inputs should be subset'd. This is a dictionary
+        # with keys that correspond to prefixes and values are collections of
+        # references whose hierarhical descendants get kept. For example, this
+        # is useful to take subsets from generic resources like NCIT, MeSH, and
+        # UMLS
+        subsets={
+            "mesh": [Reference.from_curie("mesh:D002477")],
+            "efo": [Reference.from_curie("efo:0000324")],
+            "ncit": [Reference.from_curie("ncit:C12508")],
+            "umls": [Reference.from_curie("sty:T025")],
+        },
+        # the prioritization of prefixes for creating star graphs. the prefixes
+        # appearing earlier in the list are higher priority
+        priority=[
+            "mesh",
+            "efo",
+            "cellosaurus",
+            "ccle",
+            "depmap",
+            "bto",
+            "cl",
+            "clo",
+            "ncit",
+            "umls",
+        ],
+        # only prefixes in this list are kept from raw mappings. If there are
+        # relevant intermediate for mappings that you don't want to keep after
+        # processing, use ``post_keep_prefixes``. This is often the same as the
+        # priority list
+        keep_prefixes=[],
+        # should mappings in the imprecise mappings list (e.g., dbxrefs, rdfs:seeAlso)
+        # be removed during processing? Defaults to True.
+        remove_imprecise=False,
+        # mutations allow you to specify your prior knowledge, for example, that
+        # all dbxrefs in EFO should be upgraded to skos:exactMatch with a confidence
+        # of 0.7. Mutations can be configured further to only apply to a subset
+        # of targets, to change the source predicate from dbxref to something else,
+        # or to change the target predicate from skos:exactMatch to somethign else
+        mutations=[
+            Mutation(source="efo", confidence=0.7),
+            Mutation(source="bto", confidence=0.7),
+            Mutation(source="cl", confidence=0.7),
+            Mutation(source="clo", confidence=0.7),
+            Mutation(source="depmap", confidence=0.7),
+            Mutation(source="ccle", confidence=0.7),
+            Mutation(source="cellosaurus", confidence=0.7),
+            Mutation(source="ncit", confidence=0.7),
+            Mutation(source="umls", confidence=0.7),
+        ],
+        # Should labels be looked up using PyOBO during SSSOM and Neo4j output?
+        # this adds some build time. Defaults to False.
+        add_labels=True,
+        # If this configuration should get uploaded to Zenodo via the ``zenodo_client``
+        # python package, use this record ID
+        zenodo_record=...,
+        # The directory where the results of build should get output. This is
+        # required.
+        directory=pystow.module("semra", "pipeline-example").base,
+    )
+
+    # these mappings induce a star graph based on the prioritization
+    priority_mappings = assemble(configuration)
+
+    # raw and processed mappings can be returned as well
+    mapping_pack = assemble(
+        configuration,
+        return_type=AssembleReturnType.all,
+    )
+
+For reference, the :mod:`semra.landscape` module contains several pipeline
+configurations.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +137,7 @@ import click
 import requests
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Self
 
 from semra.api import (
@@ -59,14 +181,14 @@ if t.TYPE_CHECKING:
     import zenodo_client
 
 __all__ = [
+    "AssembleReturnType",
     "Configuration",
-    "GetMappingReturnType",
     "Input",
     "Mutation",
     "SubsetConfiguration",
-    "get_priority_mappings_from_config",
+    "assemble",
     "get_raw_mappings",
-    "process",
+    "process_raw_mappings",
 ]
 
 logger = logging.getLogger(__name__)
@@ -104,8 +226,8 @@ STATS_FILE_NAME = "stats.json"
 CONFIG_FILE_NAME = "configuration.json"
 
 
-class GetMappingReturnType(enum.Enum):
-    """An enumeration for the return values for :func:`get_priority_mappings_from_config`."""
+class AssembleReturnType(enum.Enum):
+    """An enumeration for the return values for :func:`assemble`."""
 
     none = enum.auto()
     all = enum.auto()
@@ -418,7 +540,7 @@ class Configuration(BaseModel):
         refresh_raw: bool = ...,
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
-        return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+        return_type: Literal[AssembleReturnType.none] = AssembleReturnType.none,
     ) -> None: ...
 
     # docstr-coverage: inherited
@@ -429,7 +551,7 @@ class Configuration(BaseModel):
         refresh_raw: bool = ...,
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
-        return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+        return_type: Literal[AssembleReturnType.all] = AssembleReturnType.all,
     ) -> MappingPack: ...
 
     # docstr-coverage: inherited
@@ -440,7 +562,7 @@ class Configuration(BaseModel):
         refresh_raw: bool = ...,
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
-        return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+        return_type: Literal[AssembleReturnType.priority] = AssembleReturnType.priority,
     ) -> list[Mapping]: ...
 
     def get_mappings(
@@ -449,11 +571,11 @@ class Configuration(BaseModel):
         refresh_raw: bool = False,
         refresh_processed: bool = False,
         refresh_source: bool = False,
-        return_type: GetMappingReturnType = GetMappingReturnType.none,
+        return_type: AssembleReturnType = AssembleReturnType.none,
         progress: bool = True,
     ) -> list[Mapping] | MappingPack | None:
-        """Run assembly based on this configuration, see :func:`get_priority_mappings_from_config`."""
-        return get_priority_mappings_from_config(  # type:ignore[no-any-return,call-overload]
+        """Run assembly based on this configuration, see :func:`assemble`."""
+        return assemble(  # type:ignore[no-any-return,call-overload]
             self,
             refresh_source=refresh_source,
             refresh_raw=refresh_raw,
@@ -657,12 +779,15 @@ class Configuration(BaseModel):
             build_docker: bool,
         ) -> None:
             """Build the mapping database terms."""
-            pack = self.get_mappings(
-                refresh_source=refresh_source,
-                refresh_raw=refresh_raw,
-                refresh_processed=refresh_processed,
-                return_type=GetMappingReturnType.all,
-            )
+            start = time.time()
+            with logging_redirect_tqdm():
+                pack = self.get_mappings(
+                    refresh_source=refresh_source,
+                    refresh_raw=refresh_raw,
+                    refresh_processed=refresh_processed,
+                    return_type=AssembleReturnType.all,
+                )
+            timedelta = time.time() - start
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
@@ -676,6 +801,8 @@ class Configuration(BaseModel):
                     raw_mappings=pack.raw,
                     processed_mappings=pack.processed,
                     priority_mappings=pack.priority,
+                    refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
+                    refresh_source_timedelta=timedelta if refresh_source else None,
                 )
 
             for hook in hooks or []:
@@ -705,47 +832,47 @@ class MappingPack(NamedTuple):
 
 # docstr-coverage: inherited
 @overload
-def get_priority_mappings_from_config(
+def assemble(
     configuration: Configuration,
     *,
     refresh_source: bool = ...,
     refresh_raw: bool = ...,
     refresh_processed: bool = ...,
-    return_type: Literal[GetMappingReturnType.none] = GetMappingReturnType.none,
+    return_type: Literal[AssembleReturnType.none] = AssembleReturnType.none,
 ) -> None: ...
 
 
 # docstr-coverage: inherited
 @overload
-def get_priority_mappings_from_config(
+def assemble(
     configuration: Configuration,
     *,
     refresh_source: bool = ...,
     refresh_raw: bool = ...,
     refresh_processed: bool = ...,
-    return_type: Literal[GetMappingReturnType.all] = GetMappingReturnType.all,
+    return_type: Literal[AssembleReturnType.all] = AssembleReturnType.all,
 ) -> MappingPack: ...
 
 
 # docstr-coverage: inherited
 @overload
-def get_priority_mappings_from_config(
+def assemble(
     configuration: Configuration,
     *,
     refresh_source: bool = ...,
     refresh_raw: bool = ...,
     refresh_processed: bool = ...,
-    return_type: Literal[GetMappingReturnType.priority] = GetMappingReturnType.priority,
+    return_type: Literal[AssembleReturnType.priority] = AssembleReturnType.priority,
 ) -> list[Mapping]: ...
 
 
-def get_priority_mappings_from_config(
+def assemble(
     configuration: Configuration,
     *,
     refresh_source: bool = False,
     refresh_raw: bool = False,
     refresh_processed: bool = False,
-    return_type: GetMappingReturnType = GetMappingReturnType.none,
+    return_type: AssembleReturnType = AssembleReturnType.none,
     progress: bool = True,
 ) -> None | list[Mapping] | MappingPack:
     """Get prioritized mappings based on an assembly configuration.
@@ -776,9 +903,9 @@ def get_priority_mappings_from_config(
 
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
         match return_type:
-            case GetMappingReturnType.none:
+            case AssembleReturnType.none:
                 return None
-            case GetMappingReturnType.all:
+            case AssembleReturnType.all:
                 if not configuration.has_raw_path():
                     raise FileNotFoundError
                 if not configuration.has_processed_path():
@@ -788,7 +915,7 @@ def get_priority_mappings_from_config(
                     processed=configuration.read_processed_mappings(show_progress=progress),
                     priority=configuration.read_priority_mappings(show_progress=progress),
                 )
-            case GetMappingReturnType.priority:
+            case AssembleReturnType.priority:
                 return configuration.read_priority_mappings()
 
     if configuration.has_processed_path() and not refresh_raw and not refresh_processed:
@@ -836,7 +963,7 @@ def get_priority_mappings_from_config(
                 )
 
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-        processed_mappings = process(
+        processed_mappings = process_raw_mappings(
             raw_mappings,
             mutations=configuration.mutations,
             remove_prefix_set=configuration.remove_prefixes,
@@ -878,9 +1005,9 @@ def get_priority_mappings_from_config(
     )
 
     match return_type:
-        case GetMappingReturnType.none:
+        case AssembleReturnType.none:
             return None
-        case GetMappingReturnType.all:
+        case AssembleReturnType.all:
             if not configuration.has_raw_path():
                 raise FileNotFoundError
             if not configuration.has_processed_path():
@@ -890,7 +1017,7 @@ def get_priority_mappings_from_config(
                 processed=processed_mappings,
                 priority=prioritized_mappings,
             )
-        case GetMappingReturnType.priority:
+        case AssembleReturnType.priority:
             return prioritized_mappings
 
 
@@ -970,7 +1097,7 @@ def get_raw_mappings(
     return mappings
 
 
-def process(
+def process_raw_mappings(
     mappings: list[Mapping],
     upgrade_prefixes: t.Collection[str] | None = None,
     mutations: t.Collection[Mutation] | None = None,

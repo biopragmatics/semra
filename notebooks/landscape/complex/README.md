@@ -11,6 +11,28 @@ Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
 </li>
 </ul>
 
+Artifacts from this resource can be downloaded from Zenodo at
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg)](https://doi.org/10.5281/zenodo.11091421).
+
+## Reproduction
+
+The SeMRA Protein Complex Mappings Database can be rebuilt with the following
+commands:
+
+```console
+$ git clone https://github.com/biopragmatics/semra.git
+$ cd semra
+$ uv pip install .[landscape]
+$ python -m semra.landscape.complex
+```
+
+Note that downloading raw data resources can take on the order of hours to tens
+of hours depending on your internet connection and the reliability of the
+resources' respective servers.
+
+A full resource refresh (i.e., re-download of resources) was run in 4 minutes on
+commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
+
 ## Resource Summary
 
 The following resources are represented in processed mappings generated. They
@@ -22,11 +44,11 @@ number of terms (i.e., named concepts) they contain.
 | :------------ | :---------------------------------- | :----------- | :--------- | ----: | :------- |
 | complexportal | Complex Portal                      | CC0-1.0      | 2025-03-28 |  5031 | full     |
 | fplx          | FamPlex                             | CC0-1.0      |            |   782 | full     |
-| go            | Gene Ontology                       | CC-BY-4.0    | 2025-03-16 |  2059 | subset   |
+| go            | Gene Ontology                       | CC-BY-4.0    | 2025-06-01 |  2059 | subset   |
 | chembl.target | ChEMBL target                       | CC-BY-SA-3.0 | 35         |   689 | subset   |
 | wikidata      | Wikidata                            | CC0-1.0      |            | 48581 | observed |
 | scomp         | Selventa Complexes                  | Apache-2.0   |            |   135 | full     |
-| signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-04-01 |   856 | full     |
+| signor        | Signaling Network Open Resource     | CC-BY-NC-4.0 | 2025-07-01 |   856 | full     |
 | intact        | IntAct protein interaction database | CC-BY-4.0    | 2025-03-28 |  3766 | full     |
 
 There are a total of 61,899 terms across the 8 resources.
@@ -54,18 +76,19 @@ The raw mappings are the ones directly read from the 9 sources.
 | signor        |           267 |  118 |    0 |             0 |        0 |     0 |    856 |      0 |
 | intact        |          3315 |    0 |    3 |             0 |        0 |     0 |      0 |   3766 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The raw mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg)](https://doi.org/10.5281/zenodo.11091421).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("raw.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("raw.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("raw.sssom.tsv.gz")
 ```
 
 <details>
@@ -128,27 +151,28 @@ The processed mappings table has the following qualities:
 
 | source_prefix | complexportal | fplx |   go | chembl.target | wikidata | scomp | signor | intact |
 | :------------ | ------------: | ---: | ---: | ------------: | -------: | ----: | -----: | -----: |
-| complexportal |          5031 |    7 |    2 |           203 |     4761 |     2 |    267 |   3315 |
+| complexportal |          5031 |    7 |    3 |           203 |     4761 |     2 |    267 |   3315 |
 | fplx          |             7 |  782 |   50 |             0 |      411 |    66 |    118 |      5 |
-| go            |             2 |   50 | 2059 |             0 |       43 |    25 |     11 |      5 |
+| go            |             3 |   50 | 2059 |             0 |       44 |    25 |     11 |      5 |
 | chembl.target |           203 |    0 |    0 |           689 |        0 |     0 |      0 |      0 |
-| wikidata      |          4761 |  411 |   43 |             0 |    48581 |    60 |     86 |   2043 |
+| wikidata      |          4761 |  411 |   44 |             0 |    48581 |    60 |     86 |   2043 |
 | scomp         |             2 |   66 |   25 |             0 |       60 |   135 |     14 |      2 |
 | signor        |           267 |  118 |   11 |             0 |       86 |    14 |    856 |      0 |
 | intact        |          3315 |    5 |    5 |             0 |     2043 |     2 |      0 |   3766 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The processed mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg)](https://doi.org/10.5281/zenodo.11091421).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("processed.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("processed.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("processed.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("processed.sssom.tsv.gz")
 ```
 
 Below is a graph-based view on the processed mappings.
@@ -175,28 +199,31 @@ The prioritization for this output is:
 <li><a href="https://bioregistry.io/intact">IntAct protein interaction database (<code>intact</code>)</a></li>
 </ol>
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The priority mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg)](https://doi.org/10.5281/zenodo.11091421).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 import semra.api
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("priority.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("priority.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
 ```
 
 ## Web Application
 
-1. Download all artifacts into a folder and `cd` into it
+1. Download all artifacts from
+   [![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg)](https://doi.org/10.5281/zenodo.11091421)
+   into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
 3. Navigate to http://localhost:8773 to see the SeMRA dashboard or to
    http://localhost:7474 for direct access to the Neo4j graph database
@@ -212,11 +239,11 @@ to a small number of other resources.
 
 | source_prefix | complexportal | fplx |  go | chembl.target | wikidata | scomp | signor | intact |
 | :------------ | ------------: | ---: | --: | ------------: | -------: | ----: | -----: | -----: |
-| complexportal |             0 |    2 |   2 |             0 |        2 |     2 |      0 |      0 |
+| complexportal |             0 |    2 |   3 |             0 |        2 |     2 |      0 |      0 |
 | fplx          |             2 |    0 |   4 |             0 |      411 |     0 |      0 |      5 |
-| go            |             2 |    4 |   0 |             0 |       43 |    25 |     11 |      2 |
+| go            |             3 |    4 |   0 |             0 |       44 |    25 |     11 |      2 |
 | chembl.target |             0 |    0 |   0 |             0 |        0 |     0 |      0 |      0 |
-| wikidata      |             2 |  411 |  43 |             0 |        0 |    60 |     86 |   2043 |
+| wikidata      |             2 |  411 |  44 |             0 |        0 |    60 |     86 |   2043 |
 | scomp         |             2 |    0 |  25 |             0 |       60 |     0 |     14 |      2 |
 | signor        |             0 |    0 |  11 |             0 |       86 |    14 |      0 |      0 |
 | intact        |             0 |    5 |   2 |             0 |     2043 |     2 |      0 |      0 |

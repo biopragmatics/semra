@@ -59,6 +59,8 @@ def write_summary(
     raw_mappings: list[Mapping] | None = None,
     processed_mappings: list[Mapping] | None = None,
     priority_mappings: list[Mapping] | None = None,
+    refresh_raw_timedelta: float | None = None,
+    refresh_source_timedelta: float | None = None,
 ) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
     """Run the landscape analysis inside a Jupyter notebook."""
     import matplotlib.pyplot as plt
@@ -114,6 +116,8 @@ def write_summary(
             summary=summary,
             overlap_results=overlap_results,
             landscape_results=landscape_results,
+            refresh_source_timedelta=refresh_source_timedelta,
+            refresh_raw_timedelta=refresh_raw_timedelta,
         ).strip()
         + "\n"
     )
@@ -129,6 +133,8 @@ def write_summary(
             "unique_term_count": landscape_results.reduced_term_count,
             "reduction": landscape_results.reduction_percent,
             "distribution": landscape_results.distribution,
+            "refresh_raw_timedelta": refresh_raw_timedelta,
+            "refresh_source_timedelta": refresh_source_timedelta,
         }
     )
     configuration.stats_path.write_text(json.dumps(stats.model_dump(), indent=2, sort_keys=True))
@@ -146,6 +152,8 @@ class Statistics(BaseModel):
     unique_term_count: int
     reduction: float
     distribution: dict[int, int]
+    refresh_raw_timedelta: float | None = None
+    refresh_source_timedelta: float | None = None
 
 
 def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:

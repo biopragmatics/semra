@@ -5,18 +5,18 @@ import gilda
 import pystow
 from gilda import Grounder
 from gilda.grounder import load_entries_from_terms_file
-from gilda.resources import get_grounding_terms, resource_dir
+from gilda.resources import get_grounding_terms
 
 from semra.gilda_utils import (
     GILDA_TO_BIOREGISTRY,
     print_scored_matches,
-    standardize_terms,
-    update_terms,
+    standardize_gilda_terms,
+    update_gilda_terms,
 )
-from semra.pipeline import Configuration, Input, Mutation, get_priority_mappings_from_config
+from semra.pipeline import AssembleReturnType, Configuration, Input, Mutation, assemble
 
 MODULE = pystow.module("semra", "gilda-demo")
-PROCESSED_GILDA_TERMS_PATH = resource_dir.joinpath("grounding_terms_standardized.tsv.gz")
+PROCESSED_GILDA_TERMS_PATH = MODULE.join(name="grounding_terms_standardized.tsv.gz")
 
 PRIORITY = [
     "HP",
@@ -42,6 +42,8 @@ PRIORITY = [
 PRIORITY = [GILDA_TO_BIOREGISTRY[p] for p in PRIORITY]
 
 CONFIGURATION = Configuration(
+    key="gilda",
+    name="Gilda Reprocessing",
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
@@ -72,14 +74,14 @@ def _get_terms() -> list[gilda.Term]:
     from gilda.generate_terms import dump_terms
 
     terms: list[gilda.Term] = list(load_entries_from_terms_file(get_grounding_terms()))
-    terms = standardize_terms(terms)
+    terms = standardize_gilda_terms(terms)
     dump_terms(terms, PROCESSED_GILDA_TERMS_PATH)
     return terms
 
 
-def main():
+def main() -> None:
     """Reprocess the gilda default lexical index."""
-    mappings = get_priority_mappings_from_config(CONFIGURATION)
+    mappings = assemble(CONFIGURATION, return_type=AssembleReturnType.priority)
     if not mappings:
         raise ValueError("Bad mapping priority definition resulted in no mappings")
 
@@ -91,7 +93,7 @@ def main():
     if missing:
         raise ValueError(f"Missing: {sorted(missing)}")
 
-    terms = update_terms(terms, mappings)
+    terms = update_gilda_terms(terms, mappings)
 
     grounder = Grounder(terms)
     s = "Pelvic lipomatosis"

@@ -1,11 +1,11 @@
 """
-The SeMRA Raw Mappings Database contains unprocessed semantic mappings
+The SeMRA Raw Semantic Mappings Database contains unprocessed semantic mappings
 assembled from hundreds of ontologies and databases through :mod:`pyobo`.
 
 Reproduction
 ************
 
-The SeMRA Raw Mappings Database can be rebuilt with the following commands:
+The SeMRA Raw Semantic Mappings Database can be rebuilt with the following commands:
 
 .. code-block:: console
 
@@ -27,9 +27,9 @@ a database of unprocessed mappings.
 Web Application
 ***************
 
-The SeMRA Raw Mappings Database can be downloaded from Zenodo at |raw|.
+The SeMRA Raw Semantic Mappings Database can be downloaded from Zenodo at |raw|.
 After downloading all files and unzipping then, a web application wrapping
-the SeMRA Raw Mappings Database run locally on Docker with:
+the SeMRA Raw Semantic Mappings Database run locally on Docker with:
 
 .. code-block:: console
 
@@ -151,7 +151,7 @@ skip_pyobo = {
 @click.option(
     "--upload",
     is_flag=True,
-    help="If set to true, upload the generated artifacts to the SeMRA Raw Mapping Database record on Zenodo (https://doi.org/10.5281/zenodo.11082038)",
+    help="If set to true, upload the generated artifacts to the SeMRA Raw Semantic Mappings Database record on Zenodo (https://doi.org/10.5281/zenodo.11082038)",
 )
 @REFRESH_SOURCE_OPTION
 def build(
@@ -161,7 +161,7 @@ def build(
     write_labels: bool,
     prune_sssom: bool,
 ) -> None:
-    """Construct the SeMRA Raw Mapping Database."""
+    """Construct the SeMRA Raw Semantic Mappings Database."""
     ontology_resources: list[bioregistry.Resource] = []
     pyobo_resources: list[bioregistry.Resource] = []
     for resource in bioregistry.resources():

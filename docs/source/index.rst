@@ -31,12 +31,13 @@ the digital humanities. Get started by loading external mappings:
 
 .. code-block:: python
 
-    import semra.io
+    import semra
 
-    # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
-    sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-    mappings = semra.io.from_sssom(
-        sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
+    mappings = semra.from_sssom(
+        # load mappings from any standardized SSSOM file as a file path or URL
+        "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+        license="spdx:CC0-1.0",
+         mapping_set_title="biomappings",
     )
 
 Or by creating your own mappings:
@@ -77,6 +78,10 @@ Features
 4. A confidence model granular at the curator-level, mapping set-level, and community
    feedback-level
 
+Here's a conceptual diagram of SeMRA's architecture:
+
+.. image:: img/architecture.svg
+
 What SeMRA Isn't
 ----------------
 SeMRA isn't a tool for predicting semantic mappings like
@@ -93,15 +98,15 @@ web application for your use-case specific mapping database.
 SeMRA isn't itself a curation tool, but it has the option to integrate :mod:`biomappings`
 in deployments of its local web application for curation purposes.
 
-SeMRA isn't an tool for merging ontologies like `CoMerger <https://arxiv.org/abs/2005.02659>`_,
-but it outputs detailed and comprehensive semantic mappings that are critical
-as input for such tools.
+SeMRA isn't an tool for merging ontologies like `CoMerger <https://arxiv.org/abs/2005.02659>`_
+or `OntoMerger <https://arxiv.org/abs/2206.02238>`_, but it outputs detailed
+and comprehensive semantic mappings that are critical as input for such tools.
 
 Artifacts Overview
 ------------------
 
-SeMRA was used to produce the `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_,
-a comprehensive raw mappings database, and five domain-specific
+SeMRA was used to produce the `SeMRA Raw Semantic Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_,
+a comprehensive raw semantic mappings database, and five domain-specific
 mapping databases (each with a landscape analysis). The results of the
 domain-specific landscape analyses can be found on the SeMRA `GitHub
 repository <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_.
@@ -145,11 +150,13 @@ Table of Contents
     :name: start
 
     installation
-    io
-    usage
-    cli
+    pipeline
     artifacts
+    tutorial
+    struct
+    io
     reference
+    cli
 
 Indices and Tables
 ------------------

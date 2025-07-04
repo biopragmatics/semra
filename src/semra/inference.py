@@ -70,7 +70,7 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 
         This operation does not "assemble", meaning if you had existing evidence
         for an inverse mapping, they will be seperate. Therefore, you can chain
-        it with the :func:`assemble_evidences` operation:
+        it with the :func:`semra.api.assemble_evidences` operation:
 
         >>> from semra import Mapping, Reference, EXACT_MATCH
         >>> from semra.api import get_test_evidence

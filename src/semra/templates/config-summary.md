@@ -19,6 +19,35 @@
 </ul>
 {%- endif %}
 
+Artifacts from this resource can be downloaded from Zenodo at
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.{{ configuration.zenodo_record }}.svg)](https://doi.org/10.5281/zenodo.{{ configuration.zenodo_record }}).
+
+## Reproduction
+
+The {{configuration.name }} can be rebuilt with the following commands:
+
+```console
+$ git clone https://github.com/biopragmatics/semra.git
+$ cd semra
+$ uv pip install .[landscape]
+$ python -m semra.landscape.{{ configuration.key }}
+```
+
+Note that downloading raw data resources can take on the order of hours to tens
+of hours depending on your internet connection and the reliability of
+the resources' respective servers.
+
+{% if refresh_source_timedelta %}
+A full resource refresh (i.e., re-download of resources)
+was run in {{ naturaldelta(refresh_source_timedelta)}}
+{%- elif refresh_raw_timedelta %}
+A refresh of raw mappings (i.e., re-processing of mappings)
+was run in {{ naturaldelta(refresh_raw_timedelta)}}
+{%- else %}
+Processing and analysis can be run overnight
+{%- endif %}
+on commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
+
 ## Resource Summary
 
 The following resources are represented in processed mappings generated. They
@@ -53,18 +82,19 @@ The raw mappings are the ones directly read from the
 
 {{ overlap_results.raw_counts_df.to_markdown() }}
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The raw mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.{{ configuration.zenodo_record }}.svg)](https://doi.org/10.5281/zenodo.{{ configuration.zenodo_record }}).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("raw.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("raw.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("raw.sssom.tsv.gz")
 ```
 
 <details>
@@ -164,18 +194,19 @@ The processed mappings table has the following qualities:
 
 {{ overlap_results.processed_counts_df.to_markdown() }}
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The processed mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.{{ configuration.zenodo_record }}.svg)](https://doi.org/10.5281/zenodo.{{ configuration.zenodo_record }}).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("processed.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("processed.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("processed.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("processed.sssom.tsv.gz")
 ```
 
 Below is a graph-based view on the processed mappings.
@@ -199,23 +230,24 @@ The prioritization for this output is:
 
 {#{{ overlap_results.priority_counts_df.to_markdown() }} #}
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The priority mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.{{ configuration.zenodo_record }}.svg)](https://doi.org/10.5281/zenodo.{{ configuration.zenodo_record }}).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 import semra.api
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("priority.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("priority.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
 ```
 
 {# Below is a graph-based view on the priority mappings. #}
@@ -223,7 +255,8 @@ semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="
 
 ## Web Application
 
-1. Download all artifacts into a folder and `cd` into it
+1. Download all artifacts from [![](https://zenodo.org/badge/DOI/10.5281/zenodo.{{ configuration.zenodo_record }}.svg)](https://doi.org/10.5281/zenodo.{{ configuration.zenodo_record }})
+   into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
 3. Navigate to http://localhost:8773 to see the SeMRA dashboard or to
    http://localhost:7474 for direct access to the Neo4j graph database

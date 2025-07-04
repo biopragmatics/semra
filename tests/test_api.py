@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import unittest
+from itertools import islice
 from typing import cast
 
 import pandas as pd
+from more_itertools import triplewise
 
 from semra import api
 from semra.api import (
@@ -25,14 +27,7 @@ from semra.api import (
 )
 from semra.inference import infer_chains, infer_mutations, infer_reversible
 from semra.io.graph import from_digraph, to_digraph
-from semra.struct import (
-    Mapping,
-    MappingSet,
-    ReasonedEvidence,
-    Reference,
-    SimpleEvidence,
-    line,
-)
+from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,
@@ -74,6 +69,16 @@ EV = SimpleEvidence(
     mapping_set=MappingSet(name="test_mapping_set", confidence=0.95),
 )
 MS = MappingSet(name="test", confidence=0.95)
+
+
+def line(*references: Reference) -> list[Mapping]:
+    """Create a list of mappings from a simple mappings path."""
+    if not (3 <= len(references) and len(references) % 2):
+        raise ValueError
+    return [
+        Mapping(subject=subject, predicate=predicate, object=obj)
+        for subject, predicate, obj in islice(triplewise(references), None, None, 2)
+    ]
 
 
 class TestOperations(unittest.TestCase):
@@ -541,10 +546,8 @@ class TestOperations(unittest.TestCase):
 
         # the following three tests reflect that the prioritize() function
         # is not implemented in cases when inference hasn't been fully done
-        with self.assertRaises(NotImplementedError):
-            prioritize([m1, m2], [PREFIX_A], progress=False)
-        with self.assertRaises(NotImplementedError):
-            prioritize([m1, m2], [PREFIX_C], progress=False)
+        # self.assert_same_triples([m1_rev], prioritize([m1, m2], [PREFIX_A], progress=False))
+        # self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_C], progress=False))
 
         # this one is able to complete, by chance, but it's not part of
         # the contract, so just left here for later

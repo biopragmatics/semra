@@ -28,9 +28,10 @@ $ python -m semra.landscape.complex
 
 Note that downloading raw data resources can take on the order of hours to tens
 of hours depending on your internet connection and the reliability of the
-resources' respective servers. A refresh of raw mappings (i.e., re-processing of
-mappings) was run in 2 minutes on commodity hardware (e.g., a 2023 MacBook Pro
-with 36GB RAM).
+resources' respective servers.
+
+A full resource refresh (i.e., re-download of resources) was run in 4 minutes on
+commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 
 ## Resource Summary
 

@@ -137,6 +137,7 @@ import click
 import requests
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Self
 
 from semra.api import (
@@ -778,12 +779,15 @@ class Configuration(BaseModel):
             build_docker: bool,
         ) -> None:
             """Build the mapping database terms."""
-            pack = self.get_mappings(
-                refresh_source=refresh_source,
-                refresh_raw=refresh_raw,
-                refresh_processed=refresh_processed,
-                return_type=AssembleReturnType.all,
-            )
+            start = time.time()
+            with logging_redirect_tqdm():
+                pack = self.get_mappings(
+                    refresh_source=refresh_source,
+                    refresh_raw=refresh_raw,
+                    refresh_processed=refresh_processed,
+                    return_type=AssembleReturnType.all,
+                )
+            timedelta = time.time() - start
             if build_docker and self.processed_neo4j_path:
                 self._build_docker()
 
@@ -797,6 +801,8 @@ class Configuration(BaseModel):
                     raw_mappings=pack.raw,
                     processed_mappings=pack.processed,
                     priority_mappings=pack.priority,
+                    refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
+                    refresh_source_timedelta=timedelta if refresh_source else None,
                 )
 
             for hook in hooks or []:

@@ -173,4 +173,4 @@ DISEASE_CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    DISEASE_CONFIGURATION.cli()
+    DISEASE_CONFIGURATION.cli(copy_to_landscape=True)

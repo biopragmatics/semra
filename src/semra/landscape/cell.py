@@ -180,4 +180,4 @@ def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
 
 
 if __name__ == "__main__":
-    CELL_CONFIGURATION.cli(hooks=[cell_consolidation_hook])
+    CELL_CONFIGURATION.cli(hooks=[cell_consolidation_hook], copy_to_landscape=True)

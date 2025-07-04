@@ -147,4 +147,4 @@ GENE_CONFIGURATION = Configuration(
 
 
 if __name__ == "__main__":
-    GENE_CONFIGURATION.cli()
+    GENE_CONFIGURATION.cli(copy_to_landscape=True)

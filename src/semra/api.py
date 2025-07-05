@@ -1233,7 +1233,9 @@ def apply_mutations(
 ) -> Iterable[Mapping]:
     """Apply mutations."""
     mutation_index = _index_mutations(mutations)
-    for mapping in tqdm(mappings, disable=not progress):
+    for mapping in tqdm(
+        mappings, disable=not progress, desc="Applying mutations", unit_scale=True, unit="mapping"
+    ):
         yield _handle_mutation(mapping, mutation_index)
 
 

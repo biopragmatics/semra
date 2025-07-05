@@ -3,6 +3,7 @@
 import os
 from functools import lru_cache
 
+import bioversions
 import click
 import pandas as pd
 from more_click import verbose_option
@@ -76,6 +77,9 @@ def landscape(
     """Construct pre-configured domain-specific mapping databases and run landscape analyses."""
     if build_docker:
         pass  # TODO check if docker is running
+
+    click.echo("caching versions w/ Bioversions")
+    list(bioversions.iter_versions(use_tqdm=True))
 
     functions = _get_functions()
     with logging_redirect_tqdm():

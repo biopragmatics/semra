@@ -1,6 +1,6 @@
 {
   "distribution": {
-    "1": 8403,
+    "1": 8462,
     "2": 33333,
     "3": 1001,
     "4": 767,
@@ -9,6 +9,8 @@
     "7": 14
   },
   "raw_term_count": 223688,
-  "reduction": 0.8027878115947212,
-  "unique_term_count": 44114
+  "reduction": 0.8025240513572476,
+  "refresh_raw_timedelta": null,
+  "refresh_source_timedelta": 5192.702725172043,
+  "unique_term_count": 44173
 }

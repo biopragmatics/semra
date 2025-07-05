@@ -12,6 +12,9 @@ Charles Tapley Hoyt (orcid:0000-0003-4423-4370)
 </li>
 </ul>
 
+Artifacts from this resource can be downloaded from Zenodo at
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg)](https://doi.org/10.5281/zenodo.11091580).
+
 ## Reproduction
 
 The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
@@ -28,8 +31,8 @@ Note that downloading raw data resources can take on the order of hours to tens
 of hours depending on your internet connection and the reliability of the
 resources' respective servers.
 
-Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
-MacBook Pro with 36GB RAM).
+A full resource refresh (i.e., re-download of resources) was run in an hour on
+commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 
 ## Resource Summary
 
@@ -41,14 +44,14 @@ number of terms (i.e., named concepts) they contain.
 | prefix      | name                                                      | license                                                                                              | version    |  terms | status |
 | :---------- | :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- | :--------- | -----: | :----- |
 | mesh        | Medical Subject Headings                                  | CC0-1.0                                                                                              | 2025       |    636 | subset |
-| efo         | Experimental Factor Ontology                              | Apache-2.0                                                                                           | 3.77.0     |     27 | subset |
+| efo         | Experimental Factor Ontology                              | Apache-2.0                                                                                           | 3.79.0     |     27 | subset |
 | cellosaurus | Cellosaurus                                               | CC-BY-4.0                                                                                            | 52.0       | 163868 | full   |
 | ccle        | Cancer Cell Line Encyclopedia Cells                       | ODbL-1.0                                                                                             |            |   1739 | full   |
-| depmap      | DepMap Cell Lines                                         | CC-BY-4.0                                                                                            | 24Q4       |   1814 | full   |
+| depmap      | DepMap Cell Lines                                         | CC-BY-4.0                                                                                            | 25Q2       |   1814 | full   |
 | bto         | BRENDA Tissue Ontology                                    | CC-BY-4.0                                                                                            | 2021-10-26 |   6566 | full   |
 | cl          | Cell Ontology                                             | CC-BY-4.0                                                                                            | 2025-04-10 |   3095 | full   |
 | clo         | Cell Line Ontology                                        | CC-BY-3.0                                                                                            | 2.1.188    |  39099 | full   |
-| ncit        | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.05d     |    503 | subset |
+| ncit        | NCI Thesaurus                                             | CC-BY-4.0                                                                                            | 25.06e     |    503 | subset |
 | umls        | Unified Medical Language System Concept Unique Identifier | https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html | 2025AA     |   6341 | subset |
 
 There are a total of 223,688 terms across the 10 resources.
@@ -78,18 +81,19 @@ The raw mappings are the ones directly read from the 11 sources.
 | ncit          |    6 |   1 |           0 |    0 |      0 |    0 |    6 |     0 |  503 |  497 |
 | umls          |  433 |   0 |           0 |    0 |      0 |    0 |    0 |     0 |  497 | 6341 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The raw mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg)](https://doi.org/10.5281/zenodo.11091580).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("raw.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("raw.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("raw.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("raw.sssom.tsv.gz")
 ```
 
 <details>
@@ -210,29 +214,30 @@ The processed mappings table has the following qualities:
 
 | source_prefix | mesh | efo | cellosaurus | ccle | depmap |  bto |   cl |   clo | ncit | umls |
 | :------------ | ---: | --: | ----------: | ---: | -----: | ---: | ---: | ----: | ---: | ---: |
-| mesh          |  636 |   3 |          32 |    6 |      6 |   62 |   85 |    34 |    7 |  433 |
-| efo           |    3 |  27 |           4 |    0 |      0 |    2 |    0 |     5 |    1 |    1 |
-| cellosaurus   |   32 |   4 |      163868 | 1699 |   1913 | 2436 |    1 | 34153 |    0 |    0 |
-| ccle          |    6 |   0 |        1699 | 1739 |   1700 |  648 |    0 |  1417 |    0 |    0 |
-| depmap        |    6 |   0 |        1913 | 1700 |   1814 |  668 |    0 |  1473 |    0 |    0 |
-| bto           |   62 |   2 |        2436 |  648 |    668 | 6566 |  330 |  1436 |    7 |    7 |
-| cl            |   85 |   0 |           1 |    0 |      0 |  330 | 3095 |     0 |    8 |    8 |
-| clo           |   34 |   5 |       34153 | 1417 |   1473 | 1436 |    0 | 39099 |    0 |    0 |
-| ncit          |    7 |   1 |           0 |    0 |      0 |    7 |    8 |     0 |  503 |  497 |
-| umls          |  433 |   1 |           0 |    0 |      0 |    7 |    8 |     0 |  497 | 6341 |
+| mesh          |  636 |   3 |          33 |   15 |     14 |   91 |   88 |    80 |  202 |  433 |
+| efo           |    3 |  27 |           4 |    0 |      0 |    2 |    0 |     5 |    3 |    7 |
+| cellosaurus   |   33 |   4 |      163868 | 1699 |   1913 | 2436 |    1 | 34153 |    0 |   36 |
+| ccle          |   15 |   0 |        1699 | 1739 |   1700 |  648 |    0 |  1417 |    0 |   15 |
+| depmap        |   14 |   0 |        1913 | 1700 |   1814 |  668 |    0 |  1473 |    0 |   14 |
+| bto           |   91 |   2 |        2436 |  648 |    668 | 6566 |  330 |  1437 |   58 |  117 |
+| cl            |   88 |   0 |           1 |    0 |      0 |  330 | 3095 |     0 |   76 |  115 |
+| clo           |   80 |   5 |       34153 | 1417 |   1473 | 1437 |    0 | 39099 |    0 |   80 |
+| ncit          |  202 |   3 |           0 |    0 |      0 |   58 |   76 |     0 |  503 |  503 |
+| umls          |  433 |   7 |          36 |   15 |     14 |  117 |  115 |    80 |  503 | 6341 |
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The processed mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg)](https://doi.org/10.5281/zenodo.11091580).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("processed.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("processed.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("processed.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("processed.sssom.tsv.gz")
 ```
 
 Below is a graph-based view on the processed mappings.
@@ -261,28 +266,31 @@ The prioritization for this output is:
 <li><a href="https://bioregistry.io/umls">Unified Medical Language System Concept Unique Identifier (<code>umls</code>)</a></li>
 </ol>
 
-The processed mappings can be accessed via the
-[SeMRA](https://github.com/biopragmatics/semra) Python Package using the
-following examples:
+The priority mappings can be downloaded from
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg)](https://doi.org/10.5281/zenodo.11091580).
+then can be accessed via the [SeMRA](https://github.com/biopragmatics/semra)
+Python Package using the following examples:
 
 ```python
-import semra.io
+import semra
 import semra.api
 
 # Load from JSONL
-mappings = semra.io.from_jsonl("priority.jsonl.gz")
+mappings_from_jsonl = semra.from_jsonl("priority.jsonl.gz")
 
 # Load from SSSOM
-mappings = semra.io.from_sssom("priority.sssom.tsv.gz")
+mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
 ```
 
 ## Web Application
 
-1. Download all artifacts into a folder and `cd` into it
+1. Download all artifacts from
+   [![](https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg)](https://doi.org/10.5281/zenodo.11091580)
+   into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
 3. Navigate to http://localhost:8773 to see the SeMRA dashboard or to
    http://localhost:7474 for direct access to the Neo4j graph database
@@ -298,16 +306,16 @@ to a small number of other resources.
 
 | source_prefix | mesh | efo | cellosaurus | ccle | depmap |  bto |  cl |  clo | ncit | umls |
 | :------------ | ---: | --: | ----------: | ---: | -----: | ---: | --: | ---: | ---: | ---: |
-| mesh          |    0 |   0 |           2 |    6 |      6 |   62 |   0 |    0 |    1 |    0 |
-| efo           |    0 |   0 |           0 |    0 |      0 |    0 |   0 |    2 |    0 |    1 |
-| cellosaurus   |    2 |   0 |           0 | 1585 |     18 |    0 |   1 |    1 |    0 |    0 |
-| ccle          |    6 |   0 |        1585 |    0 |      0 |  646 |   0 | 1417 |    0 |    0 |
-| depmap        |    6 |   0 |          18 |    0 |      0 |  668 |   0 | 1473 |    0 |    0 |
-| bto           |   62 |   0 |           0 |  646 |    668 |    0 |   0 | 1430 |    7 |    7 |
-| cl            |    0 |   0 |           1 |    0 |      0 |    0 |   0 |    0 |    2 |    8 |
-| clo           |    0 |   2 |           1 | 1417 |   1473 | 1430 |   0 |    0 |    0 |    0 |
-| ncit          |    1 |   0 |           0 |    0 |      0 |    7 |   2 |    0 |    0 |    0 |
-| umls          |    0 |   1 |           0 |    0 |      0 |    7 |   8 |    0 |    0 |    0 |
+| mesh          |    0 |   0 |           3 |   15 |     14 |   91 |   3 |   46 |  196 |    0 |
+| efo           |    0 |   0 |           0 |    0 |      0 |    0 |   0 |    2 |    2 |    7 |
+| cellosaurus   |    3 |   0 |           0 | 1585 |     18 |    0 |   1 |    1 |    0 |   36 |
+| ccle          |   15 |   0 |        1585 |    0 |      0 |  646 |   0 | 1417 |    0 |   15 |
+| depmap        |   14 |   0 |          18 |    0 |      0 |  668 |   0 | 1473 |    0 |   14 |
+| bto           |   91 |   0 |           0 |  646 |    668 |    0 |   0 | 1431 |   58 |  117 |
+| cl            |    3 |   0 |           1 |    0 |      0 |    0 |   0 |    0 |   70 |  115 |
+| clo           |   46 |   2 |           1 | 1417 |   1473 | 1431 |   0 |    0 |    0 |   80 |
+| ncit          |  196 |   2 |           0 |    0 |      0 |   58 |  70 |    0 |    0 |    6 |
+| umls          |    0 |   7 |          36 |   15 |     14 |  117 | 115 |   80 |    6 |    0 |
 
 Here's an alternative view on the number of mappings normalized to show
 percentage gain. Note that:
@@ -317,18 +325,18 @@ percentage gain. Note that:
 - `NaN` means there were no mappings before inference and continue to be no
   mappings after inference
 
-| source_prefix | mesh |  efo | cellosaurus |   ccle | depmap |     bto |   cl |     clo | ncit | umls |
-| :------------ | ---: | ---: | ----------: | -----: | -----: | ------: | ---: | ------: | ---: | ---: |
-| mesh          |    0 |    0 |         6.7 |    inf |    inf |     inf |    0 |       0 | 16.7 |    0 |
-| efo           |    0 |    0 |           0 |    nan |    nan |       0 |  nan |    66.7 |    0 |  inf |
-| cellosaurus   |  6.7 |    0 |           0 | 1390.4 |    0.9 |       0 |  inf |       0 |  nan |  nan |
-| ccle          |  inf |  nan |      1390.4 |      0 |      0 |   32300 |  nan |     inf |  nan |  nan |
-| depmap        |  inf |  nan |         0.9 |      0 |      0 |     inf |  nan |     inf |  nan |  nan |
-| bto           |  inf |    0 |           0 |  32300 |    inf |       0 |    0 | 23833.3 |  inf |  inf |
-| cl            |    0 |  nan |         inf |    nan |    nan |       0 |    0 |     nan | 33.3 |  inf |
-| clo           |    0 | 66.7 |           0 |    inf |    inf | 23833.3 |  nan |       0 |  nan |  nan |
-| ncit          | 16.7 |    0 |         nan |    nan |    nan |     inf | 33.3 |     nan |    0 |    0 |
-| umls          |    0 |  inf |         nan |    nan |    nan |     inf |  inf |     nan |    0 |    0 |
+| source_prefix |   mesh |  efo | cellosaurus |   ccle | depmap |   bto |     cl |   clo |   ncit | umls |
+| :------------ | -----: | ---: | ----------: | -----: | -----: | ----: | -----: | ----: | -----: | ---: |
+| mesh          |      0 |    0 |          10 |    inf |    inf |   inf |    3.5 | 135.3 | 3266.7 |    0 |
+| efo           |      0 |    0 |           0 |    nan |    nan |     0 |    nan |  66.7 |    200 |  inf |
+| cellosaurus   |     10 |    0 |           0 | 1390.4 |    0.9 |     0 |    inf |     0 |    nan |  inf |
+| ccle          |    inf |  nan |      1390.4 |      0 |      0 | 32300 |    nan |   inf |    nan |  inf |
+| depmap        |    inf |  nan |         0.9 |      0 |      0 |   inf |    nan |   inf |    nan |  inf |
+| bto           |    inf |    0 |           0 |  32300 |    inf |     0 |      0 | 23850 |    inf |  inf |
+| cl            |    3.5 |  nan |         inf |    nan |    nan |     0 |      0 |   nan | 1166.7 |  inf |
+| clo           |  135.3 | 66.7 |           0 |    inf |    inf | 23850 |    nan |     0 |    nan |  inf |
+| ncit          | 3266.7 |  200 |         nan |    nan |    nan |   inf | 1166.7 |   nan |      0 |  1.2 |
+| umls          |      0 |  inf |         inf |    inf |    inf |   inf |    inf |   inf |    1.2 |    0 |
 
 ### Landscape Analysis
 
@@ -336,10 +344,10 @@ Above, the comparison looked at the overlaps between each resource. Now, that
 information is used to jointly estimate the number of terms in the landscape
 itself, and estimate how much of the landscape each resource covers.
 
-This estimates a total of 44,114 unique entities.
+This estimates a total of 44,173 unique entities.
 
-- 35,711 (81.0%) have at least one mapping.
-- 8,403 (19.0%) are unique to a single resource.
+- 35,711 (80.8%) have at least one mapping.
+- 8,462 (19.2%) are unique to a single resource.
 - 0 (0.0%) appear in all 10 resources.
 
 This estimate is susceptible to several caveats:
@@ -360,10 +368,10 @@ number that appear in each group of resources.
 ![](processed_landscape_histogram.svg)
 
 The landscape of 10 resources has 223,688 total terms. After merging redundant
-nodes based on mappings, inference, and reasoning, there are 44,114 unique
+nodes based on mappings, inference, and reasoning, there are 44,173 unique
 concepts. Using the reduction formula
 $\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-this is a 80.28% reduction.
+this is a 80.25% reduction.
 
 This is only an estimate and is susceptible to a few things:
 

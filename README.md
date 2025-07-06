@@ -250,8 +250,8 @@ graph LR
 
 ## 🏞️ Landscape Analysis
 
-We demonstrate using SeMRA to assess the [landscape](landscape/) of
-five biomedical entity types:
+We demonstrate using SeMRA to assess the [landscape](landscape#readme) of five
+biomedical entity types:
 
 1. [Disease](landscape/disease#readme)
 2. [Cell & Cell Line](landscape/cell#readme)

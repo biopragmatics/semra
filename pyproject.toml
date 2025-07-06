@@ -59,7 +59,7 @@ dependencies = [
     "networkx",
     "bioregistry>=0.12.19",
     "pyobo>=0.12.4",
-    "bioontologies>=0.7.2",
+    "bioontologies>=0.7.3",
     "typing_extensions",
     "zenodo_client",
     "ssslm",

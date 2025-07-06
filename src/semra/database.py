@@ -123,6 +123,7 @@ skip = {
     "conso",
     "atol",  # broken download
     "eol",  # broken download
+    "addicto", # TODO
 }
 skip_prefixes = {
     "kegg",

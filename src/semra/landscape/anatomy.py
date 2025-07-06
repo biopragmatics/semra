@@ -20,7 +20,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |anatomyimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/anatomy <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme>`_
+`landscape/anatomy <https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_
 folder.
 
 Reproduction

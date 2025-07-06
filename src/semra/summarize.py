@@ -62,7 +62,7 @@ def write_summary(
     refresh_raw_timedelta: float | None = None,
     refresh_source_timedelta: float | None = None,
 ) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
-    """Run the landscape analysis inside a Jupyter notebook."""
+    """Run the landscape analysis and write a summary."""
     import matplotlib.pyplot as plt
 
     if not configuration.configuration_path.is_file():

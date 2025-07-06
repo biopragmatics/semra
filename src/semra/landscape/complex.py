@@ -22,7 +22,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |compleximg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/complex <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme>`_
+`landscape/complex <https://github.com/biopragmatics/semra/tree/main/landscape/complex#readme>`_
 folder.
 
 Reproduction

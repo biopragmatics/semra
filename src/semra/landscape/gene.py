@@ -27,7 +27,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |geneimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/gene <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme>`_
+`landscape/gene <https://github.com/biopragmatics/semra/tree/main/landscape/gene#readme>`_
 folder.
 
 Reproduction

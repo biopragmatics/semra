@@ -33,7 +33,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |diseaseimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/disease <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
+`landscape/disease <https://github.com/biopragmatics/semra/tree/main/landscape/disease#readme>`_
 folder.
 
 Reproduction

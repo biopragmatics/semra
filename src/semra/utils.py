@@ -26,7 +26,7 @@ __all__ = [
 X = TypeVar("X")
 HERE = Path(__file__).parent.resolve()
 ROOT = HERE.parent.parent.resolve()
-LANDSCAPE_FOLDER = ROOT.joinpath("notebooks", "landscape").resolve()
+LANDSCAPE_FOLDER = ROOT.joinpath("landscape").resolve()
 
 
 def semra_tqdm(

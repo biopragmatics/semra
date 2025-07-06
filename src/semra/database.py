@@ -50,6 +50,7 @@ from pathlib import Path
 from typing import Literal, NamedTuple, overload
 
 import bioregistry
+import bioversions
 import click
 import pyobo
 import pystow
@@ -162,6 +163,9 @@ def build(
     prune_sssom: bool,
 ) -> None:
     """Construct the SeMRA Raw Semantic Mappings Database."""
+    click.echo("caching versions w/ Bioversions")
+    list(bioversions.iter_versions(use_tqdm=True))
+
     ontology_resources: list[bioregistry.Resource] = []
     pyobo_resources: list[bioregistry.Resource] = []
     for resource in bioregistry.resources():

@@ -109,18 +109,18 @@ SeMRA was used to produce the `SeMRA Raw Semantic Mappings Database <https://doi
 a comprehensive raw semantic mappings database, and five domain-specific
 mapping databases (each with a landscape analysis). The results of the
 domain-specific landscape analyses can be found on the SeMRA `GitHub
-repository <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape>`_.
+repository <https://github.com/biopragmatics/semra/tree/main/landscape>`_.
 
-================== ============================== ================= =========================================================================================================
+================== ============================== ================= ===============================================================================================
 Domain             Docs and Reproduction          Database Download Analysis
-================== ============================== ================= =========================================================================================================
+================== ============================== ================= ===============================================================================================
 Raw                :mod:`semra.database`          |raw|              N/A
-Disease            :mod:`semra.landscape.disease` |disease|         `Disease Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
-Cell and Cell Line :mod:`semra.landscape.cell`    |cell|            `Cell Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_
-Anatomy            :mod:`semra.landscape.anatomy` |anatomy|         `Anatomy Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/anatomy#readme>`_
-Protein Complex    :mod:`semra.landscape.complex` |complex|         `Complex Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/complex#readme>`_
-Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analysis <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/gene#readme>`_
-================== ============================== ================= =========================================================================================================
+Disease            :mod:`semra.landscape.disease` |disease|         `Disease Analysis <https://github.com/biopragmatics/semra/tree/main/landscape/disease#readme>`_
+Cell and Cell Line :mod:`semra.landscape.cell`    |cell|            `Cell Analysis <https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_
+Anatomy            :mod:`semra.landscape.anatomy` |anatomy|         `Anatomy Analysis <https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_
+Protein Complex    :mod:`semra.landscape.complex` |complex|         `Complex Analysis <https://github.com/biopragmatics/semra/tree/main/landscape/complex#readme>`_
+Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analysis <https://github.com/biopragmatics/semra/tree/main/landscape/gene#readme>`_
+================== ============================== ================= ===============================================================================================
 
 .. |disease| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091885.svg
   :target: https://doi.org/10.5281/zenodo.11091885

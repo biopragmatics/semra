@@ -1,0 +1,7 @@
+source_prefix	uberon	mesh	bto	caro	ncit	umls
+uberon	15693	1107	1465	0	2536	344
+mesh	1107	1797	602	0	859	170
+bto	1465	602	6566	0	813	150
+caro	0	0	0	90	0	0
+ncit	2536	859	813	0	7579	547
+umls	344	170	150	0	547	7719

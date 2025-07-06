@@ -3,6 +3,7 @@
 import os
 from functools import lru_cache
 
+import bioversions
 import click
 import pandas as pd
 from more_click import verbose_option
@@ -63,6 +64,7 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
 @BUILD_DOCKER_OPTION
 @verbose_option  # type:ignore
 @click.option("--only", help="if given, only runs this configuration", multiple=True)
+@click.option("--readme-only", is_flag=True, help="if given, only creat ethe readme")
 @click.pass_context
 def landscape(
     ctx: click.Context,
@@ -72,26 +74,31 @@ def landscape(
     refresh_processed: bool,
     build_docker: bool,
     only: list[str] | None,
+    readme_only: bool,
 ) -> None:
     """Construct pre-configured domain-specific mapping databases and run landscape analyses."""
-    if build_docker:
-        pass  # TODO check if docker is running
+    if not readme_only:
+        if build_docker:
+            pass  # TODO check if docker is running
 
-    functions = _get_functions()
-    with logging_redirect_tqdm():
-        tqdm(functions, unit="configuration", desc="landscape analysis")
-        for conf, func in functions:
-            if only and conf.key not in only:
-                continue
-            tqdm.write(click.style(conf.key, bold=True, fg="green"))
-            ctx.invoke(
-                func,
-                upload=upload,
-                refresh_source=refresh_source,
-                refresh_raw=refresh_raw,
-                refresh_processed=refresh_processed,
-                build_docker=build_docker,
-            )
+        click.echo("caching versions w/ Bioversions")
+        list(bioversions.iter_versions(use_tqdm=True))
+
+        functions = _get_functions()
+        with logging_redirect_tqdm():
+            tqdm(functions, unit="configuration", desc="landscape analysis")
+            for conf, func in functions:
+                if only and conf.key not in only:
+                    continue
+                tqdm.write(click.style(conf.key, bold=True, fg="green"))
+                ctx.invoke(
+                    func,
+                    upload=upload,
+                    refresh_source=refresh_source,
+                    refresh_raw=refresh_raw,
+                    refresh_processed=refresh_processed,
+                    build_docker=build_docker,
+                )
 
     compile_landscape_metaanalysis()
 

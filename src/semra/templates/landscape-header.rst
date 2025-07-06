@@ -11,7 +11,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |{{ configuration.key }}img|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/{{ configuration.key }} <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/{{ configuration.key }}#readme>`_
+`landscape/{{ configuration.key }} <https://github.com/biopragmatics/semra/tree/main/landscape/{{ configuration.key }}#readme>`_
 folder.
 
 Reproduction

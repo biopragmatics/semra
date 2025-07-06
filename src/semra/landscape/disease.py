@@ -33,7 +33,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |diseaseimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/disease <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/disease#readme>`_
+`landscape/disease <https://github.com/biopragmatics/semra/tree/main/landscape/disease#readme>`_
 folder.
 
 Reproduction
@@ -146,7 +146,7 @@ DISEASE_CONFIGURATION = Configuration(
         Input(prefix="mondo", source="bioontologies", confidence=0.99),
         Input(prefix="efo", source="bioontologies", confidence=0.99),
         Input(prefix="mesh", source="pyobo", confidence=0.99),
-        Input(prefix="ncit", source="bioontologies", confidence=0.85),
+        Input(prefix="ncit", source="pyobo", confidence=0.85),
         Input(prefix="umls", source="pyobo", confidence=0.9),
         Input(prefix="orphanet.ordo", source="bioontologies", confidence=0.9),
         # Input(prefix="orphanet", source="bioontologies", confidence=0.9),

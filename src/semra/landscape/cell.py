@@ -24,7 +24,7 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |cellimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`notebooks/landscape/cell <https://github.com/biopragmatics/semra/tree/main/notebooks/landscape/cell#readme>`_
+`landscape/cell <https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_
 folder.
 
 Reproduction

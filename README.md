@@ -250,14 +250,14 @@ graph LR
 
 ## 🏞️ Landscape Analysis
 
-We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
-five biomedical entity types:
+We demonstrate using SeMRA to assess the [landscape](landscape#readme) of five
+biomedical entity types:
 
-1. [Disease](notebooks/landscape/disease/)
-2. [Cell & Cell Line](notebooks/landscape/cell/)
-3. [Anatomy](notebooks/landscape/anatomy/)
-4. [Protein Complex](notebooks/landscape/complex/)
-5. [Gene](notebooks/landscape/gene/)
+1. [Disease](landscape/disease#readme)
+2. [Cell & Cell Line](landscape/cell#readme)
+3. [Anatomy](landscape/anatomy#readme)
+4. [Protein Complex](landscape/complex#readme)
+5. [Gene](landscape/gene#readme)
 
 These analyses are based on
 [declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)

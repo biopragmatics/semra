@@ -67,6 +67,8 @@ dependencies = [
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
     "pyyaml",
+    "humanize",
+    "tabulate",
 ]
 
 [project.optional-dependencies]
@@ -100,7 +102,6 @@ landscape = [
     "seaborn",
     "matplotlib",
     "pygraphviz",
-    "humanize",
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls

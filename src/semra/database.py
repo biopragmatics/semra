@@ -123,7 +123,7 @@ skip = {
     "conso",
     "atol",  # broken download
     "eol",  # broken download
-    "addicto", # TODO
+    "addicto",  # TODO
 }
 skip_prefixes = {
     "kegg",
@@ -485,8 +485,15 @@ def _yield_ontology_resources(
                     resource_mappings = from_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
-            except (ValueError, NoBuildError, subprocess.SubprocessError, bioontologies.robot.ROBOTError) as e:
-                tqdm.write(click.style(f"[{resource.prefix}] failed ontology parsing: {e}", fg="red"))
+            except (
+                ValueError,
+                NoBuildError,
+                subprocess.SubprocessError,
+                bioontologies.robot.ROBOTError,
+            ) as e:
+                tqdm.write(
+                    click.style(f"[{resource.prefix}] failed ontology parsing: {e}", fg="red")
+                )
                 continue
             else:
                 for mapping in _write_source(

@@ -183,6 +183,7 @@ class Statistics(BaseModel):
 @REFRESH_SOURCE_OPTION
 @REFRESH_RAW_OPTION
 @click.option("--test", is_flag=True, help="Run in test mode on a subset of resources.")
+@click.option("--skip-below")
 def build(
     include_wikidata: bool,
     upload: bool,
@@ -191,6 +192,7 @@ def build(
     write_labels: bool,
     prune_sssom: bool,
     test: bool,
+    skip_below: str | None,
 ) -> None:
     """Construct the SeMRA Raw Semantic Mappings Database."""
     start = time.time()
@@ -207,6 +209,8 @@ def build(
             or resource.no_own_terms
             or resource.proprietary
         ):
+            continue
+        if skip_below and resource.prefix < skip_below:
             continue
         if any(resource.prefix.startswith(p) for p in skip_prefixes):
             continue

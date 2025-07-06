@@ -1,14 +1,14 @@
 prefix	name	license	version	terms	status
 ncbigene	NCBI Gene		daily	56689711	full
-hgnc	HUGO Gene Nomenclature Committee	CC0-1.0	2025-06-03	44117	full
+hgnc	HUGO Gene Nomenclature Committee	CC0-1.0	2025-07-04	44244	full
 mgi	Mouse Genome Informatics	CC-BY-4.0	6.24	661778	full
-rgd	Rat Genome Database	CC-BY-4.0	2025-06-21	61462	full
+rgd	Rat Genome Database	CC-BY-4.0	2025-06-27	61462	full
 cgnc	Chicken Gene Nomenclature Consortium	CC-BY-4.0		26085	full
 wormbase	WormBase	CC0-1.0		0	observed
 flybase	FlyBase Gene	CC-BY-4.0	2025_02	17871	full
 sgd	Saccharomyces Genome Database	CC-BY-4.0	R64-5-1	6600	full
-omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-06-27	27277	observed
-civic.gid	CIViC gene	CC0-1.0	2025-06-01	901	full
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-07-03	27282	observed
+civic.gid	CIViC gene	CC0-1.0	2025-07-01	903	full
 umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2025AA	1	subset
-ncit	NCI Thesaurus	CC-BY-4.0	25.06d	12711	subset
+ncit	NCI Thesaurus	CC-BY-4.0	25.06e	12711	subset
 wikidata	Wikidata	CC0-1.0		797957	observed

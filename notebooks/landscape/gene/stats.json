@@ -1,13 +1,15 @@
 {
   "distribution": {
-    "1": 56755780,
-    "2": 716314,
-    "3": 134249,
-    "4": 11958,
-    "5": 5301,
-    "6": 578
+    "1": 56755862,
+    "2": 716266,
+    "3": 134292,
+    "4": 11963,
+    "5": 5302,
+    "6": 577
   },
-  "raw_term_count": 58346471,
-  "reduction": 0.012379343388223085,
-  "unique_term_count": 57624180
+  "raw_term_count": 58346605,
+  "reduction": 0.01238020618337605,
+  "refresh_raw_timedelta": null,
+  "refresh_source_timedelta": 11500.490113019943,
+  "unique_term_count": 57624262
 }

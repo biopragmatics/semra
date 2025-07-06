@@ -50,6 +50,7 @@ from operator import attrgetter
 from pathlib import Path
 from typing import Any, Literal, overload
 
+import bioontologies.robot
 import bioregistry
 import bioversions
 import click
@@ -483,8 +484,8 @@ def _yield_ontology_resources(
                     resource_mappings = from_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
-            except (ValueError, NoBuildError, subprocess.SubprocessError) as e:
-                tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
+            except (ValueError, NoBuildError, subprocess.SubprocessError, bioontologies.robot.ROBOTError) as e:
+                tqdm.write(click.style(f"[{resource.prefix}] failed ontology parsing: {e}", fg="red"))
                 continue
             else:
                 for mapping in _write_source(

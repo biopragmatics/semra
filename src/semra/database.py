@@ -155,7 +155,7 @@ class Statistics(BaseModel):
     def tabulate_summaries(self) -> str:
         """Tabulate summaries."""
         return tabulate(
-            [summary._as_row() for summary in self.summaries],
+            [summary._as_row() for summary in self.summaries if summary.mapping_count],
             tablefmt="github",
             headers=["Source", "Mapping Count", "Time", "Resource Type"],
         )

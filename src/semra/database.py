@@ -385,7 +385,7 @@ def _yield_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
             except Exception as e:
-                tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: {e}")
+                tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: ({type(e)}) {e}")
                 continue
             else:
                 for mapping in _write_source(
@@ -435,7 +435,7 @@ def _yield_wikidata(*, write_labels: bool, summaries: list[SourceSummary]) -> It
             try:
                 resource_mappings = get_wikidata_mappings_by_prefix(prefix)
             except requests.exceptions.JSONDecodeError as e:
-                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: ({type(e)}) {e}")
                 continue
             else:
                 for mapping in _write_source(
@@ -496,7 +496,7 @@ def _yield_ontology_resources(
                 bioontologies.robot.ROBOTError,
             ) as e:
                 tqdm.write(
-                    click.style(f"[{resource.prefix}] failed ontology parsing: {e}", fg="red")
+                    click.style(f"[{resource.prefix}] failed ontology parsing: ({type(e)}) {e}", fg="red")
                 )
                 continue
             else:

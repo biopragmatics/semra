@@ -39,10 +39,6 @@ was run in {{ naturaldelta(statistics.no_refresh_timedelta)}}
 {%- endif %}
 on commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 
-## Summary
-
-{{ statistics.tabulate_summaries() | safe }}
-
 ## Mapping Summary and Usage
 
 The assembled raw mappings can be downloaded from
@@ -73,3 +69,7 @@ mappings_from_sssom = semra.from_sssom("mappings.sssom.tsv.gz")
 Mappings are licensed according to their primary resources. These are
 explicitly annotated in the SSSOM file on each row (when available) and on the
 mapping set level in the Neo4j graph database artifacts.
+
+## Statistics
+
+{{ statistics.tabulate_summaries() | safe }}

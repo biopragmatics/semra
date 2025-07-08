@@ -39,51 +39,51 @@ class ConceptsTrie(SortedStringTrie):
             graph as keys and the corresponding (name, ns, id, node degree)
             tuple as values
         """
-        # from semra.client import Neo4jClient
-        # client = Neo4jClient()
-        # nodes = get_concept_nodes(client)
-        #
-        # name_indexing = {}
-        #
-        # logging.info(f"Indexing {len(nodes)} nodes for autocomplete")
-        # for curie, node_dict in nodes.items():
-        #     # Get node name in lowercase
-        #     node_name = node_dict.get("name", "").lower()
-        #
-        #     # Skip if no name
-        #     if not node_name:
-        #         continue
-        #
-        #     # Get node data (first item is the name match)
-        #     node_data = (node_name, node_dict["name"], curie)
-        #     if node_name in name_indexing:
-        #         ix = 1
-        #         node_name_ = f"{node_name}_{ix}"
-        #
-        #         # Increase index until key is not present
-        #         while node_name_ in name_indexing:
-        #             ix += 1
-        #             node_name_ = f"{node_name}_{ix}"
-        #         node_name = node_name_
-        #     name_indexing[node_name] = node_data
+        from semra.client import Neo4jClient
+        client = Neo4jClient()
+        nodes = get_concept_nodes(client)
+
+        name_indexing = {}
+
+        logging.info(f"Indexing {len(nodes)} nodes for autocomplete")
+        for curie, node_dict in nodes.items():
+            # Get node name in lowercase
+            node_name = node_dict.get("name", "").lower()
+
+            # Skip if no name
+            if not node_name:
+                continue
+
+            # Get node data (first item is the name match)
+            node_data = (node_name, node_dict["name"], curie)
+            if node_name in name_indexing:
+                ix = 1
+                node_name_ = f"{node_name}_{ix}"
+
+                # Increase index until key is not present
+                while node_name_ in name_indexing:
+                    ix += 1
+                    node_name_ = f"{node_name}_{ix}"
+                node_name = node_name_
+            name_indexing[node_name] = node_data
 
         # Mocked data for demonstration purposes
-        name_indexing = {
-            "example": ("Example", "Example", "example:123"),
-            "test": ("Test", "Test", "test:456"),
-            "sample": ("Sample", "Sample", "sample:789"),
-            "concept": ("Concept", "Concept", "concept:101112"),
-            "demo": ("Demo", "Demo", "demo:131415"),
-            "node": ("Node", "Node", "node:161718"),
-            "entity": ("Entity", "Entity", "entity:192021"),
-            "item": ("Item", "Item", "item:222324"),
-            "object": ("Object", "Object", "object:252627"),
-            "resource": ("Resource", "Resource", "resource:282930"),
-            "entity_1": ("Entity 1", "Entity 1", "entity:313233"),
-            "entity_2": ("Entity 2", "Entity 2", "entity:343536"),
-            "entity_3": ("Entity 3", "Entity 3", "entity:373839"),
-            "entity_4": ("Entity 4", "Entity 4", "entity:404142"),
-        }
+        # name_indexing = {
+        #     "example": ("Example", "Example", "example:123"),
+        #     "test": ("Test", "Test", "test:456"),
+        #     "sample": ("Sample", "Sample", "sample:789"),
+        #     "concept": ("Concept", "Concept", "concept:101112"),
+        #     "demo": ("Demo", "Demo", "demo:131415"),
+        #     "node": ("Node", "Node", "node:161718"),
+        #     "entity": ("Entity", "Entity", "entity:192021"),
+        #     "item": ("Item", "Item", "item:222324"),
+        #     "object": ("Object", "Object", "object:252627"),
+        #     "resource": ("Resource", "Resource", "resource:282930"),
+        #     "entity_1": ("Entity 1", "Entity 1", "entity:313233"),
+        #     "entity_2": ("Entity 2", "Entity 2", "entity:343536"),
+        #     "entity_3": ("Entity 3", "Entity 3", "entity:373839"),
+        #     "entity_4": ("Entity 4", "Entity 4", "entity:404142"),
+        # }
 
         return cls(**name_indexing)
 

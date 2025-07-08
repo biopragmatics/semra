@@ -26,7 +26,7 @@ class ConceptsTrie(SortedStringTrie):
     """A Trie structure that has case-insensitive search methods"""
 
     @classmethod
-    def from_kg(cls):
+    def from_graph_db(cls):
         """Produce a NodesTrie instance from the with node names as keys
 
         Returns

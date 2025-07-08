@@ -88,7 +88,7 @@
                                 onclick="
                                     const val = document.getElementById('conceptNameSearch').value.trim();
                                     if (val) {
-                                        window.location.href = '/concept/' + encodeURIComponent(val);
+                                        window.open('/concept/' + encodeURIComponent(val), '_blank');
                                     }
                                 ">
                                 Go to Concept

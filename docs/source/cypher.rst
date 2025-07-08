@@ -1,26 +1,31 @@
 Querying with Cypher
 ====================
 
-SeMRA constructs locally-deployable Neo4j graph databases that can be queried directly
-with the `Cypher query language
-<https://neo4j.com/docs/cypher-manual/current/introduction/>`_. By default, this works
-by the Docker image exposing port 7687.
+SeMRA constructs data artifacts and docker configuration for locally deploying a Neo4j
+graph databases and a web application via :func:`semra.io.write_neo4j` (for example
+outputs, see :mod:`semra.database` or :mod:`semra.landscape`). The resulting graph
+database can be queried directly with the `Cypher query language
+<https://neo4j.com/docs/cypher-manual/current/introduction/>`_ in one of the following
+ways:
 
-Alternatively, you can navigate to http://localhost:7474 for a graphical front-end to
-Neo4j where you can type in Cypher queries and interact with the results.
+1. By connecting with a client via the ``bolt`` protocol on port 7687, which is exposed
+   in the Dockerfile
+2. By navigating to http://localhost:7474 in the web browser to use Neo4j's builtin
+   graphical front-end, where you can type in Cypher queries and interact with the
+   results.
 
-In the following examples, we'll use the cell and cell lines database.
-
-Data Model
-----------
+The contents of the grpah database have the following schema:
 
 .. image:: img/graph-schema.svg
+
+Below, some example Cypher queries are given to show what is possible by direct querying
+of the database.
 
 Lookup by CURIE
 ---------------
 
 The following Cypher queries allow for looking up concepts, mappings, evidences, and
-mapping sets in a Neo4j database output by SeMRA (using :func:`semra.write_neo4j`).
+mapping sets.
 
 Look up a concept (e.g., a cell line) by its CURIE:
 

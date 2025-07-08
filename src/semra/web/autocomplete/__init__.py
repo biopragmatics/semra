@@ -3,12 +3,8 @@ An API wrapping SortedStringTrie from pytrie (see https://github.com/gsakkis/pyt
 """
 import logging
 from itertools import islice
-from typing import TYPE_CHECKING
 
 from pytrie import SortedStringTrie
-
-if TYPE_CHECKING:
-    from semra.client import Neo4jClient
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +14,13 @@ NodeData = dict[str, dict[str, str]]
 Entry = tuple[str, str, str]
 
 
-def get_concept_nodes(client: Neo4jClient) -> NodeData:
+def get_concept_nodes(client) -> NodeData:
+    """Get concept nodes from the Neo4j database
+
+    :param client: The Neo4j client to use for querying the database.
+    :type client: Neo4jClient
+    :returns: A dictionary mapping concept CURIEs to their node data.
+    """
     logging.info("Retrieving concept nodes from Neo4j")
     concept_query = "MATCH (n:concept) RETURN n.curie, n"
     concepts = {curie: dict(node) for curie, node in client.read_query(concept_query)}
@@ -33,10 +35,7 @@ class ConceptsTrie(SortedStringTrie):
     def from_graph_db(cls):
         """Produce a NodesTrie instance from the with node names as keys
 
-        Returns
-        -------
-        :
-            An instance of a NodesTrie containing the node names of the
+        :returns: An instance of a NodesTrie containing the node names of the
             graph as keys and the corresponding (name, ns, id, node degree)
             tuple as values
         """
@@ -73,17 +72,9 @@ class ConceptsTrie(SortedStringTrie):
     def case_insensitive_search(self, prefix: str, top_n: int = 100) -> list[Entry]:
         """Get case-insensitive matches with the given prefix
 
-        Parameters
-        ----------
-        prefix :
-            The prefix to search for.
-        top_n :
-            The maximum number of matches to return. Default: 100
-
-        Returns
-        -------
-        :
-            A list of all case-insensitive matches with the given prefix
+        :param prefix: The prefix to search for.
+        :param top_n: The maximum number of matches to return. Default: 100
+        :returns: A list of all case-insensitive matches with the given prefix
         """
         prefix = prefix.lower()
         return list(islice(sorted(self.values(prefix)), top_n))

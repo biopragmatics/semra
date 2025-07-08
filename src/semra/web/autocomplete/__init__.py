@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 NodeData = dict[str, dict[str, str]]
-Entry = tuple[str, str]
+Entry = tuple[str, str, str]
 
 
 def get_concept_nodes(client: Neo4jClient) -> NodeData:
@@ -56,7 +56,7 @@ class ConceptsTrie(SortedStringTrie):
                 continue
 
             # Get node data (first item is the name match)
-            node_data = (node_dict["name"], curie)
+            node_data = (node_name, node_dict["name"], curie)
             if node_name in name_indexing:
                 ix = 1
                 node_name_ = f"{node_name}_{ix}"
@@ -65,6 +65,7 @@ class ConceptsTrie(SortedStringTrie):
                 while node_name_ in name_indexing:
                     ix += 1
                     node_name_ = f"{node_name}_{ix}"
+                node_name = node_name_
             name_indexing[node_name] = node_data
 
         return cls(**name_indexing)

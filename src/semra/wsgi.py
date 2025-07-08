@@ -38,7 +38,11 @@ def get_app(
 
 
 def get_app(
-    *, client: BaseClient | None = None, return_flask: bool = False, use_biomappings: bool = True
+    *,
+    client: BaseClient | None = None,
+    return_flask: bool = False,
+    use_biomappings: bool = True,
+    add_autocomplete: bool = True,
 ) -> fastapi.FastAPI | tuple[Flask, fastapi.FastAPI]:
     """Get the SeMRA FastAPI app."""
     if client is None:
@@ -76,6 +80,10 @@ def get_app(
     Bootstrap5(flask_app)
 
     flask_app.register_blueprint(flask_blueprint)
+    if add_autocomplete:
+        from semra.web.autocomplete.autocomplete_blueprint import auto_blueprint
+
+        flask_app.register_blueprint(auto_blueprint)
 
     fastapi_app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",

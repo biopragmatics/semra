@@ -59,7 +59,7 @@ def get_app(
             for m in biomappings.load_false_mappings():
                 index_biomapping(false_mapping_index, m)
 
-            current_author = biomappings.resources.get_current_curator(strict=True)
+            current_author = biomappings.resources.get_current_curator(strict=False)
 
     state = State(
         client=client,

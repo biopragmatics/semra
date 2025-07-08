@@ -1,6 +1,7 @@
 """
 An API wrapping SortedStringTrie from pytrie (see https://github.com/gsakkis/pytrie)
 """
+import logging
 from itertools import islice
 from typing import TYPE_CHECKING
 
@@ -10,12 +11,15 @@ if TYPE_CHECKING:
     from semra.client import Neo4jClient
 
 
+logger = logging.getLogger(__name__)
+
+
 NodeData = dict[str, dict[str, str]]
 Entry = tuple[str, str]
 
 
 def get_concept_nodes(client: Neo4jClient) -> NodeData:
-
+    logging.info("Retrieving concept nodes from Neo4j")
     concept_query = "MATCH (n:concept) RETURN n.curie, n"
     concepts = {curie: dict(node) for curie, node in client.read_query(concept_query)}
 
@@ -42,6 +46,7 @@ class ConceptsTrie(SortedStringTrie):
 
         name_indexing = {}
 
+        logging.info(f"Indexing {len(nodes)} nodes for autocomplete")
         for curie, node_dict in nodes.items():
             # Get node name in lowercase
             node_name = node_dict.get("name", "").lower()

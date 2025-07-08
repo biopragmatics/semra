@@ -14,7 +14,7 @@ In the following examples, we'll use the cell and cell lines database.
 Data Model
 ----------
 
-.. todo:: put data model overview image here
+.. image:: img/graph-schema.svg
 
 Lookup by CURIE
 ---------------

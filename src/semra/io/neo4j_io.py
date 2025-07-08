@@ -26,17 +26,17 @@ from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvid
 from ..utils import gzip_path
 
 __all__ = [
-    "write_neo4j",
-    "MAPPING_NODES_HEADER",
-    "EVIDENCE_NODES_HEADER",
-    "MAPPING_SET_NODES_HEADER",
     "CONCEPT_NODES_HEADER",
+    "DERIVED_PREDICATE",
     "EDGES_HEADER",
     "EDGES_SUPPLEMENT_HEADER",
-    "HAS_EVIDENCE_PREDICATE",
+    "EVIDENCE_NODES_HEADER",
     "FROM_SET_PREDICATE",
-    "DERIVED_PREDICATE",
     "HAS_AUTHOR_PREDICATE",
+    "HAS_EVIDENCE_PREDICATE",
+    "MAPPING_NODES_HEADER",
+    "MAPPING_SET_NODES_HEADER",
+    "write_neo4j",
 ]
 
 HERE = Path(__file__).parent.resolve()

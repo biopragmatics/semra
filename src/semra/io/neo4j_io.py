@@ -26,6 +26,16 @@ from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvid
 from ..utils import gzip_path
 
 __all__ = [
+    "CONCEPT_NODES_HEADER",
+    "DERIVED_PREDICATE",
+    "EDGES_HEADER",
+    "EDGES_SUPPLEMENT_HEADER",
+    "EVIDENCE_NODES_HEADER",
+    "FROM_SET_PREDICATE",
+    "HAS_AUTHOR_PREDICATE",
+    "HAS_EVIDENCE_PREDICATE",
+    "MAPPING_NODES_HEADER",
+    "MAPPING_SET_NODES_HEADER",
     "write_neo4j",
 ]
 
@@ -39,7 +49,9 @@ RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
 PYTHON = "python3.13"
 
+#: The column headers for the concept nodes in the SeMRA Neo4j graph database export
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
+#: The column headers for the mapping nodes in the SeMRA Neo4j graph database export
 MAPPING_NODES_HEADER = [
     "curie:ID",
     "prefix",
@@ -49,6 +61,7 @@ MAPPING_NODES_HEADER = [
     "secondary:boolean",
     "tertiary:boolean",
 ]
+#: The column headers for evidence nodes in the SeMRA Neo4j graph database export
 EVIDENCE_NODES_HEADER = [
     "curie:ID",
     "prefix",
@@ -65,6 +78,8 @@ MAPPING_SET_NODES_HEADER = [
     "version",
     "confidence:float",
 ]
+
+#: The column headers for properties attached to simple mappings
 EDGES_HEADER = [
     ":START_ID",
     ":TYPE",
@@ -75,7 +90,10 @@ EDGES_HEADER = [
     "tertiary:boolean",
     "mapping_sets:string[]",
 ]
-# for extra edges that aren't mapping edges
+#: for extra edges that aren't mapping edges, such as
+#: those with :data:`HAS_EVIDENCE_PREDICATE`,
+#: :data:`FROM_SET_PREDICATE`, :data:`DERIVED_PREDICATE`,
+#: and :data:`HAS_AUTHOR_PREDICATE`
 EDGES_SUPPLEMENT_HEADER = [
     ":START_ID",
     ":TYPE",

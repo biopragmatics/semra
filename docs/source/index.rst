@@ -157,6 +157,7 @@ Table of Contents
     io
     reference
     cli
+    cypher
 
 Indices and Tables
 ------------------

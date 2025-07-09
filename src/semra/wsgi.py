@@ -109,10 +109,19 @@ def get_app(
         print("Adding autocomplete router and building fulltext index")
         from semra.web.autocomplete.autocomplete_blueprint import auto_router
         fastapi_app.include_router(auto_router)
+        # Create a fulltext index for concept names
         client.create_fulltext_index(
             "concept_name_ft",
             "concept",
             "name",
+            exist_ok=False,
+        )
+        # Create a fulltext index for concept CURIEs
+        client.create_fulltext_index(
+            "concept_curie_ft",
+            "concept",
+            "curie",
+            exist_ok=False,
         )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 

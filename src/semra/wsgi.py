@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Literal, overload
 
@@ -15,6 +16,9 @@ from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
+
+
+logger = logging.getLogger(__name__)
 
 
 # docstr-coverage:excused `overload`
@@ -62,10 +66,14 @@ def get_app(
         else:
             current_author = biomappings.resources.get_current_curator(strict=False)
             if current_author:
+                logger.info("Using biomappings resources")
                 biomappings_git_hash = biomappings.utils.get_git_hash()
                 for m in biomappings.load_false_mappings():
                     index_biomapping(false_mapping_index, m)
 
+            current_author = biomappings.resources.get_current_curator(strict=True)
+
+    logger.info("Loading State for the app")
     state = State(
         client=client,
         summary=client.get_full_summary(),
@@ -88,7 +96,7 @@ def get_app(
     fastapi_app.state = state  # type:ignore
     fastapi_app.include_router(api_router)
     if add_autocomplete:
-        print("Adding autocomplete router and building fulltext index")
+        logger.info("Adding autocomplete router and building fulltext index")
         from semra.web.autocomplete.autocomplete_blueprint import auto_router
         fastapi_app.include_router(auto_router)
     fastapi_app.mount("/", WSGIMiddleware(flask_app))

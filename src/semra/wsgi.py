@@ -111,16 +111,9 @@ def get_app(
         fastapi_app.include_router(auto_router)
         # Create a fulltext index for concept names
         client.create_fulltext_index(
-            "concept_name_ft",
+            "concept_curie_name_ft",
             "concept",
-            "name",
-            exist_ok=False,
-        )
-        # Create a fulltext index for concept CURIEs
-        client.create_fulltext_index(
-            "concept_curie_ft",
-            "concept",
-            "curie",
+            ["name", "curie"],
             exist_ok=False,
         )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))

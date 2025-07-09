@@ -80,10 +80,6 @@ def get_app(
     Bootstrap5(flask_app)
 
     flask_app.register_blueprint(flask_blueprint)
-    if add_autocomplete:
-        from semra.web.autocomplete.autocomplete_blueprint import auto_blueprint
-
-        flask_app.register_blueprint(auto_blueprint)
 
     fastapi_app = fastapi.FastAPI(
         title="Semantic Reasoning Assembler",
@@ -91,6 +87,9 @@ def get_app(
     )
     fastapi_app.state = state  # type:ignore
     fastapi_app.include_router(api_router)
+    if add_autocomplete:
+        from semra.web.autocomplete.autocomplete_blueprint import auto_router
+        fastapi_app.include_router(auto_router)
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 
     if return_flask:

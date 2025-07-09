@@ -19,16 +19,13 @@ def autocomplete_search(
     top_n: int = 100,
 ):
     """Get the autocomplete suggestions for a given prefix."""
-    prefix_ = prefix + "~" if not prefix.endswith("~") else prefix
+    prefix_clause = f"{prefix}* OR {prefix}~"
     top_n = min(top_n, 100)
-    if ":" in prefix:
-        call = 'CALL db.index.fulltext.queryNodes("concept_curie_ft", $prefix) YIELD node'
-    else:
-        call = 'CALL db.index.fulltext.queryNodes("concept_name_ft", $prefix) YIELD node'
 
     query = f"""\
-    {call}
+    CALL db.index.fulltext.queryNodes("concept_curie_name_ft", $prefix) YIELD node
     RETURN toLower(node.name), node.name, node.curie
-    LIMIT $top_n"""
-    res = client.read_query(query, top_n=top_n, prefix=prefix_)
+    LIMIT $top_n
+    """
+    res = client.read_query(query, top_n=top_n, prefix=prefix_clause)
     return res

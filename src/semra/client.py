@@ -255,6 +255,26 @@ class Neo4jClient(BaseClient):
 
         self.write_query(query)
 
+    def create_fulltext_index(
+        self, index_name: str, label: str, property_name: str
+    ) -> None:
+        """Create a fulltext index.
+
+        :param index_name: The name of the index to create.
+        :param label: The label of the nodes to index.
+        :param property_name: The node property to index.
+        """
+        if "." in label:
+            label = f"`{label}`"
+        query = f"""\
+        CALL db.index.fulltext.createNodeIndex(
+            {index_name},
+            [{label}],
+            ['{property_name}'])"""
+
+        self.write_query(query)
+
+
     def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
         if isinstance(curie, Reference):
             curie = curie.curie

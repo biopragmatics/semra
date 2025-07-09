@@ -19,13 +19,15 @@ def autocomplete_search(
     top_n: int = 100,
 ):
     """Get the autocomplete suggestions for a given prefix."""
-    if ":" in prefix:
-        # Just return an empty response if the prefix contains a colon
-        return []
     prefix_ = prefix + "~" if not prefix.endswith("~") else prefix
     top_n = min(top_n, 100)
-    query = """\
-    CALL db.index.fulltext.queryNodes("concept_name_ft", $prefix) YIELD node
+    if ":" in prefix:
+        call = 'CALL db.index.fulltext.queryNodes("concept_curie_ft", $prefix) YIELD node'
+    else:
+        call = 'CALL db.index.fulltext.queryNodes("concept_name_ft", $prefix) YIELD node'
+
+    query = f"""\
+    {call}
     RETURN toLower(node.name), node.name, node.curie
     LIMIT $top_n"""
     res = client.read_query(query, top_n=top_n, prefix=prefix_)

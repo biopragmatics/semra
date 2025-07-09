@@ -256,20 +256,25 @@ class Neo4jClient(BaseClient):
         self.write_query(query)
 
     def create_fulltext_index(
-        self, index_name: str, label: str, property_name: str, exist_ok: bool = False
+        self,
+        index_name: str,
+        label: str,
+        property_names: list[str],
+        *,
+        exist_ok: bool = False
     ) -> None:
         """Create a fulltext index.
 
         :param index_name: The name of the index to create.
         :param label: The label of the nodes to index.
-        :param property_name: The node property to index.
+        :param property_names: The node properties to index.
         :param exist_ok: If True, do not raise an exception if the index already exists.
         """
         # Run a query to create a fulltext index on the given label and property
         # Like this:
         # CREATE FULLTEXT INDEX concept_name_ft IF NOT EXISTS
         # FOR (n:concept)
-        # ON EACH [n.name]
+        # ON EACH [n.name, n.curie]
         # OPTIONS {
         #   indexConfig: {
         #     `fulltext.analyzer`: 'standard-folding',
@@ -279,10 +284,11 @@ class Neo4jClient(BaseClient):
         if_not = " IF NOT EXISTS" if exist_ok else ""
         if "." in label:
             label = f"`{label}`"
+        properties = ", ".join(f"n.{prop}" for prop in property_names)
         query = f"""\
         CREATE FULLTEXT INDEX {index_name}{if_not}
         FOR (n:{label})
-        ON EACH [n.{property_name}]
+        ON EACH [{properties}]
         OPTIONS {{
             indexConfig: {{
                 `fulltext.analyzer`: 'standard-folding',

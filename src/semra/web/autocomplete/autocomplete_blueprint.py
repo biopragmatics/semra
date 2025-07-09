@@ -19,6 +19,9 @@ def autocomplete_search(
     top_n: int = 100,
 ):
     """Get the autocomplete suggestions for a given prefix."""
+    if ":" in prefix:
+        # Escape the colon
+        prefix = prefix.replace(":", r"\\:")
     prefix_clause = f"{prefix}* OR {prefix}~"
     top_n = min(top_n, 100)
 

@@ -88,6 +88,7 @@ def get_app(
     fastapi_app.state = state  # type:ignore
     fastapi_app.include_router(api_router)
     if add_autocomplete:
+        print("Adding autocomplete router and building fulltext index")
         from semra.web.autocomplete.autocomplete_blueprint import auto_router
         fastapi_app.include_router(auto_router)
     fastapi_app.mount("/", WSGIMiddleware(flask_app))

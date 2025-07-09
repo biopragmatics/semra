@@ -118,7 +118,7 @@ def get_app(
             "concept_curie_name_ft",
             "concept",
             ["name", "curie"],
-            exist_ok=False,
+            exist_ok=True,
         )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 

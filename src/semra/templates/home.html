@@ -17,7 +17,7 @@
 
 {% macro do_table(counter, label, is_concept=False, has_names=False, desc=None) %}
 <div class="card-body">
-    <h6>{{ label }} Summary</h6>
+    <h4>{{ label }} Summary</h4>
     {% if desc is not none %}
     {{ desc | safe }}
     {% endif %}
@@ -64,9 +64,9 @@
         <div class="col-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">
+                    <h3 class="card-title text-center">
                         Semantic Reasoning Assembler
-                    </h5>
+                    </h3>
                     <div class="row text-center stats" style="padding-top: 1em; padding-bottom: 1em;">
                         {{ count_column(node_counter, "Concepts", "dna") }}
                         {{ count_column(node_counter, "Equivalence Classes", "dna") }}
@@ -95,7 +95,7 @@
                             </button>
                         </div>
                     </div>
-                    <h6>Mapping Sets</h6>
+                    <h4>Mapping Sets</h4>
                 </div>
                 <table class="table">
                     <thead>
@@ -156,7 +156,7 @@
                 Biomappings controls so you can do local curation of negative mappings.") }}
 
                 <div class="card-body">
-                    <h6>Example Mappings</h6>
+                    <h4>Example Mappings</h4>
                 </div>
                 {{ util.mapping_table(example_mappings) }}
             </div>

@@ -21,8 +21,8 @@ def autocomplete_search(
     """Get the autocomplete suggestions for a given prefix."""
     if ":" in prefix:
         # Escape the colon
-        prefix = prefix.replace(":", r"\\:")
-    prefix_clause = f"{prefix}* OR {prefix}~"
+        prefix = prefix.replace(":", "\\:")
+    prefix_clause = f"{prefix}+ OR {prefix}~1"
     top_n = min(top_n, 100)
 
     query = f"""\

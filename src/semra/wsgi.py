@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Literal, overload
 
@@ -15,6 +16,9 @@ from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
+
+
+logger = logging.getLogger(__name__)
 
 
 # docstr-coverage:excused `overload`
@@ -62,12 +66,12 @@ def get_app(
         else:
             current_author = biomappings.resources.get_current_curator(strict=False)
             if current_author:
-                print("Loading biomappings resources")
+                logger.info("Using biomappings resources")
                 biomappings_git_hash = biomappings.utils.get_git_hash()
                 for m in biomappings.load_false_mappings():
                     index_biomapping(false_mapping_index, m)
 
-    print("Loading State for the app")
+    logger.info("Loading State for the app")
     name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1"
     name_example = client.read_query(name_query)
     if name_example and len(name_example) > 0 and len(name_example[0]) > 0:
@@ -106,7 +110,7 @@ def get_app(
     fastapi_app.state = state  # type:ignore
     fastapi_app.include_router(api_router)
     if add_autocomplete:
-        print("Adding autocomplete router and building fulltext index")
+        logger.info("Adding autocomplete router and building fulltext index")
         from semra.web.autocomplete.autocomplete_blueprint import auto_router
         fastapi_app.include_router(auto_router)
         # Create a fulltext index for concept names

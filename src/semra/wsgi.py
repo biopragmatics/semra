@@ -17,7 +17,6 @@ from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
 
-
 logger = logging.getLogger("uvicorn.error")
 
 
@@ -112,6 +111,7 @@ def get_app(
     if add_autocomplete:
         logger.info("Adding autocomplete router and building fulltext index")
         from semra.web.autocomplete.autocomplete_blueprint import auto_router
+
         fastapi_app.include_router(auto_router)
         # Create a fulltext index for concept names
         client.create_fulltext_index(

@@ -4,9 +4,11 @@ This module provides an API endpoint for autocomplete functionality,
 allowing users to retrieve autocomplete suggestions for concepts based on a
 given prefix.
 """
-import fastapi
 
 from typing import Annotated
+
+import fastapi
+
 from semra.client import BaseClient
 
 auto_router = fastapi.APIRouter(prefix="/autocomplete")
@@ -17,6 +19,7 @@ def _fastapi_get_client(request: fastapi.Request) -> BaseClient:
 
 
 AnnotatedClient = Annotated[BaseClient, fastapi.Depends(_fastapi_get_client)]
+
 
 @auto_router.get("/search", response_model=list[list[str | None]])
 def autocomplete_search(

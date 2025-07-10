@@ -256,12 +256,7 @@ class Neo4jClient(BaseClient):
         self.write_query(query)
 
     def create_fulltext_index(
-        self,
-        index_name: str,
-        label: str,
-        property_names: list[str],
-        *,
-        exist_ok: bool = False
+        self, index_name: str, label: str, property_names: list[str], *, exist_ok: bool = False
     ) -> None:
         """Create a fulltext index.
 
@@ -298,7 +293,6 @@ class Neo4jClient(BaseClient):
         """
 
         self.write_query(query)
-
 
     def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
         if isinstance(curie, Reference):

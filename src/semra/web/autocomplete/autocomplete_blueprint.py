@@ -22,7 +22,7 @@ def autocomplete_search(
     if ":" in prefix:
         # Escape the colon
         prefix = prefix.replace(":", "\\:")
-    prefix_clause = f"{prefix}+ OR {prefix}~1"
+    prefix_clause = f"{prefix}* OR {prefix}~1"
     top_n = min(top_n, 100)
 
     query = f"""\

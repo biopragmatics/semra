@@ -1,3 +1,9 @@
+"""Autocomplete API for SemRA
+
+This module provides an API endpoint for autocomplete functionality,
+allowing users to retrieve autocomplete suggestions for concepts based on a
+given prefix.
+"""
 import fastapi
 
 from typing import Annotated

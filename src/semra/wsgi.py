@@ -18,7 +18,7 @@ from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 # docstr-coverage:excused `overload`

@@ -444,7 +444,6 @@ as label, count UNION ALL
 
         connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
-            WHERE ALL(p IN r WHERE p.primary or p.secondary)
             RETURN DISTINCT n
             UNION ALL
             MATCH (n:concept {{curie: $curie}})
@@ -456,8 +455,18 @@ as label, count UNION ALL
         # component_curies.add(curie)
 
         edge_query = """\
+            // There is a mapping between the two concepts
             MATCH p=(a:concept)-[r]->(b:concept)
-            WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
+            // We look up all mappings connecting them, making sure that we maintain
+            // source-target semantics to only pull out paths for p that correspond
+            // to the direction of the mapping
+            MATCH (a)<-[:`owl:annotatedSource`]-(m:mapping)-[:`owl:annotatedTarget`]->(b)
+            // Traverse the mapping to get to the evidence supporting it
+            MATCH q=(m)-[:hasEvidence]-(e:evidence)
+            WHERE a <> b
+            AND a.curie in $curies AND b.curie in $curies
+            // Make sure the evidence is not an inversion of chaining
+            AND NOT (e.mapping_justification IN ['semapv:MappingInversion', 'semapv:MappingChaining'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

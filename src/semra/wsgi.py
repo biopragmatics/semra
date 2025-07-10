@@ -70,12 +70,28 @@ def get_app(
             current_author = biomappings.resources.get_current_curator(strict=True)
 
     print("Loading State for the app")
+    name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1"
+    name_example = client.read_query(name_query)
+    if name_example and len(name_example) > 0 and len(name_example[0]) > 0:
+        name_example = name_example[0][0]
+    else:
+        name_example = None
+    curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
+    curie_example = client.read_query(curie_query)
+    if curie_example and len(curie_example) > 0 and len(curie_example[0]) > 0:
+        curie_example = curie_example[0][0]
+    else:
+        # There should always be at least one example concept in the database
+        # with a curie
+        raise ValueError("No curie example found in the database")
     state = State(
         client=client,
         summary=client.get_full_summary(),
         false_mapping_index=false_mapping_index,
         biomappings_hash=biomappings_git_hash,
         current_author=current_author,
+        name_example=name_example,
+        curie_example=curie_example,
     )
 
     flask_app = Flask(__name__)

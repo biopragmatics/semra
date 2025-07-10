@@ -1,4 +1,4 @@
-"""Autocomplete API for SemRA
+"""Autocomplete API for SeMRA.
 
 This module provides an API endpoint for autocomplete functionality,
 allowing users to retrieve autocomplete suggestions for concepts based on a

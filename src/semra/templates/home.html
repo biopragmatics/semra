@@ -195,19 +195,15 @@
               // Each suggestion is a tuple of (normalized name, grounded name, curie)
               const option = document.createElement('option');
 
-              const [norm_name, name, curie] = suggestion;
+              const [name, curie] = suggestion;
 
               // Set the value for the option to the curie
               option.value = curie;
 
               // Set the text content for the option as the matched string and
               // the grounded name, if they exist, otherwise leave set it to the curie
-              let displayText  = '';
-              if (norm_name && name) {
-                displayText = `${norm_name} (${name})`;
-              } else if (norm_name) {
-                displayText = norm_name;
-              } else if (name) {
+              let displayText;
+              if (name) {
                 displayText = name;
               } else {
                 displayText = curie;

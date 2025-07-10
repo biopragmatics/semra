@@ -31,7 +31,7 @@ def autocomplete_search(
     prefix_clause = f"{prefix}* OR {prefix}~1"
     top_n = min(top_n, 100)
 
-    query = f"""\
+    query = """\
     CALL db.index.fulltext.queryNodes("concept_curie_name_ft", $prefix) YIELD node
     RETURN node.name, node.curie
     LIMIT $top_n

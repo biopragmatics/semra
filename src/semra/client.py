@@ -291,7 +291,7 @@ class Neo4jClient(BaseClient):
         ON EACH [{properties}]
         OPTIONS {{
             indexConfig: {{
-                `fulltext.analyzer`: 'standard-folding',
+                `fulltext.analyzer`: 'unicode_whitespace',
                 `fulltext.eventually_consistent`: true
             }}
         }}

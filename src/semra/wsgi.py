@@ -67,8 +67,6 @@ def get_app(
                 for m in biomappings.load_false_mappings():
                     index_biomapping(false_mapping_index, m)
 
-            current_author = biomappings.resources.get_current_curator(strict=True)
-
     print("Loading State for the app")
     name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1"
     name_example = client.read_query(name_query)

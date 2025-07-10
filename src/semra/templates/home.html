@@ -77,7 +77,9 @@
                     <p>See the <a href="/docs">API Documentation</a>.</p>
                     <div class="mb-3">
                         <label for="conceptNameSearch" class="form-label">
-                        Enter a concept name:
+                        Enter a concept
+                            {% if example_concept_name %}name (e.g. {{ example_concept_name }}) or {% endif %}
+                            CURIE (e.g. {{ example_concept_curie }}) to search for a concept.
                         </label>
                         <div class="input-group">
                             <input class="form-control" list="conceptOptions" id="conceptNameSearch" placeholder="Type to search...">

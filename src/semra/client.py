@@ -20,6 +20,7 @@ from typing_extensions import Self
 from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 from semra.rules import RELATIONS
 from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [
     "BaseClient",
@@ -454,7 +455,7 @@ as label, count UNION ALL
         component_curies = {node["curie"] for node in nodes}
         # component_curies.add(curie)
 
-        edge_query = """\
+        edge_query = f"""\
             // There is a mapping between the two concepts
             MATCH p=(a:concept)-[r]->(b:concept)
             // We look up all mappings connecting them, making sure that we maintain
@@ -466,7 +467,7 @@ as label, count UNION ALL
             WHERE a <> b
             AND a.curie in $curies AND b.curie in $curies
             // Make sure the evidence is not an inversion of chaining
-            AND NOT (e.mapping_justification IN ['semapv:MappingInversion', 'semapv:MappingChaining'])
+            AND NOT (e.mapping_justification IN ['{CHAIN_MAPPING.curie}', '{INVERSION_MAPPING.curie}'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

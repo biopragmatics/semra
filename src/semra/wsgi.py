@@ -120,6 +120,19 @@ def get_app(
             ["name", "curie"],
             exist_ok=True,
         )
+        # Create btree index for concept curies and evidence mapping_justification
+        client.create_single_property_node_index(
+            index_name = "concept_curie",
+            label = "concept",
+            property_name = "curie",
+            exist_ok = True,
+        )
+        client.create_single_property_node_index(
+            index_name = "evidence_mapping_justification",
+            label = "evidence",
+            property_name = "mapping_justification",
+            exist_ok = True,
+        )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 
     if return_flask:

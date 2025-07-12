@@ -505,7 +505,6 @@ as label, count UNION ALL
         nodes = [n[0] for n in self.read_query(connected_query, curie=curie)]
 
         component_curies = {node["curie"] for node in nodes}
-        # component_curies.add(curie)
 
         edge_query = f"""\
             // There is a mapping between the two concepts

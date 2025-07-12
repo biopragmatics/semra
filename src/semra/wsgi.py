@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Literal, overload
 
@@ -15,6 +16,8 @@ from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
+
+logger = logging.getLogger("uvicorn.error")
 
 
 # docstr-coverage:excused `overload`
@@ -38,7 +41,11 @@ def get_app(
 
 
 def get_app(
-    *, client: BaseClient | None = None, return_flask: bool = False, use_biomappings: bool = True
+    *,
+    client: BaseClient | None = None,
+    return_flask: bool = False,
+    use_biomappings: bool = True,
+    add_autocomplete: bool = True,
 ) -> fastapi.FastAPI | tuple[Flask, fastapi.FastAPI]:
     """Get the SeMRA FastAPI app."""
     if client is None:
@@ -58,16 +65,34 @@ def get_app(
         else:
             current_author = biomappings.resources.get_current_curator(strict=False)
             if current_author:
+                logger.info("Using biomappings resources")
                 biomappings_git_hash = biomappings.utils.get_git_hash()
                 for m in biomappings.load_false_mappings():
                     index_biomapping(false_mapping_index, m)
 
+    logger.info("Loading State for the app")
+    name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1"
+    name_example = client.read_query(name_query)
+    if name_example and len(name_example) > 0 and len(name_example[0]) > 0:
+        name_example = name_example[0][0]
+    else:
+        name_example = None
+    curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
+    curie_example = client.read_query(curie_query)
+    if curie_example and len(curie_example) > 0 and len(curie_example[0]) > 0:
+        curie_example = curie_example[0][0]
+    else:
+        # There should always be at least one example concept in the database
+        # with a curie
+        raise ValueError("No curie example found in the database")
     state = State(
         client=client,
         summary=client.get_full_summary(),
         false_mapping_index=false_mapping_index,
         biomappings_hash=biomappings_git_hash,
         current_author=current_author,
+        name_example=name_example,
+        curie_example=curie_example,
     )
 
     flask_app = Flask(__name__)
@@ -83,6 +108,31 @@ def get_app(
     )
     fastapi_app.state = state  # type:ignore
     fastapi_app.include_router(api_router)
+    if add_autocomplete:
+        logger.info("Adding autocomplete router and building fulltext index")
+        from semra.web.autocomplete.autocomplete_blueprint import auto_router
+
+        fastapi_app.include_router(auto_router)
+        # Create a fulltext index for concept names
+        client.create_fulltext_index(
+            "concept_curie_name_ft",
+            "concept",
+            ["name", "curie"],
+            exist_ok=True,
+        )
+        # Create btree index for concept curies and evidence mapping_justification
+        client.create_single_property_node_index(
+            index_name = "concept_curie",
+            label = "concept",
+            property_name = "curie",
+            exist_ok = True,
+        )
+        client.create_single_property_node_index(
+            index_name = "evidence_mapping_justification",
+            label = "evidence",
+            property_name = "mapping_justification",
+            exist_ok = True,
+        )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 
     if return_flask:

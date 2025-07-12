@@ -51,6 +51,8 @@ def home() -> str:
         prefix_counter=state.summary.PREFIX_COUNTER,
         author_counter=state.summary.AUTHOR_COUNTER,
         high_matches_counter=state.summary.HIGH_MATCHES_COUNTER,
+        example_concept_name=state.name_example,
+        example_concept_curie=state.curie_example,
     )
 
 

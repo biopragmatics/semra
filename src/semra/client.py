@@ -20,6 +20,7 @@ from typing_extensions import Self
 from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 from semra.rules import RELATIONS
 from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [
     "BaseClient",
@@ -250,6 +251,45 @@ class Neo4jClient(BaseClient):
 
         self.write_query(query)
 
+    def create_fulltext_index(
+        self, index_name: str, label: str, property_names: list[str], *, exist_ok: bool = False
+    ) -> None:
+        """Create a fulltext index.
+
+        :param index_name: The name of the index to create.
+        :param label: The label of the nodes to index.
+        :param property_names: The node properties to index.
+        :param exist_ok: If True, do not raise an exception if the index already exists.
+        """
+        # Run a query to create a fulltext index on the given label and property
+        # Like this:
+        # CREATE FULLTEXT INDEX concept_name_ft IF NOT EXISTS
+        # FOR (n:concept)
+        # ON EACH [n.name, n.curie]
+        # OPTIONS {
+        #   indexConfig: {
+        #     `fulltext.analyzer`: 'standard-folding',
+        #     `fulltext.eventually_consistent`: true
+        #   }
+        # }
+        if_not = " IF NOT EXISTS" if exist_ok else ""
+        if "." in label:
+            label = f"`{label}`"
+        properties = ", ".join(f"n.{prop}" for prop in property_names)
+        query = f"""\
+        CREATE FULLTEXT INDEX {index_name}{if_not}
+        FOR (n:{label})
+        ON EACH [{properties}]
+        OPTIONS {{
+            indexConfig: {{
+                `fulltext.analyzer`: 'unicode_whitespace',
+                `fulltext.eventually_consistent`: true
+            }}
+        }}
+        """
+
+        self.write_query(query)
+
     def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
         if isinstance(curie, Reference):
             curie = curie.curie
@@ -444,7 +484,6 @@ as label, count UNION ALL
 
         connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
-            WHERE ALL(p IN r WHERE p.primary or p.secondary)
             RETURN DISTINCT n
             UNION ALL
             MATCH (n:concept {{curie: $curie}})
@@ -453,11 +492,20 @@ as label, count UNION ALL
         nodes = [n[0] for n in self.read_query(connected_query, curie=curie)]
 
         component_curies = {node["curie"] for node in nodes}
-        # component_curies.add(curie)
 
-        edge_query = """\
+        edge_query = f"""\
+            // There is a mapping between the two concepts
             MATCH p=(a:concept)-[r]->(b:concept)
-            WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
+            // We look up all mappings connecting them, making sure that we maintain
+            // source-target semantics to only pull out paths for p that correspond
+            // to the direction of the mapping
+            MATCH (a)<-[:`owl:annotatedSource`]-(m:mapping)-[:`owl:annotatedTarget`]->(b)
+            // Traverse the mapping to get to the evidence supporting it
+            MATCH q=(m)-[:hasEvidence]-(e:evidence)
+            WHERE a <> b
+            AND a.curie in $curies AND b.curie in $curies
+            // Make sure the evidence is not an inversion of chaining
+            AND NOT (e.mapping_justification IN ['{CHAIN_MAPPING.curie}', '{INVERSION_MAPPING.curie}'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

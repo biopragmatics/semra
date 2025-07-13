@@ -87,10 +87,15 @@ class MockClient(BaseClient):
         """Get an empty summary."""
         return FullSummary()
 
-    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
+    def get_connected_component_graph(
+        self, curie: ReferenceHint, relation_constraint: str | None = None
+    ) -> nx.MultiDiGraph | None:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
+        :param relation_constraint: Relation type constraints (separated by |)
+            to apply when considering relations in the connected component.
+            If None, defaults to the relations defined in the client.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """

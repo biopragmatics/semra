@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from semra import Evidence, Mapping, MappingSet, Reference
 from semra.client import BaseClient
+from semra.vocabulary import EXACT_MATCH
 from semra.web.shared import EXAMPLE_CONCEPTS
 
 __all__ = ["api_router"]
@@ -45,7 +46,7 @@ def get_concept_cytoscape(
     ),
 ) -> JSONResponse:
     """Get the mapping graph surrounding the concept as a Cytoscape.js JSON object."""
-    graph = client.get_connected_component_graph(curie)
+    graph = client.get_connected_component_graph(curie, relation_constraint=EXACT_MATCH)
     if graph is None:
         raise HTTPException(status_code=404, detail=f"concept not found: {curie}")
     cytoscape_json = nx.cytoscape_data(graph)["elements"]

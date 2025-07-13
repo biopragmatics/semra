@@ -200,7 +200,7 @@ class Neo4jClient(BaseClient):
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=auth, max_connection_lifetime=180)
 
         self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
-        self._rel_q = "|".join(
+        self._rel_q: str = "|".join(
             f"`{reference.curie}`"
             for reference in RELATIONS
             if reference.curie in self._all_relations

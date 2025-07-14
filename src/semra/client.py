@@ -207,7 +207,7 @@ class BaseClient:
         """
         raise NotImplementedError
 
-    def read_query(self, query: str, **query_params: Any) -> list[list[Any]] | None:
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
         """Run a read-only query.
 
         :param query: The cypher query to run
@@ -256,7 +256,7 @@ class Neo4jClient(BaseClient):
         if self.driver is not None:
             self.driver.close()
 
-    def read_query(self, query: str, **query_params: Any) -> list[list[Any]] | None:
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
         """Run a read-only query.
 
         :param query: The cypher query to run

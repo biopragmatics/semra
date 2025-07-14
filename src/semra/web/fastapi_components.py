@@ -46,7 +46,9 @@ def get_concept_cytoscape(
     ),
 ) -> JSONResponse:
     """Get the mapping graph surrounding the concept as a Cytoscape.js JSON object."""
-    graph = client.get_connected_component_graph(curie, relation_constraint=EXACT_MATCH.curie)
+    graph = client.get_connected_component_graph(
+        curie, relation_constraint=f"`{EXACT_MATCH.curie}`"
+    )
     if graph is None:
         raise HTTPException(status_code=404, detail=f"concept not found: {curie}")
     cytoscape_json = nx.cytoscape_data(graph)["elements"]

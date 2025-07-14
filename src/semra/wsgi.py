@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from typing import Literal, overload
 
 import fastapi
@@ -17,7 +18,20 @@ from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
 
-logger = logging.getLogger("uvicorn.error")
+
+# Set up logging separately from uvicorn
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    "%(levelname)s: [%(asctime)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setFormatter(formatter)
+file_handler = logging.FileHandler("info.log")
+file_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+logger.addHandler(file_handler)
 
 
 # docstr-coverage:excused `overload`

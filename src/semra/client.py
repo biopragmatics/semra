@@ -494,6 +494,13 @@ as label, count UNION ALL
 
         if not relation_constraint:
             relation_constraint = self._rel_q
+        if ":" in relation_constraint:
+            # Split by | and put all the relations that contain a colon in backticks
+            # unless they are already in backticks
+            relation_constraint = "|".join(
+                f"`{r}`" if ":" in r and not r.startswith("`") else r
+                for r in relation_constraint.split("|")
+            )
 
         connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{relation_constraint} *..{max_distance}]-(n:concept)
@@ -518,7 +525,7 @@ as label, count UNION ALL
             WHERE a <> b
             AND a.curie in $curies AND b.curie in $curies
             // Make sure the evidence is not an inversion of chaining
-            AND NOT (e.mapping_justification IN ['{CHAIN_MAPPING.curie}', '{INVERSION_MAPPING.curie}'])
+            AND NOT (e.mapping_justification IN ['`{CHAIN_MAPPING.curie}`', '`{INVERSION_MAPPING.curie}`'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

@@ -570,7 +570,7 @@ as label, count UNION ALL
             WHERE a <> b
             AND a.curie in $curies AND b.curie in $curies
             // Make sure the evidence is not an inversion of chaining
-            AND NOT (e.mapping_justification IN ['`{CHAIN_MAPPING.curie}`', '`{INVERSION_MAPPING.curie}`'])
+            AND NOT (e.mapping_justification IN ['{CHAIN_MAPPING.curie}', '{INVERSION_MAPPING.curie}'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]

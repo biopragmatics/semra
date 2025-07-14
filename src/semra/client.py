@@ -20,6 +20,7 @@ from typing_extensions import Self
 from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 from semra.rules import RELATIONS
 from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [
     "BaseClient",
@@ -133,10 +134,14 @@ class BaseClient:
         """Get a mapping of references->name for all concepts equivalent to the given concept."""
         raise NotImplementedError
 
-    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
+    def get_connected_component_graph(
+        self, curie: ReferenceHint, relation_constraint: str | None = None
+    ) -> nx.MultiDiGraph | None:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
+        :param relation_constraint: Relation type constraints (separated by |)
+            to apply when considering relations in the connected component.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
@@ -195,7 +200,7 @@ class Neo4jClient(BaseClient):
         self.driver = neo4j.GraphDatabase.driver(uri=uri, auth=auth, max_connection_lifetime=180)
 
         self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
-        self._rel_q = "|".join(
+        self._rel_q: str = "|".join(
             f"`{reference.curie}`"
             for reference in RELATIONS
             if reference.curie in self._all_relations
@@ -424,12 +429,18 @@ as label, count UNION ALL
         }
 
     def get_connected_component(
-        self, curie: ReferenceHint, max_distance: int | None = None
+        self,
+        curie: ReferenceHint,
+        max_distance: int | None = None,
+        relation_constraint: str | None = None,
     ) -> tuple[list[neo4j.graph.Node], list[neo4j.graph.Path]]:
         """Get the nodes and relations in the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
         :param max_distance: The maximum number of hops to consider
+        :param relation_constraint: Relation type constraints (separated by |)
+            to apply when considering relations in the connected component.
+            If None, defaults to the relations defined in the client.
 
         :returns: A pair of:
 
@@ -442,9 +453,11 @@ as label, count UNION ALL
         if max_distance is None:
             max_distance = DEFAULT_MAX_LENGTH
 
+        if not relation_constraint:
+            relation_constraint = self._rel_q
+
         connected_query = f"""\
-            MATCH (:concept {{curie: $curie}})-[r:{self._rel_q} *..{max_distance}]-(n:concept)
-            WHERE ALL(p IN r WHERE p.primary or p.secondary)
+            MATCH (:concept {{curie: $curie}})-[r:{relation_constraint} *..{max_distance}]-(n:concept)
             RETURN DISTINCT n
             UNION ALL
             MATCH (n:concept {{curie: $curie}})
@@ -455,22 +468,36 @@ as label, count UNION ALL
         component_curies = {node["curie"] for node in nodes}
         # component_curies.add(curie)
 
-        edge_query = """\
+        edge_query = f"""\
+            // There is a mapping between the two concepts
             MATCH p=(a:concept)-[r]->(b:concept)
-            WHERE a.curie in $curies and b.curie in $curies and (r.primary or r.secondary)
+            // We look up all mappings connecting them, making sure that we maintain
+            // source-target semantics to only pull out paths for p that correspond
+            // to the direction of the mapping
+            MATCH (a)<-[:`owl:annotatedSource`]-(m:mapping)-[:`owl:annotatedTarget`]->(b)
+            // Traverse the mapping to get to the evidence supporting it
+            MATCH q=(m)-[:hasEvidence]-(e:evidence)
+            WHERE a <> b
+            AND a.curie in $curies AND b.curie in $curies
+            // Make sure the evidence is not an inversion of chaining
+            AND NOT (e.mapping_justification IN ['{CHAIN_MAPPING.curie}', '{INVERSION_MAPPING.curie}'])
             RETURN p
         """
         relations = [r[0] for r in self.read_query(edge_query, curies=sorted(component_curies))]
         return nodes, relations
 
-    def get_connected_component_graph(self, curie: ReferenceHint) -> nx.MultiDiGraph | None:
+    def get_connected_component_graph(
+        self, curie: ReferenceHint, relation_constraint: str | None = None
+    ) -> nx.MultiDiGraph | None:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
+        :param relation_constraint: Relation type constraints (separated by |)
+            to apply when considering relations in the connected component.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
-        nodes, paths = self.get_connected_component(curie)
+        nodes, paths = self.get_connected_component(curie, relation_constraint=relation_constraint)
         g = nx.MultiDiGraph()
         for node in nodes:
             g.add_node(node["curie"], **node)

@@ -309,18 +309,6 @@ class Neo4jClient(BaseClient):
         :param property_names: The node properties to index.
         :param exist_ok: If True, do not raise an exception if the index already exists.
         """
-        # Run a query to create a fulltext index on the given label and property
-        # Like this:
-        # CREATE FULLTEXT INDEX concept_name_ft IF NOT EXISTS
-        # FOR (n:concept)
-        # ON EACH [n.name, n.curie]
-        # OPTIONS {
-        #   indexConfig: {
-        #      // Or other analyzer e.g.'unicode_whitespace'
-        #     `fulltext.analyzer`: 'standard-folding',
-        #     `fulltext.eventually_consistent`: true
-        #   }
-        # }
         if_not = " IF NOT EXISTS" if exist_ok else ""
         if "." in label:
             label = f"`{label}`"

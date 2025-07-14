@@ -74,15 +74,15 @@ def get_app(
 
     logger.info("Loading State for the app")
     name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1"
-    name_example = client.read_query(name_query)
-    if name_example and len(name_example) > 0 and len(name_example[0]) > 0:
-        name_example = name_example[0][0]
+    name_example_list = client.read_query(name_query)
+    if name_example_list and len(name_example_list) > 0 and len(name_example_list[0]) > 0:
+        name_example = name_example_list[0][0]
     else:
         name_example = None
     curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
-    curie_example = client.read_query(curie_query)
-    if curie_example and len(curie_example) > 0 and len(curie_example[0]) > 0:
-        curie_example = curie_example[0][0]
+    curie_example_list = client.read_query(curie_query)
+    if curie_example_list and len(curie_example_list) > 0 and len(curie_example_list[0]) > 0:
+        curie_example = curie_example_list[0][0]
     else:
         # There should always be at least one example concept in the database
         # with a curie

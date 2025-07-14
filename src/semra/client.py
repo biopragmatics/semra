@@ -173,6 +173,40 @@ class BaseClient:
             example_mappings=self.get_example_mappings(),
         )
 
+    def create_single_property_node_index(
+        self,
+        index_name: str,
+        label: str,
+        property_name: str,
+        *,
+        exist_ok: bool = False,
+    ) -> None:
+        """Create a single-property node index.
+
+        :param index_name: The name of the index to create.
+        :param label: The label of the nodes to index.
+        :param property_name: The node property to index.
+        :param exist_ok: If True, do not raise an exception if the index already exists.
+        """
+        raise NotImplementedError
+
+    def create_fulltext_index(
+        self,
+        index_name: str,
+        label: str,
+        property_names: list[str],
+        *,
+        exist_ok: bool = False,
+    ) -> None:
+        """Create a fulltext index.
+
+        :param index_name: The name of the index to create.
+        :param label: The label of the nodes to index.
+        :param property_names: The node properties to index.
+        :param exist_ok: If True, do not raise an exception if the index already exists.
+        """
+        raise NotImplementedError
+
 
 class Neo4jClient(BaseClient):
     """A client to Neo4j."""
@@ -272,6 +306,7 @@ class Neo4jClient(BaseClient):
         # ON EACH [n.name, n.curie]
         # OPTIONS {
         #   indexConfig: {
+        #      // Or other analyzer e.g.'unicode_whitespace'
         #     `fulltext.analyzer`: 'standard-folding',
         #     `fulltext.eventually_consistent`: true
         #   }

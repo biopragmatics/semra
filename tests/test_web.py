@@ -1,7 +1,7 @@
 """Test the app."""
 
 import unittest
-from typing import ClassVar, cast
+from typing import Any, ClassVar, cast
 
 import networkx as nx
 from fastapi import FastAPI
@@ -110,6 +110,34 @@ class MockClient(BaseClient):
         g.add_edge(a1.curie, b1.curie, key=M1.curie, type=EXACT_MATCH.curie)
         g.add_edge(b1.curie, a1.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
         return g
+
+    def create_single_property_node_index(
+        self,
+        index_name: str,
+        label: str,
+        property_name: str,
+        exist_ok: bool = True,
+    ) -> None:
+        """Mock create single property node index."""
+        pass
+
+    def create_fulltext_index(
+        self,
+        index_name: str,
+        label: str,
+        properties: list[str],
+        exist_ok: bool = True,
+    ) -> None:
+        """Mock create fulltext index."""
+        pass
+
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
+        """Mock read query."""
+        if "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1" in query:
+            return [[a1.name]]
+        elif "MATCH (n:concept) RETURN n.curie LIMIT 1" in query:
+            return [[a1.curie]]
+        raise NotImplementedError(f"Query not implemented: {query}")
 
 
 class BaseTest(unittest.TestCase):

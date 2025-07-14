@@ -27,6 +27,7 @@ def get_app(
     client: BaseClient | None = ...,
     return_flask: Literal[True] = True,
     use_biomappings: bool = ...,
+    add_autocomplete: bool = ...,
 ) -> tuple[Flask, fastapi.FastAPI]: ...
 
 
@@ -37,6 +38,7 @@ def get_app(
     client: BaseClient | None = ...,
     return_flask: Literal[False] = False,
     use_biomappings: bool = ...,
+    add_autocomplete: bool = ...,
 ) -> fastapi.FastAPI: ...
 
 
@@ -122,16 +124,16 @@ def get_app(
         )
         # Create btree index for concept curies and evidence mapping_justification
         client.create_single_property_node_index(
-            index_name = "concept_curie",
-            label = "concept",
-            property_name = "curie",
-            exist_ok = True,
+            index_name="concept_curie",
+            label="concept",
+            property_name="curie",
+            exist_ok=True,
         )
         client.create_single_property_node_index(
-            index_name = "evidence_mapping_justification",
-            label = "evidence",
-            property_name = "mapping_justification",
-            exist_ok = True,
+            index_name="evidence_mapping_justification",
+            label="evidence",
+            property_name="mapping_justification",
+            exist_ok=True,
         )
     fastapi_app.mount("/", WSGIMiddleware(flask_app))
 

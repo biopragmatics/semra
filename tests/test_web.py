@@ -131,7 +131,7 @@ class MockClient(BaseClient):
         """Mock create fulltext index."""
         pass
 
-    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]] | None:
         """Mock read query."""
         if "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1" in query:
             return [[a1.name]]

@@ -21,12 +21,12 @@ def _fastapi_get_client(request: fastapi.Request) -> BaseClient:
 AnnotatedClient = Annotated[BaseClient, fastapi.Depends(_fastapi_get_client)]
 
 
-@auto_router.get("/search", response_model=list[list[str | None]])
+@auto_router.get("/search", response_model=list[list[str]] | None)
 def autocomplete_search(
     client: AnnotatedClient,
     prefix: str,
     top_n: int = 100,
-):
+) -> list[list[str]] | None:
     """Get the autocomplete suggestions for a given prefix."""
     if ":" in prefix:
         # Escape the colon

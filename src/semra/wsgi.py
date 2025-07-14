@@ -18,13 +18,11 @@ from semra.web.fastapi_components import api_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State
 
-
 # Set up logging separately from uvicorn
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter(
-    "%(levelname)s: [%(asctime)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    "%(levelname)s: [%(asctime)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(formatter)

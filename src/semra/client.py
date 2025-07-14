@@ -207,6 +207,16 @@ class BaseClient:
         """
         raise NotImplementedError
 
+    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
+        """Run a read-only q-uery.
+
+        :param query: The cypher query to run
+        :param query_params: The parameters to pass to the query
+
+        :returns: The result of the query
+        """
+        raise NotImplementedError
+
 
 class Neo4jClient(BaseClient):
     """A client to Neo4j."""

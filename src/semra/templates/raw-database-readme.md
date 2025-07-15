@@ -3,8 +3,10 @@
 The SeMRA Raw Semantic Mappings Database is an automatically assembled dataset
 of raw semantic mappings incorporating mappings from:
 
-- Ontologies indexed in [the Bioregistry](https://github.com/biopragmatics/bioregistry) (primary)
-- Databases integrated in [PyOBO](https://github.com/biopragmatics/pyobo) (primary)
+- Ontologies indexed in
+  [the Bioregistry](https://github.com/biopragmatics/bioregistry) (primary)
+- Databases integrated in [PyOBO](https://github.com/biopragmatics/pyobo)
+  (primary)
 - [Biomappings](https://github.com/biopragmatics/biomappings) (secondary)
 - Wikidata (primary/secondary)
 - Custom resources integrated in SeMRA (primary)
@@ -58,7 +60,8 @@ mappings_from_sssom = semra.from_sssom("mappings.sssom.tsv.gz")
 
 ## Web Application
 
-1. Download all artifacts from [![](https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg)](https://doi.org/10.5281/zenodo.11082038)
+1. Download all artifacts from
+   [![](https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg)](https://doi.org/10.5281/zenodo.11082038)
    into a folder and `cd` into it
 2. Run `sh run_on_docker.sh` from the command line
 3. Navigate to http://localhost:8773 to see the SeMRA dashboard or to
@@ -66,9 +69,9 @@ mappings_from_sssom = semra.from_sssom("mappings.sssom.tsv.gz")
 
 ## Licensing
 
-Mappings are licensed according to their primary resources. These are
-explicitly annotated in the SSSOM file on each row (when available) and on the
-mapping set level in the Neo4j graph database artifacts.
+Mappings are licensed according to their primary resources. These are explicitly
+annotated in the SSSOM file on each row (when available) and on the mapping set
+level in the Neo4j graph database artifacts.
 
 ## Statistics
 

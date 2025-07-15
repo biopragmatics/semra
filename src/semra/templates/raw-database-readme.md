@@ -26,18 +26,18 @@ $ semra build
 ```
 
 Note that downloading raw data resources can take on the order of hours to tens
-of hours depending on your internet connection and the reliability of
-the resources' respective servers.
+of hours depending on your internet connection and the reliability of the
+resources' respective servers.
 
 {% if statistics.refresh_source_timedelta %}
-A full resource refresh (i.e., re-download of resources)
-was run in {{ naturaldelta(statistics.refresh_source_timedelta)}}
+A full resource refresh (i.e., re-download of resources) was run in
+{{ naturaldelta(statistics.refresh_source_timedelta)}}
 {%- elif statistics.refresh_raw_timedelta %}
-A refresh of raw mappings (i.e., re-processing of mappings)
-was run in {{ naturaldelta(statistics.refresh_raw_timedelta)}}
+A refresh of raw mappings (i.e., re-processing of mappings) was run in
+{{ naturaldelta(statistics.refresh_raw_timedelta)}}
 {%- else %}
-Processing without re-downloading nor re-parsing of sources
-was run in {{ naturaldelta(statistics.no_refresh_timedelta)}}
+Processing without re-downloading nor re-parsing of sources was run in
+{{ naturaldelta(statistics.no_refresh_timedelta)}}
 {%- endif %}
 on commodity hardware (e.g., a 2023 MacBook Pro with 36GB RAM).
 

@@ -48,6 +48,14 @@ def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
     return f"{prefix}:{curie_or_luid}"
 
 
+def _safe_label_or_type(label_or_type: str) -> str:
+    esc_chars = {".", ":"}
+    if any(char in label_or_type for char in esc_chars):
+        if label_or_type.startswith("`") and label_or_type.endswith("`"):
+            return label_or_type
+        return f"`{label_or_type}`"
+    return label_or_type
+
 #: A cypher query that gets all of the databases' relation types
 RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
 
@@ -258,7 +266,7 @@ class Neo4jClient(BaseClient):
 
         self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
         self._rel_q: str = "|".join(
-            f"`{reference.curie}`"
+            _safe_label_or_type(reference.curie)
             for reference in RELATIONS
             if reference.curie in self._all_relations
         )
@@ -343,8 +351,7 @@ class Neo4jClient(BaseClient):
         :param exist_ok: If True, do not raise an exception if the index already exists.
         """
         if_not = " IF NOT EXISTS" if exist_ok else ""
-        if "." in label:
-            label = f"`{label}`"
+        label = _safe_label_or_type(label)
         if "." in index_name:
             index_name = index_name.replace(".", "_")
         query = f"CREATE INDEX {index_name}{if_not} FOR (n:{label}) ON (n.{property_name})"
@@ -362,8 +369,7 @@ class Neo4jClient(BaseClient):
         :param exist_ok: If True, do not raise an exception if the index already exists.
         """
         if_not = " IF NOT EXISTS" if exist_ok else ""
-        if "." in label:
-            label = f"`{label}`"
+        label = _safe_label_or_type(label)
         properties = ", ".join(f"n.{prop}" for prop in property_names)
         query = f"""\
         CREATE FULLTEXT INDEX {index_name}{if_not}
@@ -583,8 +589,7 @@ as label, count UNION ALL
             # Split by | and put all the relations that contain a colon in backticks
             # unless they are already in backticks
             relation_constraint = "|".join(
-                f"`{r}`" if ":" in r and not r.startswith("`") else r
-                for r in relation_constraint.split("|")
+                _safe_label_or_type(r) for r in relation_constraint.split("|")
             )
 
         connected_query = f"""\

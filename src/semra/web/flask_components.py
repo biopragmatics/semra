@@ -87,7 +87,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     """Add a negative relationship to biomappings."""
     if _flask_get_biomappings_hash() is None:
         flask.flash("Can't interact with biomappings", category="error")
-        return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
+        return flask.redirect(flask.url_for("." + view_concept.__name__, curie=source))
 
     client = _flask_get_client()
     state = _flask_get_state()
@@ -116,7 +116,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     index_biomapping(_flask_get_false_mapping_index(), mapping)
 
     flask.flash("Appended negative mapping")
-    return flask.redirect(flask.url_for(view_concept.__name__, curie=source))
+    return flask.redirect(flask.url_for("." + view_concept.__name__, curie=source))
 
 
 @flask_blueprint.get("/mapping_set/<mapping_set_id>")

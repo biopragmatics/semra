@@ -22,8 +22,7 @@ class State:
 
     client: BaseClient
     summary: FullSummary
-    curie_example: str
-    name_example: str | None = None
+    example_reference: NormalizedNamedReference
     biomappings_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = field(default_factory=set)
     current_author: NormalizedNamedReference | None = None

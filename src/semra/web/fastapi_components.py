@@ -14,7 +14,10 @@ from semra.client import BaseClient
 from semra.vocabulary import EXACT_MATCH
 from semra.web.shared import EXAMPLE_CONCEPTS
 
-__all__ = ["api_router"]
+__all__ = [
+    "api_router",
+    "auto_router",
+]
 
 api_router = fastapi.APIRouter(prefix="/api")
 
@@ -102,3 +105,14 @@ def get_mapping_set(
 def get_mapping_sets(client: AnnotatedClient) -> list[MappingSet]:
     """Get all mapping sets."""
     return client.get_mapping_sets()
+
+
+auto_router = fastapi.APIRouter(prefix="/autocomplete")
+
+
+@auto_router.get("/search", response_model=list[list[str]] | None)
+def autocomplete_search(
+    client: AnnotatedClient, prefix: str, top_n: int = 100
+) -> list[list[str]] | None:
+    """Get the autocomplete suggestions for a given prefix."""
+    return client.get_autocompletion(prefix, top_n=top_n)

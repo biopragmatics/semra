@@ -173,6 +173,14 @@ class BaseClient:
             example_mappings=self.get_example_mappings(),
         )
 
+    def initialize_autocomplete(self) -> None:
+        """Initialize autocomplete."""
+        raise NotImplementedError
+
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> list[list[str]]:
+        """Get autocompletion."""
+        raise NotImplementedError
+
     def create_single_property_node_index(
         self,
         index_name: str,
@@ -279,6 +287,45 @@ class Neo4jClient(BaseClient):
         """
         with self.driver.session() as session:
             session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
+
+    def get_autocompletion(self, prefix: str, top_n: int = 100) -> list[list[str]]:
+        """Get autocompletion."""
+        if ":" in prefix:
+            # Escape the colon
+            prefix = prefix.replace(":", "\\:")
+        prefix_clause = f"{prefix}* OR {prefix}~1"
+        top_n = min(top_n, 100)
+
+        query = """\
+        CALL db.index.fulltext.queryNodes("concept_curie_name_ft", $prefix) YIELD node
+        RETURN node.name, node.curie
+        LIMIT $top_n
+        """
+        res = self.read_query(query, top_n=top_n, prefix=prefix_clause)
+        return res
+
+    def initialize_autocomplete(self) -> None:
+        """Create indexes in Neo4j for autocomplete."""
+        # Create a fulltext index for concept names
+        self.create_fulltext_index(
+            "concept_curie_name_ft",
+            "concept",
+            ["name", "curie"],
+            exist_ok=True,
+        )
+        # Create btree index for concept curies and evidence mapping_justification
+        self.create_single_property_node_index(
+            index_name="concept_curie",
+            label="concept",
+            property_name="curie",
+            exist_ok=True,
+        )
+        self.create_single_property_node_index(
+            index_name="evidence_mapping_justification",
+            label="evidence",
+            property_name="mapping_justification",
+            exist_ok=True,
+        )
 
     def create_single_property_node_index(
         self, index_name: str, label: str, property_name: str, *, exist_ok: bool = False

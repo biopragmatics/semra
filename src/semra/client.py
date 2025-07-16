@@ -52,6 +52,9 @@ RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN re
 #: A cypher query format string for getting the name of a concept
 CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
+#: The result returned by an autocompletion
+Autocompletion: TypeAlias = list[list[str]]
+
 
 class BaseClient:
     """An abstract class defining all of the functionality for a mapping client."""
@@ -177,7 +180,7 @@ class BaseClient:
         """Initialize autocomplete."""
         raise NotImplementedError
 
-    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> list[list[str]]:
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> Autocompletion:
         """Get autocompletion."""
         raise NotImplementedError
 
@@ -288,7 +291,7 @@ class Neo4jClient(BaseClient):
         with self.driver.session() as session:
             session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
 
-    def get_autocompletion(self, prefix: str, top_n: int = 100) -> list[list[str]]:
+    def get_autocompletion(self, prefix: str, top_n: int = 100) -> Autocompletion:
         """Get autocompletion."""
         if ":" in prefix:
             # Escape the colon

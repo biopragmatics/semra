@@ -111,30 +111,17 @@ class MockClient(BaseClient):
         g.add_edge(b1.curie, a1.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
         return g
 
-    def create_single_property_node_index(
-        self,
-        index_name: str,
-        label: str,
-        property_name: str,
-        exist_ok: bool = True,
-    ) -> None:
-        """Mock create single property node index."""
-        pass
+    def initialize_autocomplete(self) -> None:
+        """Mock initializing autocomplete."""
 
-    def create_fulltext_index(
-        self,
-        index_name: str,
-        label: str,
-        properties: list[str],
-        exist_ok: bool = True,
-    ) -> None:
-        """Mock create fulltext index."""
-        pass
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> list[list[str]]:
+        """Mock getting an autocompletion."""
+        raise NotImplementedError(f"need mock for {prefix}")
 
     def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
         """Mock read query."""
-        if "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name LIMIT 1" in query:
-            return [[a1.name]]
+        if "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1" in query:
+            return [[a1.name, a1.curie]]
         elif "MATCH (n:concept) RETURN n.curie LIMIT 1" in query:
             return [[a1.curie]]
         raise NotImplementedError(f"Query not implemented: {query}")

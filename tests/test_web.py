@@ -24,6 +24,7 @@ from semra.client import (
     ExampleMapping,
     FullSummary,
     ReferenceHint,
+    _safe_label_or_type,
 )
 from semra.wsgi import get_app
 from tests.constants import TEST_CURIES, a1, a2, b1, b2
@@ -239,3 +240,14 @@ class TestAPI(BaseTest):
 
         res_not_found = self.test_client.get("/api/cytoscape/abcdef")
         self.assertEqual(404, res_not_found.status_code)
+
+
+class TestSafeLabelType(BaseTest):
+    """Test the autocompletion API."""
+
+    def test_safe_label_type(self) -> None:
+        """Test the _safe_label_or_type function."""
+        self.assertEqual("a1", _safe_label_or_type("a1"))
+        self.assertEqual("`a:1`", _safe_label_or_type("a:1"))
+        self.assertEqual("`b.c:2`", _safe_label_or_type("b.c:2"))
+        self.assertEqual(f"`{EXACT_MATCH.curie}`", _safe_label_or_type(EXACT_MATCH.curie))

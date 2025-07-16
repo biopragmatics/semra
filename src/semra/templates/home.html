@@ -195,7 +195,8 @@
               // Each suggestion is a tuple of (normalized name, grounded name, curie)
               const option = document.createElement('option');
 
-              const [name, curie] = suggestion;
+              const name = suggestion.name;
+              const curie = suggestion.prefix + ":" + suggestion.identifier;
 
               // Set the value for the option to the curie
               option.value = curie;

@@ -14,6 +14,7 @@ import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
+from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from neo4j import ManagedTransaction, unit_of_work
 from typing_extensions import Self
 
@@ -53,7 +54,7 @@ RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN re
 CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
 #: The result returned by an autocompletion
-Autocompletion: TypeAlias = list[list[str]]
+AutocompletionResults: TypeAlias = list[NormalizedNamableReference]
 
 
 class BaseClient:
@@ -180,7 +181,7 @@ class BaseClient:
         """Initialize autocomplete."""
         raise NotImplementedError
 
-    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> Autocompletion:
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> AutocompletionResults:
         """Get autocompletion."""
         raise NotImplementedError
 
@@ -291,7 +292,7 @@ class Neo4jClient(BaseClient):
         with self.driver.session() as session:
             session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
 
-    def get_autocompletion(self, prefix: str, top_n: int = 100) -> Autocompletion:
+    def get_autocompletion(self, prefix: str, top_n: int = 100) -> AutocompletionResults:
         """Get autocompletion."""
         if ":" in prefix:
             # Escape the colon
@@ -305,7 +306,7 @@ class Neo4jClient(BaseClient):
         LIMIT $top_n
         """
         res = self.read_query(query, top_n=top_n, prefix=prefix_clause)
-        return res
+        return [NormalizedNamedReference.from_curie(curie, name=name) for name, curie in res]
 
     def initialize_autocomplete(self) -> None:
         """Create indexes in Neo4j for autocomplete."""

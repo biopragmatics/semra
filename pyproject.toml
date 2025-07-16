@@ -59,7 +59,7 @@ dependencies = [
     "networkx",
     "bioregistry>=0.12.19",
     "pyobo>=0.12.4",
-    "bioontologies>=0.7.2",
+    "bioontologies>=0.7.3",
     "typing_extensions",
     "zenodo_client",
     "ssslm",
@@ -67,6 +67,8 @@ dependencies = [
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
     "pyyaml",
+    "humanize",
+    "tabulate",
 ]
 
 [project.optional-dependencies]
@@ -101,7 +103,6 @@ landscape = [
     "seaborn",
     "matplotlib",
     "pygraphviz",
-    "humanize",
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls

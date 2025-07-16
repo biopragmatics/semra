@@ -123,7 +123,7 @@ https://bioregistry.io/{{ ref.curie }}
                         {% elif (curie, exact_match.curie) in false_mapping_index %}
                             Already Marked as Incorrect
                         {% else %}
-                        <a href="{{ url_for('mark_exact_incorrect', source=curie, target=exact_match.curie) }}">
+                        <a href="{{ url_for('.mark_exact_incorrect', source=curie, target=exact_match.curie) }}">
                             Mark as Incorrect
                         </a>
                         {% endif %}

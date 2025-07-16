@@ -56,6 +56,7 @@ def _safe_label_or_type(label_or_type: str) -> str:
         return f"`{label_or_type}`"
     return label_or_type
 
+
 #: A cypher query that gets all of the databases' relation types
 RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
 

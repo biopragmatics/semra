@@ -96,7 +96,6 @@ web = [
     "flask",
     "bootstrap_flask",
     "neo4j",
-    "pytrie",
 ]
 landscape = [
     "upsetplot",

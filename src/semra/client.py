@@ -24,6 +24,7 @@ from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidenc
 from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [
+    "AutocompletionResults",
     "BaseClient",
     "FullSummary",
     "Neo4jClient",

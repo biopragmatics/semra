@@ -18,7 +18,13 @@ from semra import (
     Reference,
     SimpleEvidence,
 )
-from semra.client import BaseClient, ExampleMapping, FullSummary, ReferenceHint
+from semra.client import (
+    AutocompletionResults,
+    BaseClient,
+    ExampleMapping,
+    FullSummary,
+    ReferenceHint,
+)
 from semra.wsgi import get_app
 from tests.constants import TEST_CURIES, a1, a2, b1, b2
 
@@ -114,7 +120,7 @@ class MockClient(BaseClient):
     def initialize_autocomplete(self) -> None:
         """Mock initializing autocomplete."""
 
-    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> list[list[str]]:
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> AutocompletionResults:
         """Mock getting an autocompletion."""
         raise NotImplementedError(f"need mock for {prefix}")
 

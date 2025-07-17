@@ -14,6 +14,7 @@ import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
+from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from neo4j import ManagedTransaction, unit_of_work
 from typing_extensions import Self
 
@@ -23,6 +24,7 @@ from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidenc
 from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [
+    "AutocompletionResults",
     "BaseClient",
     "FullSummary",
     "Neo4jClient",
@@ -46,11 +48,23 @@ def _safe_curie(curie_or_luid: ReferenceHint, prefix: str) -> str:
     return f"{prefix}:{curie_or_luid}"
 
 
+def _safe_label_or_type(label_or_type: str) -> str:
+    esc_chars = {".", ":"}
+    if any(char in label_or_type for char in esc_chars):
+        if label_or_type.startswith("`") and label_or_type.endswith("`"):
+            return label_or_type
+        return f"`{label_or_type}`"
+    return label_or_type
+
+
 #: A cypher query that gets all of the databases' relation types
 RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
 
 #: A cypher query format string for getting the name of a concept
 CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
+
+#: The result returned by an autocompletion
+AutocompletionResults: TypeAlias = list[NormalizedNamableReference]
 
 
 class BaseClient:
@@ -173,6 +187,18 @@ class BaseClient:
             example_mappings=self.get_example_mappings(),
         )
 
+    def initialize_autocomplete(self) -> None:
+        """Initialize autocomplete."""
+        raise NotImplementedError
+
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> AutocompletionResults:
+        """Get autocompletion."""
+        raise NotImplementedError
+
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Get an example concept."""
+        raise NotImplementedError
+
 
 class Neo4jClient(BaseClient):
     """A client to Neo4j."""
@@ -201,7 +227,7 @@ class Neo4jClient(BaseClient):
 
         self._all_relations = {curie for (curie,) in self.read_query(RELATIONS_CYPHER)}
         self._rel_q: str = "|".join(
-            f"`{reference.curie}`"
+            _safe_label_or_type(reference.curie)
             for reference in RELATIONS
             if reference.curie in self._all_relations
         )
@@ -236,6 +262,45 @@ class Neo4jClient(BaseClient):
         with self.driver.session() as session:
             session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
 
+    def get_autocompletion(self, prefix: str, top_n: int = 100) -> AutocompletionResults:
+        """Get autocompletion."""
+        if ":" in prefix:
+            # Escape the colon
+            prefix = prefix.replace(":", "\\:")
+        prefix_clause = f"{prefix}* OR {prefix}~1"
+        top_n = min(top_n, 100)
+
+        query = """\
+        CALL db.index.fulltext.queryNodes("concept_curie_name_ft", $prefix) YIELD node
+        RETURN node.name, node.curie
+        LIMIT $top_n
+        """
+        res = self.read_query(query, top_n=top_n, prefix=prefix_clause)
+        return [NormalizedNamedReference.from_curie(curie, name=name) for name, curie in res]
+
+    def initialize_autocomplete(self) -> None:
+        """Create indexes in Neo4j for autocomplete."""
+        # Create a fulltext index for concept names
+        self.create_fulltext_index(
+            "concept_curie_name_ft",
+            "concept",
+            ["name", "curie"],
+            exist_ok=True,
+        )
+        # Create btree index for concept curies and evidence mapping_justification
+        self.create_single_property_node_index(
+            index_name="concept_curie",
+            label="concept",
+            property_name="curie",
+            exist_ok=True,
+        )
+        self.create_single_property_node_index(
+            index_name="evidence_mapping_justification",
+            label="evidence",
+            property_name="mapping_justification",
+            exist_ok=True,
+        )
+
     def create_single_property_node_index(
         self, index_name: str, label: str, property_name: str, *, exist_ok: bool = False
     ) -> None:
@@ -247,11 +312,37 @@ class Neo4jClient(BaseClient):
         :param exist_ok: If True, do not raise an exception if the index already exists.
         """
         if_not = " IF NOT EXISTS" if exist_ok else ""
-        if "." in label:
-            label = f"`{label}`"
+        label = _safe_label_or_type(label)
         if "." in index_name:
             index_name = index_name.replace(".", "_")
         query = f"CREATE INDEX {index_name}{if_not} FOR (n:{label}) ON (n.{property_name})"
+
+        self.write_query(query)
+
+    def create_fulltext_index(
+        self, index_name: str, label: str, property_names: list[str], *, exist_ok: bool = False
+    ) -> None:
+        """Create a fulltext index.
+
+        :param index_name: The name of the index to create.
+        :param label: The label of the nodes to index.
+        :param property_names: The node properties to index.
+        :param exist_ok: If True, do not raise an exception if the index already exists.
+        """
+        if_not = " IF NOT EXISTS" if exist_ok else ""
+        label = _safe_label_or_type(label)
+        properties = ", ".join(f"n.{prop}" for prop in property_names)
+        query = f"""\
+        CREATE FULLTEXT INDEX {index_name}{if_not}
+        FOR (n:{label})
+        ON EACH [{properties}]
+        OPTIONS {{
+            indexConfig: {{
+                `fulltext.analyzer`: 'unicode_whitespace',
+                `fulltext.eventually_consistent`: true
+            }}
+        }}
+        """
 
         self.write_query(query)
 
@@ -455,6 +546,12 @@ as label, count UNION ALL
 
         if not relation_constraint:
             relation_constraint = self._rel_q
+        if ":" in relation_constraint:
+            # Split by | and put all the relations that contain a colon in backticks
+            # unless they are already in backticks
+            relation_constraint = "|".join(
+                _safe_label_or_type(r) for r in relation_constraint.split("|")
+            )
 
         connected_query = f"""\
             MATCH (:concept {{curie: $curie}})-[r:{relation_constraint} *..{max_distance}]-(n:concept)
@@ -466,7 +563,6 @@ as label, count UNION ALL
         nodes = [n[0] for n in self.read_query(connected_query, curie=curie)]
 
         component_curies = {node["curie"] for node in nodes}
-        # component_curies.add(curie)
 
         edge_query = f"""\
             // There is a mapping between the two concepts
@@ -542,6 +638,24 @@ as label, count UNION ALL
     def get_example_mappings(self) -> list[ExampleMapping]:
         """Get example mappings."""
         return [ExampleMapping(*row) for row in self.read_query(EXAMPLE_MAPPINGS_QUERY)]
+
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Get an example concept."""
+        name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1"
+        name_example_list = self.read_query(name_query)
+        if name_example_list and len(name_example_list) > 0 and len(name_example_list[0]) > 0:
+            name_example, curie_example = name_example_list[0]
+        else:
+            name_example = None
+            curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
+            curie_example_list = self.read_query(curie_query)
+            if not curie_example_list:
+                # There should always be at least one example concept in the database
+                # with a curie
+                raise ValueError("No CURIE example found in the database")
+
+            curie_example = curie_example_list[0][0]
+        return NormalizedNamableReference.from_curie(curie_example, name=name_example)
 
 
 EXAMPLE_MAPPINGS_QUERY = dedent("""\

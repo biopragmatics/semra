@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from bioregistry import NormalizedNamedReference
+from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 
 from semra.client import BaseClient, ExampleMapping, FullSummary
 
@@ -22,6 +22,7 @@ class State:
 
     client: BaseClient
     summary: FullSummary
+    example_reference: NormalizedNamableReference
     biomappings_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = field(default_factory=set)
     current_author: NormalizedNamedReference | None = None

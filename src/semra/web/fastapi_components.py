@@ -10,11 +10,14 @@ from fastapi import HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 
 from semra import Evidence, Mapping, MappingSet, Reference
-from semra.client import BaseClient
+from semra.client import AutocompletionResults, BaseClient
 from semra.vocabulary import EXACT_MATCH
 from semra.web.shared import EXAMPLE_CONCEPTS
 
-__all__ = ["api_router"]
+__all__ = [
+    "api_router",
+    "auto_router",
+]
 
 api_router = fastapi.APIRouter(prefix="/api")
 
@@ -102,3 +105,14 @@ def get_mapping_set(
 def get_mapping_sets(client: AnnotatedClient) -> list[MappingSet]:
     """Get all mapping sets."""
     return client.get_mapping_sets()
+
+
+auto_router = fastapi.APIRouter(prefix="/autocomplete")
+
+
+@auto_router.get("/search", response_model=AutocompletionResults)
+def autocomplete_search(
+    client: AnnotatedClient, prefix: str, top_n: int = 100
+) -> AutocompletionResults:
+    """Get the autocomplete suggestions for a given prefix."""
+    return client.get_autocompletion(prefix, top_n=top_n)

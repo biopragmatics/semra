@@ -4,6 +4,7 @@ import unittest
 from typing import ClassVar, cast
 
 import networkx as nx
+from bioregistry import NormalizedNamableReference
 from fastapi import FastAPI
 from flask import Flask
 from starlette.testclient import TestClient
@@ -18,7 +19,14 @@ from semra import (
     Reference,
     SimpleEvidence,
 )
-from semra.client import BaseClient, ExampleMapping, FullSummary, ReferenceHint
+from semra.client import (
+    AutocompletionResults,
+    BaseClient,
+    ExampleMapping,
+    FullSummary,
+    ReferenceHint,
+    _safe_label_or_type,
+)
 from semra.wsgi import get_app
 from tests.constants import TEST_CURIES, a1, a2, b1, b2
 
@@ -110,6 +118,17 @@ class MockClient(BaseClient):
         g.add_edge(a1.curie, b1.curie, key=M1.curie, type=EXACT_MATCH.curie)
         g.add_edge(b1.curie, a1.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
         return g
+
+    def initialize_autocomplete(self) -> None:
+        """Mock initializing autocomplete."""
+
+    def get_autocompletion(self, prefix: str, *, top_n: int = 100) -> AutocompletionResults:
+        """Mock getting an autocompletion."""
+        raise NotImplementedError(f"need mock for {prefix}")
+
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Mock getting an example concept."""
+        return a1
 
 
 class BaseTest(unittest.TestCase):
@@ -218,3 +237,14 @@ class TestAPI(BaseTest):
 
         res_not_found = self.test_client.get("/api/cytoscape/abcdef")
         self.assertEqual(404, res_not_found.status_code)
+
+
+class TestSafeLabelType(BaseTest):
+    """Test the autocompletion API."""
+
+    def test_safe_label_type(self) -> None:
+        """Test the _safe_label_or_type function."""
+        self.assertEqual("a1", _safe_label_or_type("a1"))
+        self.assertEqual("`a:1`", _safe_label_or_type("a:1"))
+        self.assertEqual("`b.c:2`", _safe_label_or_type("b.c:2"))
+        self.assertEqual(f"`{EXACT_MATCH.curie}`", _safe_label_or_type(EXACT_MATCH.curie))

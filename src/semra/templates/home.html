@@ -17,7 +17,7 @@
 
 {% macro do_table(counter, label, is_concept=False, has_names=False, desc=None) %}
 <div class="card-body">
-    <h6>{{ label }} Summary</h6>
+    <h4>{{ label }} Summary</h4>
     {% if desc is not none %}
     {{ desc | safe }}
     {% endif %}
@@ -64,9 +64,9 @@
         <div class="col-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">
+                    <h3 class="card-title text-center">
                         Semantic Reasoning Assembler
-                    </h5>
+                    </h3>
                     <div class="row text-center stats" style="padding-top: 1em; padding-bottom: 1em;">
                         {{ count_column(node_counter, "Concepts", "dna") }}
                         {{ count_column(node_counter, "Equivalence Classes", "dna") }}
@@ -75,7 +75,29 @@
                         {{ count_column(node_counter, "Mapping Sets", "puzzle-piece") }}
                     </div>
                     <p>See the <a href="/docs">API Documentation</a>.</p>
-                    <h6>Mapping Sets</h6>
+                    <div class="mb-3">
+                        <label for="conceptNameSearch" class="form-label">
+                        Enter a concept
+                            {% if example_concept_name %}name (e.g. {{ example_concept_name }}) or {% endif %}
+                            CURIE (e.g. {{ example_concept_curie }}) to search for a concept.
+                        </label>
+                        <div class="input-group">
+                            <input class="form-control" list="conceptOptions" id="conceptNameSearch" placeholder="Type to search...">
+                            <datalist id="conceptOptions"></datalist>
+                            <button
+                                class="btn btn-primary"
+                                type="button"
+                                onclick="
+                                    const val = document.getElementById('conceptNameSearch').value.trim();
+                                    if (val) {
+                                        window.open('/concept/' + encodeURIComponent(val), '_blank');
+                                    }
+                                ">
+                                Go to Concept
+                            </button>
+                        </div>
+                    </div>
+                    <h4>Mapping Sets</h4>
                 </div>
                 <table class="table">
                     <thead>
@@ -136,11 +158,67 @@
                 Biomappings controls so you can do local curation of negative mappings.") }}
 
                 <div class="card-body">
-                    <h6>Example Mappings</h6>
+                    <h4>Example Mappings</h4>
                 </div>
                 {{ util.mapping_table(example_mappings) }}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputField = document.getElementById('conceptNameSearch');
+      const dataList = document.getElementById('conceptOptions');
+
+      // Listen for input events on the field
+      inputField.addEventListener('input', async () => {
+        const query = inputField.value.trim();
+
+        // Only make a request if the input has some text and it's 2 characters or more
+        // This prevents unnecessary requests for very short inputs that would mach too many results
+        if (query.length >= 2) {
+          try {
+            const response = await fetch(`/autocomplete/search?prefix=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Could not fetch autocomplete suggestions');
+
+            const suggestions = await response.json(); // Expecting the server to return a JSON array
+
+            // Clear the current options in the datalist
+            dataList.innerHTML = '';
+
+            // Populate the datalist with new options
+            suggestions.forEach(suggestion => {
+              // Each suggestion is a tuple of (normalized name, grounded name, curie)
+              const option = document.createElement('option');
+
+              const name = suggestion.name;
+              const curie = suggestion.prefix + ":" + suggestion.identifier;
+
+              // Set the value for the option to the curie
+              option.value = curie;
+
+              // Set the text content for the option as the matched string and
+              // the grounded name, if they exist, otherwise leave set it to the curie
+              let displayText;
+              if (name) {
+                displayText = name + " (" + curie + ")";
+              } else {
+                displayText = curie;
+              }
+              option.textContent = displayText;
+
+              // Add the option to the datalist
+              dataList.appendChild(option);
+            });
+          } catch (error) {
+            console.error('Error fetching autocomplete suggestions:', error);
+          }
+        }
+      });
+    });
+</script>
 {% endblock %}

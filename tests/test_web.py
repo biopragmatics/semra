@@ -1,9 +1,10 @@
 """Test the app."""
 
 import unittest
-from typing import Any, ClassVar, cast
+from typing import ClassVar, cast
 
 import networkx as nx
+from bioregistry import NormalizedNamableReference
 from fastapi import FastAPI
 from flask import Flask
 from starlette.testclient import TestClient
@@ -125,13 +126,9 @@ class MockClient(BaseClient):
         """Mock getting an autocompletion."""
         raise NotImplementedError(f"need mock for {prefix}")
 
-    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
-        """Mock read query."""
-        if "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1" in query:
-            return [[a1.name, a1.curie]]
-        elif "MATCH (n:concept) RETURN n.curie LIMIT 1" in query:
-            return [[a1.curie]]
-        raise NotImplementedError(f"Query not implemented: {query}")
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Mock getting an example concept."""
+        return a1
 
 
 class BaseTest(unittest.TestCase):

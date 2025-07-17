@@ -86,28 +86,13 @@ def get_app(
 
     logger.info("Loading State for the app")
 
-    name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1"
-    name_example_list = client.read_query(name_query)
-    if name_example_list and len(name_example_list) > 0 and len(name_example_list[0]) > 0:
-        name_example, curie_example = name_example_list[0]
-    else:
-        name_example = None
-        curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
-        curie_example_list = client.read_query(curie_query)
-        if not curie_example_list:
-            # There should always be at least one example concept in the database
-            # with a curie
-            raise ValueError("No CURIE example found in the database")
-
-        curie_example = curie_example_list[0][0]
-
     state = State(
         client=client,
         summary=client.get_full_summary(),
         false_mapping_index=false_mapping_index,
         biomappings_hash=biomappings_git_hash,
         current_author=current_author,
-        example_reference=NormalizedNamedReference.from_curie(curie_example, name=name_example),
+        example_reference=client.get_example_concept(),
     )
 
     flask_app = Flask(__name__)

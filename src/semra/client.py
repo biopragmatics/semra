@@ -195,48 +195,8 @@ class BaseClient:
         """Get autocompletion."""
         raise NotImplementedError
 
-    def create_single_property_node_index(
-        self,
-        index_name: str,
-        label: str,
-        property_name: str,
-        *,
-        exist_ok: bool = False,
-    ) -> None:
-        """Create a single-property node index.
-
-        :param index_name: The name of the index to create.
-        :param label: The label of the nodes to index.
-        :param property_name: The node property to index.
-        :param exist_ok: If True, do not raise an exception if the index already exists.
-        """
-        raise NotImplementedError
-
-    def create_fulltext_index(
-        self,
-        index_name: str,
-        label: str,
-        property_names: list[str],
-        *,
-        exist_ok: bool = False,
-    ) -> None:
-        """Create a fulltext index.
-
-        :param index_name: The name of the index to create.
-        :param label: The label of the nodes to index.
-        :param property_names: The node properties to index.
-        :param exist_ok: If True, do not raise an exception if the index already exists.
-        """
-        raise NotImplementedError
-
-    def read_query(self, query: str, **query_params: Any) -> list[list[Any]]:
-        """Run a read-only query.
-
-        :param query: The cypher query to run
-        :param query_params: The parameters to pass to the query
-
-        :returns: The result of the query
-        """
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Get an example concept."""
         raise NotImplementedError
 
 
@@ -678,6 +638,24 @@ as label, count UNION ALL
     def get_example_mappings(self) -> list[ExampleMapping]:
         """Get example mappings."""
         return [ExampleMapping(*row) for row in self.read_query(EXAMPLE_MAPPINGS_QUERY)]
+
+    def get_example_concept(self) -> NormalizedNamableReference:
+        """Get an example concept."""
+        name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1"
+        name_example_list = self.read_query(name_query)
+        if name_example_list and len(name_example_list) > 0 and len(name_example_list[0]) > 0:
+            name_example, curie_example = name_example_list[0]
+        else:
+            name_example = None
+            curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
+            curie_example_list = self.read_query(curie_query)
+            if not curie_example_list:
+                # There should always be at least one example concept in the database
+                # with a curie
+                raise ValueError("No CURIE example found in the database")
+
+            curie_example = curie_example_list[0][0]
+        return NormalizedNamableReference.from_curie(curie_example, name=name_example)
 
 
 EXAMPLE_MAPPINGS_QUERY = dedent("""\

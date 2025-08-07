@@ -519,18 +519,18 @@ class Configuration(BaseModel):
         *,
         key: str,
         name: str,
-        prefixes: t.Iterable[str],
+        prefixes: t.Sequence[str],
         include_biomappings: bool = True,
         include_gilda: bool = True,
         directory: Path,
     ) -> Self:
         """Get a configuration from ontology prefixes."""
-        inputs = [Input(source="bioontologies", prefix=p) for p in prefixes]
+        inputs = [Input(source="pyobo", prefix=p) for p in prefixes]
         if include_biomappings:
             inputs.append(Input(source="biomappings"))
         if include_gilda:
             inputs.append(Input(source="gilda"))
-        return cls(key=key, name=name, inputs=inputs, directory=directory)
+        return cls(key=key, name=name, inputs=inputs, directory=directory, priority=prefixes)
 
     # docstr-coverage: inherited
     @overload

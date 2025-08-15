@@ -661,8 +661,8 @@ as label, count UNION ALL
 EXAMPLE_MAPPINGS_QUERY = dedent("""\
     MATCH
         (t:concept)<-[`owl:annotatedTarget`]-(n:mapping)-[`owl:annotatedSource`]->(s:concept)
-    WHERE n.predicate = 'skos:exactMatch'
-    RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
+    WHERE n.predicate = 'skos:exactMatch' AND s.curie < t.curie
+    RETURN collect(n.curie)[0], n.predicate, s.curie, s.name, t.curie, t.name
     LIMIT 5
 """)
 

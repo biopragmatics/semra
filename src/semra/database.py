@@ -1,20 +1,67 @@
-"""Assemble a database."""
+"""
+The SeMRA Raw Semantic Mappings Database contains unprocessed semantic mappings
+assembled from hundreds of ontologies and databases through :mod:`pyobo`.
 
+Reproduction
+************
+
+The SeMRA Raw Semantic Mappings Database can be rebuilt with the following commands:
+
+.. code-block:: console
+
+    $ uv pip install semra
+    $ semra build
+
+The ``semra build`` command downloads and process all resource and constructs
+a database of unprocessed mappings.
+
+.. note::
+
+    Downloading raw data resources can take on the order of hours to tens
+    of hours depending on your internet connection and the reliability of
+    the resources' respective servers.
+
+    Processing and analysis can be run overnight on commodity hardware
+    (e.g., a 2023 MacBook Pro with 36GB RAM).
+
+Web Application
+***************
+
+The SeMRA Raw Semantic Mappings Database can be downloaded from Zenodo at |raw|.
+After downloading all files and unzipping then, a web application wrapping
+the SeMRA Raw Semantic Mappings Database run locally on Docker with:
+
+.. code-block:: console
+
+    $ sh run_on_docker.sh
+
+Navigate to http://localhost:8773 to see the web application.
+
+.. |raw| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11082038.svg
+  :target: https://doi.org/10.5281/zenodo.11082038
+
+"""  # noqa: D205
+
+import os
 import subprocess
 import time
 from collections.abc import Iterable
 from operator import attrgetter
 from pathlib import Path
-from typing import Literal, NamedTuple, overload
+from typing import Any, Literal, overload
 
+import bioontologies.robot
 import bioregistry
+import bioversions
 import click
 import pyobo
 import pystow
 import requests
 from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
+from pydantic import BaseModel
 from pyobo.getters import NoBuildError
+from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from zenodo_client import update_zenodo
@@ -22,24 +69,30 @@ from zenodo_client import update_zenodo
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
 from semra.io.io_utils import safe_open_writer
-from semra.pipeline import REFRESH_SOURCE_OPTION, UPLOAD_OPTION
+from semra.pipeline import REFRESH_RAW_OPTION, REFRESH_SOURCE_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
-from semra.utils import gzip_path
+from semra.utils import get_jinja_template, gzip_path
+
+__all__ = [
+    "build",
+]
 
 MODULE = pystow.module("semra", "database")
 SOURCES = MODULE.module("sources")
 LOGS = MODULE.module("logs")
 SSSOM_PATH = MODULE.join(name="mappings.sssom.tsv")
 JSONL_PATH = MODULE.join(name="mappings.jsonl")
-WARNINGS_PATH = LOGS.join(name="warnings.tsv")
-ERRORS_PATH = LOGS.join(name="errors.tsv")
+STATS_PATH = MODULE.join(name="statistics.json")
+README_PATH = MODULE.join(name="README.md")
+BIOONTOLOGIES_WARNINGS_PATH = LOGS.join(name="warnings.tsv")
+BIOONTOLOGIES_ERRORS_PATH = LOGS.join(name="errors.tsv")
 SUMMARY_PATH = LOGS.join(name="summary.tsv")
 EMPTY_PATH = LOGS.join(name="empty.txt")
 NEO4J_DIR = MODULE.join("neo4j")
 
 
-class SummaryRow(NamedTuple):
+class SourceSummary(BaseModel):
     """A summary row."""
 
     resource_name: str
@@ -47,9 +100,12 @@ class SummaryRow(NamedTuple):
     time: float
     label: str
 
+    def _as_row(self) -> tuple[Any, ...]:
+        return (self.resource_name, self.mapping_count, round(self.time, 2), self.label)
 
-EMPTY = []
-summaries: list[SummaryRow] = []
+
+#: A list of prefixes that did not produce any semantic mappings
+EMPTY: list[str] = []
 
 skip = {
     "ado",  # trash
@@ -67,6 +123,7 @@ skip = {
     "conso",
     "atol",  # broken download
     "eol",  # broken download
+    "addicto",  # TODO
 }
 skip_prefixes = {
     "kegg",
@@ -87,26 +144,62 @@ skip_pyobo = {
 }
 
 
+class Statistics(BaseModel):
+    """Statistics for the SeMRA Raw Semantic Mappings Database build."""
+
+    no_refresh_timedelta: float | None = None
+    refresh_raw_timedelta: float | None = None
+    refresh_source_timedelta: float | None = None
+    summaries: list[SourceSummary]
+
+    def tabulate_summaries(self) -> str:
+        """Tabulate summaries."""
+        return tabulate(
+            [summary._as_row() for summary in self.summaries if summary.mapping_count],
+            tablefmt="github",
+            headers=["Source", "Mapping Count", "Time", "Resource Type"],
+        )
+
+
 @click.command()
 @click.option(
     "--include-wikidata/--no-include-wikidata", is_flag=True, show_default=True, default=True
 )
-@click.option("--write-labels", is_flag=True)
+@click.option(
+    "--write-labels",
+    is_flag=True,
+    help="If set to true, writes subject and object labels in the SSSOM file.",
+)
 @click.option(
     "--prune-sssom",
     is_flag=True,
-    help="If true, will try and prune unused SSSOM columns during output",
+    help="If true, will try and prune unused SSSOM columns during output. Note that this significantly increases memory requirement during construction, but results in a smaller database file.",
 )
-@UPLOAD_OPTION
+@click.option(
+    "--upload",
+    is_flag=True,
+    help="If set to true, upload the generated artifacts to the SeMRA Raw Semantic Mappings Database record on Zenodo (https://doi.org/10.5281/zenodo.11082038)",
+)
 @REFRESH_SOURCE_OPTION
+@REFRESH_RAW_OPTION
+@click.option("--test", is_flag=True, help="Run in test mode on a subset of resources.")
+@click.option("--skip-below")
 def build(
     include_wikidata: bool,
     upload: bool,
     refresh_source: bool,
+    refresh_raw: bool,
     write_labels: bool,
     prune_sssom: bool,
+    test: bool,
+    skip_below: str | None,
 ) -> None:
-    """Construct the full SeMRA database."""
+    """Construct the SeMRA Raw Semantic Mappings Database."""
+    start = time.time()
+    if not test:
+        click.echo("caching versions w/ Bioversions")
+        list(bioversions.iter_versions(use_tqdm=True))
+
     ontology_resources: list[bioregistry.Resource] = []
     pyobo_resources: list[bioregistry.Resource] = []
     for resource in bioregistry.resources():
@@ -117,6 +210,8 @@ def build(
             or resource.proprietary
         ):
             continue
+        if skip_below and resource.prefix < skip_below:
+            continue
         if any(resource.prefix.startswith(p) for p in skip_prefixes):
             continue
         if pyobo.has_nomenclature_plugin(resource.prefix):
@@ -124,13 +219,25 @@ def build(
         elif resource.get_obofoundry_prefix() or resource.has_download():
             ontology_resources.append(resource)
 
-    mappings = _yield_mappings(
-        ontology_resources,
-        pyobo_resources,
-        refresh_source,
-        write_labels,
-        include_wikidata=include_wikidata,
-    )
+    summaries: list[SourceSummary] = []
+    if test:
+        mappings = _yield_ontology_resources(
+            [bioregistry.get_resource(p, strict=True) for p in ("taxrank", "go")],
+            refresh_source=refresh_source,
+            refresh_raw=refresh_raw,
+            write_labels=write_labels,
+            summaries=summaries,
+        )
+    else:
+        mappings = _yield_mappings(
+            ontology_resources,
+            pyobo_resources,
+            refresh_source=refresh_source,
+            refresh_raw=refresh_raw,
+            write_labels=write_labels,
+            include_wikidata=include_wikidata,
+            summaries=summaries,
+        )
     mappings = write_jsonl(mappings, JSONL_PATH, stream=True)
     mappings = write_sssom(mappings, SSSOM_PATH, add_labels=False, prune=False, stream=True)
     # neo4j doesn't need to stream since it's last. to avoid SIGKILLs,
@@ -141,15 +248,28 @@ def build(
     jsonl_gz_path = gzip_path(JSONL_PATH)
     sssom_gz_path = gzip_path(SSSOM_PATH)
 
+    timedelta = time.time() - start
+    statistics = Statistics(
+        no_refresh_timedelta=timedelta if not refresh_raw and not refresh_source else None,
+        refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
+        refresh_source_timedelta=timedelta if refresh_source else None,
+        summaries=summaries,
+    )
+    STATS_PATH.write_text(statistics.model_dump_json(indent=2))
+
+    # Write out a README file
+    template = get_jinja_template("raw-database-readme.md")
+    README_PATH.write_text(template.render(statistics=statistics))
+    os.system(f'npx --yes prettier --write --prose-wrap always "{README_PATH}"')  # noqa:S605
+
     if upload:
         res = update_zenodo(
             deposition_id="11082038",
             paths=[
                 jsonl_gz_path,
                 sssom_gz_path,
-                WARNINGS_PATH,
-                ERRORS_PATH,
-                SUMMARY_PATH,
+                README_PATH,
+                STATS_PATH,
                 *NEO4J_DIR.iterdir(),
             ],
         )
@@ -159,22 +279,36 @@ def build(
 def _yield_mappings(
     ontology_resources: list[bioregistry.Resource],
     pyobo_resources: list[bioregistry.Resource],
+    *,
     refresh_source: bool,
+    refresh_raw: bool,
     write_labels: bool,
     include_wikidata: bool,
+    summaries: list[SourceSummary],
 ) -> Iterable[Mapping]:
     yield from _yield_ontology_resources(
-        ontology_resources, refresh_source=refresh_source, write_labels=write_labels
+        ontology_resources,
+        refresh_source=refresh_source,
+        refresh_raw=refresh_raw,
+        write_labels=write_labels,
+        summaries=summaries,
     )
     yield from _yield_pyobo(
-        pyobo_resources, refresh_source=refresh_source, write_labels=write_labels
+        pyobo_resources,
+        refresh_source=refresh_source,
+        refresh_raw=refresh_raw,
+        write_labels=write_labels,
+        summaries=summaries,
     )
-    yield from _yield_custom(write_labels=write_labels)
+    yield from _yield_custom(
+        write_labels=write_labels,
+        summaries=summaries,
+    )
     if include_wikidata:
-        yield from _yield_wikidata(write_labels=write_labels)
+        yield from _yield_wikidata(write_labels=write_labels, summaries=summaries)
 
 
-def _yield_custom(*, write_labels: bool) -> Iterable[Mapping]:
+def _yield_custom(*, write_labels: bool, summaries: list[SourceSummary]) -> Iterable[Mapping]:
     click.secho("\nCustom SeMRA Sources", fg="cyan", bold=True)
     funcs = tqdm(
         sorted(SOURCE_RESOLVER, key=lambda f: f.__name__), unit="source", desc="Custom sources"
@@ -210,12 +344,24 @@ def _yield_custom(*, write_labels: bool) -> Iterable[Mapping]:
                 # try to reclaim memory
                 del resource_mappings
 
-        summaries.append(SummaryRow(resource_name, count, time.time() - start, "custom"))
-        _write_summary()
+        summaries.append(
+            SourceSummary(
+                resource_name=resource_name,
+                mapping_count=count,
+                time=time.time() - start,
+                label="custom",
+            )
+        )
+        _write_summary(summaries)
 
 
 def _yield_pyobo(
-    pyobo_resources: list[bioregistry.Resource], *, refresh_source: bool, write_labels: bool
+    pyobo_resources: list[bioregistry.Resource],
+    *,
+    refresh_source: bool,
+    refresh_raw: bool,
+    write_labels: bool,
+    summaries: list[SourceSummary],
 ) -> Iterable[Mapping]:
     click.secho("PyOBO Sources", fg="cyan", bold=True)
     it = tqdm(pyobo_resources, unit="prefix", desc="PyOBO sources")
@@ -228,7 +374,7 @@ def _yield_pyobo(
 
         start = time.time()
         count = 0
-        if (jsonl_path := _get_jsonl_path("pyobo", resource.prefix)).is_file():
+        if (jsonl_path := _get_jsonl_path("pyobo", resource.prefix)).is_file() and not refresh_raw:
             for mapping in from_jsonl(jsonl_path, stream=True):
                 count += 1
                 yield mapping
@@ -239,7 +385,7 @@ def _yield_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
             except Exception as e:
-                tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: {e}")
+                tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: ({type(e)}) {e}")
                 continue
             else:
                 for mapping in _write_source(
@@ -255,11 +401,18 @@ def _yield_pyobo(
                 # try to reclaim memory
                 del resource_mappings
 
-        summaries.append(SummaryRow(resource.prefix, count, time.time() - start, "pyobo"))
-        _write_summary()
+        summaries.append(
+            SourceSummary(
+                resource_name=resource.prefix,
+                mapping_count=count,
+                time=time.time() - start,
+                label="pyobo",
+            )
+        )
+        _write_summary(summaries)
 
 
-def _yield_wikidata(*, write_labels: bool) -> Iterable[Mapping]:
+def _yield_wikidata(*, write_labels: bool, summaries: list[SourceSummary]) -> Iterable[Mapping]:
     click.secho("\nWikidata Sources", fg="cyan", bold=True)
     wikidata_prefix_it = tqdm(
         bioregistry.get_registry_map("wikidata").items(), unit="property", desc="Wikidata"
@@ -282,7 +435,9 @@ def _yield_wikidata(*, write_labels: bool) -> Iterable[Mapping]:
             try:
                 resource_mappings = get_wikidata_mappings_by_prefix(prefix)
             except requests.exceptions.JSONDecodeError as e:
-                tqdm.write(f"[{resource_name}] failed to get mappings from wikidata: {e}")
+                tqdm.write(
+                    f"[{resource_name}] failed to get mappings from wikidata: ({type(e)}) {e}"
+                )
                 continue
             else:
                 for mapping in _write_source(
@@ -293,12 +448,24 @@ def _yield_wikidata(*, write_labels: bool) -> Iterable[Mapping]:
                 # try to reclaim memory
                 del resource_mappings
 
-        summaries.append(SummaryRow(resource_name, count, time.time() - start, "wikidata"))
-        _write_summary()
+        summaries.append(
+            SourceSummary(
+                resource_name=resource_name,
+                mapping_count=count,
+                time=time.time() - start,
+                label="wikidata",
+            )
+        )
+        _write_summary(summaries)
 
 
 def _yield_ontology_resources(
-    resources: list[bioregistry.Resource], *, refresh_source: bool, write_labels: bool
+    resources: list[bioregistry.Resource],
+    *,
+    refresh_source: bool,
+    refresh_raw: bool,
+    write_labels: bool,
+    summaries: list[SourceSummary],
 ) -> Iterable[Mapping]:
     click.secho("\nOntology Sources", fg="cyan", bold=True)
     it = tqdm(
@@ -312,7 +479,9 @@ def _yield_ontology_resources(
 
         start = time.time()
         count = 0
-        if (jsonl_path := _get_jsonl_path("ontology", resource.prefix)).is_file():
+        if (
+            jsonl_path := _get_jsonl_path("ontology", resource.prefix)
+        ).is_file() and not refresh_raw:
             for mapping in from_jsonl(jsonl_path, stream=True):
                 count += 1
                 yield mapping
@@ -322,8 +491,17 @@ def _yield_ontology_resources(
                     resource_mappings = from_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
-            except (ValueError, NoBuildError, subprocess.SubprocessError) as e:
-                tqdm.write(f"[{resource.prefix}] failed ontology parsing: {e}")
+            except (
+                ValueError,
+                NoBuildError,
+                subprocess.SubprocessError,
+                bioontologies.robot.ROBOTError,
+            ) as e:
+                tqdm.write(
+                    click.style(
+                        f"[{resource.prefix}] failed ontology parsing: ({type(e)}) {e}", fg="red"
+                    )
+                )
                 continue
             else:
                 for mapping in _write_source(
@@ -339,11 +517,18 @@ def _yield_ontology_resources(
                 # try to reclaim memory
                 del resource_mappings
             # this outputs on each iteration to get faster insight
-            write_warned(WARNINGS_PATH)
-            write_getter_warnings(ERRORS_PATH)
+            write_warned(BIOONTOLOGIES_WARNINGS_PATH)
+            write_getter_warnings(BIOONTOLOGIES_ERRORS_PATH)
 
-        summaries.append(SummaryRow(resource.prefix, count, time.time() - start, "ontology"))
-        _write_summary()
+        summaries.append(
+            SourceSummary(
+                resource_name=resource.prefix,
+                mapping_count=count,
+                time=time.time() - start,
+                label="ontology",
+            )
+        )
+        _write_summary(summaries)
 
 
 @overload
@@ -409,11 +594,11 @@ def _get_jsonl_path(subdirectory: str, key: str) -> Path:
     return SOURCES.join(subdirectory, name=f"{key}.jsonl.gz")
 
 
-def _write_summary() -> None:
+def _write_summary(summaries: list[SourceSummary]) -> None:
     with safe_open_writer(SUMMARY_PATH) as writer:
         writer.writerow(("prefix", "mappings", "seconds", "source_type"))
-        for prefix, n_mappings, time_delta, source_type in summaries:
-            writer.writerow((prefix, n_mappings, round(time_delta, 2), source_type))
+        for summary in summaries:
+            writer.writerow(summary._as_row())
 
 
 if __name__ == "__main__":

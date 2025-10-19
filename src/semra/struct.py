@@ -1,4 +1,86 @@
-"""Data structures for mappings."""
+"""SeMRA implements a data structure as an extension to a simple :class:`curies.Triple` that contains a list of :class:`EvidenceMixin` objects, that are come as of the the following two flavors:
+
+1. :class:`semra.struct.SimpleEvidence` - simple evidence objects correspond to rows in
+   a SSSOM file. These contain a mapping justification, optional confidence, and
+   optional provenance for the mapping tool and/or curator that produced the mapping
+2. :class:`semra.struct.ReasonedEvidence` - complex evidence objects that are based on
+   other mappings. These contain a mapping justification (typically
+   :data:`semra.vocabulary.INVERSION_MAPPING` for inversions or
+   :data:`semra.vocabulary.CHAIN_MAPPING` for graph-based inference) and a list of full
+   mapping objects.
+
+Here's an example of how a mapping might look:
+
+.. image:: img/datastruct.svg
+
+.. note::
+
+    This data structure is based on SSSOM, but is implemented such that each mapping has
+    a full reference to the mapping set that it's part of (while SSSOM's data model
+    makes the mapping set the primary object, which contains a list of mappings).
+
+A simple evidence can be used to justify a mapping:
+
+.. code-block:: python
+
+    from semra import (
+        Reference,
+        Mapping,
+        EXACT_MATCH,
+        SimpleEvidence,
+        MappingSet,
+        MANUAL_MAPPING,
+    )
+
+    r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+    r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
+    mapping = Mapping(
+        subject=r1,
+        predicate=EXACT_MATCH,
+        object=r2,
+        evidence=[
+            SimpleEvidence(
+                justification=MANUAL_MAPPING,
+                confidence=0.99,
+                author=Reference(
+                    prefix="orcid",
+                    identifier="0000-0003-4423-4370",
+                    name="Charles Tapley Hoyt",
+                ),
+                mapping_set=MappingSet(
+                    name="biomappings",
+                    license="CC0",
+                    confidence=0.90,
+                ),
+            )
+        ],
+    )
+
+A mapping that relies on another mapping can use a reasoned evidence. In the following
+example, we justify the inverse mapping from the first one:
+
+.. code-block:: python
+
+    from semra import ReasonedEvidence, INVERSION_MAPPING
+
+    mapping_inv = Mapping(
+        subject=r2,
+        predicate=EXACT_MATCH,
+        object=r1,
+        evidence=[
+            ReasonedEvidence(
+                justification=INVERSION_MAPPING,
+                mappings=[mapping],
+            )
+        ],
+    )
+
+.. note::
+
+    These mappings can be produced with :func:`semra.api.flip` for a single mapping or
+    with :func:`semra.inference.infer_reversible` for a mapping set.
+"""  # noqa: D400
 
 from __future__ import annotations
 
@@ -7,26 +89,28 @@ import pickle
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
-from itertools import islice
 from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
 
 import pydantic
 from curies.triples import StrTriple, Triple
-from more_itertools import triplewise
 from pydantic import ConfigDict, Field
 from pyobo import Reference
 
-from semra.rules import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 
 __all__ = [
+    "ConfidenceMixin",
     "Evidence",
+    "EvidenceMixin",
+    "KeyedMixin",
     "Mapping",
     "MappingSet",
+    "MappingSetKey",
     "ReasonedEvidence",
+    "ReasonedEvidenceKey",
     "Reference",
     "SimpleEvidence",
     "Triple",
-    "line",
 ]
 
 P = ParamSpec("P")
@@ -84,7 +168,7 @@ class ConfidenceMixin:
 
 
 class EvidenceMixin:
-    """A mixin for evidence classes."""
+    """A class that represents evidences."""
 
     @property
     def explanation(self) -> str:
@@ -122,6 +206,14 @@ class MappingSet(
 
     Mostly corresponds to the concept of a SSSOM mapping set, documented in
     https://mapping-commons.github.io/sssom/MappingSet.
+
+    There are the following optional fields:
+
+    1. ``name``
+    2. ``purl`` (not optional if you're writing to SSSOM)
+    3. ``version``
+    4. ``license``
+    5. ``confidence``
     """
 
     model_config = ConfigDict(frozen=True)
@@ -144,7 +236,7 @@ class MappingSet(
     )
     confidence: float = Field(
         default=1.0,
-        description="Mapping set level confidence. This is _not_ a SSSOM field, since SeMRA makes a difference confidence assessment at the mapping set level and at the individual mapping level. This was requeted to be added to SSSOM in https://github.com/mapping-commons/sssom/issues/438.",
+        description="Mapping set level confidence. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_confidence/",
     )
 
     def key(self) -> MappingSetKey:
@@ -413,16 +505,6 @@ class Mapping(
     def has_tertiary(self) -> bool:
         """Get if there are any tertiary (i.e., reasoned) evidences for this mapping."""
         return any(not isinstance(evidence, SimpleEvidence) for evidence in self.evidence)
-
-
-def line(*references: Reference) -> list[Mapping]:
-    """Create a list of mappings from a simple mappings path."""
-    if not (3 <= len(references) and len(references) % 2):
-        raise ValueError
-    return [
-        Mapping(subject=subject, predicate=predicate, object=obj)
-        for subject, predicate, obj in islice(triplewise(references), None, None, 2)
-    ]
 
 
 ReasonedEvidence.model_rebuild()

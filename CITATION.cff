@@ -12,7 +12,7 @@ authors:
     orcid: "https://orcid.org/0000-0001-9439-5346"
 title: "Semantic Mapping Reasoner and Assembler (SeMRA)"
 url: "https://github.com/biopragmatics/semra"
-version: 0.1.4-dev
+version: 0.1.5-dev
 preferred-citation:
   type: article
   authors:
@@ -25,8 +25,9 @@ preferred-citation:
   - family-names: "Gyori"
     given-names: "Benjamin M."
     orcid: "https://orcid.org/0000-0001-9439-5346"
-  doi: "10.1101/2025.04.16.649126"
-  journal: "bioRxiv"
-  month: 4
+  doi: "10.1093/bioinformatics/btaf542"
+  journal: "Bioinformatics"
+  month: 9
+  day: 29
   title: "Assembly and reasoning over semantic mappings at scale for biomedical data integration"
   year: 2025

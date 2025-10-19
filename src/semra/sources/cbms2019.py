@@ -10,8 +10,8 @@ from pydantic import ValidationError
 from pyobo import Reference
 from tqdm import tqdm
 
-from semra.rules import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_cbms2019_mappings",

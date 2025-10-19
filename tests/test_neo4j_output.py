@@ -9,6 +9,7 @@ from semra import (
     EXACT_MATCH,
     LEXICAL_MAPPING,
     MANUAL_MAPPING,
+    UNSPECIFIED_MAPPING,
     Mapping,
     MappingSet,
     ReasonedEvidence,
@@ -16,8 +17,8 @@ from semra import (
     SimpleEvidence,
 )
 from semra.io import write_neo4j
-from semra.rules import BEN_ORCID, CHAIN_MAPPING, UNSPECIFIED_MAPPING, charlie
 from semra.struct import Triple
+from semra.vocabulary import BEN_REFERENCE, CHAIN_MAPPING, CHARLIE
 from tests import resources
 
 # TODO test when concept name has problematic characters like tabs or newlines
@@ -53,7 +54,7 @@ class TestNeo4jOutput(unittest.TestCase):
         m1_e1 = SimpleEvidence(
             mapping_set=biomappings,
             justification=MANUAL_MAPPING,
-            author=charlie,
+            author=CHARLIE,
             confidence=0.99,
         )
         self.assertEqual("b59546c8b03b27da7e89b6a08c76843b", m1_e1.hexdigest(t1))
@@ -62,7 +63,7 @@ class TestNeo4jOutput(unittest.TestCase):
         m1_e1_copy = SimpleEvidence(
             mapping_set=biomappings,
             justification=MANUAL_MAPPING,
-            author=charlie,
+            author=CHARLIE,
             confidence=0.99,
         )
         self.assertEqual(m1_e1.hexdigest(t1), m1_e1_copy.hexdigest(t1))
@@ -70,7 +71,7 @@ class TestNeo4jOutput(unittest.TestCase):
         m1_e2 = SimpleEvidence(
             mapping_set=biomappings,
             justification=MANUAL_MAPPING,
-            author=BEN_ORCID,
+            author=BEN_REFERENCE,
             confidence=0.94,
         )
         m1_e3 = SimpleEvidence(

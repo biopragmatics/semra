@@ -14,11 +14,12 @@ import bioregistry
 import networkx as nx
 import pandas as pd
 import ssslm
+from pydantic import BaseModel, Field
 from ssslm import LiteralMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
-from semra.rules import EXACT_MATCH, FLIP, INVERSION_MAPPING, SubsetConfiguration
+from semra.rules import FLIP, SubsetConfiguration
 from semra.struct import (
     Evidence,
     Mapping,
@@ -29,15 +30,18 @@ from semra.struct import (
     Triple,
 )
 from semra.utils import cleanup_prefixes, semra_tqdm
+from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 
 __all__ = [
     "TEST_MAPPING_SET",
     "IdentifierIndex",
     "Index",
     "M2MIndex",
+    "Mutation",
     "PrefixIdentifierDict",
     "PrefixIdentifierDict",
     "PrefixPairCounter",
+    "apply_mutations",
     "assemble_evidences",
     "assert_projection",
     "count_component_sizes",
@@ -513,8 +517,16 @@ def prioritize(
 ) -> list[Mapping]:
     """Get a priority star graph.
 
-    :param mappings: An iterable of mappings
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
+    :param mappings: An iterable of mappings.
+
+        .. warning::
+
+            This assumes that inference and inversion have already been run.
+            This means that if there exists any exact match mapping path between
+            ``A`` and ``B``, then there exists an edge `A, exact, B``. Further,
+            if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
+
+    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
     :return:
         A list of mappings representing a "prioritization", meaning that each element only
         appears as subject once. This condition means that the prioritization mapping can be applied
@@ -524,11 +536,31 @@ def prioritize(
 
     1. Get the subset of exact matches from the input mapping list
     2. Convert the exact matches to an undirected mapping graph
-    3. Extract connected components
+    3. Extract connected components.
+
+        .. note::
+
+            because of construction, connected components might contain
+            just two mappings, ``A, exact, B`` and ``B, exact A``.
+
     4. For each component
         1. Get the "priority" reference using :func:`get_priority_reference`
         2. Construct new mappings where all references in the component are the subject
            and the priority reference is the object (skip the self mapping)
+
+    Here's an example usage, where inference is run ahead of prioritization.
+
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.inference import infer_reversible, infer_chains
+    >>> curies = "doid:0050577", "mesh:C562966", "umls:C4551571"
+    >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
+    >>> m1 = Mapping.from_triple((r1, EXACT_MATCH, r2))
+    >>> m2 = Mapping.from_triple((r2, EXACT_MATCH, r3))
+    >>> m3 = Mapping.from_triple((r1, EXACT_MATCH, r3))
+    >>> mappings = [m1, m2, m3]
+    >>> mappings = infer_reversible(mappings)
+    >>> mappings = infer_chains(mappings)
+    >>> prioritize(mappings, ["mesh", "doid", "umls"])
     """
     original_mappings = len(mappings)
     mappings = [m for m in mappings if m.predicate == EXACT_MATCH]
@@ -543,15 +575,23 @@ def prioritize(
         o = get_priority_reference(component, priority)
         if o is None:
             continue
-        rv.extend(
-            mapping
-            # TODO should this work even if s-o edge not exists?
-            #  can also do "inference" here, but also might be
-            #  because of negative edge filtering
-            for s in component
-            if s != o and graph.has_edge(s, o)
-            for mapping in _from_digraph_edge(graph, s, o)
-        )
+        for s in component:
+            if s == o:  # don't add self-edges
+                continue
+            if not graph.has_edge(s, o):
+                # TODO should this work even if s-o edge not exists?
+                #  can also do "inference" here, but also might be
+                #  because of negative edge filtering
+                logger.debug(
+                    "prioritize() should only be called on fully inferred graphs, meaning "
+                    "that in a given component, it is a full clique (i.e., there are edges "
+                    "in both directions between all nodes). Component: %s, s: %s, object: %s",
+                    ", ".join(s.curie for s in component),
+                    s,
+                    o,
+                )
+                continue
+            rv.extend(_from_digraph_edge(graph, s, o))
 
     # sort such that the mappings are ordered by object by priority order
     # then identifier of object, then subject prefix in alphabetical order
@@ -1158,3 +1198,72 @@ def get_asymmetric_counter(
             for (left_prefix, right_prefix), identifiers in index.items()
         }
     )
+
+
+class Mutation(BaseModel):
+    """Represents a mutation operation on a mapping set."""
+
+    source: str = Field(..., description="The source type")
+    target: str | list[str] | None = Field(None, description="limit mutation to these")
+    confidence: float = 1.0
+    old: Reference = Field(default=DB_XREF)
+    new: Reference = Field(default=EXACT_MATCH)
+
+    def should_apply_to(self, mapping: Mapping) -> bool:
+        """Check if the mutation should be applied."""
+        if mapping.subject.prefix != self.source:
+            return False
+        if mapping.predicate != self.old:
+            return False
+        if self.target is None:
+            return True
+        elif isinstance(self.target, str):
+            return self.target == mapping.object.prefix
+        elif isinstance(self.target, list):
+            return any(t == mapping.object.prefix for t in self.target)
+        raise NotImplementedError
+
+
+#: A data structure for fast access to mutations.
+MutationIndex: TypeAlias = dict[str, Mutation]
+
+
+def apply_mutations(
+    mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
+) -> Iterable[Mapping]:
+    """Apply mutations."""
+    mutation_index = _index_mutations(mutations)
+    for mapping in tqdm(
+        mappings, disable=not progress, desc="Applying mutations", unit_scale=True, unit="mapping"
+    ):
+        yield _handle_mutation(mapping, mutation_index)
+
+
+def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:
+    mutation_index = {}
+    for mutation in mutations:
+        if mutation.source in mutation_index:
+            raise KeyError(f"got multiple configured mutations for source: {mutation.source}")
+        mutation_index[mutation.source] = mutation
+    return mutation_index
+
+
+def _handle_mutation(mapping: Mapping, mutation_index: MutationIndex) -> Mapping:
+    mutation = mutation_index.get(mapping.subject.prefix)
+    if not mutation:
+        return mapping
+    elif not mutation.should_apply_to(mapping):
+        return mapping
+    else:
+        return Mapping(
+            subject=mapping.subject,
+            predicate=mutation.new,
+            object=mapping.object,
+            evidence=[
+                ReasonedEvidence(
+                    justification=KNOWLEDGE_MAPPING,
+                    mappings=[mapping],
+                    confidence_factor=mutation.confidence,
+                )
+            ],
+        )

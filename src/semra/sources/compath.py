@@ -6,8 +6,8 @@ import pandas as pd
 from pyobo import Reference
 from pystow.utils import get_commit
 
-from semra.rules import EXACT_MATCH, MANUAL_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
 
 __all__ = [
     "get_compath_mappings",

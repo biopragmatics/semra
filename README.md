@@ -38,8 +38,10 @@ provides:
 4. A confidence model granular at the curator-level, mapping set-level, and
    community feedback-level
 
-We also provide an accompanying raw semantic mapping database on Zenodo at
-https://doi.org/10.5281/zenodo.11082038.
+We also provide the SeMRA Raw Semantic Mappings Database, a set of pre-assembled
+semantic mappings from hundreds of ontologies and databases, on Zenodo at
+https://doi.org/10.5281/zenodo.11082038 that can be rebuilt with `semra build`.
+More information [here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 💪 Getting Started
 
@@ -69,29 +71,29 @@ mapping = Mapping(
 
 ### Assembly
 
-Mappings can be assembled from many source formats using functions in the
-`semra.io` submodule:
+Mappings can be assembled from many source formats using I/O functions exposed
+through the top-level `semra` submodule:
 
 ```python
-import semra.io
+import semra
 
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-mappings = semra.io.from_sssom(
+mappings = semra.from_sssom(
     sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
 )
 
 # alternatively, metadata can be passed via a file/URL
-mappings_alt = semra.io.from_sssom(
+mappings_alt = semra.from_sssom(
     sssom_url,
     metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
 )
 
 # load mappings from the Gene Ontology (via OBO format)
-go_mappings = semra.io.from_pyobo("go")
+go_mappings = semra.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
-uberon_mappings = semra.io.from_bioontologies("uberon")
+uberon_mappings = semra.from_bioontologies("uberon")
 ```
 
 SeMRA also implements custom importers in the `semra.sources` submodule. It's
@@ -248,19 +250,21 @@ graph LR
 
 ## 🏞️ Landscape Analysis
 
-We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
-five biomedical entity types:
+We demonstrate using SeMRA to assess the [landscape](landscape#readme) of five
+biomedical entity types:
 
-1. [Disease](notebooks/landscape/disease/)
-2. [Cell & Cell Line](notebooks/landscape/cell/)
-3. [Anatomy](notebooks/landscape/anatomy/)
-4. [Protein Complex](notebooks/landscape/complex/)
-5. [Gene](notebooks/landscape/gene/)
+1. [Disease](landscape/disease#readme)
+2. [Cell & Cell Line](landscape/cell#readme)
+3. [Anatomy](landscape/anatomy#readme)
+4. [Protein Complex](landscape/complex#readme)
+5. [Gene](landscape/gene#readme)
 
 These analyses are based on
 [declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)
 for sources, processing rules, and inference rules that can be found in the
-`semra.landscape` module of the source code.
+`semra.landscape` module of the source code. These can be rebuilt with
+`semra landscape`, with more documentation
+[here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 🤖 Tools for Data Scientists
 
@@ -277,7 +281,7 @@ these references can be standardized in a deterministic and principled way.
 
 ```python
 import chembl_downloader
-import semra.io
+import semra
 from semra.api import prioritize_df
 
 # A dataframe of indication-disease pairs, where the
@@ -287,7 +291,7 @@ df = chembl_downloader.query("SELECT DISTINCT drugind_id, efo_id FROM DRUG_INDIC
 # a pre-calculated prioritization of diseases and phenotypes from MONDO, DOID,
 # HPO, ICD, GARD, and more.
 url = "https://zenodo.org/records/15164180/files/priority.sssom.tsv?download=1"
-mappings = semra.io.from_sssom(url)
+mappings = semra.from_sssom(url)
 
 # the dataframe will now have a new column with standardized references
 prioritize_df(mappings, df, column="efo_id", target_column="priority_indication_curie")
@@ -335,20 +339,23 @@ The code in this package is licensed under the MIT License.
 
 ### 📖 Citation
 
-> <a href="https://www.biorxiv.org/content/10.1101/2025.04.16.649126">Assembly
+> <a href="https://doi.org/10.1093/bioinformatics/btaf542">Assembly
 > and reasoning over semantic mappings at scale for biomedical data
-> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_bioRxiv_,
-> 2025.04.16.649126
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_Bioinformatics_,
+> 2025, btaf542.
 
 ```bibtex
-@article {hoyt2025semra,
+@article{hoyt2025semra,
     author = {Hoyt, Charles Tapley and Karis, Klas and Gyori, Benjamin M},
     title = {Assembly and reasoning over semantic mappings at scale for biomedical data integration},
+    journal = {Bioinformatics},
+    pages = {btaf542},
     year = {2025},
-    doi = {10.1101/2025.04.16.649126},
-    publisher = {Cold Spring Harbor Laboratory},
-    URL = {https://www.biorxiv.org/content/early/2025/04/21/2025.04.16.649126},
-    journal = {bioRxiv}
+    month = {09},
+    issn = {1367-4811},
+    doi = {10.1093/bioinformatics/btaf542},
+    url = {https://doi.org/10.1093/bioinformatics/btaf542},
+    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btaf542/64428329/btaf542.pdf},
 }
 ```
 

@@ -52,6 +52,15 @@ $ semra landscape
 ```
 
 To start off clean, use `--refresh-source` to re-download and re-parse resources
-from scratch.
+from scratch. Note that this takes on the order of hours to tens of hours,
+depending on your internet connection speed and the server availability of
+resources.
+
+Outside of initial download of resources, which depends on internet connection
+and availability and takes on the order of a few hours, this can be run on
+commodity hardware overnight (e.g., a Macbook Pro 2023 with 36GB of RAM).
+
+If you only want to re-run a specific configuration, use `--only` with the key,
+like `--only disease`.
 
 This script also outputs a LaTeX-ready string for the SeMRA manuscript.

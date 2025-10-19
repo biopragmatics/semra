@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "semra"
-version = "0.1.4-dev"
+version = "0.1.5-dev"
 description = "Semantic mapping reasoner and assembler"
 readme = "README.md"
 authors = [
@@ -59,7 +59,7 @@ dependencies = [
     "networkx",
     "bioregistry>=0.12.19",
     "pyobo>=0.12.4",
-    "bioontologies>=0.7.2",
+    "bioontologies>=0.7.3",
     "typing_extensions",
     "zenodo_client",
     "ssslm",
@@ -67,6 +67,8 @@ dependencies = [
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
     "pyyaml",
+    "humanize",
+    "tabulate",
 ]
 
 [project.optional-dependencies]
@@ -128,7 +130,7 @@ plugins = [
 
 # Doc8, see https://doc8.readthedocs.io/en/stable/readme.html#ini-file-usage
 [tool.doc8]
-max-line-length = 120
+max-line-length = 175
 
 # Pytest, see https://docs.pytest.org/en/stable/reference/customize.html#pyproject-toml
 [tool.pytest.ini_options]
@@ -227,7 +229,7 @@ known-first-party = [
 docstring-code-format = true
 
 [tool.bumpversion]
-current_version = "0.1.4-dev"
+current_version = "0.1.5-dev"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(?:-(?P<release>[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+(?P<build>[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?"
 serialize = [
     "{major}.{minor}.{patch}-{release}+{build}",

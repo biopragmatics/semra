@@ -33,9 +33,10 @@ from semra.api import (
     get_terms,
 )
 from semra.pipeline import Configuration
-from semra.rules import DB_XREF, EXACT_MATCH, SubsetConfiguration
+from semra.rules import SubsetConfiguration
 from semra.struct import Mapping
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
+from semra.vocabulary import DB_XREF, EXACT_MATCH
 
 __all__ = [
     "LandscapeResult",
@@ -58,8 +59,10 @@ def write_summary(
     raw_mappings: list[Mapping] | None = None,
     processed_mappings: list[Mapping] | None = None,
     priority_mappings: list[Mapping] | None = None,
+    refresh_raw_timedelta: float | None = None,
+    refresh_source_timedelta: float | None = None,
 ) -> tuple[OverlapResults, LandscapeResult, list[Path]]:
-    """Run the landscape analysis inside a Jupyter notebook."""
+    """Run the landscape analysis and write a summary."""
     import matplotlib.pyplot as plt
 
     if not configuration.configuration_path.is_file():
@@ -113,6 +116,8 @@ def write_summary(
             summary=summary,
             overlap_results=overlap_results,
             landscape_results=landscape_results,
+            refresh_source_timedelta=refresh_source_timedelta,
+            refresh_raw_timedelta=refresh_raw_timedelta,
         ).strip()
         + "\n"
     )
@@ -128,6 +133,8 @@ def write_summary(
             "unique_term_count": landscape_results.reduced_term_count,
             "reduction": landscape_results.reduction_percent,
             "distribution": landscape_results.distribution,
+            "refresh_raw_timedelta": refresh_raw_timedelta,
+            "refresh_source_timedelta": refresh_source_timedelta,
         }
     )
     configuration.stats_path.write_text(json.dumps(stats.model_dump(), indent=2, sort_keys=True))
@@ -145,6 +152,8 @@ class Statistics(BaseModel):
     unique_term_count: int
     reduction: float
     distribution: dict[int, int]
+    refresh_raw_timedelta: float | None = None
+    refresh_source_timedelta: float | None = None
 
 
 def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
@@ -488,6 +497,10 @@ def draw_counter(
     direction: str = "LR",
 ) -> bytes:
     """Draw a source/target prefix pair counter as a network."""
+    values = [v for v in counter.values() if v is not None and v > 0]
+    if not values:
+        return b""
+
     graph = cls()
     renames = {}
     for (source_prefix, target_prefix), count in counter.items():
@@ -507,7 +520,6 @@ def draw_counter(
     agraph.graph_attr["rankdir"] = direction
     agraph.graph_attr["directed"] = "true" if directed else "false"
 
-    values = [v for v in counter.values() if v is not None and v > 0]
     bottom, top = min(values), max(values)
     rr = top - bottom
 

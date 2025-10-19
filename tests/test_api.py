@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import unittest
+from itertools import islice
 from typing import cast
 
 import pandas as pd
+from more_itertools import triplewise
 
 from semra import api
 from semra.api import (
     Index,
+    Mutation,
     count_component_sizes,
     count_coverage_sizes,
     filter_mappings,
@@ -18,26 +21,20 @@ from semra.api import (
     get_index,
     get_many_to_many,
     keep_prefixes,
+    prioritize,
     prioritize_df,
     project,
 )
 from semra.inference import infer_chains, infer_mutations, infer_reversible
 from semra.io.graph import from_digraph, to_digraph
-from semra.rules import (
+from semra.struct import Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,
     EXACT_MATCH,
     KNOWLEDGE_MAPPING,
     MANUAL_MAPPING,
     NARROW_MATCH,
-)
-from semra.struct import (
-    Mapping,
-    MappingSet,
-    ReasonedEvidence,
-    Reference,
-    SimpleEvidence,
-    line,
 )
 
 PREFIX_A = "go"
@@ -72,6 +69,16 @@ EV = SimpleEvidence(
     mapping_set=MappingSet(name="test_mapping_set", confidence=0.95),
 )
 MS = MappingSet(name="test", confidence=0.95)
+
+
+def line(*references: Reference) -> list[Mapping]:
+    """Create a list of mappings from a simple mappings path."""
+    if not (3 <= len(references) and len(references) % 2):
+        raise ValueError
+    return [
+        Mapping(subject=subject, predicate=predicate, object=obj)
+        for subject, predicate, obj in islice(triplewise(references), None, None, 2)
+    ]
 
 
 class TestOperations(unittest.TestCase):
@@ -485,6 +492,67 @@ class TestOperations(unittest.TestCase):
             list(df["curie_prioritized"]),
         )
 
+    def test_prioritize(self) -> None:
+        """Test prioritize."""
+        a1 = Reference(prefix=PREFIX_A, identifier="0000001")
+        b1 = Reference(prefix=PREFIX_B, identifier="0000002")
+        c1 = Reference(prefix=PREFIX_C, identifier="0000003")
+        ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
+        m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m1_rev = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+        m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m2_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
+        m3 = Mapping(subject=a1, predicate=EXACT_MATCH, object=c1, evidence=[ev])
+        m3_rev = Mapping(subject=c1, predicate=EXACT_MATCH, object=a1, evidence=[ev])
+
+        # can't address priority
+        self.assert_same_triples(
+            [],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D], progress=False),
+        )
+
+        # has unusable priority first, but then defaults
+        self.assert_same_triples(
+            [m1_rev, m3_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_D, PREFIX_A], progress=False),
+        )
+
+        self.assert_same_triples(
+            [m1_rev, m3_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [m1, m2_rev],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [m2, m3],
+            prioritize([m1, m1_rev, m2, m2_rev, m3, m3_rev], [PREFIX_C], progress=False),
+        )
+
+        # test on component with only 1
+        self.assert_same_triples(
+            [m1_rev],
+            prioritize([m1, m1_rev], [PREFIX_A], progress=False),
+        )
+        self.assert_same_triples(
+            [m1],
+            prioritize([m1, m1_rev], [PREFIX_B], progress=False),
+        )
+        self.assert_same_triples(
+            [],
+            prioritize([m1, m1_rev], [PREFIX_C], progress=False),
+        )
+
+        # the following three tests reflect that the prioritize() function
+        # is not implemented in cases when inference hasn't been fully done
+        # self.assert_same_triples([m1_rev], prioritize([m1, m2], [PREFIX_A], progress=False))
+        # self.assert_same_triples([m2], prioritize([m1, m2], [PREFIX_C], progress=False))
+
+        # this one is able to complete, by chance, but it's not part of
+        # the contract, so just left here for later
+        # self.assertEqual([m1, m2_rev], prioritize([m1, m2], [PREFIX_B], progress=False))
+
 
 class TestUpgrades(unittest.TestCase):
     """Test inferring mutations."""
@@ -521,3 +589,39 @@ class TestUpgrades(unittest.TestCase):
         self.assertIsNotNone(new_confidence)
         self.assertEqual(1 - (1 - original_confidence) * (1 - mutation_confidence), new_confidence)
         self.assertEqual(KNOWLEDGE_MAPPING, new_evidence.justification)
+
+    def test_apply_mutations(self) -> None:
+        """Test applying mutations."""
+        (a1,) = _get_references(1, prefix=PREFIX_A)
+        (b1,) = _get_references(1, prefix=PREFIX_B)
+        (c1,) = _get_references(1, prefix=PREFIX_C)
+        (d1,) = _get_references(1, prefix=PREFIX_D)
+
+        m1 = Mutation(source=PREFIX_A, target=PREFIX_B)
+        self.assertTrue(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+
+        self.assertFalse(m1.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=a1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=b1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+        self.assertFalse(m1.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=d1)))
+
+        m2 = Mutation(source=PREFIX_A, target=[PREFIX_B, PREFIX_C])
+        self.assertTrue(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+        self.assertTrue(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=c1, predicate=EXACT_MATCH, object=a1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=c1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=b1, predicate=DB_XREF, object=c1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=d1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=b1)))
+        self.assertFalse(m2.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=c1)))
+
+        m3 = Mutation(source=PREFIX_A)
+        self.assertTrue(m3.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=b1)))
+        self.assertTrue(m3.should_apply_to(Mapping(subject=a1, predicate=DB_XREF, object=c1)))
+
+        self.assertFalse(m3.should_apply_to(Mapping(subject=a1, predicate=EXACT_MATCH, object=c1)))
+        self.assertFalse(m3.should_apply_to(Mapping(subject=b1, predicate=EXACT_MATCH, object=c1)))

@@ -7,8 +7,8 @@ import click
 from pyobo import Reference
 from tqdm.auto import tqdm
 
-from semra.rules import DB_XREF, UNSPECIFIED_MAPPING
 from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]
 
@@ -119,7 +119,14 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                 elif curie.startswith("DSMZ:ACC"):
                     prefix, identifier = "dsmz", "ACC-" + _removeprefix(curie, "DSMZ:ACC")
                 else:
-                    prefix, identifier = bioregistry.parse_curie(curie)
+                    try:
+                        prefix, identifier = bioregistry.parse_curie(curie)
+                    except Exception:
+                        tqdm.write(
+                            f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} "
+                            f"from line:\n  {p.value_raw}"
+                        )
+                        continue
 
                 if prefix is None or identifier is None:
                     tqdm.write(

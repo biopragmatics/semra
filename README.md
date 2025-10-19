@@ -339,10 +339,10 @@ The code in this package is licensed under the MIT License.
 
 ### 📖 Citation
 
-> <a href="https://doi.org/10.1093/bioinformatics/btaf542">Assembly
-> and reasoning over semantic mappings at scale for biomedical data
-> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_Bioinformatics_,
-> 2025, btaf542.
+> <a href="https://doi.org/10.1093/bioinformatics/btaf542">Assembly and
+> reasoning over semantic mappings at scale for biomedical data
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B.
+> M.<br/>_Bioinformatics_, 2025, btaf542.
 
 ```bibtex
 @article{hoyt2025semra,

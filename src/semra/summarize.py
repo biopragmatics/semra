@@ -739,7 +739,7 @@ class LandscapeResult:
         import seaborn as sns
         from matplotlib import pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(1 + len(self.distribution) * width_ratio, height))
+        _fig, ax = plt.subplots(figsize=(1 + len(self.distribution) * width_ratio, height))
         sns.barplot(self.distribution, ax=ax)
 
         for index, value in self.distribution.items():

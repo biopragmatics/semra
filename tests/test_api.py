@@ -385,8 +385,8 @@ class TestOperations(unittest.TestCase):
 
     def test_filter_confidence(self) -> None:
         """Test filtering by confidence."""
-        (a1, a2) = _get_references(2, prefix=PREFIX_A)
-        (b1, b2) = _get_references(2, prefix=PREFIX_B)
+        (a1, _a2) = _get_references(2, prefix=PREFIX_A)
+        (b1, _b2) = _get_references(2, prefix=PREFIX_B)
         m1 = Mapping(
             subject=a1,
             predicate=DB_XREF,
@@ -406,7 +406,7 @@ class TestOperations(unittest.TestCase):
         """Test filtering by subsets."""
         a1, a2 = _get_references(2, prefix=PREFIX_A)
         b1, b2 = _get_references(2, prefix=PREFIX_B)
-        c1, c2 = _get_references(2, prefix=PREFIX_C)
+        c1, _c2 = _get_references(2, prefix=PREFIX_C)
         ev = SimpleEvidence(confidence=0.95, mapping_set=MS)
         m1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[ev])
         m2 = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[ev])

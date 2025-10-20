@@ -640,7 +640,7 @@ def _get_sssom_row(
         license = ""
         confidence = _format_confidence(e.confidence_factor)
     else:
-        raise TypeError
+        raise TypeError(f"invalid evidence type {type(e)} - {e}")
 
     if add_labels:
         with logging_redirect_tqdm():

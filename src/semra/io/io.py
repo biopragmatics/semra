@@ -556,6 +556,7 @@ def _from_curie(curie: str, *, standardize: bool, name: str | None = None) -> Re
 class SSSOMRow(NamedTuple):
     """A tuple representing a row in a SSSOM TSV file."""
 
+    record_id: str
     subject_id: str
     subject_label: str
     predicate_id: str
@@ -639,7 +640,7 @@ def _get_sssom_row(
         license = ""
         confidence = _format_confidence(e.confidence_factor)
     else:
-        raise TypeError
+        raise TypeError(f"invalid evidence type {type(e)} - {e}")
 
     if add_labels:
         with logging_redirect_tqdm():
@@ -650,6 +651,7 @@ def _get_sssom_row(
         object_label = mapping.object.name or ""
 
     return SSSOMRow(
+        record_id=e.get_reference(mapping).curie,
         subject_id=mapping.subject.curie,
         subject_label=subject_label,
         predicate_id=mapping.predicate.curie,

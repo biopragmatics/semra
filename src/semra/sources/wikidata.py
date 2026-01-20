@@ -1,5 +1,6 @@
 """Get arbitrary Wikidata mappings."""
 
+import gzip
 import json
 from collections.abc import Iterable
 from typing import Any, cast
@@ -100,15 +101,15 @@ def iter_wikidata_mappings(
     wikidata_property: str, *, cache: bool = True
 ) -> Iterable[tuple[str, str]]:
     """Iterate over Wikidata xrefs."""
-    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{wikidata_property}.json")
+    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{wikidata_property}.json.gz")
     if path.exists() and cache:
-        with path.open() as file:
+        with gzip.open(path, mode="rt") as file:
             rows = json.load(file)
     else:
         query = f"SELECT ?wikidata_id ?id WHERE {{?wikidata_id wdt:{wikidata_property} ?id}}"
         rows = _run_query(query)
-        with path.open("w") as file:
-            json.dump(rows, file, indent=2)
+        with gzip.open(path, mode="wt") as file:
+            json.dump(rows, file)
 
     for row in rows:
         wikidata_id = row["wikidata_id"]["value"].removeprefix("http://www.wikidata.org/entity/")

@@ -9,10 +9,11 @@ from typing import Literal
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
+from pystow.utils import gzip_path, safe_open_writer
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_reference, safe_open_writer
+from .io_utils import get_confidence_str, get_name_by_reference
 from ..constants import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
@@ -23,7 +24,6 @@ from ..constants import (
     SEMRA_NEO4J_MAPPING_SET_LABEL,
 )
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
-from ..utils import gzip_path
 
 __all__ = [
     "CONCEPT_NODES_HEADER",

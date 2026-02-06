@@ -61,6 +61,7 @@ from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
 from pydantic import BaseModel
 from pyobo.getters import NoBuildError
+from pystow.utils import safe_open_writer
 from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -68,7 +69,6 @@ from zenodo_client import update_zenodo
 
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
-from semra.io.io_utils import safe_open_writer
 from semra.pipeline import REFRESH_RAW_OPTION, REFRESH_SOURCE_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix

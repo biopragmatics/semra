@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-import contextlib
-import csv
-import gzip
-from collections.abc import Generator
 from functools import cache
-from pathlib import Path
-from typing import TextIO, cast
+from typing import cast
 
 import bioregistry
 import pyobo
@@ -21,8 +16,6 @@ __all__ = [
     "get_confidence_str",
     "get_name_by_reference",
     "get_orcid_name",
-    "safe_open",
-    "safe_open_writer",
 ]
 
 SKIP_PREFIXES = {
@@ -75,25 +68,3 @@ def get_confidence_str(x: ConfidenceMixin) -> str:
     """Safely get a confidence from an evidence."""
     confidence = x.get_confidence()
     return str(round(confidence, CONFIDENCE_PRECISION))
-
-
-@contextlib.contextmanager
-def safe_open(path: str | Path, read: bool = False) -> Generator[TextIO, None, None]:
-    """Safely open a file for reading or writing text."""
-    path = Path(path).expanduser().resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, mode="rt" if read else "wt") as file:
-            yield file
-    else:
-        with open(path, mode="r" if read else "w") as file:
-            yield file
-
-
-@contextlib.contextmanager
-def safe_open_writer(f: str | Path | TextIO, *, delimiter: str = "\t"):  # type:ignore
-    """Open a CSV writer, wrapping :func:`csv.writer`."""
-    if isinstance(f, str | Path):
-        with safe_open(f, read=False) as file:
-            yield csv.writer(file, delimiter=delimiter)
-    else:
-        yield csv.writer(f, delimiter=delimiter)

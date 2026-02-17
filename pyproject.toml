@@ -95,7 +95,7 @@ web = [
     "uvicorn",
     "flask",
     "bootstrap_flask",
-    "neo4j",
+    "neo4j<6",
 ]
 landscape = [
     "upsetplot",

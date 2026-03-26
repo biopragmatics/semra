@@ -13,6 +13,7 @@ import pandas as pd
 import sssom_pydantic
 
 from semra.api import assemble_evidences
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_EVIDENCE_URI_PREFIX
 from semra.io import (
     from_digraph,
     from_jsonl,
@@ -286,6 +287,8 @@ class TestIO(unittest.TestCase):
             "orcid": cast(str, bioregistry.get_uri_prefix("orcid")),
             "chembl.compound": cast(str, bioregistry.get_uri_prefix("chembl.compound")),
             "chebi": cast(str, bioregistry.get_uri_prefix("chebi")),
+            SEMRA_EVIDENCE_PREFIX: SEMRA_EVIDENCE_URI_PREFIX,
+            "skos": "http://www.w3.org/2004/02/skos/core#",
         }
         converter = curies.Converter.from_prefix_map(prefix_map)
         with tempfile.TemporaryDirectory() as directory_:

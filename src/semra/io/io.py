@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import logging
 import pickle
 import typing as t
@@ -18,7 +19,6 @@ import yaml
 from pystow.utils import (
     iter_pydantic_jsonl,
     safe_open,
-    safe_open_writer,
     stream_write_pydantic_jsonl,
     write_pydantic_jsonl,
 )
@@ -679,6 +679,7 @@ def write_sssom(
     add_labels: bool = ...,
     prune: bool = ...,
     stream: Literal[True] = True,
+    mapping_set_id: str | None = ...,
 ) -> Generator[Mapping]: ...
 
 
@@ -691,6 +692,7 @@ def write_sssom(
     add_labels: bool = ...,
     prune: bool = ...,
     stream: Literal[False] = False,
+    mapping_set_id: str | None = ...,
 ) -> None: ...
 
 
@@ -701,18 +703,20 @@ def write_sssom(
     add_labels: bool = False,
     prune: bool = True,
     stream: bool = False,
+    mapping_set_id: str | None = None,
 ) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
     if not prune:
-        if stream:
-            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
-        else:
-            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
+        return _write_sssom_stream(  # type:ignore[no-any-return,call-overload]
+            mappings, file, stream=stream, add_labels=add_labels, mapping_set_id=mapping_set_id
+        )
     elif stream:
         raise ValueError("can not prune and stream at the same time")
     else:
         df = get_sssom_df(mappings, add_labels=add_labels)
-        df.to_csv(file, sep="\t", index=False)
+        with safe_open(file, operation="write", representation="text") as f:
+            _write_mapping_set_id(f, mapping_set_id)
+            df.to_csv(f, sep="\t", index=False)
         return None
 
 
@@ -724,6 +728,7 @@ def _write_sssom_stream(
     *,
     stream: Literal[False] = False,
     add_labels: bool = ...,
+    mapping_set_id: str | None = ...,
 ) -> None: ...
 
 
@@ -735,6 +740,7 @@ def _write_sssom_stream(
     *,
     stream: Literal[True] = True,
     add_labels: bool = ...,
+    mapping_set_id: str | None = ...,
 ) -> Generator[Mapping]: ...
 
 
@@ -744,15 +750,25 @@ def _write_sssom_stream(
     *,
     stream: bool = False,
     add_labels: bool = False,
+    mapping_set_id: str | None = None,
 ) -> Generator[Mapping] | None:
     fallback_mapping_set_id = _get_fallback_mapping_set_id()
     it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
+    yv = _stream_write_sssom(
+        file, it, fallback_mapping_set_id, add_labels=add_labels, mapping_set_id=mapping_set_id
+    )
     if stream:
-        return _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels)
+        return yv
     else:
-        for _ in _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels):
+        for _ in yv:
             pass
         return None
+
+
+def _write_mapping_set_id(file: TextIO, mapping_set_id: str | None) -> None:
+    if mapping_set_id is None:
+        mapping_set_id = _get_fallback_mapping_set_id()
+    file.write(f"#mapping_set_id: {mapping_set_id}\n")
 
 
 def _stream_write_sssom(
@@ -760,8 +776,11 @@ def _stream_write_sssom(
     mappings: Iterable[Mapping],
     fallback_mapping_set_id: str,
     add_labels: bool = False,
+    mapping_set_id: str | None = None,
 ) -> Generator[Mapping]:
-    with safe_open_writer(path) as writer:
+    with safe_open(path, operation="write", representation="text") as file:
+        _write_mapping_set_id(file, mapping_set_id)
+        writer = csv.writer(file, delimiter="\t", quoting=csv.QUOTE_NONE)
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         for mapping in mappings:
             for evidence in mapping.evidence:

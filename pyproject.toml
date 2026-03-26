@@ -51,7 +51,7 @@ license-files = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "pystow>=0.7.23",
+    "pystow>=0.8.0",
     "pandas",
     "pydantic",
     "tqdm",

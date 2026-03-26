@@ -9,7 +9,7 @@ from typing import Literal
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
-from pystow.utils import gzip_path, safe_open_writer
+from pystow.utils import gzip_compress, safe_open_writer
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -309,8 +309,10 @@ def write_neo4j(
     )
 
     if compress == "after":
-        node_names = [(label, gzip_path(path).relative_to(directory)) for label, path in node_paths]
-        edge_names = [gzip_path(path).relative_to(directory) for path in edge_paths]
+        node_names = [
+            (label, gzip_compress(path).relative_to(directory)) for label, path in node_paths
+        ]
+        edge_names = [gzip_compress(path).relative_to(directory) for path in edge_paths]
     else:
         node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
         edge_names = [path.relative_to(directory) for path in edge_paths]

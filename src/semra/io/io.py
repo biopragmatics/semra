@@ -848,14 +848,20 @@ def write_jsonl(
 # docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
-    path: str | Path, *, show_progress: bool = ..., stream: Literal[False] = False
+    path: str | Path, *, show_progress: bool = ..., stream: Literal[False] = False,
+    failure_action: Literal["raise", "skip"] = ...,
+
 ) -> list[Mapping]: ...
 
 
 # docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
-    path: str | Path, *, show_progress: bool = ..., stream: Literal[True] = True
+    path: str | Path,
+    *,
+    show_progress: bool = ...,
+    stream: Literal[True] = True,
+    failure_action: Literal["raise", "skip"] = ...,
 ) -> Iterable[Mapping]: ...
 
 

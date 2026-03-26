@@ -66,6 +66,7 @@ dependencies = [
     "pyyaml",
     "humanize",
     "tabulate",
+    "sssom-pydantic",
 ]
 
 [dependency-groups]
@@ -81,7 +82,6 @@ typing = [
 tests = [
     "pytest",
     "coverage[toml]",
-    "sssom>=0.4.16",
     "httpx",
 ]
 docs = [

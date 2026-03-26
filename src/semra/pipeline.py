@@ -770,7 +770,7 @@ class Configuration(BaseModel):
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
-        @verbose_option  # type:ignore
+        @verbose_option
         def main(
             upload: bool,
             refresh_source: bool,

@@ -850,6 +850,6 @@ def from_jsonl(
     """Read a list of Mapping objects from a JSONL file."""
     rv = iter_pydantic_jsonl(path, Mapping, progress=show_progress, failure_action=failure_action)
     if stream:
-        return rv
+        return rv  # type:ignore[return-value]
     else:
         return list(rv)

@@ -5,6 +5,7 @@ import itertools as itt
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 import bioregistry
 import pandas as pd
@@ -281,10 +282,10 @@ class TestIO(unittest.TestCase):
     def test_sssom(self) -> None:
         """Test I/O with SSSOM."""
         prefix_map = {
-            "mesh": bioregistry.get_uri_prefix("mesh"),
-            "orcid": bioregistry.get_uri_prefix("orcid"),
-            "chembl.compound": bioregistry.get_uri_prefix("chembl.compound"),
-            "chebi": bioregistry.get_uri_prefix("chebi"),
+            "mesh": cast(str, bioregistry.get_uri_prefix("mesh")),
+            "orcid": cast(str, bioregistry.get_uri_prefix("orcid")),
+            "chembl.compound": cast(str, bioregistry.get_uri_prefix("chembl.compound")),
+            "chebi": cast(str, bioregistry.get_uri_prefix("chebi")),
         }
         with tempfile.TemporaryDirectory() as directory_:
             for path, prune in itt.product(
@@ -297,7 +298,7 @@ class TestIO(unittest.TestCase):
                 write_sssom(self.mappings, path, prune=prune)
                 new_mappings = assemble_evidences(from_sssom(path), progress=False)
 
-                msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)
+                msdf = sssom.io.parse_sssom_table(path, prefix_map=prefix_map)  # type:ignore[attr-defined]
                 reports = sssom.validators.validate(msdf, fail_on_error=False)
                 self.assertNotEqual(0, len(reports), msg="no reports generated")
                 for validator, report in reports.items():

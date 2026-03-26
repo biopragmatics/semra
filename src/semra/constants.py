@@ -29,6 +29,7 @@ SEMRA_MAPPING = bioregistry.Resource(prefix=SEMRA_MAPPING_PREFIX, name="SeMRA Ma
 
 #: The prefix used in CURIEs representing evidences
 SEMRA_EVIDENCE_PREFIX = "semra.evidence"
+SEMRA_EVIDENCE_URI_PREFIX = "https://w3id.org/biopragmatics/semra/evidence/"
 SEMRA_EVIDENCE = bioregistry.Resource(prefix=SEMRA_EVIDENCE_PREFIX, name="SeMRA Evidence")
 
 #: The prefix used in CURIEs representing mappings sets

@@ -94,7 +94,7 @@ __all__ = [
     "DISEASE_CONFIGURATION",
 ]
 
-ICD_PREFIXES = bioregistry.get_collection("0000004").resources  # type:ignore
+ICD_PREFIXES = bioregistry.get_collection("0000004", strict=True).resources
 MODULE = pystow.module("semra", "case-studies", "disease")
 PREFIXES = PRIORITY = [
     "doid",

@@ -9,10 +9,11 @@ from typing import Literal
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
+from pystow.utils import gzip_compress, safe_open_writer
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_reference, safe_open_writer
+from .io_utils import get_confidence_str, get_name_by_reference
 from ..constants import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
@@ -23,7 +24,6 @@ from ..constants import (
     SEMRA_NEO4J_MAPPING_SET_LABEL,
 )
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
-from ..utils import gzip_path
 
 __all__ = [
     "CONCEPT_NODES_HEADER",
@@ -309,8 +309,10 @@ def write_neo4j(
     )
 
     if compress == "after":
-        node_names = [(label, gzip_path(path).relative_to(directory)) for label, path in node_paths]
-        edge_names = [gzip_path(path).relative_to(directory) for path in edge_paths]
+        node_names = [
+            (label, gzip_compress(path).relative_to(directory)) for label, path in node_paths
+        ]
+        edge_names = [gzip_compress(path).relative_to(directory) for path in edge_paths]
     else:
         node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
         edge_names = [path.relative_to(directory) for path in edge_paths]

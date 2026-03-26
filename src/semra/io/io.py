@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import gzip
+import csv
 import logging
 import pickle
 import typing as t
@@ -16,16 +16,16 @@ import pandas as pd
 import pydantic
 import requests
 import yaml
+from pystow.utils import (
+    iter_pydantic_jsonl,
+    safe_open,
+    stream_write_pydantic_jsonl,
+    write_pydantic_jsonl,
+)
 from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import (
-    CONFIDENCE_PRECISION,
-    get_confidence_str,
-    get_name_by_reference,
-    safe_open,
-    safe_open_writer,
-)
+from .io_utils import CONFIDENCE_PRECISION, get_confidence_str, get_name_by_reference
 from ..rules import CURIE_TO_JUSTIFICATION, CURIE_TO_RELATION
 from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 from ..vocabulary import UNSPECIFIED_MAPPING
@@ -679,6 +679,7 @@ def write_sssom(
     add_labels: bool = ...,
     prune: bool = ...,
     stream: Literal[True] = True,
+    mapping_set_id: str | None = ...,
 ) -> Generator[Mapping]: ...
 
 
@@ -691,6 +692,7 @@ def write_sssom(
     add_labels: bool = ...,
     prune: bool = ...,
     stream: Literal[False] = False,
+    mapping_set_id: str | None = ...,
 ) -> None: ...
 
 
@@ -701,18 +703,20 @@ def write_sssom(
     add_labels: bool = False,
     prune: bool = True,
     stream: bool = False,
+    mapping_set_id: str | None = None,
 ) -> None | Generator[Mapping]:
     """Export mappings as an SSSOM file (could be lossy)."""
     if not prune:
-        if stream:
-            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
-        else:
-            return _write_sssom_stream(mappings, file, stream=stream, add_labels=add_labels)
+        return _write_sssom_stream(  # type:ignore[no-any-return,call-overload]
+            mappings, file, stream=stream, add_labels=add_labels, mapping_set_id=mapping_set_id
+        )
     elif stream:
         raise ValueError("can not prune and stream at the same time")
     else:
         df = get_sssom_df(mappings, add_labels=add_labels)
-        df.to_csv(file, sep="\t", index=False)
+        with safe_open(file, operation="write", representation="text") as f:
+            _write_mapping_set_id(f, mapping_set_id)
+            df.to_csv(f, sep="\t", index=False)
         return None
 
 
@@ -724,6 +728,7 @@ def _write_sssom_stream(
     *,
     stream: Literal[False] = False,
     add_labels: bool = ...,
+    mapping_set_id: str | None = ...,
 ) -> None: ...
 
 
@@ -735,6 +740,7 @@ def _write_sssom_stream(
     *,
     stream: Literal[True] = True,
     add_labels: bool = ...,
+    mapping_set_id: str | None = ...,
 ) -> Generator[Mapping]: ...
 
 
@@ -744,15 +750,25 @@ def _write_sssom_stream(
     *,
     stream: bool = False,
     add_labels: bool = False,
+    mapping_set_id: str | None = None,
 ) -> Generator[Mapping] | None:
     fallback_mapping_set_id = _get_fallback_mapping_set_id()
     it = tqdm(mappings, desc="Writing SSSOM", leave=False, unit="mapping", unit_scale=True)
+    yv = _stream_write_sssom(
+        file, it, fallback_mapping_set_id, add_labels=add_labels, mapping_set_id=mapping_set_id
+    )
     if stream:
-        return _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels)
+        return yv
     else:
-        for _ in _stream_write_sssom(file, it, fallback_mapping_set_id, add_labels=add_labels):
+        for _ in yv:
             pass
         return None
+
+
+def _write_mapping_set_id(file: TextIO, mapping_set_id: str | None) -> None:
+    if mapping_set_id is None:
+        mapping_set_id = _get_fallback_mapping_set_id()
+    file.write(f"#mapping_set_id: {mapping_set_id}\n")
 
 
 def _stream_write_sssom(
@@ -760,8 +776,11 @@ def _stream_write_sssom(
     mappings: Iterable[Mapping],
     fallback_mapping_set_id: str,
     add_labels: bool = False,
+    mapping_set_id: str | None = None,
 ) -> Generator[Mapping]:
-    with safe_open_writer(path) as writer:
+    with safe_open(path, operation="write", representation="text") as file:
+        _write_mapping_set_id(file, mapping_set_id)
+        writer = csv.writer(file, delimiter="\t", quoting=csv.QUOTE_NONE)
         writer.writerow(SSSOM_DEFAULT_COLUMNS)
         for mapping in mappings:
             for evidence in mapping.evidence:
@@ -775,24 +794,14 @@ def _stream_write_sssom(
 
 def write_pickle(mappings: list[Mapping], path: str | Path) -> None:
     """Write the mappings as a pickle."""
-    path = Path(path).resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, "wb") as file:
-            pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
-    else:
-        with path.open("wb") as file:
-            pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
+    with safe_open(path, representation="binary", operation="write") as file:
+        pickle.dump(mappings, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def from_pickle(path: str | Path) -> list[Mapping]:
     """Read the mappings from a pickle."""
-    path = Path(path).resolve()
-    if path.suffix.endswith(".gz"):
-        with gzip.open(path, "rb") as file:
-            return cast(list[Mapping], pickle.load(file))
-    else:
-        with path.open("rb") as file:
-            return cast(list[Mapping], pickle.load(file))
+    with safe_open(path, representation="binary") as file:
+        return cast(list[Mapping], pickle.load(file))
 
 
 # docstr-coverage:excused `overload`
@@ -829,33 +838,34 @@ def write_jsonl(
         unit_scale=True,
         disable=not show_progress,
     )
+    # need this to include the evidence_type
+    kwargs = {"exclude_defaults": False, "exclude_unset": False}
     if stream:
-        return _stream_write_jsonl(models, path)
+        return stream_write_pydantic_jsonl(models, path, **kwargs)
     else:
-        with safe_open(path, read=False) as file:
-            for model in models:
-                file.write(f"{model.model_dump_json(exclude_none=True)}\n")
+        write_pydantic_jsonl(models, path, **kwargs)
         return None
-
-
-def _stream_write_jsonl(models: Iterable[X], path: str | Path) -> Generator[X]:
-    with safe_open(path, read=False) as file:
-        for model in models:
-            file.write(f"{model.model_dump_json(exclude_none=True)}\n")
-            yield model
 
 
 # docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
-    path: str | Path, *, show_progress: bool = ..., stream: Literal[False] = False
+    path: str | Path,
+    *,
+    show_progress: bool = ...,
+    stream: Literal[False] = False,
+    failure_action: Literal["raise", "skip"] = ...,
 ) -> list[Mapping]: ...
 
 
 # docstr-coverage:excused `overload`
 @overload
 def from_jsonl(
-    path: str | Path, *, show_progress: bool = ..., stream: Literal[True] = True
+    path: str | Path,
+    *,
+    show_progress: bool = ...,
+    stream: Literal[True] = True,
+    failure_action: Literal["raise", "skip"] = ...,
 ) -> Iterable[Mapping]: ...
 
 
@@ -867,38 +877,8 @@ def from_jsonl(
     failure_action: Literal["raise", "skip"] = "skip",
 ) -> list[Mapping] | Generator[Mapping]:
     """Read a list of Mapping objects from a JSONL file."""
-    rv = _iter_read_jsonl(path, show_progress=show_progress, failure_action=failure_action)
+    rv = iter_pydantic_jsonl(path, Mapping, progress=show_progress, failure_action=failure_action)
     if stream:
-        return rv
+        return rv  # type:ignore[return-value]
     else:
         return list(rv)
-
-
-def _iter_read_jsonl(
-    path: str | Path,
-    *,
-    show_progress: bool = False,
-    failure_action: Literal["raise", "skip"] = "skip",
-) -> Generator[Mapping]:
-    """Stream mapping objects from a JSONL file."""
-    with safe_open(path, read=True) as file:
-        for i, line in enumerate(
-            tqdm(
-                file,
-                desc="Reading mappings",
-                leave=False,
-                unit="mapping",
-                unit_scale=True,
-                disable=not show_progress,
-            )
-        ):
-            try:
-                yv = Mapping.model_validate_json(line.strip())
-            except pydantic.ValidationError:
-                if failure_action == "raise":
-                    raise
-                else:
-                    logger.debug("[line:%d] failed to parse JSON", i)
-                    continue
-            else:
-                yield yv

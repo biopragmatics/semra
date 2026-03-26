@@ -62,7 +62,7 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
     help="If enabled, upload each landscape to their respective Zenodo records.",
 )
 @BUILD_DOCKER_OPTION
-@verbose_option  # type:ignore
+@verbose_option
 @click.option("--only", help="if given, only runs this configuration", multiple=True)
 @click.option("--readme-only", is_flag=True, help="if given, only creat ethe readme")
 @click.pass_context

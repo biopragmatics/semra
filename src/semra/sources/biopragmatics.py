@@ -58,7 +58,9 @@ def from_biomappings_predicted(*, remote_only: bool = False) -> list[Mapping]:
         return from_sssom(PREDICTIONS_SSSOM_PATH, mapping_set_title="Biomappings")
 
 
-BASE_URL = "https://github.com/biopragmatics/biomappings/raw/master/src/biomappings/resources"
+BASE_URL = (
+    "https://github.com/biopragmatics/biomappings/raw/refs/heads/main/src/biomappings/resources/"
+)
 
 
 def read_remote_tsv(name: str, **kwargs: Any) -> list[Mapping]:

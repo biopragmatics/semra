@@ -61,6 +61,7 @@ from bioontologies.obograph import write_warned
 from bioontologies.robot import write_getter_warnings
 from pydantic import BaseModel
 from pyobo.getters import NoBuildError
+from pystow.utils import gzip_compress, safe_open_writer
 from tabulate import tabulate
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -68,11 +69,10 @@ from zenodo_client import update_zenodo
 
 from semra import Mapping
 from semra.io import from_jsonl, from_pyobo, write_jsonl, write_neo4j, write_sssom
-from semra.io.io_utils import safe_open_writer
 from semra.pipeline import REFRESH_RAW_OPTION, REFRESH_SOURCE_OPTION
 from semra.sources import SOURCE_RESOLVER
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
-from semra.utils import get_jinja_template, gzip_path
+from semra.utils import get_jinja_template
 
 __all__ = [
     "build",
@@ -245,8 +245,8 @@ def build(
     write_neo4j(mappings, NEO4J_DIR, compress="after")
 
     # gzip these after the fact to avoid SIGKILLs
-    jsonl_gz_path = gzip_path(JSONL_PATH)
-    sssom_gz_path = gzip_path(SSSOM_PATH)
+    jsonl_gz_path = gzip_compress(JSONL_PATH)
+    sssom_gz_path = gzip_compress(SSSOM_PATH)
 
     timedelta = time.time() - start
     statistics = Statistics(

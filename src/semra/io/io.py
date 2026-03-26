@@ -838,10 +838,12 @@ def write_jsonl(
         unit_scale=True,
         disable=not show_progress,
     )
+    # need this to include the evidence_type
+    kwargs = {"exclude_defaults": False, "exclude_unset": False}
     if stream:
-        return stream_write_pydantic_jsonl(models, path)
+        return stream_write_pydantic_jsonl(models, path, **kwargs)
     else:
-        write_pydantic_jsonl(models, path)
+        write_pydantic_jsonl(models, path, **kwargs)
         return None
 
 

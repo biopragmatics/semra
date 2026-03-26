@@ -189,7 +189,7 @@ class TestSSSOM(unittest.TestCase):
 
 
 class TestIO(unittest.TestCase):
-    """Test I/O funcitons."""
+    """Test I/O functions."""
 
     def setUp(self) -> None:
         """Set up the test case."""
@@ -254,10 +254,11 @@ class TestIO(unittest.TestCase):
                 Path(directory_).joinpath("test.jsonl"),
                 Path(directory_).joinpath("test.jsonl.gz"),
             ]:
-                write_jsonl(self.mappings, path)
-                new_mappings = from_jsonl(path, show_progress=False)
-                self.assertIsInstance(new_mappings, list)
-                self.assertEqual(self.mappings, new_mappings)
+                with self.subTest(path=path):
+                    write_jsonl(self.mappings, path)
+                    new_mappings = from_jsonl(path, show_progress=False, failure_action="raise")
+                    self.assertIsInstance(new_mappings, list)
+                    self.assertEqual(self.mappings, new_mappings)
 
     def test_digraph(self) -> None:
         """Test I/O to a directed graph."""

@@ -271,7 +271,7 @@ class SimpleEvidence(
 
     model_config = ConfigDict(frozen=True)
 
-    evidence_type: Literal["simple"] = Field(default="simple")
+    evidence_type: Literal["simple"] = Field(default="simple", exclude=False)
     justification: Reference = Field(
         default=Reference(prefix="semapv", identifier="UnspecifiedMapping"),
         description="A SSSOM-compliant justification",
@@ -345,7 +345,7 @@ class ReasonedEvidence(
 
     model_config = ConfigDict(frozen=True)
 
-    evidence_type: Literal["reasoned"] = Field(default="reasoned")
+    evidence_type: Literal["reasoned"] = Field(default="reasoned", exclude=False)
     justification: Reference = Field(..., description="A SSSOM-compliant justification")
     mappings: list[Mapping] = Field(
         ..., description="A list of mappings and their evidences consumed to create this evidence"

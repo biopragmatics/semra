@@ -19,6 +19,7 @@ from semra import (
 from semra.io import write_neo4j
 from semra.struct import Triple
 from semra.vocabulary import BEN_REFERENCE, CHAIN_MAPPING, CHARLIE
+from tests import resources
 
 # TODO test when concept name has problematic characters like tabs or newlines
 
@@ -134,12 +135,12 @@ class TestNeo4jOutput(unittest.TestCase):
             #  but changes in the underlying data structure updated the pickles, invaliding old
             #  hashes. Therefore, we should stop relying on picking for hashing and define explicit
             #  ones for every object (yes, obvious in hindsight)
-            # for path in [
-            #     resources.CONCEPT_NODES_TSV_PATH,
-            #     resources.EVIDENCE_NODES_TSV_PATH,
-            #     resources.MAPPING_NODES_TSV_PATH,
-            #     resources.MAPPING_SET_NODES_TSV_PATH,
-            #     resources.EDGES_TSV_PATH,
-            #     resources.MAPPING_EDGES_TSV_PATH,
-            # ]:
-            #     self.assertEqual(path.read_text(), directory.joinpath(path.name).read_text())
+            for path in [
+                resources.CONCEPT_NODES_TSV_PATH,
+                resources.EVIDENCE_NODES_TSV_PATH,
+                resources.MAPPING_NODES_TSV_PATH,
+                resources.MAPPING_SET_NODES_TSV_PATH,
+                resources.EDGES_TSV_PATH,
+                resources.MAPPING_EDGES_TSV_PATH,
+            ]:
+                self.assertEqual(path.read_text(), directory.joinpath(path.name).read_text())

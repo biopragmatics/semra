@@ -87,6 +87,7 @@ PREFIXES = PRIORITY = [
     "complexportal",
     "fplx",
     "go",
+    "mesh",
     "chembl.target",
     "wikidata",
     "scomp",

@@ -53,17 +53,19 @@ from .cell import CELL_CONFIGURATION
 from .complex import COMPLEX_CONFIGURATION
 from .disease import DISEASE_CONFIGURATION
 from .gene import GENE_CONFIGURATION
+from .instrument import INSTRUMENT_CONFIGURATION
 from .taxrank import TAXRANK_CONFIGURATION
 from ..pipeline import Configuration
 
 #: A list of domain-specific configurations
 CONFIGURATIONS: list[Configuration] = [
+    TAXRANK_CONFIGURATION,
+    INSTRUMENT_CONFIGURATION,
     ANATOMY_CONFIGURATION,
-    CELL_CONFIGURATION,
     COMPLEX_CONFIGURATION,
+    CELL_CONFIGURATION,
     DISEASE_CONFIGURATION,
     GENE_CONFIGURATION,
-    TAXRANK_CONFIGURATION,
 ]
 
 __all__ = [
@@ -73,5 +75,6 @@ __all__ = [
     "CONFIGURATIONS",
     "DISEASE_CONFIGURATION",
     "GENE_CONFIGURATION",
+    "INSTRUMENT_CONFIGURATION",
     "TAXRANK_CONFIGURATION",
 ]

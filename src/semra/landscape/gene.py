@@ -113,6 +113,7 @@ GENE_CONFIGURATION = Configuration(
     description="Analyze the landscape of gene nomenclature resources, species-agnostic.",
     creators=[CHARLIE],
     inputs=[
+        Input(source="biomappings"),
         Input(prefix="hgnc", source="pyobo", confidence=0.99),
         Input(prefix="mgi", source="pyobo", confidence=0.99),
         Input(prefix="rgd", source="pyobo", confidence=0.99),

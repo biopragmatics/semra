@@ -71,18 +71,28 @@ __all__ = [
 MODULE = pystow.module("semra", "case-studies", "taxranks")
 PRIORITY = [
     "taxrank",
-    "ncbitaxon",
+    # "ncbitaxon",
     "tdwg.taxonrank",
+    "ncit",
+    # "gfbio.biol",
 ]
-SUBSETS = {"ncbitaxon": [semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank")]}
+SUBSETS: dict[str, list[semra.Reference]] = {
+    # "ncbitaxon": [
+    #     semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank"),
+    #     # will need to enumerate explicitly here since they're all marked as obsolete
+    # ],
+    "ncit": [semra.Reference(prefix="ncit", identifier="C40098")],
+}
 
 TAXRANK_CONFIGURATION = semra.Configuration(
     key="taxrank",
     name="SeMRA Taxonomical Ranks Mappings Database",
-    description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
+    description="Supports the analysis of the landscape of taxonomical rank nomenclature resources.",
     creators=[CHARLIE],
     inputs=[
         semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
+        semra.Input(prefix="tdwg.taxonrank", source="pyobo", confidence=0.99),
+        semra.Input(prefix="positive", source="biomappings", confidence=0.99),
     ],
     subsets=SUBSETS,
     add_labels=False,

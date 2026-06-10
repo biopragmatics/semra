@@ -102,13 +102,13 @@ PREFIXES = PRIORITY = [
     "efo",
     "mesh",
     "ncit",
-    "orphanet",
-    "orphanet.ordo",
+    "orpha",
     "umls",
     "omim",
     "omim.ps",
     # "snomedct",
     "gard",
+    "medgen",
     *ICD_PREFIXES,
 ]
 # some resources are generic, so we want to cut to a relevant subset
@@ -121,7 +121,9 @@ SUBSETS = {
         Reference(prefix="mesh", identifier="D001523"),
         Reference(prefix="mesh", identifier="D004191"),
     ],
-    "efo": [Reference.from_curie("efo:0000408")],
+    # note that in EFO version 3.88.0, they adopted the MONDO disease
+    # term as a root
+    "efo": [Reference.from_curie("mondo:0000001")],
     "ncit": [Reference.from_curie("ncit:C2991")],
     "umls": [
         # all children of https://uts.nlm.nih.gov/uts/umls/semantic-network/Pathologic%20Function
@@ -142,15 +144,14 @@ DISEASE_CONFIGURATION = Configuration(
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        Input(prefix="doid", source="bioontologies", confidence=0.99),
-        Input(prefix="mondo", source="bioontologies", confidence=0.99),
-        Input(prefix="efo", source="bioontologies", confidence=0.99),
+        Input(prefix="doid", source="pyobo", confidence=0.99),
+        Input(prefix="mondo", source="pyobo", confidence=0.99),
+        Input(prefix="efo", source="pyobo", confidence=0.99),
         Input(prefix="mesh", source="pyobo", confidence=0.99),
         Input(prefix="ncit", source="pyobo", confidence=0.85),
         Input(prefix="umls", source="pyobo", confidence=0.9),
-        Input(prefix="orphanet.ordo", source="bioontologies", confidence=0.9),
-        # Input(prefix="orphanet", source="bioontologies", confidence=0.9),
-        # Input(prefix="hp", source="bioontologies", confidence=0.99),
+        Input(prefix="orpha", source="pyobo", confidence=0.9),
+        # Input(prefix="hp", source="pyobo", confidence=0.99),
     ],
     subsets=SUBSETS,
     add_labels=True,
@@ -163,8 +164,7 @@ DISEASE_CONFIGURATION = Configuration(
         Mutation(source="efo", confidence=0.90),
         Mutation(source="ncit", confidence=0.7),
         Mutation(source="umls", confidence=0.7),
-        Mutation(source="orphanet.ordo", confidence=0.7),
-        Mutation(source="orphanet", confidence=0.7),
+        Mutation(source="orpha", confidence=0.7),
         # Mutation(source="hp", confidence=0.7),
     ],
     zenodo_record=11091885,

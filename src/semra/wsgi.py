@@ -73,14 +73,14 @@ def get_app(
         try:
             import biomappings
             import biomappings.resources
-            import biomappings.utils
+            import biomappings.version
         except ImportError:
             pass
         else:
             current_author = biomappings.resources.get_current_curator(strict=False)
             if current_author:
                 logger.info("Using biomappings resources")
-                biomappings_git_hash = biomappings.utils.get_git_hash()
+                biomappings_git_hash = biomappings.version.get_git_hash()
                 for m in biomappings.load_false_mappings():
                     index_biomapping(false_mapping_index, m)
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typing as t
 from typing import cast
 
 import flask
@@ -10,13 +9,11 @@ import werkzeug
 from bioregistry import NormalizedNamableReference
 from curies import Reference
 from flask import Blueprint, current_app, render_template
+from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
 from semra.web.shared import State, _figure_number
-
-if t.TYPE_CHECKING:
-    import biomappings.resources
 
 __all__ = [
     "flask_blueprint",
@@ -103,7 +100,7 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
         target, name=client.get_concept_name(target)
     )
 
-    mapping = biomappings.resources.SemanticMapping.model_validate(
+    mapping = SemanticMapping.model_validate(
         {
             "subject": subject_reference,
             "predicate": EXACT_MATCH,
@@ -154,9 +151,7 @@ def _flask_get_false_mapping_index() -> set[tuple[str, str]]:
     return _flask_get_state().false_mapping_index
 
 
-def index_biomapping(
-    mapping_index: set[tuple[str, str]], mapping: biomappings.resources.SemanticMapping
-) -> None:
+def index_biomapping(mapping_index: set[tuple[str, str]], mapping: SemanticMapping) -> None:
     """Index a mapping from biomappings."""
     if mapping.predicate.curie != "skos:exactMatch":
         return

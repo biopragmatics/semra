@@ -7,7 +7,7 @@ import os
 import typing as t
 from collections import Counter
 from textwrap import dedent
-from typing import Any, NamedTuple, TypeAlias, cast
+from typing import Any, NamedTuple, Self, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -16,7 +16,6 @@ import networkx as nx
 import pydantic
 from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from neo4j import ManagedTransaction, unit_of_work
-from typing_extensions import Self
 
 from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
 from semra.rules import RELATIONS

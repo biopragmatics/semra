@@ -28,7 +28,7 @@
                         Confidence: {{ evidence.confidence}}<br>
                         Type: {{ evidence.evidence_type }}<br>
                         {% if evidence.author %}
-                        Author:<a href="https://bioregistry.io/{{ evidence.author.curie }}">{{ evidence.author.curie }}</a><br>
+                        Author: <a href="https://bioregistry.io/{{ evidence.author.curie }}">{{ evidence.author.curie }}</a><br>
                         {% endif %}
                         {% if evidence.mapping_set %}
                         Mapping Set: <a href="{{ url_for('.view_mapping_set', mapping_set_id=evidence.mapping_set.curie) }}">{{evidence.mapping_set.name}}</a>

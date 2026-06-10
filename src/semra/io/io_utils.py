@@ -26,7 +26,7 @@ SKIP_PREFIXES = {
     "snomedct",
 }
 # Skip all ICD prefixes from the https://bioregistry.io/collection/0000004 collection
-SKIP_PREFIXES.update(bioregistry.get_collection("0000004", strict=True).resources)
+SKIP_PREFIXES.update(bioregistry.get_collection("0000004", strict=True).get_prefixes())
 
 
 def get_name_by_reference(reference: Reference) -> str | None:

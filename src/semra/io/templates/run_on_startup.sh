@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -x  # Enable command printing
+set -e  # Exit on first failure
 
 # build the dockerfile
 DOCKER_CLI_HINTS=false DOCKER_BUILDKIT=1 docker build --tag {{ docker_name }} .

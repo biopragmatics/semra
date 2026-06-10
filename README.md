@@ -62,7 +62,7 @@ mapping = Mapping(
             confidence=0.99,
             author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
             mapping_set=MappingSet(
-                name="biomappings", license="CC0", confidence=0.90,
+                name="biomappings", license="https://creativecommons.org/publicdomain/zero/1.0/", confidence=0.90,
             ),
         )
     ]
@@ -93,7 +93,7 @@ mappings_alt = semra.from_sssom(
 go_mappings = semra.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
-uberon_mappings = semra.from_bioontologies("uberon")
+uberon_mappings = semra.from_pyobo("uberon")
 ```
 
 SeMRA also implements custom importers in the `semra.sources` submodule. It's

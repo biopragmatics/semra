@@ -199,8 +199,7 @@ def compile_landscape_metaanalysis(paper_table: bool = False) -> None:
 def _get_metaanalysis_df() -> pandas.DataFrame:
     import pandas as pd
 
-    from ..struct import Statistics
-    from ..summarize import _copy_into_landscape_folder
+    from ..summarize import Statistics, _copy_into_landscape_folder
 
     rows = []
 

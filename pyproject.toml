@@ -26,10 +26,10 @@ classifiers = [
     "Framework :: Sphinx",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Typing :: Typed",
 ]
@@ -44,29 +44,33 @@ keywords = [
 
 # License Information.
 # See PEP-639 at https://peps.python.org/pep-0639/#add-license-files-key
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "pystow>=0.8.0",
+    "pystow>=0.8.12",
     "pandas",
     "pydantic",
     "tqdm",
     "more_itertools",
     "networkx",
-    "bioregistry>=0.12.19",
-    "pyobo>=0.12.4",
-    "bioontologies>=0.7.3",
-    "typing_extensions",
-    "zenodo_client",
-    "ssslm",
-    "curies>=0.10.16",
+    "bioregistry>=0.13.59",
+    "bioversions>=0.10.11",
+    "biomappings>=0.5.5",
+    "pyobo>=0.12.24",
+    "typing-extensions",
+    "zenodo-client",
+    "ssslm>=0.2.0",
+    "curies>=0.13.10",
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.6.0",
     "pyyaml",
     "humanize",
     "tabulate",
-    "sssom-pydantic",
+    "sssom-pydantic>=0.5.10",
+    "wikidata-client",
+    "obographs>=0.0.11",
 ]
 
 [dependency-groups]
@@ -88,15 +92,11 @@ docs = [
     "sphinx>=8",
     "sphinx-rtd-theme>=3.0",
     "sphinx-click",
-    "sphinx_automodapi",
-    "autodoc_pydantic",
+    "sphinx-automodapi",
+    "autodoc-pydantic",
     "texext",
 ]
-biomappings = [
-    "biomappings>=0.4.1",
-]
 web = [
-    "semra[biomappings]",
     "fastapi",
     "uvicorn",
     "flask",

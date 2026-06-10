@@ -58,7 +58,7 @@ resources.
 
 Outside of initial download of resources, which depends on internet connection
 and availability and takes on the order of a few hours, this can be run on
-commodity hardware overnight (e.g., a Macbook Pro 2023 with 36GB of RAM).
+commodity hardware overnight (e.g., a MacBook Pro 2023 with 36GB of RAM).
 
 If you only want to re-run a specific configuration, use `--only` with the key,
 like `--only disease`.

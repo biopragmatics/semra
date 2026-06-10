@@ -9,7 +9,7 @@ RUN apt-get update && \
     add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \
     apt-get install -y neo4j
 
-# Install python
+# Install Python
 RUN apt-get update && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get install -y git zip unzip bzip2 gcc pkg-config {{ python }}

@@ -137,9 +137,7 @@ def from_pyobo(
     """
     import pyobo
 
-    df: pd.DataFrame = pyobo.get_mappings_df(
-        prefix, force_process=force_process, names=False, cache=cache
-    )
+    df: pd.DataFrame = pyobo.get_mappings_df(prefix, force_process=force_process, cache=cache)
     return _from_pyobo_sssom_df(
         df,
         prefix=prefix,

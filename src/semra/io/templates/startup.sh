@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -x  # Enable command printing
+set -e  # Exit on first failure
 
 neo4j start
 

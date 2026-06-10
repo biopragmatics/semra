@@ -130,7 +130,7 @@ import typing as t
 from collections.abc import Callable, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal, NamedTuple, overload
+from typing import Any, Literal, NamedTuple, Self, overload
 
 import bioregistry
 import click
@@ -138,7 +138,6 @@ import requests
 from pydantic import BaseModel, Field, model_validator
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from typing_extensions import Self
 
 from semra.api import (
     Mutation,

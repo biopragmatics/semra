@@ -23,7 +23,7 @@ from semra.pipeline import (
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 
 if TYPE_CHECKING:
-    import pandas
+    import pandas as pd
 
 __all__ = [
     "compile_landscape_metaanalysis",
@@ -196,7 +196,7 @@ def compile_landscape_metaanalysis(paper_table: bool = False) -> None:
         click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
 
 
-def _get_metaanalysis_df() -> pandas.DataFrame:
+def _get_metaanalysis_df() -> pd.DataFrame:
     import pandas as pd
 
     from ..summarize import Statistics, _copy_into_landscape_folder

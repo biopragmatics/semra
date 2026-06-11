@@ -36,7 +36,6 @@ from semra.io import (
     write_pickle,
     write_sssom,
 )
-from semra.io.io import _to_sssom_pydantic
 from semra.sources.biopragmatics import get_biomappings_negative_mappings
 from semra.struct import (
     CONVERTER,
@@ -297,9 +296,8 @@ class TestSSSOM(unittest.TestCase):
 
     def test_to_sssom_pydantic(self) -> None:
         """Test outputting to a SSSOM-style mapping."""
-        semantic_mapping = _to_sssom_pydantic(
+        semantic_mapping = TEST_MAPPING_1.evidence[0]._to_sssom_pydantic(
             TEST_MAPPING_1,
-            TEST_MAPPING_1.evidence[0],
             subject=TEST_MAPPING_1.subject,
             object=TEST_MAPPING_1.object,
         )
@@ -312,9 +310,8 @@ class TestSSSOM(unittest.TestCase):
         self.assertIsNotNone(TEST_SSSOM_MAPPING_6.subject.name)
         self.assertIsNotNone(TEST_SSSOM_MAPPING_6.object.name)
 
-        semantic_mapping = _to_sssom_pydantic(
+        semantic_mapping = TEST_MAPPING_6.evidence[0]._to_sssom_pydantic(
             TEST_MAPPING_6,
-            TEST_MAPPING_6.evidence[0],
             subject=TEST_MAPPING_6.subject,
             object=TEST_MAPPING_6.object,
         )

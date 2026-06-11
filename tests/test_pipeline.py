@@ -185,6 +185,7 @@ class TestPipeline(unittest.TestCase):
         m: MappingPack = configuration.get_mappings(
             return_type=AssembleReturnType.all,
             refresh_processed=True,
+            progress=False,
         )
 
         self.assertNotEqual([], m.raw, msg="empty raw mappings")

@@ -118,7 +118,7 @@ def infer_chains(
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    graph = to_multidigraph(mappings)
+    graph = to_multidigraph(mappings, progress=progress)
     new_mappings = []
 
     components = sorted(

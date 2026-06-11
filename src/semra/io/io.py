@@ -26,7 +26,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Unpack
 
 from .io_utils import get_name_by_reference
-from ..struct import Evidence, Mapping, ReasonedEvidence
+from ..struct import Mapping
 
 if TYPE_CHECKING:
     import pandas
@@ -156,18 +156,6 @@ def to_sssom_pydantic(
         subject, obj = _get_subject_object(mapping, add_labels)
         for evidence in mapping.evidence:
             yield evidence._to_sssom_pydantic(mapping, subject=subject, object=obj)
-
-
-def _to_sssom_pydantic(
-    mapping: Mapping,
-    evidence: Evidence,
-    subject: Reference,
-    object: Reference,
-) -> sssom_pydantic.SemanticMapping:
-    """Convert a mapping to a SSSOM-Pydantic object."""
-    if isinstance(evidence, ReasonedEvidence):
-        return evidence._to_sssom_pydantic(mapping)
-    return evidence._to_sssom_pydantic(mapping)
 
 
 def _get_subject_object(mapping: Mapping, add_labels: bool) -> tuple[Reference, Reference]:

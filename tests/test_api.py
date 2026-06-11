@@ -10,7 +10,6 @@ from typing import cast
 import curies
 import pandas as pd
 from curies import vocabulary as v
-from curies.vocabulary import unspecified_matching_process
 from more_itertools import triplewise
 from pydantic import BaseModel
 from sssom_pydantic import SemanticMapping
@@ -189,12 +188,7 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(2, len(index[m1.triple]))
         self.assertEqual(
             {v.lexical_matching_process, v.manual_mapping_curation},
-            {
-                e.justification
-                if e.justification
-                else unspecified_matching_process.curie
-                for e in index[m1.triple]
-            },
+            {e.justification for e in index[m1.triple]},
         )
 
     def assert_same_triples(

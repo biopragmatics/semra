@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from functools import cache
-from typing import cast
-
 import bioregistry
 import pyobo
-import requests
 from curies import Reference
+
+from ..utils import get_orcid_name
 
 __all__ = [
     "get_name_by_reference",
-    "get_orcid_name",
 ]
 
 SKIP_PREFIXES = {
@@ -33,25 +30,3 @@ def get_name_by_reference(reference: Reference) -> str | None:
     if reference.prefix == "orcid":
         return get_orcid_name(reference.identifier)
     return pyobo.get_name(reference)
-
-
-@cache
-def get_orcid_name(orcid: str) -> str | None:
-    """Retrieve a researcher's name from ORCID's API."""
-    if orcid.startswith("orcid:"):
-        orcid = orcid[len("orcid:") :]
-
-    try:
-        res = requests.get(
-            f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5
-        ).json()
-    except OSError:  # e.g., ReadTimeout
-        return None
-    name = res.get("person", {}).get("name")
-    if name is None:
-        return None
-    if credit_name := name.get("credit-name"):
-        return cast(str, credit_name["value"])
-    if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
-        return f"{given_names['value']} {family_name['value']}"
-    return None

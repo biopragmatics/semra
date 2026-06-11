@@ -643,6 +643,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.none] = AssembleReturnType.none,
+        progress: bool = ...,
     ) -> None: ...
 
     # docstr-coverage: inherited
@@ -654,6 +655,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.all] = AssembleReturnType.all,
+        progress: bool = ...,
     ) -> MappingPack: ...
 
     # docstr-coverage: inherited
@@ -665,6 +667,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.priority] = AssembleReturnType.priority,
+        progress: bool = ...,
     ) -> list[Mapping]: ...
 
     def get_mappings(

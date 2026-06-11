@@ -8,10 +8,10 @@ import sys
 from typing import Literal, overload
 
 import fastapi
+from a2wsgi import WSGIMiddleware
 from bioregistry import NormalizedNamedReference
 from flask import Flask
 from flask_bootstrap import Bootstrap5
-from starlette.middleware.wsgi import WSGIMiddleware
 
 from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router, auto_router
@@ -113,7 +113,7 @@ def get_app(
         client.initialize_autocomplete()
         fastapi_app.include_router(auto_router)
 
-    fastapi_app.mount("/", WSGIMiddleware(flask_app))
+    fastapi_app.mount("/", WSGIMiddleware(flask_app))  # type:ignore[arg-type]
 
     if return_flask:
         return flask_app, fastapi_app

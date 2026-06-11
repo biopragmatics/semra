@@ -12,9 +12,10 @@ from flask import Blueprint, current_app, render_template
 from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
+from semra.utils import format_number
 from semra.version import get_version as get_semra_version
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
-from semra.web.shared import State, _figure_number
+from semra.web.shared import State
 
 __all__ = [
     "flask_blueprint",
@@ -44,7 +45,7 @@ def home() -> str:
         mapping_set_counter=state.summary.MAPPING_SET_COUNTER,
         node_counter=state.summary.NODE_COUNTER,
         mapping_sets=mapping_sets,
-        format_number=_figure_number,
+        format_number=format_number,
         justification_counter=state.summary.JUSTIFICATION_COUNTER,
         evidence_type_counter=state.summary.EVIDENCE_TYPE_COUNTER,
         prefix_counter=state.summary.PREFIX_COUNTER,

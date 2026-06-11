@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar, cast
 
 import bioregistry
+import requests
 from pydantic import BeforeValidator
 from tqdm.auto import tqdm
 
@@ -19,6 +21,7 @@ __all__ = [
     "PrefixPairListValidator",
     "PrefixValidator",
     "cleanup_prefixes",
+    "format_number",
     "get_jinja_environment",
     "get_jinja_template",
     "get_semra_uri",
@@ -134,3 +137,43 @@ def get_semra_uri(*keys: str, gzip: bool = False) -> str:
     if gzip:
         rv += ".gz"
     return rv
+
+
+def format_number(n: int) -> tuple[int | float, str]:
+    """Format a number."""
+    if n >= 1_000_000:
+        lead = n / 1_000_000
+        if lead < 10:
+            return round(lead, 1), "M"
+        else:
+            return round(lead), "M"
+    if n >= 1_000:
+        lead = n / 1_000
+        if lead < 10:
+            return round(lead, 1), "K"
+        else:
+            return round(lead), "K"
+    else:
+        return n, ""
+
+
+@cache
+def get_orcid_name(orcid: str) -> str | None:
+    """Retrieve a researcher's name from ORCID's API."""
+    orcid = orcid.removeprefix("https://orcid.org/")
+    orcid = orcid.removeprefix("http://orcid.org/")
+    orcid = orcid.removeprefix("orcid:")
+    try:
+        res = requests.get(
+            f"https://orcid.org/{orcid}", headers={"Accept": "application/json"}, timeout=5
+        ).json()
+    except OSError:  # e.g., ReadTimeout
+        return None
+    name = res.get("person", {}).get("name")
+    if name is None:
+        return None
+    if credit_name := name.get("credit-name"):
+        return cast(str, credit_name["value"])
+    if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
+        return f"{given_names['value']} {family_name['value']}"
+    return None

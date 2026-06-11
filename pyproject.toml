@@ -81,8 +81,6 @@ typing = [
     "types-tabulate",
     "types-PyYAML",
 ]
-
-[project.optional-dependencies]
 tests = [
     "pytest",
     "coverage[toml]",
@@ -96,8 +94,11 @@ docs = [
     "autodoc-pydantic",
     "texext",
 ]
+
+[project.optional-dependencies]
 web = [
     "fastapi",
+    "a2wsgi",
     "uvicorn",
     "flask",
     "bootstrap-flask",

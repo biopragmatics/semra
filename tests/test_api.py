@@ -188,9 +188,9 @@ class TestOperations(unittest.TestCase):
         self.assertEqual(1, len(index))
         self.assertEqual(2, len(index[m1.triple]))
         self.assertEqual(
-            {v.lexical_matching_process.identifier, v.manual_mapping_curation.identifier},
+            {v.lexical_matching_process, v.manual_mapping_curation},
             {
-                e.justification.identifier
+                e.justification
                 if e.justification
                 else unspecified_matching_process.curie
                 for e in index[m1.triple]

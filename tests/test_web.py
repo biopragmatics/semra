@@ -7,12 +7,12 @@ import networkx as nx
 from bioregistry import NormalizedNamableReference
 from fastapi import FastAPI
 from flask import Flask
+from sssom_pydantic import SemanticMapping
 from starlette.testclient import TestClient
 
 import semra
 from semra import (
     EXACT_MATCH,
-    UNSPECIFIED_MAPPING,
     Evidence,
     Mapping,
     MappingSet,
@@ -22,27 +22,19 @@ from semra import (
 from semra.client import (
     AutocompletionResults,
     BaseClient,
-    ExampleMapping,
     FullSummary,
     ReferenceHint,
     _safe_label_or_type,
 )
 from semra.wsgi import get_app
-from tests.constants import TEST_CURIES, a1, a2, b1, b2
+from tests.constants import R1, R2, R3, R4, TEST_CURIES, TEST_MAPPING_SET
 
-MS1 = MappingSet(
-    name="Test Mapping Set",
-)
-E1 = SimpleEvidence(
-    mapping_set=MS1,
-    justification=UNSPECIFIED_MAPPING,
-)
-M1 = Mapping(subject=a1, predicate=EXACT_MATCH, object=b1, evidence=[E1])
-M1_INV = Mapping(subject=b1, predicate=EXACT_MATCH, object=a1, evidence=[E1])
-M2 = Mapping(subject=a2, predicate=EXACT_MATCH, object=b2, evidence=[E1])
+M1 = Mapping.from_sssom_pydantic(SemanticMapping.exact(R2, R1), TEST_MAPPING_SET)
+M1_INV = Mapping.from_sssom_pydantic(SemanticMapping.exact(R1, R2), TEST_MAPPING_SET)
+M2 = Mapping.from_sssom_pydantic(SemanticMapping.exact(R4, R3), TEST_MAPPING_SET)
 TEST_MAPPINGS = [M1, M2]
-E1_M1_REFERENCE = E1.get_reference(M1)
-E1_M2_REFERENCE = E1.get_reference(M2)
+E1_M1_REFERENCE = M1.evidence[0].get_reference(M1)
+E1_M2_REFERENCE = M2.evidence[0].get_reference(M2)
 NAMES = {c.curie: c.name for c in TEST_CURIES}
 
 
@@ -57,25 +49,25 @@ class MockClient(BaseClient):
         self, curie: ReferenceHint, *, max_distance: int | None = None
     ) -> dict[Reference, str] | None:
         """Get exact matches for a given CURIE."""
-        if curie == a1.curie:
-            return {b1: cast(str, b1.name)}
+        if curie == R2.curie:
+            return {R1: cast(str, R1.name)}
         return None
 
     def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence."""
         if curie == E1_M1_REFERENCE.curie:
-            return E1
+            return M1.evidence[0]
         return None
 
-    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
+    def get_mapping_set(self, uri: str) -> MappingSet | None:
         """Get a mapping set."""
-        if curie == MS1.curie:
-            return MS1
+        if uri == str(TEST_MAPPING_SET.id):
+            return TEST_MAPPING_SET
         return None
 
     def get_mapping_sets(self) -> list[MappingSet]:
         """Get all mapping sets."""
-        return [MS1]
+        return [TEST_MAPPING_SET]
 
     def get_mapping(self, curie: ReferenceHint) -> semra.Mapping | None:
         """Get a mapping."""
@@ -85,10 +77,10 @@ class MockClient(BaseClient):
             return M2
         return None
 
-    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
+    def get_mappings_by_set(self, uri: str, n: int = 10) -> list[Mapping]:
         """Get example mappings from a set."""
-        if curie == MS1.curie:
-            return [ExampleMapping.from_mapping(M1)]
+        if uri == str(TEST_MAPPING_SET.id):
+            return [M1]
         raise KeyError
 
     def get_full_summary(self) -> FullSummary:
@@ -107,16 +99,16 @@ class MockClient(BaseClient):
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
-        if curie != a1.curie:
+        if curie != R2.curie:
             return None
 
         # TODO unify with mapping graph!
 
         g = nx.MultiDiGraph()
-        g.add_node(a1.curie)  # what about other parts?
-        g.add_node(b1.curie)
-        g.add_edge(a1.curie, b1.curie, key=M1.curie, type=EXACT_MATCH.curie)
-        g.add_edge(b1.curie, a1.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
+        g.add_node(R2.curie)  # what about other parts?
+        g.add_node(R1.curie)
+        g.add_edge(R2.curie, R1.curie, key=M1.curie, type=EXACT_MATCH.curie)
+        g.add_edge(R1.curie, R2.curie, key=M1_INV.curie, type=EXACT_MATCH.curie)
         return g
 
     def initialize_autocomplete(self) -> None:
@@ -128,7 +120,7 @@ class MockClient(BaseClient):
 
     def get_example_concept(self) -> NormalizedNamableReference:
         """Mock getting an example concept."""
-        return a1
+        return R2
 
 
 class BaseTest(unittest.TestCase):
@@ -165,13 +157,13 @@ class TestFrontend(BaseTest):
     def test_mapping_set(self) -> None:
         """Test the mapping set page."""
         with self.flask_app.test_client() as client:
-            res = client.get(f"/mapping_set/{MS1.curie}")
+            res = client.get(f"/mapping_set/?id={TEST_MAPPING_SET.id}")
             self.assertEqual(200, res.status_code, msg=res.text)
 
     def test_concept(self) -> None:
         """Test the mapping set page."""
         with self.flask_app.test_client() as client:
-            res = client.get(f"/concept/{a1.curie}")
+            res = client.get(f"/concept/{R2.curie}")
             self.assertEqual(200, res.status_code, msg=res.text)
 
 
@@ -190,23 +182,27 @@ class TestAPI(BaseTest):
         """Test the evidence API."""
         res = self.test_client.get(f"/api/evidence/{E1_M1_REFERENCE.curie}")
         self.assertEqual(200, res.status_code)
-        self.assertEqual(E1, SimpleEvidence.model_validate(res.json()))
+        self.assertEqual(M1.evidence[0], SimpleEvidence.model_validate(res.json()))
 
         res_not_found = self.test_client.get(f"/api/evidence/{E1_M2_REFERENCE.curie}")
-        self.assertEqual(404, res_not_found.status_code)
+        self.assertEqual(404, res_not_found.status_code, msg=f"got result: {res_not_found.text}")
 
     def test_mapping_set(self) -> None:
         """Test the mapping set API."""
-        res = self.test_client.get(f"/api/mapping_set/{MS1.curie}")
+        res = self.test_client.get(f"/api/mapping_set/?id={TEST_MAPPING_SET.id}")
         self.assertEqual(200, res.status_code)
-        self.assertEqual(MS1, MappingSet.model_validate(res.json()))
+        self.assertEqual(TEST_MAPPING_SET, MappingSet.model_validate(res.json()))
 
-        res_not_found = self.test_client.get("/api/mapping_set/abcdef")
+        # malformed
+        res_not_found = self.test_client.get("/api/mapping_set/?id=abcdef")
+        self.assertEqual(422, res_not_found.status_code)
+
+        res_not_found = self.test_client.get("/api/mapping_set/?id=https://example.com/test.tsv")
         self.assertEqual(404, res_not_found.status_code)
 
         res_all = self.test_client.get("/api/mapping_set/")
-        self.assertEqual(200, res_all.status_code)
-        self.assertEqual([MS1], [MappingSet.model_validate(r) for r in res_all.json()])
+        self.assertEqual(200, res_all.status_code, msg=res_all.text)
+        self.assertEqual([TEST_MAPPING_SET], [MappingSet.model_validate(r) for r in res_all.json()])
 
     def test_mapping(self) -> None:
         """Test the mapping API."""
@@ -219,11 +215,11 @@ class TestAPI(BaseTest):
 
     def test_exact_matches(self) -> None:
         """Test the exact matches API."""
-        res = self.test_client.get(f"/api/exact/{a1.curie}")
+        res = self.test_client.get(f"/api/exact/{R2.curie}")
         self.assertEqual(200, res.status_code)
         records = res.json()
         self.assertEqual(
-            [b1], [Reference.model_validate(r) for r in records], msg=f"Results: {records}"
+            [R1], [Reference.model_validate(r) for r in records], msg=f"Results: {records}"
         )
 
         res_not_found = self.test_client.get("/api/exact/abcdef")
@@ -231,7 +227,7 @@ class TestAPI(BaseTest):
 
     def test_component(self) -> None:
         """Test the connected components API."""
-        res = self.test_client.get(f"/api/cytoscape/{a1.curie}")
+        res = self.test_client.get(f"/api/cytoscape/{R2.curie}")
         self.assertEqual(200, res.status_code)
         res.json()
 

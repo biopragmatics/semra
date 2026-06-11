@@ -120,7 +120,20 @@ def get_app(
     return fastapi_app
 
 
-if __name__ == "__main__":
+def _run(
+    *,
+    uri: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    port: int | None = None,
+    host: str | None = None,
+) -> None:
     import uvicorn
 
-    uvicorn.run(get_app(return_flask=False), port=5000, host="0.0.0.0")  # noqa:S104
+    client = Neo4jClient(uri=uri, user=user, password=password)
+    app = get_app(client=client, return_flask=False)
+    uvicorn.run(app, port=port or 8773, host=host or "0.0.0.0")  # noqa:S104
+
+
+if __name__ == "__main__":
+    _run()

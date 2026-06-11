@@ -22,6 +22,7 @@ from semra.vocabulary import (
     CHAIN_MAPPING,
     DB_XREF,
     EXACT_MATCH,
+    INVERSION_MAPPING,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
@@ -130,7 +131,12 @@ def infer_chains(
         reverse=True,
     )
     it = tqdm(
-        components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress
+        components,
+        unit="component",
+        desc="Inferring chains",
+        unit_scale=True,
+        disable=not progress,
+        leave=False,
     )
     for _i, component in enumerate(it):
         sg: nx.MultiDiGraph = graph.subgraph(component).copy()
@@ -173,10 +179,20 @@ def infer_chains(
                     predicate_evidence_dict[p].append(evidence)
 
             for p, evidences in predicate_evidence_dict.items():
-                new_mappings.append(Mapping(subject=s, predicate=p, object=o, evidence=evidences))
+                forward = Mapping(subject=s, predicate=p, object=o, evidence=evidences)
+                new_mappings.append(forward)
                 if backwards:
                     new_mappings.append(
-                        Mapping(object=s, subject=o, predicate=FLIP[p], evidence=evidences)
+                        Mapping(
+                            object=s,
+                            subject=o,
+                            predicate=FLIP[p],
+                            evidence=[
+                                ReasonedEvidence(
+                                    justification=INVERSION_MAPPING, mappings=[forward]
+                                )
+                            ],
+                        )
                     )
 
     return [*mappings, *new_mappings]

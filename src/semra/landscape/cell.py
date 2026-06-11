@@ -76,11 +76,13 @@ application.
 
 import click
 import pystow
+import sssom_pydantic
 
 from semra import Reference
 from semra.api import project
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, MappingPack, Mutation
+from semra.utils import get_semra_uri
 from semra.vocabulary import CHARLIE
 
 __all__ = [
@@ -166,12 +168,20 @@ def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
             f"{s_prefix} and {t_prefix}"
         )
 
-        path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}.tsv")
+        metadata = sssom_pydantic.MappingSet(
+            id=get_semra_uri("landscape", "cell", f"{s_prefix}-{t_prefix}-consolidation"),
+            title=f"Consolidation between {s_prefix} and {t_prefix}",
+        )
+        path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}.ssssom.tsv")
         click.echo(f"Output to {path}")
-        write_sssom(consolidation_mappings, path)
+        write_sssom(consolidation_mappings, path, metadata=metadata)
 
+        metadata = sssom_pydantic.MappingSet(
+            id=get_semra_uri("landscape", "cell", f"reproduction_{s_prefix}_{t_prefix}_suspicious"),
+            title=f"Suspicious mappings between {s_prefix} and {t_prefix}",
+        )
         sus_path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}_suspicious.tsv")
-        write_sssom(sus, sus_path)
+        write_sssom(sus, sus_path, metadata=metadata)
 
 
 if __name__ == "__main__":

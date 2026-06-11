@@ -24,16 +24,17 @@
                     <dt>Evidence</dt>
                     {%- for evidence in mapping.evidence -%}
                     <dd>
-                        <code>{{ evidence.get_reference(mapping).identifier["semra.evidence:" | length:][:8] }}</code><br>
+                        <code>{{ evidence.get_identifier(mapping) }}</code><br>
                         Confidence: {{ evidence.confidence}}<br>
                         Type: {{ evidence.evidence_type }}<br>
                         {% if evidence.author %}
                         Author: <a href="https://bioregistry.io/{{ evidence.author.curie }}">{{ evidence.author.curie }}</a><br>
                         {% endif %}
                         {% if evidence.mapping_set %}
-                        Mapping Set: <a href="{{ url_for('.view_mapping_set', mapping_set_id=evidence.mapping_set.curie) }}">{{evidence.mapping_set.name}}</a>
-                        ({{ evidence.mapping_set.version }},
-                        {{ evidence.mapping_set.license }})
+                        Mapping Set:
+                        <a href="{{ url_for('.view_mapping_set', id=evidence.mapping_set.id.encoded_string()) }}">
+                            {{evidence.mapping_set.title}}</a>
+                        {% if evidence.mapping_set.version %}v{{ evidence.mapping_set.version }}{% endif %}
                         {% endif %}
                     </dd>
                     {%- endfor -%}

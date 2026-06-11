@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 
 from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 
-from semra.client import BaseClient, ExampleMapping, FullSummary
+from semra import Mapping
+from semra.client import BaseClient, FullSummary
 
 __all__ = [
     "EXAMPLE_CONCEPTS",
@@ -22,12 +23,12 @@ class State:
 
     client: BaseClient
     summary: FullSummary
-    example_reference: NormalizedNamableReference
+    example_reference: NormalizedNamableReference | None = None
     biomappings_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = field(default_factory=set)
     current_author: NormalizedNamedReference | None = None
 
-    def example_mappings(self) -> list[ExampleMapping]:
+    def example_mappings(self) -> list[Mapping]:
         """Extract example mappings."""
         return self.summary.example_mappings
 

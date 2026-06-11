@@ -9,16 +9,16 @@
     </tr>
     </thead>
     <tbody>
-    {%- for curie, predicate, subject_curie, subject_name, target_curie, target_name in mappings -%}
+    {%- for mapping in mappings -%}
     <tr>
         <td>
-            <a href="{{ url_for('.view_mapping', curie=curie) }}">
-                <code>{{ curie[14:22]}}</code>
+            <a href="{{ url_for('.view_mapping', curie=mapping.curie) }}">
+                <code>{{ mapping.get_identifier()[:8]}}</code>
             </a>
         </td>
-        <td>{% if subject_name %}{{subject_name}} ({{subject_curie}}){% else %}{{subject_curie}}{% endif %}</td>
-        <td>{{predicate}}</td>
-        <td>{% if target_name %}{{target_name}} ({{target_curie}}){% else %}{{target_curie}}{% endif %}</td>
+        <td>{{ mapping.subject.name }} ({{ mapping.subject.curie }})</td>
+        <td>{{ mapping.predicate.curie}}</td>
+        <td>{{ mapping.object.name }} ({{ mapping.object.curie }})</td>
     </tr>
     {%- endfor -%}
     </tbody>

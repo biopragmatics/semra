@@ -4,18 +4,35 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
+import time
 import typing
 import typing as t
 from collections import Counter, defaultdict
-from collections.abc import Collection, Iterable
-from typing import Literal, NamedTuple, TypeAlias, TypeVar, cast, overload
+from collections.abc import Callable, Collection, Iterable
+from typing import (
+    Annotated,
+    Any,
+    Literal,
+    NamedTuple,
+    ParamSpec,
+    TypeAlias,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import bioregistry
+import click
+import curies.api
+import humanize
 import networkx as nx
 import pandas as pd
 import ssslm
-from pydantic import BaseModel, Field
+from curies import triples as ct
+from curies.triples import TripleType
+from pydantic import BaseModel, BeforeValidator, Field
 from ssslm import LiteralMapping
+from sssom_pydantic.examples import simple
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
@@ -29,7 +46,7 @@ from semra.struct import (
     SimpleEvidence,
     Triple,
 )
-from semra.utils import cleanup_prefixes, semra_tqdm
+from semra.utils import PrefixValidator, cleanup_prefixes, semra_tqdm
 from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 
 __all__ = [
@@ -86,10 +103,18 @@ logger = logging.getLogger(__name__)
 #: An index allows for the aggregation of evidences for each core triple
 Index = dict[Triple, list[Evidence]]
 
+P = ParamSpec("P")
 X = TypeVar("X")
 
 #: A test mapping set that can be used in examples.
-TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
+TEST_MAPPING_SET = MappingSet(
+    id="https://example.org/test.sssom.tsv", name="Test Mapping Set", confidence=0.95
+)
+
+
+def replace_with(f: Any) -> Callable[[Callable[P, X]], Callable[P, X]]:
+    """Annotate a function as being deprecated."""
+    return lambda x: x
 
 
 # docstr-coverage: inherited
@@ -107,12 +132,16 @@ def get_test_evidence(n: int | None = None) -> SimpleEvidence | list[SimpleEvide
     if isinstance(n, int):
         return [
             SimpleEvidence(
+                mapping=simple.model_copy(
+                    update={
+                        "authors": [Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}")]
+                    }
+                ),
                 mapping_set=TEST_MAPPING_SET,
-                author=Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}"),
             )
             for n in range(n)
         ]
-    return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
+    return SimpleEvidence(mapping=simple, mapping_set=TEST_MAPPING_SET)
 
 
 # docstr-coverage: inherited
@@ -291,6 +320,7 @@ def tabulate_index(index: Index) -> str:
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")
 
 
+@replace_with(ct.keep_prefixes_both)
 def keep_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -319,6 +349,7 @@ def keep_prefixes(
     ]
 
 
+@replace_with(ct.keep_subject_prefixes)
 def keep_subject_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -345,6 +376,7 @@ def keep_subject_prefixes(
     ]
 
 
+@replace_with(ct.keep_object_prefixes)
 def keep_object_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -371,6 +403,7 @@ def keep_object_prefixes(
     ]
 
 
+@replace_with(ct.exclude_prefixes_both)
 def filter_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -394,6 +427,7 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     ]
 
 
+@replace_with(ct.exclude_triples)
 def filter_mappings(
     mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True
 ) -> list[Mapping]:
@@ -412,13 +446,14 @@ def filter_mappings(
 #:
 #: This data structure can be used to index either forward or backwards mappings,
 #: as done inside :func:`get_many_to_many`
-M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[Mapping]]]]
+M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[TripleType]]]]
 
 
-def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
-    """Get many-to-many mappings, disregarding predicate type."""
-    forward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    backward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+def _get_m2m_indexes(
+    mappings: Iterable[TripleType],
+) -> tuple[M2MIndex[TripleType], M2MIndex[TripleType]]:
+    forward: M2MIndex[TripleType] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    backward: M2MIndex[TripleType] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
         forward[mapping.subject.prefix, mapping.object.prefix][mapping.subject.identifier][
             mapping.object.identifier
@@ -426,7 +461,12 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
         backward[mapping.subject.prefix, mapping.object.prefix][mapping.object.identifier][
             mapping.subject.identifier
         ].append(mapping)
+    return forward, backward
 
+
+def _get_index(
+    forward: M2MIndex[Mapping], backward: M2MIndex[Mapping]
+) -> dict[Triple, list[Evidence]]:
     index: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for preindex in [forward, backward]:
         for d1 in preindex.values():
@@ -434,6 +474,13 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
                 if len(d2) > 1:  # means there are multiple identifiers mapped
                     for mapping in itt.chain.from_iterable(d2.values()):
                         index[mapping.triple].extend(mapping.evidence)
+    return dict(index)
+
+
+def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
+    """Get many-to-many mappings, disregarding predicate type."""
+    forward, backward = _get_m2m_indexes(mappings)
+    index = _get_index(forward, backward)
 
     # this is effectively the same as :func:`unindex` except the deduplicate_evidence is called
     # explicitly
@@ -444,6 +491,7 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     return rv
 
 
+@replace_with(ct.exclude_prefix_stratified_many_to_many)
 def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out many to many mappings."""
     skip_mappings = get_many_to_many(mappings)
@@ -541,7 +589,7 @@ def prioritize(
         .. note::
 
             because of construction, connected components might contain
-            just two mappings, ``A, exact, B`` and ``B, exact A``.
+            just two mappings, ``A, exact, B`` and ``B, exact, A``.
 
     4. For each component
         1. Get the "priority" reference using :func:`get_priority_reference`
@@ -567,10 +615,15 @@ def prioritize(
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
 
-    graph = to_digraph(mappings).to_undirected()
+    graph = to_digraph(mappings, progress=progress)
     rv: list[Mapping] = []
     for component in tqdm(
-        nx.connected_components(graph), unit="component", unit_scale=True, disable=not progress
+        nx.weakly_connected_components(graph),
+        unit="component",
+        unit_scale=True,
+        disable=not progress,
+        desc="Prioritizing",
+        leave=False,
     ):
         o = get_priority_reference(component, priority)
         if o is None:
@@ -679,18 +732,30 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     ]
 
 
-def deduplicate_evidence(triple: Triple | Mapping, evidence: list[Evidence]) -> list[Evidence]:
+def deduplicate_evidence(triple: Triple | Mapping, evidences: list[Evidence]) -> list[Evidence]:
     """Deduplicate a list of evidences based on their "key" function."""
-    d = {e.key(triple): e for e in evidence}
-    return list(d.values())
+    hash_to_evidence = {}
+    for evidence in evidences:
+        try:
+            key = evidence.get_identifier(triple)
+        except curies.api.ExpansionError:
+            # this happens in some weird cases where there is a
+            # valid prefix but it doesn't have an expansion
+            pass
+        else:
+            hash_to_evidence[key] = evidence
+    return list(hash_to_evidence.values())
 
 
 def validate_mappings(mappings: list[Mapping], *, progress: bool = True) -> None:
     """Validate mappings against the Bioregistry and raise an error on the first invalid."""
-    import bioregistry
-
     for mapping in tqdm(
-        mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress
+        mappings,
+        desc="Validating mappings",
+        unit_scale=True,
+        unit="mapping",
+        disable=not progress,
+        leave=False,
     ):
         if bioregistry.normalize_prefix(mapping.subject.prefix) != mapping.subject.prefix:
             raise ValueError(
@@ -746,7 +811,7 @@ def filter_minimum_confidence(
             confidence = mapping.get_confidence()
         except ValueError:
             continue
-        if confidence >= cutoff:
+        if confidence is not None and confidence >= cutoff:
             yield mapping
 
 
@@ -1067,7 +1132,9 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     {'chebi': ['10084', '10100'], 'mesh': ['C062735', 'C453820']}
     """
     entities: defaultdict[str, set[str]] = defaultdict(set)
-    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):
+    for mapping in tqdm(
+        mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms", leave=False
+    ):
         for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
@@ -1089,19 +1156,25 @@ def get_terms(
         hydrated_subset_configuration = hydrate_subsets(
             subset_configuration, show_progress=show_progress
         )
-    for prefix in tqdm(prefixes, desc="Getting terms"):
+    for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
         tqdm.write(f"[{prefix}] getting terms")
+        start = time.time()
         identifiers = pyobo.get_ids(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
+            tqdm.write(f"[{prefix}] got {len(identifiers):,} terms")
             prefix_to_identifiers[prefix] = {
                 identifier
                 for identifier in identifiers
                 if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
             }
+            tqdm.write(f"[{prefix}] subset to {len(prefix_to_identifiers[prefix]):,} terms")
         elif not identifiers:
-            tqdm.write(f"[{prefix}] PyOBO did not return any IDs")
+            tqdm.write(click.style(f"[{prefix}] PyOBO did not return any IDs", fg="yellow"))
         else:
+            tqdm.write(
+                f"[{prefix}] got {len(identifiers):,} terms in {humanize.naturaldelta(time.time() - start)}"
+            )
             prefix_to_identifiers[prefix] = identifiers
     return prefix_to_identifiers
 
@@ -1200,11 +1273,24 @@ def get_asymmetric_counter(
     )
 
 
+def _validator(x: str | list[str] | None) -> str | list[str] | None:
+    if x is None:
+        return None
+    elif isinstance(x, str):
+        return bioregistry.normalize_prefix(x, strict=True)
+    elif isinstance(x, list):
+        return [bioregistry.normalize_prefix(p, strict=True) for p in x]
+    else:
+        raise TypeError
+
+
 class Mutation(BaseModel):
     """Represents a mutation operation on a mapping set."""
 
-    source: str = Field(..., description="The source type")
-    target: str | list[str] | None = Field(None, description="limit mutation to these")
+    source: Annotated[str, PrefixValidator] = Field(..., description="The source type")
+    target: Annotated[str | list[str] | None, BeforeValidator(_validator)] = Field(
+        None, description="limit mutation to these"
+    )
     confidence: float = 1.0
     old: Reference = Field(default=DB_XREF)
     new: Reference = Field(default=EXACT_MATCH)
@@ -1234,7 +1320,12 @@ def apply_mutations(
     """Apply mutations."""
     mutation_index = _index_mutations(mutations)
     for mapping in tqdm(
-        mappings, disable=not progress, desc="Applying mutations", unit_scale=True, unit="mapping"
+        mappings,
+        disable=not progress,
+        desc="Applying mutations",
+        unit_scale=True,
+        unit="mapping",
+        leave=False,
     ):
         yield _handle_mutation(mapping, mutation_index)
 

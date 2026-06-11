@@ -4,6 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from biomappings.utils import METADATA as BIOMAPPINGS_MAPPING_SET
+from pydantic import AnyUrl
+from sssom_pydantic import SemanticMapping
+
 import semra
 from semra import (
     EXACT_MATCH,
@@ -18,7 +22,9 @@ from semra import (
 )
 from semra.io import write_neo4j
 from semra.struct import Triple
+from semra.utils import get_semra_uri
 from semra.vocabulary import BEN_REFERENCE, CHAIN_MAPPING, CHARLIE
+from tests import resources
 
 # TODO test when concept name has problematic characters like tabs or newlines
 
@@ -28,59 +34,72 @@ class TestNeo4jOutput(unittest.TestCase):
 
     def test_neo4j_output(self) -> None:
         """Test Neo4j output."""
-        r1 = Reference.from_curie("mesh:C406527", name="R 115866")
-        r2 = Reference.from_curie("chebi:101854", name="talarozole")
-        r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+        mesh_c406527 = Reference.from_curie("mesh:C406527", name="R 115866")
+        chebi_101854 = Reference.from_curie("chebi:101854", name="talarozole")
+        chembl_459505 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
 
-        t1 = Triple(subject=r1, predicate=EXACT_MATCH, object=r2)
-        t2 = Triple(subject=r2, predicate=EXACT_MATCH, object=r3)
-        t3 = Triple(subject=r1, predicate=EXACT_MATCH, object=r3)
-
-        biomappings_purl = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-        biomappings = MappingSet(
-            purl=biomappings_purl,
-            name="biomappings",
-            confidence=0.90,
-            license="CC0",
-        )
-        # self.assertEqual("cb30f2dd2a144ad3cf877d14e9e88dbf", biomappings.hexdigest())
+        t1 = Triple(subject=mesh_c406527, predicate=EXACT_MATCH, object=chebi_101854)
+        t2 = Triple(subject=chebi_101854, predicate=EXACT_MATCH, object=chembl_459505)
+        t3 = Triple(subject=mesh_c406527, predicate=EXACT_MATCH, object=chembl_459505)
 
         chembl = MappingSet(
-            name="chembl",
+            id=AnyUrl(get_semra_uri("chembl")),
+            title="chembl",
             confidence=0.90,
-            license="CC-BY-SA-3.0",
+            license=AnyUrl("https://bioregistry.io/spdx:CC-BY-SA-3.0"),
         )
 
         m1_e1 = SimpleEvidence(
-            mapping_set=biomappings,
-            justification=MANUAL_MAPPING,
-            author=CHARLIE,
-            confidence=0.99,
+            mapping_set=BIOMAPPINGS_MAPPING_SET,
+            mapping=SemanticMapping(
+                subject=t1.subject,
+                predicate=t1.predicate,
+                object=t1.object,
+                justification=MANUAL_MAPPING,
+                authors=[CHARLIE],
+                confidence=0.99,
+            ),
         )
-        # self.assertEqual("b59546c8b03b27da7e89b6a08c76843b", m1_e1.hexdigest(t1))
+        # self.assertEqual("F041E851053AEC64", m1_e1.get_identifier(t1))
 
         # check that making an identical evidence gives the same hex digest
         m1_e1_copy = SimpleEvidence(
-            mapping_set=biomappings,
-            justification=MANUAL_MAPPING,
-            author=CHARLIE,
-            confidence=0.99,
+            mapping_set=BIOMAPPINGS_MAPPING_SET,
+            mapping=SemanticMapping(
+                subject=t1.subject,
+                predicate=t1.predicate,
+                object=t1.object,
+                justification=MANUAL_MAPPING,
+                authors=[CHARLIE],
+                confidence=0.99,
+            ),
         )
-        self.assertEqual(m1_e1.hexdigest(t1), m1_e1_copy.hexdigest(t1))
+        self.assertEqual(m1_e1.get_identifier(t1), m1_e1_copy.get_identifier(t1))
 
         m1_e2 = SimpleEvidence(
-            mapping_set=biomappings,
-            justification=MANUAL_MAPPING,
-            author=BEN_REFERENCE,
-            confidence=0.94,
+            mapping_set=BIOMAPPINGS_MAPPING_SET,
+            mapping=SemanticMapping(
+                subject=t1.subject,
+                predicate=t1.predicate,
+                object=t1.object,
+                justification=MANUAL_MAPPING,
+                authors=[BEN_REFERENCE],
+                confidence=0.94,
+            ),
         )
         m1_e3 = SimpleEvidence(
             mapping_set=MappingSet(
-                name="lexical",
+                id=AnyUrl(get_semra_uri("test")),
+                title="lexical",
                 confidence=0.90,
             ),
-            justification=LEXICAL_MAPPING,
-            confidence=0.8,
+            mapping=SemanticMapping(
+                subject=t1.subject,
+                predicate=t1.predicate,
+                object=t1.object,
+                justification=LEXICAL_MAPPING,
+                confidence=0.8,
+            ),
         )
 
         m1 = Mapping.from_triple(
@@ -90,10 +109,10 @@ class TestNeo4jOutput(unittest.TestCase):
 
         # this curie is generated as a md5 digest of the pickle dump
         # of the 3-tuple of CURIE strings for the subject, predicate, object
-        # m1_hexdigest = "9f85f585b0179ba53df2dd274e0067dc"
-        # self.assertEqual(m1_hexdigest, m1.hexdigest())
+        m1_identifier = "eacc57c4a2bbfb9e5f00c8fc1fa6df4c4968f5b417c508628066be9856054f23"
+        self.assertEqual(m1_identifier, m1.get_identifier())
 
-        expected_hex = Mapping.from_triple(t1).hexdigest()
+        expected_hex = Mapping.from_triple(t1).get_identifier()
 
         # Test that the evidences don't affect the hash
         for x in [
@@ -103,25 +122,30 @@ class TestNeo4jOutput(unittest.TestCase):
             Mapping.from_triple(t1, evidence=[m1_e2, m1_e1]),
             Mapping.from_triple(t1, evidence=[m1_e2, m1_e1, m1_e3]),
         ]:
-            self.assertEqual(expected_hex, x.hexdigest())
+            self.assertEqual(expected_hex, x.get_identifier())
 
         m2_e1 = SimpleEvidence(
             mapping_set=chembl,
-            justification=UNSPECIFIED_MAPPING,
-            confidence=0.90,
+            mapping=SemanticMapping(
+                subject=t2.subject,
+                predicate=t2.predicate,
+                object=t2.object,
+                justification=UNSPECIFIED_MAPPING,
+                confidence=0.90,
+            ),
         )
         m2 = Mapping.from_triple(t2, evidence=[m2_e1])
 
         m3_e1 = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m1, m2])
         m3_e1_rev = ReasonedEvidence(justification=CHAIN_MAPPING, mappings=[m2, m1])
         m3 = Mapping.from_triple(t3, evidence=[m3_e1])
-        # m3_hexdigest = "6185a77934184112529b68ea7780a54d"
-        # self.assertEqual(m3_hexdigest, m3.hexdigest())
+        m3_identifier = "637fee94e47a222e670bd80d31416519a45b7984b7a53729132176d2a63007bf"
+        self.assertEqual(m3_identifier, m3.get_identifier())
 
         # check that order of mappings in evidence doesn't change the hash
         self.assertEqual(
-            Mapping.from_triple(t3, evidence=[m3_e1]).hexdigest(),
-            Mapping.from_triple(t3, evidence=[m3_e1_rev]).hexdigest(),
+            Mapping.from_triple(t3, evidence=[m3_e1]).get_identifier(),
+            Mapping.from_triple(t3, evidence=[m3_e1_rev]).get_identifier(),
         )
 
         mappings: list[semra.Mapping] = [m1, m2, m3]
@@ -129,17 +153,18 @@ class TestNeo4jOutput(unittest.TestCase):
         with tempfile.TemporaryDirectory() as _directory:
             directory = Path(_directory)
 
-            write_neo4j(mappings, directory, use_tqdm=False)
-            # FIXME this test is important since it makes sure we get deterministic hashes each time
-            #  but changes in the underlying data structure updated the pickles, invaliding old
-            #  hashes. Therefore, we should stop relying on picking for hashing and define explicit
-            #  ones for every object (yes, obvious in hindsight)
-            # for path in [
-            #     resources.CONCEPT_NODES_TSV_PATH,
-            #     resources.EVIDENCE_NODES_TSV_PATH,
-            #     resources.MAPPING_NODES_TSV_PATH,
-            #     resources.MAPPING_SET_NODES_TSV_PATH,
-            #     resources.EDGES_TSV_PATH,
-            #     resources.MAPPING_EDGES_TSV_PATH,
-            # ]:
-            #     self.assertEqual(path.read_text(), directory.joinpath(path.name).read_text())
+            write_neo4j(mappings, directory, use_tqdm=False, quiet=True)
+            # write_neo4j(mappings, resources.HERE, use_tqdm=False, quiet=True)
+            for path in [
+                resources.CONCEPT_NODES_TSV_PATH,
+                resources.EVIDENCE_NODES_TSV_PATH,
+                resources.MAPPING_NODES_TSV_PATH,
+                resources.MAPPING_SET_NODES_TSV_PATH,
+                resources.EDGES_TSV_PATH,
+                resources.MAPPING_EDGES_TSV_PATH,
+            ]:
+                self.assertEqual(
+                    path.read_text(),
+                    directory.joinpath(path.name).read_text(),
+                    msg=f"\n\nfailed on {path.name}\n\n",
+                )

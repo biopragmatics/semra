@@ -10,10 +10,7 @@ import pyobo
 import requests
 from curies import Reference
 
-from ..struct import ConfidenceMixin
-
 __all__ = [
-    "get_confidence_str",
     "get_name_by_reference",
     "get_orcid_name",
 ]
@@ -58,13 +55,3 @@ def get_orcid_name(orcid: str) -> str | None:
     if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
         return f"{given_names['value']} {family_name['value']}"
     return None
-
-
-#: The precision for confidences used before exporting to the graph data model
-CONFIDENCE_PRECISION = 5
-
-
-def get_confidence_str(x: ConfidenceMixin) -> str:
-    """Safely get a confidence from an evidence."""
-    confidence = x.get_confidence()
-    return str(round(confidence, CONFIDENCE_PRECISION))

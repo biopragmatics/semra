@@ -12,6 +12,7 @@ from flask import Blueprint, current_app, render_template
 from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
+from semra.version import get_version as get_semra_version
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
 from semra.web.shared import State, _figure_number
 
@@ -22,6 +23,7 @@ __all__ = [
 
 flask_blueprint = Blueprint("ui", __name__)
 
+SEMRA_VERSION = get_semra_version()
 
 # TODO use replaced by relationship for rewiring
 
@@ -48,8 +50,7 @@ def home() -> str:
         prefix_counter=state.summary.PREFIX_COUNTER,
         author_counter=state.summary.AUTHOR_COUNTER,
         high_matches_counter=state.summary.HIGH_MATCHES_COUNTER,
-        example_concept_name=state.example_reference.name,
-        example_concept_curie=state.example_reference.curie,
+        example_concept=state.example_reference,
     )
 
 
@@ -105,9 +106,11 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
             "subject": subject_reference,
             "predicate": EXACT_MATCH,
             "object": target_reference,
-            "mapping_justification": MANUAL_MAPPING,
-            "author": state.current_author,
+            "justification": MANUAL_MAPPING,
+            "authors": [state.current_author],
             "mapping_tool": "semra",
+            "mapping_tool_id": "Q127259663",
+            "mapping_tool_version": SEMRA_VERSION,
         }
     )
 
@@ -118,12 +121,15 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     return flask.redirect(flask.url_for("." + view_concept.__name__, curie=source))
 
 
-@flask_blueprint.get("/mapping_set/<mapping_set_id>")
-def view_mapping_set(mapping_set_id: str) -> str:
+@flask_blueprint.get("/mapping_set/")
+def view_mapping_set() -> str:
     """View a mapping set by its ID."""
+    mapping_set_id = flask.request.args.get("id")
+    if not mapping_set_id:
+        raise flask.abort(422)
     client = _flask_get_client()
     mapping_set = client.get_mapping_set(mapping_set_id)
-    examples = client.sample_mappings_from_set(mapping_set_id, n=10)
+    examples = client.get_mappings_by_set(mapping_set_id, n=10)
     return render_template(
         "mapping_set.html",
         mapping_set=mapping_set,

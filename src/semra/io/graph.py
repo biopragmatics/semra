@@ -6,6 +6,7 @@ import typing as t
 from collections import defaultdict
 
 import networkx as nx
+from tqdm import tqdm
 
 from semra.struct import Evidence, Mapping, Reference
 from semra.utils import semra_tqdm
@@ -28,7 +29,7 @@ DIGRAPH_DATA_KEY = "data"
 MULTIDIGRAPH_DATA_KEY = "evidence"
 
 
-def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
+def to_digraph(mappings: t.Iterable[Mapping], *, progress: bool = False) -> nx.DiGraph:
     """Convert mappings into a simple directed graph data model.
 
     :param mappings: An iterable of mappings
@@ -43,16 +44,30 @@ def to_digraph(mappings: t.Iterable[Mapping]) -> nx.DiGraph:
 
         1. The graph has already been assembled using :func:`assemble_evidences`
         2. That only one predicate is used in the graph. If you want to handle multiple
-           prediates, see :func:`to_multidigraph`
+           predicates, see :func:`to_multidigraph`
     """
     graph = nx.DiGraph()
     edges: defaultdict[tuple[Reference, Reference], defaultdict[Reference, list[Evidence]]] = (
         defaultdict(lambda: defaultdict(list))
     )
-    for mapping in mappings:
+    for mapping in tqdm(
+        mappings,
+        disable=not progress,
+        desc="Building DiGraph edges",
+        unit_scale=True,
+        unit="mapping",
+        leave=False,
+    ):
         edges[mapping.subject, mapping.object][mapping.predicate].extend(mapping.evidence)
-    for (s, o), data in edges.items():
-        graph.add_edge(s, o, **{DIGRAPH_DATA_KEY: data})
+    for (s, o), predicate_to_evidences in tqdm(
+        edges.items(),
+        disable=not progress,
+        desc="Populating DiGraph",
+        unit_scale=True,
+        unit="edge",
+        leave=False,
+    ):
+        graph.add_edge(s, o, **{DIGRAPH_DATA_KEY: predicate_to_evidences})
     return graph
 
 
@@ -61,7 +76,7 @@ def from_digraph(graph: nx.DiGraph) -> list[Mapping]:
     return [mapping for s, o in graph.edges() for mapping in _from_digraph_edge(graph, s, o)]
 
 
-def _from_digraph_edge(graph: nx.Graph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
+def _from_digraph_edge(graph: nx.DiGraph, s: Reference, o: Reference) -> t.Iterable[Mapping]:
     data = graph[s][o]
     for p, evidence in data[DIGRAPH_DATA_KEY].items():
         yield Mapping(subject=s, predicate=p, object=o, evidence=evidence)

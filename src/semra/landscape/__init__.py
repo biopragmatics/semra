@@ -44,8 +44,7 @@ Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analys
     :target: https://doi.org/10.5281/zenodo.11091421
 
 .. |gene| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092012.svg
-  :target: https://doi.org/10.5281/zenodo.11092012
-
+    :target: https://doi.org/10.5281/zenodo.11092012
 """  # noqa:D205,D400
 
 from .anatomy import ANATOMY_CONFIGURATION

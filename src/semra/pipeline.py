@@ -366,7 +366,7 @@ class Configuration(BaseModel):
     ] = None
     creators: Annotated[
         list[Reference] | None,
-        Field(default_factory=list, description="A list of the ORCID identifiers for creators"),
+        Field(description="A list of the ORCID identifiers for creators"),
     ] = None
     inputs: Annotated[list[Input], Field(description="A list of sources of mappings")]
     negative_inputs: list[Input] = Field(
@@ -376,7 +376,7 @@ class Configuration(BaseModel):
         default_factory=list,
         description="If no priority is given, is inferred from the order of inputs",
     )
-    mutations: list[Mutation] = Field(default_factory=list)
+    mutations: list[Mutation] | None = None
     subsets: Annotated[
         SubsetConfiguration | None,
         Field(

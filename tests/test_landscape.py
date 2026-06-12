@@ -16,7 +16,7 @@ class TestLandscapeConfiguration(TestCase):
                 for inp in configuration.inputs:
                     if inp.source in {"pyobo", "wikidata", "bioontologies"} and inp.prefix:
                         assert_bioregistry_canonical(inp.prefix)
-                for mutation in configuration.mutations:
+                for mutation in configuration.mutations or []:
                     assert_bioregistry_canonical(mutation.source)
                     if isinstance(mutation.target, str):
                         assert_bioregistry_canonical(mutation.target)

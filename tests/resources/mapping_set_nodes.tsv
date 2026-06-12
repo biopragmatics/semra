@@ -1,4 +1,4 @@
-curie:ID	prefix	name	license	version	confidence:float
-semra.mappingset:fa68b8e87141ffac7e64d2be07ef4b62	semra.mappingset	biomappings	CC0		0.9
-semra.mappingset:b2d37b19de7aa1806ca111326719672f	semra.mappingset	lexical			0.9
-semra.mappingset:38324e776470108c9d291eae55d84483	semra.mappingset	chembl	CC-BY-SA-3.0		0.9
+curie:ID	prefix	id	title	license	version	confidence:double
+semra.mappingset:60181fec60fce1b8442e4e424e09166d	semra.mappingset	https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv	Biomappings	https://creativecommons.org/publicdomain/zero/1.0/	0.5.6-dev-dde1e60d	0.99
+semra.mappingset:2670c2875e027f00e033791f4516ca4c	semra.mappingset	https://w3id.org/biopragmatics/semra/test.sssom.tsv	lexical			0.9
+semra.mappingset:d6d18904b7fbfb44f80df9a7cdd5bed6	semra.mappingset	https://w3id.org/biopragmatics/semra/chembl.sssom.tsv	chembl	https://bioregistry.io/spdx:CC-BY-SA-3.0		0.9

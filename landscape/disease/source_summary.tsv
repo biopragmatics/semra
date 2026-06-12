@@ -1,0 +1,20 @@
+prefix	name	license	version	terms	status
+doid	Human Disease Ontology	CC0-1.0	2025-06-27	14372	full
+mondo	Mondo Disease Ontology	CC-BY-4.0	2025-06-03	30086	full
+efo	Experimental Factor Ontology	Apache-2.0	3.79.0	2126	subset
+mesh	Medical Subject Headings	CC0-1.0	2025	3178	subset
+ncit	NCI Thesaurus	CC-BY-4.0	25.06e	20522	subset
+orphanet	Orphanet	CC-BY-4.0		15230	observed
+orphanet.ordo	Orphanet Rare Disease Ontology	CC-BY-4.0	4.6	15590	full
+umls	Unified Medical Language System Concept Unique Identifier	https://www.nlm.nih.gov/research/umls/knowledge_sources/metathesaurus/release/license_agreement.html	2025AA	189003	subset
+omim	Online Mendelian Inheritance in Man	https://www.omim.org/help/agreement	2025-07-02	15286	observed
+omim.ps	OMIM Phenotypic Series	https://www.omim.org/help/agreement	2025-07-02	594	full
+gard	Genetic and Rare Diseases Information Center			6109	full
+icd10	International Classification of Diseases, 10th Revision	https://cdn.who.int/media/docs/default-source/publishing-policies/copyright/who-faq-licensing-icd-10.pdf	2019	2345	full
+icd10cm	International Classification of Diseases, 10th Revision, Clinical Modification			21760	observed
+icd10pcs	International Classification of Diseases, 10th Revision, Procedure Coding System			0	observed
+icd11	International Classification of Diseases, 11th Revision (Foundation Component)	CC-BY-ND-3.0-IGO	2025-01	71175	full
+icd11.code	ICD 11 Codes	http://www.who.int/about/licensing/copyright_form/en		0	observed
+icd9	International Classification of Diseases, 9th Revision			3993	observed
+icd9cm	International Classification of Diseases, 9th Revision, Clinical Modification			9134	observed
+icdo	International Classification of Diseases for Oncology			797	observed

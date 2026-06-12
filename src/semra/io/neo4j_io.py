@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from pathlib import Path
+from typing import Literal
 
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pyobo import Reference
+from pystow.utils import gzip_compress, safe_open_writer
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_curie, safe_open_writer
-from ..rules import (
+from .io_utils import get_name_by_reference
+from ..constants import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
     SEMRA_MAPPING_SET_PREFIX,
@@ -20,9 +23,27 @@ from ..rules import (
     SEMRA_NEO4J_MAPPING_LABEL,
     SEMRA_NEO4J_MAPPING_SET_LABEL,
 )
-from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
+from ..struct import (
+    ConfidenceMixin,
+    Evidence,
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    SimpleEvidence,
+    _md5_hexdigest,
+)
 
 __all__ = [
+    "CONCEPT_NODES_HEADER",
+    "DERIVED_PREDICATE",
+    "EDGES_HEADER",
+    "EDGES_SUPPLEMENT_HEADER",
+    "EVIDENCE_NODES_HEADER",
+    "FROM_SET_PREDICATE",
+    "HAS_AUTHOR_PREDICATE",
+    "HAS_EVIDENCE_PREDICATE",
+    "MAPPING_NODES_HEADER",
+    "MAPPING_SET_NODES_HEADER",
     "write_neo4j",
 ]
 
@@ -34,42 +55,53 @@ STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
 DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
 RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
+PYTHON = "python3.13"
+
+#: The column headers for the concept nodes in the SeMRA Neo4j graph database export
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
+#: The column headers for the mapping nodes in the SeMRA Neo4j graph database export
 MAPPING_NODES_HEADER = [
     "curie:ID",
     "prefix",
     "predicate",
-    "confidence",
+    "confidence:double",
     "primary:boolean",
     "secondary:boolean",
     "tertiary:boolean",
 ]
+#: The column headers for evidence nodes in the SeMRA Neo4j graph database export
 EVIDENCE_NODES_HEADER = [
     "curie:ID",
     "prefix",
     "type",
     "mapping_justification",
-    "confidence:float",
+    "confidence:double",
 ]
 MAPPING_SET_NODES_HEADER = [
     "curie:ID",
     "prefix",
-    "name",
+    "id",
+    "title",
     "license",
     "version",
-    "confidence:float",
+    "confidence:double",
 ]
+
+#: The column headers for properties attached to simple mappings
 EDGES_HEADER = [
     ":START_ID",
     ":TYPE",
     ":END_ID",
-    "confidence:float",
+    "confidence:double",
     "primary:boolean",
     "secondary:boolean",
     "tertiary:boolean",
     "mapping_sets:string[]",
 ]
-# for extra edges that aren't mapping edges
+#: for extra edges that aren't mapping edges, such as
+#: those with :data:`HAS_EVIDENCE_PREDICATE`,
+#: :data:`FROM_SET_PREDICATE`, :data:`DERIVED_PREDICATE`,
+#: and :data:`HAS_AUTHOR_PREDICATE`
 EDGES_SUPPLEMENT_HEADER = [
     ":START_ID",
     ":TYPE",
@@ -109,8 +141,11 @@ def write_neo4j(
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
-    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
+    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git@update-sssom-input",
     use_tqdm: bool = True,
+    compress: None | Literal["during", "after"] = None,
+    cleanup: bool = True,
+    quiet: bool = False,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -118,11 +153,12 @@ def write_neo4j(
     :param directory: The directory to write nodes files, edge files, startup shell
         script (``startup.sh``), run script (``run_on_docker.sh``), and a Dockerfile
     :param docker_name: The name of the Docker image. Defaults to "semra"
-    :param equivalence_classes: A dictionary from references to booleans,
-        where having ``True`` as a value denotes that it is the "primary" reference
-        calculated from processed and prioritiized mappings.
+    :param equivalence_classes: A dictionary from references to booleans, where having
+        ``True`` as a value denotes that it is the "primary" reference calculated from
+        processed and prioritiized mappings.
 
-        This argument is typically used internally - you should not have to pass it yourself.
+        This argument is typically used internally - you should not have to pass it
+        yourself.
 
         .. code-block:: python
 
@@ -166,20 +202,25 @@ def write_neo4j(
     if equivalence_classes is None:
         equivalence_classes = {}
 
-    # keep track of the concepts that have been written
-    # as we iterate through mappings, so we don't write
-    # duplicates
+    # FIXME use different mechanism for adding nodes into the graph
+    #  so we don't need ot keep track of what's been written as we go.
     seen_concepts: set[Reference] = set()
 
     # keep track of the CURIEs for mapping sets
     mapping_set_curies: set[str] = set()
 
-    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
-    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
-    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
-    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
-    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
-    edges_path = directory.joinpath(EDGES_FILENAME)
+    def _join_gzip(name: str) -> Path:
+        if compress == "during":
+            return directory.joinpath(name + ".gz")
+        else:
+            return directory.joinpath(name)
+
+    concept_nodes_path = _join_gzip(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = _join_gzip(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = _join_gzip(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = _join_gzip(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = _join_gzip(MAPPING_EDGES_FILENAME)
+    edges_path = _join_gzip(EDGES_FILENAME)
 
     node_paths = [
         (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),
@@ -187,9 +228,7 @@ def write_neo4j(
         (SEMRA_NEO4J_EVIDENCE_LABEL, evidence_nodes_path),
         (SEMRA_NEO4J_MAPPING_SET_LABEL, mapping_set_nodes_path),
     ]
-    node_names = [(a, n.relative_to(directory)) for a, n in node_paths]
     edge_paths = [mapping_edges_path, edges_path]
-    edge_names = [n.relative_to(directory) for n in edge_paths]
 
     with (
         safe_open_writer(mapping_edges_path) as mapping_edges_writer,
@@ -212,27 +251,28 @@ def write_neo4j(
             unit_scale=True,
             desc="streaming writing to Neo4j",
             disable=not use_tqdm,
+            leave=False,
         ):
             mapping_curie = mapping.curie
 
-            if mapping.s not in seen_concepts:
+            if mapping.subject not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.s, add_labels, equivalence_classes)
+                    _concept_to_row(mapping.subject, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.s)
-            if mapping.o not in seen_concepts:
+                seen_concepts.add(mapping.subject)
+            if mapping.object not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.o, add_labels, equivalence_classes)
+                    _concept_to_row(mapping.object, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.o)
+                seen_concepts.add(mapping.object)
 
             mapping_nodes_writer.writerow(_mapping_to_node_row(mapping_curie, mapping))
             mapping_edges_writer.writerow(_mapping_to_edge_row(mapping))
 
             # these connect the node representing the mappings to the
             # subject and object using the RDF reified edge data model
-            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.s.curie))
-            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.o.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.subject.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.object.curie))
 
             for evidence in mapping.evidence:
                 evidence_curie = evidence.get_reference(mapping).curie
@@ -245,7 +285,7 @@ def write_neo4j(
 
                 match evidence:
                     case SimpleEvidence():
-                        mapping_set_curie = evidence.mapping_set.curie
+                        mapping_set_curie = _get_mapping_set_curie(evidence.mapping_set)
                         if mapping_set_curie not in mapping_set_curies:
                             mapping_set_writer.writerow(
                                 _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
@@ -272,7 +312,23 @@ def write_neo4j(
                     )
 
     startup_path = directory.joinpath(startup_script_name)
-    startup_path.write_text(STARTUP_TEMPLATE.render())
+    startup_path.write_text(
+        STARTUP_TEMPLATE.render(
+            python=PYTHON,
+        )
+    )
+
+    if compress == "after":
+        node_names = [
+            (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
+            for label, path in node_paths
+        ]
+        edge_names = [
+            gzip_compress(path, cleanup=cleanup).relative_to(directory) for path in edge_paths
+        ]
+    else:
+        node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
+        edge_names = [path.relative_to(directory) for path in edge_paths]
 
     docker_path = directory.joinpath(dockerfile_name)
     docker_path.write_text(
@@ -280,27 +336,26 @@ def write_neo4j(
             node_names=node_names,
             edge_names=edge_names,
             pip_install=pip_install,
+            python=PYTHON,
         )
     )
 
     run_path = directory.joinpath(run_script_name)
-    run_path.write_text(RUN_ON_STARTUP_TEMPLATE.render(docker_name=docker_name))
+    run_path.write_text(
+        RUN_ON_STARTUP_TEMPLATE.render(
+            docker_name=docker_name,
+            python=PYTHON,
+        )
+    )
 
-    click.secho("Run Neo4j with the following:", fg="green")
-    click.secho(f"  cd {run_path.parent.absolute()}")
-    click.secho(f"  sh {run_script_name}")
+    if not quiet:
+        click.secho("Run Neo4j with the following:", fg="green")
+        click.secho(f"  cd {run_path.parent.absolute()}")
+        click.secho(f"  sh {run_script_name}")
 
-    # shell_command = dedent(f"""\
-    #     neo4j-admin database import full \\
-    #         --delimiter='TAB' \\
-    #         --skip-duplicate-nodes=true \\
-    #         --overwrite-destination=true \\
-    #         --skip-bad-relationships=true \\
-    #         --nodes {nodes_path.as_posix()} \\
-    #         --relationships  {edges_path.as_posix()} \\
-    #         neo4j
-    # """)
-    # command_path.write_text(shell_command)
+
+def _get_mapping_set_curie(m: MappingSet) -> str:
+    return f"{SEMRA_MAPPING_SET_PREFIX}:{_md5_hexdigest(str(m.id))}"
 
 
 def _neo4j_bool(b: bool, /) -> str:
@@ -313,7 +368,8 @@ def _concept_to_row(
 ) -> Sequence[str]:
     concept_curie = concept.curie
     if add_labels:
-        name = concept.name or get_name_by_curie(concept_curie) or ""
+        with logging_redirect_tqdm():
+            name = concept.name or get_name_by_reference(concept) or ""
     else:
         name = concept.name or ""
     return (
@@ -328,7 +384,7 @@ def _mapping_to_node_row(mapping_curie: str, mapping: Mapping) -> Sequence[str]:
     return (
         mapping_curie,
         SEMRA_MAPPING_PREFIX,
-        mapping.p.curie,
+        mapping.predicate.curie,
         get_confidence_str(mapping),
         _neo4j_bool(mapping.has_primary),
         _neo4j_bool(mapping.has_secondary),
@@ -347,19 +403,20 @@ def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
 
 
 def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
+    titles = {
+        evidence.mapping_set.title
+        for evidence in mapping.evidence
+        if evidence.mapping_set and evidence.mapping_set.title
+    }
     return (
-        mapping.s.curie,
-        mapping.p.curie,
-        mapping.o.curie,
+        mapping.subject.curie,
+        mapping.predicate.curie,
+        mapping.object.curie,
         get_confidence_str(mapping),
         _neo4j_bool(mapping.has_primary),
         _neo4j_bool(mapping.has_secondary),
         _neo4j_bool(mapping.has_tertiary),
-        "|".join(
-            sorted(
-                {evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set}
-            )
-        ),
+        "|".join(sorted(titles)),
     )
 
 
@@ -367,8 +424,27 @@ def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequ
     return (
         mapping_set_curie,
         SEMRA_MAPPING_SET_PREFIX,
-        mapping_set.name,
-        mapping_set.license or "",
+        str(mapping_set.id),
+        mapping_set.title or "",
+        str(mapping_set.license) if mapping_set.license else "",
         mapping_set.version or "",
-        get_confidence_str(mapping_set),
+        get_confidence_str_helper(mapping_set.confidence),
     )
+
+
+#: The precision for confidences used before exporting to the graph data model
+CONFIDENCE_PRECISION = 5
+
+
+def get_confidence_str(x: ConfidenceMixin) -> str:
+    """Safely get a confidence from an evidence."""
+    if confidence := x.get_confidence():
+        return get_confidence_str_helper(confidence)
+    return ""
+
+
+def get_confidence_str_helper(confidence: float | None) -> str:
+    """Safely get a confidence from an evidence."""
+    if confidence is None:
+        return "1.0"
+    return str(round(confidence, CONFIDENCE_PRECISION))

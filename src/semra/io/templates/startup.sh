@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -x  # Enable command printing
+set -e  # Exit on first failure
 
 neo4j start
 
@@ -11,4 +12,4 @@ do
 done
 
 neo4j status
-python3.11 -m uvicorn --host 0.0.0.0 --port 8773 --factory semra.wsgi:get_app
+{{ python }} -m uvicorn --host 0.0.0.0 --port 8773 --factory semra.wsgi:get_app

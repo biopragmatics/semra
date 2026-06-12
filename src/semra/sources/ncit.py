@@ -6,13 +6,14 @@ from functools import lru_cache
 
 import bioregistry
 import pandas as pd
+import pystow
 import requests
-from pydantic import ValidationError
+from pydantic import AnyUrl, ValidationError
 from pyobo import Reference
+from sssom_pydantic import SemanticMapping
 from tqdm.asyncio import tqdm
 
-from semra.rules import EXACT_MATCH, UNSPECIFIED_MAPPING
-from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_ncit_chebi_mappings",
@@ -35,6 +36,8 @@ SWISSPROT_MAPPINGS_URL = f"{BASE}/NCIt-SwissProt_Mapping.txt"
 VERSION_URL = f"{BASE}/NCIt_Mapping_Version.txt"
 CONFIDENCE = 0.99
 
+MODULE = pystow.module("bio", "ncit")
+
 
 @lru_cache(1)
 def _get_version() -> str:
@@ -42,47 +45,57 @@ def _get_version() -> str:
     return requests.get(VERSION_URL, timeout=20).text.strip()
 
 
-def _get_evidence() -> SimpleEvidence:
-    version = _get_version()
-    ncit_license = bioregistry.get_license("ncit")
-    return SimpleEvidence(
-        justification=UNSPECIFIED_MAPPING,
-        mapping_set=MappingSet(
-            name="ncit", version=version, license=ncit_license, confidence=CONFIDENCE
-        ),
-    )
-
-
-def get_ncit_hgnc_mappings() -> list[Mapping]:
+def get_ncit_hgnc_mappings(*, force: bool = False) -> list[SemanticMapping]:
     """Get NCIT to HGNC semantic mappings."""
-    df = pd.read_csv(HGNC_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "hgnc"])
+    df = MODULE.ensure_csv(
+        url=HGNC_MAPPINGS_URL,
+        force=force,
+        version=_get_version,
+        read_csv_kwargs={"sep": "\t", "header": None, "names": ["ncit", "hgnc"]},
+    )
     df["hgnc"] = df["hgnc"].map(lambda s: s.removeprefix("HGNC:"))
-    return _df_to_mappings(df, source_prefix="ncit", target_prefix="hgnc")
+    return _df_to_mappings(df, source_prefix="ncit", target_prefix="hgnc", url=HGNC_MAPPINGS_URL)
 
 
-def get_ncit_go_mappings() -> list[Mapping]:
+def get_ncit_go_mappings(*, force: bool = False) -> list[SemanticMapping]:
     """Get NCIT to Gene Ontology (GO) semantic mappings."""
-    df = pd.read_csv(GO_MAPPINGS_URL, sep="\t", header=None, names=["go", "ncit"])
+    df = MODULE.ensure_csv(
+        url=GO_MAPPINGS_URL,
+        force=force,
+        version=_get_version,
+        read_csv_kwargs={"sep": "\t", "header": None, "names": ["go", "ncit"]},
+    )
     df["go"] = df["go"].map(lambda s: s.removeprefix("GO:"))
-    return _df_to_mappings(df, source_prefix="ncit", target_prefix="go")
+    return _df_to_mappings(df, source_prefix="ncit", target_prefix="go", url=GO_MAPPINGS_URL)
 
 
-def get_ncit_chebi_mappings() -> list[Mapping]:
+def get_ncit_chebi_mappings(*, force: bool = False) -> list[SemanticMapping]:
     """Get NCIT to ChEBI semantic mappings."""
-    df = pd.read_csv(CHEBI_MAPPINGS_URL, sep="\t", header=None, names=["ncit", "chebi"])
+    df = MODULE.ensure_csv(
+        url=CHEBI_MAPPINGS_URL,
+        force=force,
+        version=_get_version,
+        read_csv_kwargs={"sep": "\t", "header": None, "names": ["ncit", "chebi"]},
+    )
     df["chebi"] = df["chebi"].map(lambda s: s.removeprefix("CHEBI:"))
-    return _df_to_mappings(df, source_prefix="ncit", target_prefix="chebi")
+    return _df_to_mappings(df, source_prefix="ncit", target_prefix="chebi", url=CHEBI_MAPPINGS_URL)
 
 
-def get_ncit_uniprot_mappings() -> list[Mapping]:
+def get_ncit_uniprot_mappings(*, force: bool = False) -> list[SemanticMapping]:
     """Get NCIT to UniProt semantic mappings."""
-    df = pd.read_csv(SWISSPROT_MAPPINGS_URL, sep="\t", usecols=[0, 1])
+    df = MODULE.ensure_csv(
+        url=SWISSPROT_MAPPINGS_URL,
+        force=force,
+        version=_get_version,
+        read_csv_kwargs={"sep": "\t", "usecols": [0, 1]},
+    )
     return _df_to_mappings(
         df,
         source_prefix="ncit",
         target_prefix="uniprot",
         source_identifier_column="NCIt Code",
         target_identifier_column="SwissProt ID",
+        url=SWISSPROT_MAPPINGS_URL,
     )
 
 
@@ -93,37 +106,44 @@ def _df_to_mappings(
     target_prefix: str,
     source_identifier_column: str | None = None,
     target_identifier_column: str | None = None,
-) -> list[Mapping]:
+    url: str,
+    confidence: float = CONFIDENCE,
+) -> list[SemanticMapping]:
     if source_identifier_column is None:
         source_identifier_column = source_prefix
     if target_identifier_column is None:
         target_identifier_column = target_prefix
 
     rv = []
-    evidence_ = _get_evidence()
+
+    version = _get_version()
+    resource = bioregistry.get_resource("ncit", strict=True)
+    source = Reference(prefix="bioregistry", identifier="ncit")
+    provider = AnyUrl(url)
+    license_url = resource.get_license_url()
     for source_id, target_id in tqdm(
         df[[source_identifier_column, target_identifier_column]].values,
         unit="mapping",
         unit_scale=True,
         desc=f"Processing {source_prefix}",
+        leave=False,
     ):
         try:
-            o = Reference(prefix=target_prefix, identifier=target_id)
+            obj = Reference(prefix=target_prefix, identifier=target_id)
         except ValidationError:
-            tqdm.write(f"[ncit:{source_id} invalid xref: {target_prefix}:{target_id}")
+            tqdm.write(f"[ncit:{source_id}] invalid xref: {target_prefix}:{target_id}")
             continue
-        mapping = Mapping(
-            s=Reference(prefix=source_prefix, identifier=source_id),
-            p=EXACT_MATCH,
-            o=o,
-            evidence=[evidence_],
+        mapping = SemanticMapping(
+            subject=Reference(prefix=source_prefix, identifier=source_id),
+            subject_source_version=version,
+            predicate=EXACT_MATCH,
+            object=obj,
+            justification=UNSPECIFIED_MAPPING,
+            license=license_url,
+            confidence=confidence,
+            source=source,
+            provider=provider,
         )
         rv.append(mapping)
 
     return rv
-
-
-if __name__ == "__main__":
-    from semra.api import print_source_target_counts
-
-    print_source_target_counts(get_ncit_go_mappings())

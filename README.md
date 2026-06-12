@@ -25,8 +25,8 @@
         <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" style="max-width:100%;"></a>
     <a href="https://github.com/biopragmatics/semra/blob/main/.github/CODE_OF_CONDUCT.md">
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
-    <a href="https://zenodo.org/badge/latestdoi/10987909">
-        <img src="https://zenodo.org/badge/10987909.svg" alt="DOI"></a>
+    <a href="https://doi.org/10.5281/zenodo.8192828">
+        <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.8192828.svg" alt="DOI"></a>
 </p>
 
 The Semantic Mapping Reasoner and Assembler (SeMRA) is a Python package that
@@ -38,8 +38,10 @@ provides:
 4. A confidence model granular at the curator-level, mapping set-level, and
    community feedback-level
 
-We also provide an accompanying raw semantic mapping database on Zenodo at
-https://zenodo.org/records/15208251.
+We also provide the SeMRA Raw Semantic Mappings Database, a set of pre-assembled
+semantic mappings from hundreds of ontologies and databases, on Zenodo at
+https://doi.org/10.5281/zenodo.11082038 that can be rebuilt with `semra build`.
+More information [here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 💪 Getting Started
 
@@ -49,38 +51,49 @@ model:
 ```python
 from semra import Reference, Mapping, EXACT_MATCH, SimpleEvidence, MappingSet, MANUAL_MAPPING
 
+r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
 mapping = Mapping(
-   s=Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic"),
-   p=EXACT_MATCH,
-   o=Reference(prefix="mesh", identifier="C011748", name="tosiben"),
-   evidence=[
-      SimpleEvidence(
-         evidence_type=MANUAL_MAPPING,
-         confidence=0.99,
-         author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
-         mapping_set=MappingSet(
-            name="biomappings", license="CC0", confidence=0.90,
-         ),
-      )
-   ]
+    subject=r1, predicate=EXACT_MATCH, object=r2,
+    evidence=[
+        SimpleEvidence(
+            justification=MANUAL_MAPPING,
+            confidence=0.99,
+            author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
+            mapping_set=MappingSet(
+                name="biomappings", license="https://creativecommons.org/publicdomain/zero/1.0/", confidence=0.90,
+            ),
+        )
+    ]
 )
 ```
 
-Mappings can be assembled from many source formats using functions in the
-`semra.io` submodule:
+### Assembly
+
+Mappings can be assembled from many source formats using I/O functions exposed
+through the top-level `semra` submodule:
 
 ```python
-import semra.io
+import semra
 
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
-mappings = semra.io.from_sssom(sssom_url)
+mappings = semra.from_sssom(
+    sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
+)
+
+# alternatively, metadata can be passed via a file/URL
+mappings_alt = semra.from_sssom(
+    sssom_url,
+    metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
+)
 
 # load mappings from the Gene Ontology (via OBO format)
-go_mappings = semra.io.from_pyobo("go")
+go_mappings = semra.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
-uberon_mappings = semra.io.from_bioontologies("uberon")
+uberon_mappings = semra.from_pyobo("uberon")
 ```
 
 SeMRA also implements custom importers in the `semra.sources` submodule. It's
@@ -94,14 +107,118 @@ from semra.sources import get_omim_gene_mappings
 omim_gene_mappings = get_omim_gene_mappings()
 ```
 
+### Inference
+
+SeMRA implements the chaining and inference rules described in the
+[SSSOM](https://mapping-commons.github.io/sssom/chaining-rules/) specification.
+The first rule is
+[inversions](https://mapping-commons.github.io/sssom/chaining-rules/#inverse-rules):
+
+```python
+from semra import Mapping, EXACT_MATCH, Reference
+from semra.inference import infer_reversible
+
+r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic")
+r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
+
+mapping = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+
+# includes the mesh -> exact match-> chebi mapping with full provenance
+mappings = infer_reversible([mapping])
+```
+
+```mermaid
+graph LR
+    A[2,3-diacetyloxybenzoic<br/>chebi:107635] -- skos:exactMatch --> B[tosiben<br/>mesh:C011748]
+    B -. "skos:exactMatch<br/>(inferred)" .-> A
+```
+
+The second rule is about
+[transitivity](https://mapping-commons.github.io/sssom/chaining-rules/#transitivity-rule).
+This means some predicates apply over chains. SeMRA further implements
+configuration for two-length chains and could be extended to arbitrary chains.
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH
+from semra.inference import infer_chains
+
+r1 = Reference.from_curie("mesh:C406527", name="R 115866")
+r2 = Reference.from_curie("chebi:101854", name="talarozole")
+r3 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+
+m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+m2 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r3)
+
+# infers r1 -> exact match -> r3
+mappings = infer_chains([m1, m2])
+```
+
+```mermaid
+graph LR
+    A[R 115866<br/>mesh:C406527] -- skos:exactMatch --> B[talarozole<br/>chebi:101854]
+    B -- skos:exactMatch --> C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A -. "skos:exactMatch<br/>(inferred)" .-> C
+```
+
+The third rule is
+[generalization](https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules),
+which means that a more strict predicate can be relaxed to a less specific
+predicate, like `owl:equivalentTo` to `skos:exactMatch`.
+
+```python
+from semra import Reference, Mapping, EXACT_MATCH
+from semra.inference import infer_generalizations
+
+r1 = Reference.from_curie("chebi:101854", name="talarozole")
+r2 = Reference.from_curie("chembl.compound:CHEMBL459505", name="TALAROZOLE")
+
+m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+
+mappings = infer_generalizations([m1])
+```
+
+```mermaid
+graph LR
+    A[talarozole<br/>chebi:101854] -- owl:equivalentTo --> B[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A -. "skos:exactMatch<br/>(inferred)" .-> B
+```
+
+The third rule can actually be generalized to any kinds of mutation of one
+predicate to another, given some domain knowledge. For example, some resources
+curate `oboInOwl:hasDbXref` predicates when it's implied that they mean
+`skos:exactMatch` because the resource is curated in the OBO flat file format.
+
+```python
+from semra import Reference, Mapping, DB_XREF
+from semra.inference import infer_dbxref_mutations
+
+r1 = Reference.from_curie("doid:0050577", name="cranioectodermal dysplasia")
+r2 = Reference.from_curie("mesh:C562966", name="Cranioectodermal Dysplasia")
+m1 = Mapping(subject=r1, predicate=DB_XREF, object=r2)
+
+# we're 99% confident doid-mesh dbxrefs actually are exact matches
+mappings = infer_dbxref_mutations([m1], {("doid", "mesh"): 0.99})
+```
+
+```mermaid
+graph LR
+    A[cranioectodermal dysplasia<br/>doid:0050577] -- oboInOwl:hasDbXref --> B[Cranioectodermal Dysplasia<br/>mesh:C562966]
+    A -. "skos:exactMatch<br/>(inferred)" .-> B
+```
+
+### Processing
+
 Mappings can be processed, aggregated, and summarized using functions from the
-[`semra.api`]() submodule:
+[`semra.api`](https://semra.readthedocs.io/en/latest/usage.html#module-semra.api)
+submodule:
 
 ```python
 from semra.api import filter_minimum_confidence, prioritize, project, summarize_prefixes
 
 mappings = ...
 mappings = filter_minimum_confidence(mappings, cutoff=0.7)
+
+summary_df = summarize_prefixes(mappings)
 
 # get one-to-one mappings between entities from the given prefixes
 chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
@@ -111,27 +228,43 @@ chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 # of the star is determined by the equivalent entity with the
 # highest priority based on the given list
 priority_mapping = prioritize(mappings, priority=[
-   "chebi", "chembl.compound", "pubchem.compound", "drugbank",
+    "chebi", "chembl.compound", "pubchem.compound", "drugbank",
 ])
+```
 
-summary_df = summarize_prefixes(mappings)
+The prioritization described by the code above works like this:
+
+```mermaid
+graph LR
+    subgraph unprocessed [Exact Matches Graph]
+    A[R 115866<br/>mesh:C406527] --- B[talarozole<br/>chebi:101854]
+    B --- C[TALAROZOLE<br/>chembl.compound:CHEMBL459505]
+    A --- C
+    end
+    subgraph star [Prioritized Mapping Graph]
+    D[R 115866<br/>mesh:C406527] --> E[talarozole<br/>chebi:101854]
+    F[TALAROZOLE<br/>chembl.compound:CHEMBL459505] --> E
+    end
+    unprocessed --> star
 ```
 
 ## 🏞️ Landscape Analysis
 
-We demonstrate using SeMRA to assess the [landscape](notebooks/landscape) of
-five biomedical entity types:
+We demonstrate using SeMRA to assess the [landscape](landscape#readme) of five
+biomedical entity types:
 
-1. [Disease](notebooks/landscape/disease/disease-landscape.ipynb)
-2. [Cell & Cell Line](notebooks/landscape/cell/cell-landscape.ipynb)
-3. [Anatomy](notebooks/landscape/anatomy/anatomy-landscape.ipynb)
-4. [Protein Complex](notebooks/landscape/complex/complex-landscape.ipynb)
-5. [Gene](notebooks/landscape/gene/gene-landscape.ipynb)
+1. [Disease](landscape/disease#readme)
+2. [Cell & Cell Line](landscape/cell#readme)
+3. [Anatomy](landscape/anatomy#readme)
+4. [Protein Complex](landscape/complex#readme)
+5. [Gene](landscape/gene#readme)
 
 These analyses are based on
 [declarative configurations](https://semra.readthedocs.io/en/latest/api/semra.pipeline.Configuration.html)
 for sources, processing rules, and inference rules that can be found in the
-`semra.landscape` module of the source code.
+`semra.landscape` module of the source code. These can be rebuilt with
+`semra landscape`, with more documentation
+[here](https://semra.readthedocs.io/en/latest/artifacts.html).
 
 ## 🤖 Tools for Data Scientists
 
@@ -148,7 +281,7 @@ these references can be standardized in a deterministic and principled way.
 
 ```python
 import chembl_downloader
-import semra.io
+import semra
 from semra.api import prioritize_df
 
 # A dataframe of indication-disease pairs, where the
@@ -158,7 +291,7 @@ df = chembl_downloader.query("SELECT DISTINCT drugind_id, efo_id FROM DRUG_INDIC
 # a pre-calculated prioritization of diseases and phenotypes from MONDO, DOID,
 # HPO, ICD, GARD, and more.
 url = "https://zenodo.org/records/15164180/files/priority.sssom.tsv?download=1"
-mappings = semra.io.from_sssom(url)
+mappings = semra.from_sssom(url)
 
 # the dataframe will now have a new column with standardized references
 prioritize_df(mappings, df, column="efo_id", target_column="priority_indication_curie")
@@ -206,20 +339,23 @@ The code in this package is licensed under the MIT License.
 
 ### 📖 Citation
 
-> <a href="https://www.biorxiv.org/content/10.1101/2025.04.16.649126">Assembly
-> and reasoning over semantic mappings at scale for biomedical data
-> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_bioRxiv_,
-> 2025.04.16.649126
+> <a href="https://doi.org/10.1093/bioinformatics/btaf542">Assembly and
+> reasoning over semantic mappings at scale for biomedical data
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B.
+> M.<br/>_Bioinformatics_, 2025, btaf542.
 
 ```bibtex
-@article {hoyt2025semra,
+@article{hoyt2025semra,
     author = {Hoyt, Charles Tapley and Karis, Klas and Gyori, Benjamin M},
     title = {Assembly and reasoning over semantic mappings at scale for biomedical data integration},
+    journal = {Bioinformatics},
+    pages = {btaf542},
     year = {2025},
-    doi = {10.1101/2025.04.16.649126},
-    publisher = {Cold Spring Harbor Laboratory},
-    URL = {https://www.biorxiv.org/content/early/2025/04/21/2025.04.16.649126},
-    journal = {bioRxiv}
+    month = {09},
+    issn = {1367-4811},
+    doi = {10.1093/bioinformatics/btaf542},
+    url = {https://doi.org/10.1093/bioinformatics/btaf542},
+    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btaf542/64428329/btaf542.pdf},
 }
 ```
 

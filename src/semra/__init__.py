@@ -1,9 +1,12 @@
 """Semantic Mapping Reasoner and Assembler."""
 
+from semra.io import from_jsonl, from_pyobo, from_sssom
 from semra.pipeline import Configuration, Input, Mutation
-from semra.rules import (
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,
+    EQUIVALENT_TO,
     EXACT_MATCH,
     LEXICAL_MAPPING,
     MANUAL_MAPPING,
@@ -11,11 +14,11 @@ from semra.rules import (
     REPLACED_BY,
     UNSPECIFIED_MAPPING,
 )
-from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
 
 __all__ = [
     "BROAD_MATCH",
     "DB_XREF",
+    "EQUIVALENT_TO",
     "EXACT_MATCH",
     "LEXICAL_MAPPING",
     "MANUAL_MAPPING",
@@ -31,4 +34,7 @@ __all__ = [
     "ReasonedEvidence",
     "Reference",
     "SimpleEvidence",
+    "from_jsonl",
+    "from_pyobo",
+    "from_sssom",
 ]

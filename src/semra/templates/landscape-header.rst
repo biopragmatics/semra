@@ -4,18 +4,21 @@ resources:
 
 {{ table }}
 
-Results
-*******
-The {{configuration.name }} is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |{{ configuration.key }}img|.
+#########
+ Results
+#########
+
+The {{configuration.name }} is available for download as SSSOM, JSON, and in a format
+ready for loading into a Neo4j graph database on Zenodo at |{{ configuration.key }}img|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/{{ configuration.key }} <https://github.com/biopragmatics/semra/tree/main/landscape/{{ configuration.key }}#readme>`_
+`landscape/{{ configuration.key }}
+<https://github.com/biopragmatics/semra/tree/main/landscape/{{configuration.key}}#readme>`_
 folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The {{configuration.name }} can be rebuilt with the following commands:
 
@@ -28,15 +31,16 @@ The {{configuration.name }} can be rebuilt with the following commands:
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
-Web Application
-***************
+#################
+ Web Application
+#################
 
 {%- if configuration.zenodo_record %}
 The pre-built artifacts for this mapping database can be downloaded from Zenodo

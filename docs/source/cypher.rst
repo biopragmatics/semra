@@ -1,5 +1,6 @@
-Querying with Cypher
-====================
+######################
+ Querying with Cypher
+######################
 
 SeMRA constructs data artifacts and docker configuration for locally deploying a Neo4j
 graph databases and a web application via :func:`semra.io.write_neo4j` (for example
@@ -21,8 +22,9 @@ The contents of the grpah database have the following schema:
 Below, some example Cypher queries are given to show what is possible by direct querying
 of the database.
 
-Lookup by CURIE
----------------
+*****************
+ Lookup by CURIE
+*****************
 
 The following Cypher queries allow for looking up concepts, mappings, evidences, and
 mapping sets.
@@ -79,8 +81,9 @@ the name:
     WHERE n.curie = "cellosaurus:0440"
     RETURN n.name
 
-Traversing Mappings
--------------------
+*********************
+ Traversing Mappings
+*********************
 
 Get all targets for exact match mappings where ``cellosaurus:0440`` is the source:
 
@@ -176,8 +179,9 @@ sets and authors:
         (e)-[:hasAuthor]->(author:concept)
     RETURN source, target, m, e, mset, author
 
-Neo4j Output Reference
-----------------------
+************************
+ Neo4j Output Reference
+************************
 
 .. automodapi:: semra.io.neo4j_io
     :skip: write_neo4j

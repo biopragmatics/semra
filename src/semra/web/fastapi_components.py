@@ -6,8 +6,10 @@ from typing import Annotated
 
 import fastapi
 import networkx as nx
+from biomappings.utils import METADATA
 from fastapi import HTTPException, Path, Query
 from fastapi.responses import JSONResponse
+from pydantic import AnyUrl
 
 from semra import Evidence, Mapping, MappingSet, Reference
 from semra.client import AutocompletionResults, BaseClient
@@ -87,24 +89,20 @@ def get_mapping(
     return mapping
 
 
-@api_router.get("/mapping_set/{mapping_set_id}", response_model=MappingSet)
+@api_router.get("/mapping_set/", response_model=MappingSet | list[MappingSet])
 def get_mapping_set(
     client: AnnotatedClient,
-    mapping_set_id: str = Path(
-        description="A mapping set's MD5 hex digest.", examples=["7831d5bc95698099fb6471667e5282cd"]
-    ),
-) -> MappingSet:
-    """Get a mapping set by its MD5 hex digest."""
-    mapping_set = client.get_mapping_set(mapping_set_id)
+    id: Annotated[
+        AnyUrl | None, Query(description="A mapping set's URI.", examples=[METADATA.id])
+    ] = None,
+) -> MappingSet | list[MappingSet]:
+    """Get a mapping set by its URI."""
+    if id is None:
+        return client.get_mapping_sets()
+    mapping_set = client.get_mapping_set(str(id))
     if mapping_set is None:
         raise HTTPException(status_code=404, detail="mapping set not found")
     return mapping_set
-
-
-@api_router.get("/mapping_set/", response_model=list[MappingSet])
-def get_mapping_sets(client: AnnotatedClient) -> list[MappingSet]:
-    """Get all mapping sets."""
-    return client.get_mapping_sets()
 
 
 auto_router = fastapi.APIRouter(prefix="/autocomplete")

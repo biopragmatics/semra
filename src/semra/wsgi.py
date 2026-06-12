@@ -8,10 +8,10 @@ import sys
 from typing import Literal, overload
 
 import fastapi
+from a2wsgi import WSGIMiddleware
 from bioregistry import NormalizedNamedReference
 from flask import Flask
 from flask_bootstrap import Bootstrap5
-from starlette.middleware.wsgi import WSGIMiddleware
 
 from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router, auto_router
@@ -113,14 +113,27 @@ def get_app(
         client.initialize_autocomplete()
         fastapi_app.include_router(auto_router)
 
-    fastapi_app.mount("/", WSGIMiddleware(flask_app))
+    fastapi_app.mount("/", WSGIMiddleware(flask_app))  # type:ignore[arg-type]
 
     if return_flask:
         return flask_app, fastapi_app
     return fastapi_app
 
 
-if __name__ == "__main__":
+def _run(
+    *,
+    uri: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    port: int | None = None,
+    host: str | None = None,
+) -> None:
     import uvicorn
 
-    uvicorn.run(get_app(return_flask=False), port=5000, host="0.0.0.0")  # noqa:S104
+    client = Neo4jClient(uri=uri, user=user, password=password)
+    app = get_app(client=client, return_flask=False)
+    uvicorn.run(app, port=port or 8773, host=host or "0.0.0.0")  # noqa:S104
+
+
+if __name__ == "__main__":
+    _run()

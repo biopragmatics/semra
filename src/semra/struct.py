@@ -89,27 +89,43 @@ import pickle
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
-from typing import Annotated, Any, ClassVar, Generic, Literal, NamedTuple, ParamSpec, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    ClassVar,
+    Generic,
+    Literal,
+    ParamSpec,
+    Self,
+    TypeVar,
+)
 
+import bioregistry
+import curies
 import pydantic
-from curies.triples import StrTriple, Triple
-from pydantic import ConfigDict, Field
-from pyobo import Reference
+import sssom_pydantic
+from bioregistry import NormalizedNamableReference as Reference
+from bioregistry.constants import FailureReturnType
+from curies.triples import Triple
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from sssom_pydantic import MappingSet, SemanticMapping
 
-from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
+from semra.constants import CC0_URL, SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_SOURCE
+
+if TYPE_CHECKING:
+    import sssom_pydantic
 
 __all__ = [
     "ConfidenceMixin",
     "Evidence",
     "EvidenceMixin",
-    "KeyedMixin",
     "Mapping",
     "MappingSet",
-    "MappingSetKey",
     "ReasonedEvidence",
-    "ReasonedEvidenceKey",
     "Reference",
     "SimpleEvidence",
+    "Statistics",
     "Triple",
 ]
 
@@ -123,7 +139,20 @@ def _md5_hexdigest(picklable: object) -> str:
     return hasher.hexdigest()
 
 
-class KeyedMixin(ABC, Generic[P, X]):
+def _upgrade(x: curies.Reference | Reference | None) -> Reference | None:
+    if x is None:
+        return None
+    if isinstance(x, Reference):
+        return x
+    elif isinstance(x, curies.Reference):
+        return Reference.from_reference(x)
+    return x
+
+
+ReferenceValidator = BeforeValidator(_upgrade)
+
+
+class KeyedMixin(ABC, Generic[P]):
     """A mixin for a class that can be hashed and CURIE-encoded."""
 
     #: The prefix for CURIEs for instances of this class
@@ -132,19 +161,13 @@ class KeyedMixin(ABC, Generic[P, X]):
     def __init_subclass__(cls, *, prefix: str, **kwargs: Any) -> None:
         cls._prefix = prefix
 
-    @abstractmethod
-    def key(self, *args: P.args, **kwargs: P.kwargs) -> X:
-        """Return a picklable key."""
+    def get_identifier(self, *args: P.args, **kwargs: P.kwargs) -> str:
+        """Get a local unique identifier."""
         raise NotImplementedError
-
-    def hexdigest(self, *args: P.args, **kwargs: P.kwargs) -> str:
-        """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        key = self.key(*args, **kwargs)
-        return _md5_hexdigest(key)
 
     def get_reference(self, *args: P.args, **kwargs: P.kwargs) -> Reference:
         """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
-        return Reference(prefix=self._prefix, identifier=self.hexdigest(*args, **kwargs))
+        return Reference(prefix=self._prefix, identifier=self.get_identifier(*args, **kwargs))
 
     @property
     def curie(self, *args: P.args, **kwargs: P.kwargs) -> str:
@@ -155,7 +178,7 @@ class KeyedMixin(ABC, Generic[P, X]):
 class ConfidenceMixin:
     """A mixin for classes that have confidence information."""
 
-    def get_confidence(self) -> float:
+    def get_confidence(self) -> float | None:
         """Get the confidence.
 
         :returns: The confidence, which can either be a direct annotation or computed
@@ -167,220 +190,121 @@ class ConfidenceMixin:
         raise NotImplementedError
 
 
-class EvidenceMixin:
+class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
     """A class that represents evidences."""
 
     @property
-    def explanation(self) -> str:
+    def explanation(self) -> str | None:
         """Get a textual explanation for this evidence."""
-        return ""
+        return None
 
     @property
     def mapping_set_names(self) -> set[str]:
         """Get set of mapping set names that contribute to this evidence."""
         raise NotImplementedError
 
+    def get_identifier(self, triple: Triple) -> str:
+        """Get a hex string for the MD5 hash of the pickled key() for this class."""
+        return sssom_pydantic.hash_mapping(self._to_sssom_pydantic(triple), CONVERTER)
 
-class MappingSetKey(NamedTuple):
-    """The key used for a mapping set."""
-
-    purl: str
-    name: str
-    version: str
-    license: str
-
-
-class MappingSet(
-    pydantic.BaseModel,
-    ConfidenceMixin,
-    KeyedMixin[[], MappingSetKey],
-    prefix=SEMRA_MAPPING_SET_PREFIX,
-):
-    """Represents a set of semantic mappings.
-
-    For example, this might correspond to:
-
-    1. All the mappings extracted from an ontology
-    2. All the mappings published with a database
-    3. All the mappings inferred by SeMRA based on a given configuration
-
-    Mostly corresponds to the concept of a SSSOM mapping set, documented in
-    https://mapping-commons.github.io/sssom/MappingSet.
-
-    There are the following optional fields:
-
-    1. ``name``
-    2. ``purl`` (not optional if you're writing to SSSOM)
-    3. ``version``
-    4. ``license``
-    5. ``confidence``
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    purl: str | None = Field(
-        None,
-        description="The persistent URL (PURL) for the mapping set. While it's optional in SeMRA, this is a required SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_id/",
-    )
-    name: str = Field(
-        ...,
-        description="Name of the mapping set. Corresponds to optional SSSOM field: https://mapping-commons.github.io/sssom/mapping_set_title/",
-    )
-    version: str | None = Field(
-        default=None,
-        description="The version of the dataset from which the mapping comes. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_version/",
-    )
-    license: str | None = Field(
-        default=None,
-        description="License name or URL that applies to the whole mapping set. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/license/",
-    )
-    confidence: float = Field(
-        default=1.0,
-        description="Mapping set level confidence. Corresponds to optional SSSOM field https://mapping-commons.github.io/sssom/mapping_set_confidence/",
-    )
-
-    def key(self) -> MappingSetKey:
-        """Get a picklable key representing the mapping set."""
-        return MappingSetKey(self.purl or "", self.name, self.version or "", self.license or "")
-
-    def get_confidence(self) -> float:
-        """Get the explicit confidence for the mapping set."""
-        return self.confidence
-
-
-class SimpleEvidenceKey(NamedTuple):
-    """The key used for a simple evidence."""
-
-    evidence_type: str
-    justification: str
-    author: str
-    mapping_set: MappingSetKey
+    @abstractmethod
+    def _to_sssom_pydantic(
+        self,
+        mapping: Triple,
+        subject: Reference | None = None,
+        object: Reference | None = None,
+    ) -> sssom_pydantic.SemanticMapping:
+        raise NotImplementedError
 
 
 class SimpleEvidence(
-    pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, SimpleEvidenceKey]],
-    EvidenceMixin,
-    ConfidenceMixin,
-    prefix=SEMRA_EVIDENCE_PREFIX,
+    pydantic.BaseModel, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
 ):
-    """Evidence for a mapping.
-
-    Ideally, this matches the SSSOM data model.
-    """
+    """Evidence for a mapping."""
 
     model_config = ConfigDict(frozen=True)
 
     evidence_type: Literal["simple"] = Field(default="simple", exclude=False)
-    justification: Reference = Field(
-        default=Reference(prefix="semapv", identifier="UnspecifiedMapping"),
-        description="A SSSOM-compliant justification",
-    )
-    mapping_set: MappingSet = Field(
-        ..., description="The name of the dataset from which the mapping comes"
-    )
-    author: Reference | None = Field(
-        default=None,
-        description="A reference to the author of the mapping (e.g. with ORCID)",
-        examples=[
-            Reference(prefix="orcid", identifier="0000-0003-4423-4370"),
-        ],
-    )
-    confidence: float | None = Field(None, description="The confidence")
+    mapping: SemanticMapping
+    mapping_set: Annotated[
+        MappingSet, Field(description="The name of the dataset from which the mapping comes")
+    ]
 
-    def _simple_key(self) -> SimpleEvidenceKey:
-        return SimpleEvidenceKey(
-            self.evidence_type,
-            self.justification.curie,
-            self.author.curie if self.author else "",
-            self.mapping_set.key(),
-        )
+    @property
+    def author(self) -> Reference | None:
+        """Get the author."""
+        if self.mapping.authors:
+            return Reference.from_reference(self.mapping.authors[0])
+        return None
 
-    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, SimpleEvidenceKey]:
-        """Get a key suitable for hashing the evidence.
-
-        :returns: A key for deduplication based on the mapping set.
-
-        Note: this should be extended to include basically _all_ fields
-        """
-        return (
-            triple.as_str_triple(),
-            self._simple_key(),
-        )
+    @property
+    def justification(self) -> Reference:
+        """Get the justification."""
+        return Reference.from_reference(self.mapping.justification)
 
     @property
     def mapping_set_names(self) -> set[str]:
         """Get a set containing 1 element - this evidence's mapping set's name."""
-        return {self.mapping_set.name}
+        if self.mapping_set.title is None:
+            return set()
+        return {self.mapping_set.title}
 
-    def get_confidence(self) -> float:
+    def get_confidence(self) -> float | None:
         """Get the confidence from the mapping set."""
-        return self.confidence if self.confidence is not None else self.mapping_set.confidence
+        if self.mapping.confidence is not None:
+            return self.mapping.confidence
+        if self.mapping_set.confidence is not None:
+            return self.mapping_set.confidence
+        return None
 
-
-def _sort_evidence_key(ev: Evidence) -> tuple[Any, ...]:
-    # the first element of the simple key is the type of evidence,
-    # so they can be compared
-    return ev._simple_key()
-
-
-class ReasonedEvidenceKey(NamedTuple):
-    """The key used for a reasoned evidence."""
-
-    evidence_type: str
-    justification: str
-    rest: tuple[
-        tuple[tuple[StrTriple, ReasonedEvidenceKey] | tuple[StrTriple, SimpleEvidenceKey], ...], ...
-    ]
+    def _to_sssom_pydantic(
+        self,
+        mapping: Triple | Mapping,
+        subject: Reference | None = None,
+        object: Reference | None = None,
+    ) -> sssom_pydantic.SemanticMapping:
+        return self.mapping
 
 
 class ReasonedEvidence(
-    pydantic.BaseModel,
-    KeyedMixin[[Union[Triple, "Mapping"]], tuple[StrTriple, ReasonedEvidenceKey]],
-    EvidenceMixin,
-    ConfidenceMixin,
-    prefix=SEMRA_EVIDENCE_PREFIX,
+    pydantic.BaseModel, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
 ):
     """A complex evidence based on multiple mappings."""
 
     model_config = ConfigDict(frozen=True)
 
     evidence_type: Literal["reasoned"] = Field(default="reasoned", exclude=False)
-    justification: Reference = Field(..., description="A SSSOM-compliant justification")
-    mappings: list[Mapping] = Field(
-        ..., description="A list of mappings and their evidences consumed to create this evidence"
-    )
-    author: Reference | None = None
-    confidence_factor: float = Field(
-        1.0, description="The probability that the reasoning method is correct"
-    )
+    justification: Annotated[
+        Reference, Field(description="A SSSOM-compliant justification"), ReferenceValidator
+    ]
+    mappings: Annotated[
+        list[Mapping],
+        Field(
+            description="A list of mappings and their evidences consumed to create this evidence"
+        ),
+    ]
+    author: Annotated[Reference | None, ReferenceValidator] = None
+    confidence_factor: Annotated[
+        float, Field(description="The probability that the reasoning method is correct")
+    ] = 1.0
 
-    def _simple_key(self) -> ReasonedEvidenceKey:
-        return ReasonedEvidenceKey(
-            self.evidence_type,
-            self.justification.curie,
-            tuple(
-                tuple(
-                    evidence.key(mapping)
-                    for evidence in sorted(mapping.evidence, key=_sort_evidence_key)
-                )
-                for mapping in sorted(self.mappings)
-            ),
+    def _to_sssom_pydantic(
+        self, triple: Triple, subject: Reference | None = None, object: Reference | None = None
+    ) -> sssom_pydantic.SemanticMapping:
+        return sssom_pydantic.SemanticMapping(
+            subject=subject or triple.subject,
+            predicate=triple.predicate,
+            object=object or triple.object,
+            justification=self.justification,
+            confidence=self.get_confidence(),
+            license=CC0_URL,
+            authors=[self.author] if self.author else None,
+            comment=self.explanation,
+            source=SEMRA_SOURCE,
+            derived_from=[mapping.get_reference() for mapping in self.mappings],
         )
 
-    def key(self, triple: Triple | Mapping) -> tuple[StrTriple, ReasonedEvidenceKey]:
-        """Get a key suitable for hashing the evidence.
-
-        :returns: A key for deduplication based on the mapping set.
-
-        Note: this should be extended to include basically _all_ fields
-        """
-        return (
-            triple.as_str_triple(),
-            self._simple_key(),
-        )
-
-    def get_confidence(self) -> float:
+    def get_confidence(self) -> float | None:
         r"""Calculate confidence for the reasoned evidence.
 
         :returns: The joint binomial probability that all reasoned evidences are
@@ -391,8 +315,12 @@ class ReasonedEvidence(
             where $E$ is the set of all evidences in this object and $\alpha$ is the
             confidence factor for the reasoning approach.
         """
-        confidences = [mapping.get_confidence() for mapping in self.mappings]
-        return _joint_probability([self.confidence_factor, *confidences])
+        confidences = [
+            confidence for mapping in self.mappings if (confidence := mapping.get_confidence())
+        ]
+        if confidences:
+            return _joint_probability([self.confidence_factor, *confidences])
+        return None
 
     @property
     def mapping_set(self) -> None:
@@ -410,13 +338,15 @@ class ReasonedEvidence(
         }
 
     @property
-    def explanation(self) -> str:
+    def explanation(self) -> str | None:
         """Get a textual explanation for this reasoned evidence.
 
         :returns: Assuming this reasoned evidence represents a pathway where each
             mapping in the chain's subject shares the object from the previous mapping,
             returns a space-delmited list of the CURIEs for these entities.
         """
+        if len(self.mappings) == 1:
+            return None
         return (
             " ".join(mapping.subject.curie for mapping in self.mappings)
             + " "
@@ -429,11 +359,13 @@ Evidence = Annotated[
     Field(discriminator="evidence_type"),
 ]
 
+CONVERTER = bioregistry.get_default_converter(stubs=True)
+
 
 class Mapping(
     Triple,
     ConfidenceMixin,
-    KeyedMixin[[], StrTriple],
+    KeyedMixin[[]],
     prefix=SEMRA_MAPPING_PREFIX,
 ):
     """A semantic mapping.
@@ -445,26 +377,42 @@ class Mapping(
 
     model_config = ConfigDict(frozen=True)
 
-    subject: Reference = Field(..., title="subject")
-    predicate: Reference = Field(..., title="predicate")
-    object: Reference = Field(..., title="object")
+    subject: Annotated[Reference, ReferenceValidator]
+    predicate: Annotated[Reference, ReferenceValidator]
+    object: Annotated[Reference, ReferenceValidator]
     evidence: list[Evidence] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_simple_evidences_match(self) -> Self:
+        """Check triples in simple evidences match."""
+        for evidence in self.evidence:
+            if not isinstance(evidence, SimpleEvidence):
+                continue
+            if self.subject != evidence.mapping.subject:
+                raise ValueError(
+                    f"subjects do not match {self.subject} vs {evidence.mapping.subject}"
+                )
+            if self.predicate != evidence.mapping.predicate:
+                raise ValueError("predicates do not match")
+            if self.object != evidence.mapping.object:
+                raise ValueError("objects do not match")
+        return self
 
     @property
     def triple(self) -> Triple:
         """Get the mapping's core triple as a tuple."""
         return Triple(subject=self.subject, predicate=self.predicate, object=self.object)
 
-    def key(self) -> StrTriple:
-        """Get a hashable key for the mapping, based on the subject, predicate, and object."""
-        return self.as_str_triple()
+    def get_identifier(self) -> str:
+        """Get the mapping's sameness identifier."""
+        return CONVERTER.hash_triple(self)
 
     @classmethod
     def from_triple(
         cls,
         triple: Triple | tuple[Reference, Reference, Reference],
         evidence: list[Evidence] | None = None,
-    ) -> Mapping:
+    ) -> Self:
         """Instantiate a mapping from a triple."""
         if isinstance(triple, Triple):
             return cls(
@@ -477,28 +425,59 @@ class Mapping(
             subject, predicate, obj = triple
             return cls(subject=subject, predicate=predicate, object=obj, evidence=evidence or [])
 
-    def get_confidence(self) -> float:
-        """Aggregate the mapping's evidences' confidences in a binomial model."""
-        if not self.evidence:
-            raise ValueError("can not calculate confidence since no evidence")
-        return _joint_probability(e.get_confidence() for e in self.evidence)
+    @classmethod
+    def from_sssom_pydantic(
+        cls,
+        mapping: sssom_pydantic.SemanticMapping,
+        mapping_set: sssom_pydantic.MappingSet | None = None,
+    ) -> Self:
+        """Construct a mapping from :mod:`sssom_pydantic` object."""
+        # TODO what if derived_from annotations, introduced in
+        #  https://github.com/cthoyt/sssom-pydantic/pull/108,
+        #  then construct a ReasonedEvidence
 
+        # if there's a source, then we want to expand this to create the mapping
+        #  set, just with the ID. otherwise, were reuse the mapping_set given
+        if mapping.source is not None:
+            c = bioregistry.get_default_converter()
+            url = c.expand_reference(mapping.source, strict=True)
+            mapping_set = MappingSet(id=url, license=mapping.license)
+        elif mapping.provider:
+            mapping_set = MappingSet(id=mapping.provider, license=mapping.license)
+        elif mapping_set is None:
+            raise ValueError("mapping set ID could not be inferred, and mapping set wasn't passed")
+
+        evidence = SimpleEvidence(mapping=mapping, mapping_set=mapping_set)
+        return cls(
+            subject=Reference.from_reference(mapping.subject),
+            predicate=Reference.from_reference(mapping.predicate).without_name(),
+            object=Reference.from_reference(mapping.object),
+            evidence=[evidence],
+        )
+
+    def get_confidence(self) -> float | None:
+        """Aggregate the mapping's evidences' confidences in a binomial model."""
+        return _aggregate_confidences(self.evidence)
+
+    # FIXME test primary, secondary, tertiary
     @property
     def has_primary(self) -> bool:
         """Get if there is a primary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence)
-            and evidence.mapping_set.name == self.subject.prefix
+            str(source).removeprefix("https://bioregistry.io/") == self.subject.prefix
             for evidence in self.evidence
+            if isinstance(evidence, SimpleEvidence) and evidence.mapping_set is not None
+            for source in evidence.mapping_set.source or []
         )
 
     @property
     def has_secondary(self) -> bool:
         """Get if there is a secondary evidence associated with this mapping."""
         return any(
-            isinstance(evidence, SimpleEvidence)
-            and evidence.mapping_set.name != self.subject.prefix
+            str(source).removeprefix("https://bioregistry.io/") != self.subject.prefix
             for evidence in self.evidence
+            if isinstance(evidence, SimpleEvidence) and evidence.mapping_set is not None
+            for source in evidence.mapping_set.source or []
         )
 
     @property
@@ -510,6 +489,60 @@ class Mapping(
 ReasonedEvidence.model_rebuild()
 
 
+def _aggregate_confidences(elements: Iterable[ConfidenceMixin]) -> float | None:
+    confidences = [confidence for element in elements if (confidence := element.get_confidence())]
+    if confidences:
+        return _joint_probability(confidences)
+    return None
+
+
 def _joint_probability(probabilities: Iterable[float]) -> float:
     """Calculate the probability that a list of probabilities are jointly true."""
     return 1.0 - math.prod(1.0 - probability for probability in probabilities)
+
+
+class Statistics(BaseModel):
+    """Summary statistics."""
+
+    raw_mappings: int | None = Field(None, description="The number of raw mappings.")
+    processed_mappings: int | None = Field(None, description="The number of processed mappings.")
+    priority_mappings: int | None = Field(None, description="The number of priority mappings.")
+    raw_term_count: int
+    unique_term_count: int
+    reduction: float
+    distribution: dict[int, int]
+    refresh_raw_timedelta: float | None = None
+    refresh_source_timedelta: float | None = None
+
+
+def _get_source_reference(mapping_set: MappingSet) -> Reference | None:
+    if reference := _parse_source_iri(str(mapping_set.id)):
+        return reference
+    for source_uri in mapping_set.source or []:
+        if reference := _parse_source_iri(str(source_uri)):
+            return reference
+            # note that if there are multiple sources, this could be a problem
+    return None
+
+
+def _parse_source_iri(uri: str) -> Reference | None:
+    if uri.startswith("https://bioregistry.io/registry/"):
+        return Reference(
+            prefix="bioregistry",
+            identifier=uri.removeprefix("https://bioregistry.io/registry/"),
+        )
+    elif uri.startswith("https://bioregistry.io/"):
+        return Reference(
+            prefix="bioregistry",
+            identifier=uri.removeprefix("https://bioregistry.io/"),
+        )
+    elif source_ref := bioregistry.parse_iri(
+        str(uri), strict=False, on_failure_return_type=FailureReturnType.single
+    ):
+        try:
+            rv = Reference(prefix=source_ref.prefix, identifier=source_ref.identifier)
+        except ValueError:
+            return None
+        else:
+            return rv
+    return None

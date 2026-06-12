@@ -22,6 +22,7 @@ from semra.vocabulary import (
     CHAIN_MAPPING,
     DB_XREF,
     EXACT_MATCH,
+    INVERSION_MAPPING,
     KNOWLEDGE_MAPPING,
     NARROW_MATCH,
 )
@@ -57,10 +58,9 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
     This is configured in the :data:`semra.rules.FLIP` dictionary.
 
     >>> from semra import Mapping, Reference, EXACT_MATCH, SimpleEvidence
-    >>> from semra.api import get_test_evidence, get_test_reference
+    >>> from semra.api import get_test_reference
     >>> r1, r2 = get_test_reference(2)
-    >>> e1 = get_test_evidence()
-    >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
+    >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
     >>> mappings = infer_reversible([m1], progress=False)
     >>> len(mappings)
     2
@@ -73,12 +73,10 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         it with the :func:`semra.api.assemble_evidences` operation:
 
         >>> from semra import Mapping, Reference, EXACT_MATCH
-        >>> from semra.api import get_test_evidence
-        >>> from semra.api import get_test_evidence, get_test_reference
+        >>> from semra.api import get_test_reference
         >>> r1, r2 = get_test_reference(2)
-        >>> e1, e2 = get_test_evidence(2)
-        >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
-        >>> m2 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r1, evidence=[e2])
+        >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2)
+        >>> m2 = Mapping(subject=r2, predicate=EXACT_MATCH, object=r1)
         >>> mappings = infer_reversible([m1, m2])
         >>> len(mappings)
         4
@@ -117,7 +115,7 @@ def infer_chains(
     :return: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
-    graph = to_multidigraph(mappings)
+    graph = to_multidigraph(mappings, progress=progress)
     new_mappings = []
 
     components = sorted(
@@ -130,7 +128,12 @@ def infer_chains(
         reverse=True,
     )
     it = tqdm(
-        components, unit="component", desc="Inferring chains", unit_scale=True, disable=not progress
+        components,
+        unit="component",
+        desc="Inferring chains",
+        unit_scale=True,
+        disable=not progress,
+        leave=False,
     )
     for _i, component in enumerate(it):
         sg: nx.MultiDiGraph = graph.subgraph(component).copy()
@@ -173,10 +176,20 @@ def infer_chains(
                     predicate_evidence_dict[p].append(evidence)
 
             for p, evidences in predicate_evidence_dict.items():
-                new_mappings.append(Mapping(subject=s, predicate=p, object=o, evidence=evidences))
+                forward = Mapping(subject=s, predicate=p, object=o, evidence=evidences)
+                new_mappings.append(forward)
                 if backwards:
                     new_mappings.append(
-                        Mapping(object=s, subject=o, predicate=FLIP[p], evidence=evidences)
+                        Mapping(
+                            object=s,
+                            subject=o,
+                            predicate=FLIP[p],
+                            evidence=[
+                                ReasonedEvidence(
+                                    justification=INVERSION_MAPPING, mappings=[forward]
+                                )
+                            ],
+                        )
                     )
 
     return [*mappings, *new_mappings]
@@ -349,7 +362,8 @@ def infer_mutations(
     ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
     so the example mapping ``m2`` comes along for the ride.
 
-    >>> from semra.vocabulary import KNOWLEDGE_MAPPING    >>> from semra import DB_XREF, EXACT_MATCH, Reference
+    >>> from semra.vocabulary import KNOWLEDGE_MAPPING
+    >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
     >>> r1, r2, r3 = (Reference.from_curie(c) for c in curies)
     >>> m1 = Mapping.from_triple((r1, DB_XREF, r2))

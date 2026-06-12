@@ -13,7 +13,7 @@ from pystow.utils import gzip_compress, safe_open_writer
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .io_utils import get_confidence_str, get_name_by_reference
+from .io_utils import get_name_by_reference
 from ..constants import (
     SEMRA_EVIDENCE_PREFIX,
     SEMRA_MAPPING_PREFIX,
@@ -23,7 +23,15 @@ from ..constants import (
     SEMRA_NEO4J_MAPPING_LABEL,
     SEMRA_NEO4J_MAPPING_SET_LABEL,
 )
-from ..struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
+from ..struct import (
+    ConfidenceMixin,
+    Evidence,
+    Mapping,
+    MappingSet,
+    ReasonedEvidence,
+    SimpleEvidence,
+    _md5_hexdigest,
+)
 
 __all__ = [
     "CONCEPT_NODES_HEADER",
@@ -56,7 +64,7 @@ MAPPING_NODES_HEADER = [
     "curie:ID",
     "prefix",
     "predicate",
-    "confidence",
+    "confidence:double",
     "primary:boolean",
     "secondary:boolean",
     "tertiary:boolean",
@@ -67,16 +75,16 @@ EVIDENCE_NODES_HEADER = [
     "prefix",
     "type",
     "mapping_justification",
-    "confidence:float",
+    "confidence:double",
 ]
 MAPPING_SET_NODES_HEADER = [
     "curie:ID",
     "prefix",
-    "purl",
-    "name",
+    "id",
+    "title",
     "license",
     "version",
-    "confidence:float",
+    "confidence:double",
 ]
 
 #: The column headers for properties attached to simple mappings
@@ -84,7 +92,7 @@ EDGES_HEADER = [
     ":START_ID",
     ":TYPE",
     ":END_ID",
-    "confidence:float",
+    "confidence:double",
     "primary:boolean",
     "secondary:boolean",
     "tertiary:boolean",
@@ -133,9 +141,11 @@ def write_neo4j(
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
-    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git",
+    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git@update-sssom-input",
     use_tqdm: bool = True,
     compress: None | Literal["during", "after"] = None,
+    cleanup: bool = True,
+    quiet: bool = False,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -192,9 +202,8 @@ def write_neo4j(
     if equivalence_classes is None:
         equivalence_classes = {}
 
-    # keep track of the concepts that have been written
-    # as we iterate through mappings, so we don't write
-    # duplicates
+    # FIXME use different mechanism for adding nodes into the graph
+    #  so we don't need ot keep track of what's been written as we go.
     seen_concepts: set[Reference] = set()
 
     # keep track of the CURIEs for mapping sets
@@ -242,6 +251,7 @@ def write_neo4j(
             unit_scale=True,
             desc="streaming writing to Neo4j",
             disable=not use_tqdm,
+            leave=False,
         ):
             mapping_curie = mapping.curie
 
@@ -275,7 +285,7 @@ def write_neo4j(
 
                 match evidence:
                     case SimpleEvidence():
-                        mapping_set_curie = evidence.mapping_set.curie
+                        mapping_set_curie = _get_mapping_set_curie(evidence.mapping_set)
                         if mapping_set_curie not in mapping_set_curies:
                             mapping_set_writer.writerow(
                                 _mapping_set_to_row(mapping_set_curie, evidence.mapping_set)
@@ -310,9 +320,12 @@ def write_neo4j(
 
     if compress == "after":
         node_names = [
-            (label, gzip_compress(path).relative_to(directory)) for label, path in node_paths
+            (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
+            for label, path in node_paths
         ]
-        edge_names = [gzip_compress(path).relative_to(directory) for path in edge_paths]
+        edge_names = [
+            gzip_compress(path, cleanup=cleanup).relative_to(directory) for path in edge_paths
+        ]
     else:
         node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
         edge_names = [path.relative_to(directory) for path in edge_paths]
@@ -335,9 +348,14 @@ def write_neo4j(
         )
     )
 
-    click.secho("Run Neo4j with the following:", fg="green")
-    click.secho(f"  cd {run_path.parent.absolute()}")
-    click.secho(f"  sh {run_script_name}")
+    if not quiet:
+        click.secho("Run Neo4j with the following:", fg="green")
+        click.secho(f"  cd {run_path.parent.absolute()}")
+        click.secho(f"  sh {run_script_name}")
+
+
+def _get_mapping_set_curie(m: MappingSet) -> str:
+    return f"{SEMRA_MAPPING_SET_PREFIX}:{_md5_hexdigest(str(m.id))}"
 
 
 def _neo4j_bool(b: bool, /) -> str:
@@ -385,6 +403,11 @@ def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
 
 
 def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
+    titles = {
+        evidence.mapping_set.title
+        for evidence in mapping.evidence
+        if evidence.mapping_set and evidence.mapping_set.title
+    }
     return (
         mapping.subject.curie,
         mapping.predicate.curie,
@@ -393,11 +416,7 @@ def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
         _neo4j_bool(mapping.has_primary),
         _neo4j_bool(mapping.has_secondary),
         _neo4j_bool(mapping.has_tertiary),
-        "|".join(
-            sorted(
-                {evidence.mapping_set.name for evidence in mapping.evidence if evidence.mapping_set}
-            )
-        ),
+        "|".join(sorted(titles)),
     )
 
 
@@ -405,9 +424,27 @@ def _mapping_set_to_row(mapping_set_curie: str, mapping_set: MappingSet) -> Sequ
     return (
         mapping_set_curie,
         SEMRA_MAPPING_SET_PREFIX,
-        mapping_set.purl or "",
-        mapping_set.name,
-        mapping_set.license or "",
+        str(mapping_set.id),
+        mapping_set.title or "",
+        str(mapping_set.license) if mapping_set.license else "",
         mapping_set.version or "",
-        get_confidence_str(mapping_set),
+        get_confidence_str_helper(mapping_set.confidence),
     )
+
+
+#: The precision for confidences used before exporting to the graph data model
+CONFIDENCE_PRECISION = 5
+
+
+def get_confidence_str(x: ConfidenceMixin) -> str:
+    """Safely get a confidence from an evidence."""
+    if confidence := x.get_confidence():
+        return get_confidence_str_helper(confidence)
+    return ""
+
+
+def get_confidence_str_helper(confidence: float | None) -> str:
+    """Safely get a confidence from an evidence."""
+    if confidence is None:
+        return "1.0"
+    return str(round(confidence, CONFIDENCE_PRECISION))

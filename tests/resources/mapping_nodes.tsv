@@ -1,4 +1,4 @@
-curie:ID	prefix	predicate	confidence	primary:boolean	secondary:boolean	tertiary:boolean
-semra.mapping:9f85f585b0179ba53df2dd274e0067dc	semra.mapping	skos:exactMatch	0.99988	false	true	false
-semra.mapping:8cd515411bb12fc6f2ab8d0a0e4dba35	semra.mapping	skos:exactMatch	0.9	false	true	false
-semra.mapping:6185a77934184112529b68ea7780a54d	semra.mapping	skos:exactMatch	1.0	false	false	true
+curie:ID	prefix	predicate	confidence:double	primary:boolean	secondary:boolean	tertiary:boolean
+mapping:eacc57c4a2bbfb9e5f00c8fc1fa6df4c4968f5b417c508628066be9856054f23	mapping	skos:exactMatch	0.99988	false	false	false
+mapping:0a3a5f5e9055f1bb4d58268ad9a0736a16ff68bacc026df0c51425036248c881	mapping	skos:exactMatch	0.9	false	false	false
+mapping:637fee94e47a222e670bd80d31416519a45b7984b7a53729132176d2a63007bf	mapping	skos:exactMatch	1.0	false	false	true

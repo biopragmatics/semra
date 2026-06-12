@@ -1,6 +1,6 @@
-curie:ID	prefix	type	mapping_justification	confidence:float
-semra.evidence:b59546c8b03b27da7e89b6a08c76843b	semra.evidence	simple	semapv:ManualMappingCuration	0.99
-semra.evidence:5bf702035dfe2e92b251973c4b04198b	semra.evidence	simple	semapv:ManualMappingCuration	0.94
-semra.evidence:7c9602130dbb53eb61146f4da971c8e6	semra.evidence	simple	semapv:LexicalMatching	0.8
-semra.evidence:21859b817d7ea73111d29b09297cf5e3	semra.evidence	simple	semapv:UnspecifiedMatching	0.9
-semra.evidence:35f00d4e0f2baf4ffca12849b6e04cb2	semra.evidence	reasoned	semapv:MappingChaining	1.0
+curie:ID	prefix	type	mapping_justification	confidence:double
+sssom.record:963BB2CD5B09E1AA	sssom.record	simple	semapv:ManualMappingCuration	0.99
+sssom.record:0FD29B5671559F5E	sssom.record	simple	semapv:ManualMappingCuration	0.94
+sssom.record:9E92E6CD9BF6A99D	sssom.record	simple	semapv:LexicalMatching	0.8
+sssom.record:1FD9422F8E425CAC	sssom.record	simple	semapv:UnspecifiedMatching	0.9
+sssom.record:A317500C744A6F92	sssom.record	reasoned	semapv:MappingChaining	1.0

@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import bioregistry
 import click
+import curies
+import obographs
+import robot_obo_tool
+from pydantic import AnyUrl
 from pyobo import Reference
+from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
-from semra.struct import Mapping, MappingSet, SimpleEvidence
 from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]
@@ -30,7 +37,10 @@ def _removeprefix(s: str, prefix: str) -> str:
     return s
 
 
-def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
+CLO_OWL_URL = "http://purl.obolibrary.org/obo/clo.owl"
+
+
+def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
     """Get Cell Line Ontology mappings.
 
     :param confidence: How confidence are you in the quality of these mappings being
@@ -46,92 +56,91 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
     Note that this function exists because CLO doesn't use standard curation for xrefs
     and instead uses a combination of messy references inside rdfs:seeAlso annotations
     """
-    import bioontologies
+    converter = bioregistry.get_default_converter()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        clo_json_path = Path(tmpdir).joinpath("clo.json")
+        robot_obo_tool.convert(CLO_OWL_URL, clo_json_path)
+        graph = obographs.read(clo_json_path, squeeze=True).standardize(converter)
 
-    graph = bioontologies.get_obograph_by_prefix("clo", check=False).guess("clo")
-    mapping_set = MappingSet(
-        name="clo",
-        version=graph.version,
-        license=bioregistry.get_license("clo"),
-        confidence=confidence,
-    )
+    license_url = bioregistry.get_license_url("clo")
+    source = Reference(prefix="bioregistry", identifier="clo")
+    provider = AnyUrl("http://purl.obolibrary.org/obo/clo.owl")
 
     mappings = []
     for node in tqdm(graph.nodes, unit_scale=True, unit="node"):
-        if not node.id.startswith(CLO_URI_PREFIX):
+        if not node.reference.prefix == "clo" or node.meta is None:
             continue
-        clo_id = node.id[len(CLO_URI_PREFIX) :]
-        for p in node.properties or []:
-            if p.predicate_raw != "http://www.w3.org/2000/01/rdf-schema#seeAlso":
+        for prop in node.meta.properties or []:
+            if prop.predicate.curie != "rdfs:seeAlso" or isinstance(prop.value, curies.Reference):
                 continue
-            for raw_curie in _split(p.value_raw):
-                curie = _removeprefix(_removeprefix(raw_curie, "rrid:"), "RRID:")
+            for raw_curie in _split(prop.value):
+                curie = raw_curie.removeprefix("rrid:").removeprefix("RRID:")
                 prefix: str | None
                 identifier: str | None
                 if curie.startswith("Sanger:COSMICID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "Sanger:COSMICID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("Sanger:COSMICID:")
                 elif curie.startswith("RRID:CVCL_"):
-                    prefix, identifier = "cellosaurus", _removeprefix(curie, "RRID:CVCL_")
+                    prefix, identifier = "cellosaurus", curie.removeprefix("RRID:CVCL_")
                 elif curie.startswith("RRID: CVCL_"):
-                    prefix, identifier = "cellosaurus", _removeprefix(curie, "RRID: CVCL_")
+                    prefix, identifier = "cellosaurus", curie.removeprefix("RRID: CVCL_")
                 elif curie.startswith("atcc:COSMICID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "atcc:COSMICID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("atcc:COSMICID:")
                 elif curie.startswith("DSMZ:COSMICID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "DSMZ:COSMICID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("DSMZ:COSMICID:")
                 elif curie.startswith("COSMIC: COSMIC ID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "COSMIC: COSMIC ID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("COSMIC: COSMIC ID:")
                 elif curie.startswith("RIKEN:COSMICID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "RIKEN:COSMICID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("RIKEN:COSMICID:")
                 elif curie.startswith("COSMICID:"):
-                    prefix, identifier = "cosmic.cell", _removeprefix(curie, "COSMICID:")
+                    prefix, identifier = "cosmic.cell", curie.removeprefix("COSMICID:")
                 elif curie.startswith("LINCS_HMS:"):
-                    prefix, identifier = "hms.lincs.cell", _removeprefix(curie, "LINCS_HMS:")
+                    prefix, identifier = "hms.lincs.cell", curie.removeprefix("LINCS_HMS:")
                 elif curie.startswith("HMSL: HMSL"):
-                    prefix, identifier = "hms.lincs.cell", _removeprefix(curie, "HMSL: HMSL")
+                    prefix, identifier = "hms.lincs.cell", curie.removeprefix("HMSL: HMSL")
                 elif curie.startswith("CHEMBL:"):
-                    prefix, identifier = "chembl.cell", _removeprefix(curie, "CHEMBL:")
+                    prefix, identifier = "chembl.cell", curie.removeprefix("CHEMBL:")
                 elif curie.startswith("ChEMBL:"):
-                    prefix, identifier = "chembl.cell", _removeprefix(curie, "ChEMBL:")
+                    prefix, identifier = "chembl.cell", curie.removeprefix("ChEMBL:")
                 elif curie.startswith("BTO_"):
-                    prefix, identifier = "bto", _removeprefix(curie, "BTO_")
+                    prefix, identifier = "bto", curie.removeprefix("BTO_")
                 elif curie.startswith("CVCL_"):
-                    prefix, identifier = "cellosaurus", _removeprefix(curie, "CVCL_")
+                    prefix, identifier = "cellosaurus", curie.removeprefix("CVCL_")
                 elif curie.startswith("JHSF:"):
-                    prefix, identifier = "jcrb", _removeprefix(curie, "JHSF:")
+                    prefix, identifier = "jcrb", curie.removeprefix("JHSF:")
                 elif curie.startswith("CRL-"):
                     prefix, identifier = "atcc", curie
                 elif curie.startswith("jcrb:JHSF:"):
-                    prefix, identifier = "jcrb", _removeprefix(curie, "jcrb:JHSF:")
+                    prefix, identifier = "jcrb", curie.removeprefix("jcrb:JHSF:")
                 elif curie.startswith("JCRB"):
                     prefix, identifier = "jcrb", curie
                 elif curie.startswith("JHSF:JCRB"):
-                    prefix, identifier = "jcrb", _removeprefix(curie, "JHSF:")
+                    prefix, identifier = "jcrb", curie.removeprefix("JHSF:")
                 elif curie.startswith("ATCCCRL"):
-                    prefix, identifier = "atcc", _removeprefix(curie, "ATCC")
+                    prefix, identifier = "atcc", curie.removeprefix("ATCC")
                 elif curie.startswith("bto:BAO_"):
-                    prefix, identifier = "bao", _removeprefix(curie, "bto:BAO_")
+                    prefix, identifier = "bao", curie.removeprefix("bto:BAO_")
                 elif curie.startswith("ACC"):
                     prefix, identifier = "dsmz", curie
                 elif curie.startswith("DSMZACC"):
-                    prefix, identifier = "dsmz", _removeprefix(curie, "DSMZ")
+                    prefix, identifier = "dsmz", curie.removeprefix("DSMZ")
                 elif curie.startswith("dsmz:ACC"):
-                    prefix, identifier = "dsmz", "ACC-" + _removeprefix(curie, "dsmz:ACC")
+                    prefix, identifier = "dsmz", "ACC-" + curie.removeprefix("dsmz:ACC")
                 elif curie.startswith("DSMZ:ACC"):
-                    prefix, identifier = "dsmz", "ACC-" + _removeprefix(curie, "DSMZ:ACC")
+                    prefix, identifier = "dsmz", "ACC-" + curie.removeprefix("DSMZ:ACC")
                 else:
                     try:
                         prefix, identifier = bioregistry.parse_curie(curie)
                     except Exception:
                         tqdm.write(
-                            f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} "
-                            f"from line:\n  {p.value_raw}"
+                            f"{node.reference.curie} unparsed: {click.style(curie, fg='red')} "
+                            f"from line:\n  {prop.value}"
                         )
                         continue
 
                 if prefix is None or identifier is None:
                     tqdm.write(
-                        f"CLO:{clo_id} unparsed: {click.style(curie, fg='red')} "
-                        f"from line:\n  {p.value_raw}"
+                        f"{node.reference.curie} unparsed: {click.style(curie, fg='red')} "
+                        f"from line:\n  {prop.value}"
                     )
                     continue
                 if prefix in SKIP_PREFIXES:
@@ -140,19 +149,20 @@ def get_clo_mappings(confidence: float = 0.8) -> list[Mapping]:
                     raise ValueError(f"Missing pattern for prefix `{prefix}`")
                 if not bioregistry.is_valid_identifier(prefix, identifier):
                     c = click.style(f"{prefix}:{identifier}", fg="yellow")
-                    tqdm.write(f"CLO:{clo_id} invalid: {c} from line:\n  {p.value_raw}")
+                    tqdm.write(f"{node.reference.curie} invalid: {c} from line:\n  {prop.value}")
                     continue
 
                 mappings.append(
-                    Mapping(
-                        subject=Reference(prefix="clo", identifier=clo_id),
+                    SemanticMapping(
+                        subject=Reference.from_reference(node.reference),
+                        subject_source_version=graph.version,
                         predicate=DB_XREF,
                         object=Reference(prefix=prefix, identifier=identifier),
-                        evidence=[
-                            SimpleEvidence(
-                                justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set
-                            )
-                        ],
+                        justification=UNSPECIFIED_MAPPING,
+                        confidence=confidence,
+                        source=source,
+                        provider=provider,
+                        license=license_url,
                     )
                 )
     return mappings

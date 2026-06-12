@@ -67,8 +67,8 @@ locally on Docker from inside the folder where the data was unzipped with:
 
     $ sh run_on_docker.sh
 
-If you reproduced the database yourself, you can ``cd``
-to the right folder and run with:
+If you reproduced the database yourself, you can ``cd`` to the right folder and run
+with:
 
 .. code-block:: console
 

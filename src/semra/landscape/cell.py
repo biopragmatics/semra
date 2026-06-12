@@ -19,6 +19,7 @@ Prefix                                               Name
 
 Results
 *******
+
 The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON, and
 in a format ready for loading into a Neo4j graph database
 on Zenodo at |cellimg|.
@@ -51,6 +52,7 @@ commands:
 
 Web Application
 ***************
+
 The pre-built artifacts for this mapping database can be downloaded from Zenodo
 at |cellimg| and unzipped. The web application can be run
 locally on Docker from inside the folder where the data was unzipped with:

@@ -17,6 +17,7 @@ Prefix                                                   Name
 
 Results
 *******
+
 The SeMRA Protein Complex Mappings Database is available for download as SSSOM, JSON, and
 in a format ready for loading into a Neo4j graph database
 on Zenodo at |compleximg|.
@@ -48,6 +49,7 @@ The SeMRA Protein Complex Mappings Database can be rebuilt with the following co
 
 Web Application
 ***************
+
 The pre-built artifacts for this mapping database can be downloaded from Zenodo
 at |compleximg| and unzipped. The web application can be run
 locally on Docker from inside the folder where the data was unzipped with:

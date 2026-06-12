@@ -12,6 +12,7 @@ Prefix                                                     Name
 
 Results
 *******
+
 The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON, and
 in a format ready for loading into a Neo4j graph database
 on Zenodo at |taxrankimg|.
@@ -44,6 +45,7 @@ commands:
 
 Web Application
 ***************
+
 After building the database, the web application can be run locally on Docker
 with the following commands:
 

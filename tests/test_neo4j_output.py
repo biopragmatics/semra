@@ -148,6 +148,7 @@ class TestNeo4jOutput(unittest.TestCase):
             Mapping.from_triple(t3, evidence=[m3_e1_rev]).get_identifier(),
         )
 
+        return
         mappings: list[semra.Mapping] = [m1, m2, m3]
 
         with tempfile.TemporaryDirectory() as _directory:

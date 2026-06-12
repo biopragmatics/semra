@@ -689,16 +689,18 @@ class Configuration(BaseModel):
             progress=progress,
         )
 
-    def _read_stats(self) -> Statistics:
-        return read_pydantic_json(self.stats_path, Statistics)
+    def _read_stats(self) -> Statistics | None:
+        if self.stats_path.is_file():
+            return read_pydantic_json(self.stats_path, Statistics)
+        return None
 
     def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
-        statistics = self._read_stats()
-        progress_kwargs = {
-            "total": statistics.raw_mappings,
+        progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading raw mappings",
         }
+        if (statistics := self._read_stats()) and statistics.raw_mappings:
+            progress_kwargs["total"] = statistics.raw_mappings
 
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (
@@ -719,11 +721,11 @@ class Configuration(BaseModel):
 
     def read_processed_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
-        statistics = self._read_stats()
-        progress_kwargs = {
-            "total": statistics.processed_mappings,
+        progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading processed mappings",
         }
+        if (statistics := self._read_stats()) and statistics.processed_mappings:
+            progress_kwargs["total"] = statistics.processed_mappings
 
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (
@@ -744,11 +746,11 @@ class Configuration(BaseModel):
 
     def read_priority_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read priority mappings from pickle, if already cached."""
-        statistics = self._read_stats()
-        progress_kwargs = {
-            "total": statistics.priority_mappings,
+        progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading priority mappings",
         }
+        if (statistics := self._read_stats()) and statistics.priority_mappings:
+            progress_kwargs["total"] = statistics.priority_mappings
 
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (

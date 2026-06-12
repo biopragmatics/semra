@@ -32,7 +32,7 @@ from curies import triples as ct
 from curies.triples import TripleType
 from pydantic import BaseModel, BeforeValidator, Field
 from ssslm import LiteralMapping
-from sssom_pydantic.examples import simple
+from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
@@ -119,29 +119,37 @@ def replace_with(f: Any) -> Callable[[Callable[P, X]], Callable[P, X]]:
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: int) -> list[SimpleEvidence]: ...
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: int
+) -> list[SimpleEvidence]: ...
 
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: None) -> SimpleEvidence: ...
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: None
+) -> SimpleEvidence: ...
 
 
-def get_test_evidence(n: int | None = None) -> SimpleEvidence | list[SimpleEvidence]:
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: int | None = None
+) -> SimpleEvidence | list[SimpleEvidence]:
     """Get test evidence."""
     if isinstance(n, int):
         return [
             SimpleEvidence(
-                mapping=simple.model_copy(
-                    update={
-                        "authors": [Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}")]
-                    }
+                mapping=SemanticMapping.exact(
+                    subject,
+                    object,
+                    authors=[Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}")],
                 ),
                 mapping_set=TEST_MAPPING_SET,
             )
             for n in range(n)
         ]
-    return SimpleEvidence(mapping=simple, mapping_set=TEST_MAPPING_SET)
+    return SimpleEvidence(
+        mapping=SemanticMapping.exact(subject, object), mapping_set=TEST_MAPPING_SET
+    )
 
 
 # docstr-coverage: inherited
@@ -235,7 +243,7 @@ def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> lis
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_evidence, get_test_reference
     >>> r1, r2 = get_test_reference(2)
-    >>> e1, e2 = get_test_evidence(2)
+    >>> e1, e2 = get_test_evidence(r1, r2, 2)
     >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
     >>> m2 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e2])
     >>> m = assemble_evidences([m1, m2])
@@ -719,10 +727,12 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     is used to reconstruct a mapping list.
 
     >>> from semra.api import get_test_reference, get_test_evidence, unindex
-    >>> s, p, o = get_test_reference(3)
-    >>> e1 = get_test_evidence()
-    >>> index = {(s, p, o): [e1]}
-    >>> assert unindex(index) == [Mapping(subject=s, predicate=p, object=o, evidence=[e1])]
+    >>> s, o = get_test_reference(2)
+    >>> e1 = get_test_evidence(s, o)
+    >>> index = {(s, EXACT_MATCH, o): [e1]}
+    >>> assert unindex(index) == [
+    ...     Mapping(subject=s, predicate=EXACT_MATCH, object=o, evidence=[e1])
+    ... ]
     """
     return [
         Mapping.from_triple(triple, evidence=evidence)

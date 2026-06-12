@@ -28,8 +28,8 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |geneimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/gene <https://github.com/biopragmatics/semra/tree/main/landscape/gene#readme>`_
-folder.
+`landscape/gene
+<https://github.com/biopragmatics/semra/tree/main/landscape/gene#readme>`_ folder.
 
 Reproduction
 ************
@@ -55,9 +55,9 @@ The SeMRA Gene Mappings Database can be rebuilt with the following commands:
 Web Application
 ***************
 
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |geneimg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|geneimg| and unzipped. The web application can be run locally on Docker from inside the
+folder where the data was unzipped with:
 
 .. code-block:: console
 
@@ -76,7 +76,6 @@ application.
 
 .. |geneimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092012.svg
     :target: https://doi.org/10.5281/zenodo.11092012
-
 """  # noqa:D205,D400
 
 import pystow

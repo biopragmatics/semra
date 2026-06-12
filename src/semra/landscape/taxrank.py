@@ -13,13 +13,12 @@ Prefix                                                     Name
 Results
 *******
 
-The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |taxrankimg|.
+The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON,
+and in a format ready for loading into a Neo4j graph database on Zenodo at |taxrankimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/taxrank <https://github.com/biopragmatics/semra/tree/main/landscape/taxrank#readme>`_
-folder.
+`landscape/taxrank
+<https://github.com/biopragmatics/semra/tree/main/landscape/taxrank#readme>`_ folder.
 
 Reproduction
 ************
@@ -46,8 +45,8 @@ commands:
 Web Application
 ***************
 
-After building the database, the web application can be run locally on Docker
-with the following commands:
+After building the database, the web application can be run locally on Docker with the
+following commands:
 
 .. code-block:: console
 
@@ -59,7 +58,6 @@ application.
 
 .. |taxrankimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.None.svg
     :target: https://doi.org/10.5281/zenodo.None
-
 """  # noqa:D205,D400
 
 import pystow

@@ -1,35 +1,35 @@
-"""
-The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following resources:
 
-===================================================  =========================================================
-Prefix                                               Name
-===================================================  =========================================================
-`mesh <https://bioregistry.io/mesh>`_                Medical Subject Headings
-`efo <https://bioregistry.io/efo>`_                  Experimental Factor Ontology
-`cellosaurus <https://bioregistry.io/cellosaurus>`_  Cellosaurus
-`ccle <https://bioregistry.io/ccle>`_                Cancer Cell Line Encyclopedia Cells
-`depmap <https://bioregistry.io/depmap>`_            DepMap Cell Lines
-`bto <https://bioregistry.io/bto>`_                  BRENDA Tissue Ontology
-`cl <https://bioregistry.io/cl>`_                    Cell Ontology
-`clo <https://bioregistry.io/clo>`_                  Cell Line Ontology
-`ncit <https://bioregistry.io/ncit>`_                NCI Thesaurus
-`umls <https://bioregistry.io/umls>`_                Unified Medical Language System Concept Unique Identifier
-===================================================  =========================================================
+=================================================== ===================================
+Prefix                                              Name
+=================================================== ===================================
+`mesh <https://bioregistry.io/mesh>`_               Medical Subject Headings
+`efo <https://bioregistry.io/efo>`_                 Experimental Factor Ontology
+`cellosaurus <https://bioregistry.io/cellosaurus>`_ Cellosaurus
+`ccle <https://bioregistry.io/ccle>`_               Cancer Cell Line Encyclopedia Cells
+`depmap <https://bioregistry.io/depmap>`_           DepMap Cell Lines
+`bto <https://bioregistry.io/bto>`_                 BRENDA Tissue Ontology
+`cl <https://bioregistry.io/cl>`_                   Cell Ontology
+`clo <https://bioregistry.io/clo>`_                 Cell Line Ontology
+`ncit <https://bioregistry.io/ncit>`_               NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_               Unified Medical Language System
+                                                    Concept Unique Identifier
+=================================================== ===================================
 
-Results
-*******
+#########
+ Results
+#########
 
-The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |cellimg|.
+The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON,
+and in a format ready for loading into a Neo4j graph database on Zenodo at |cellimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
 `landscape/cell
 <https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
 commands:
@@ -50,8 +50,9 @@ commands:
     Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
     MacBook Pro with 36GB RAM).
 
-Web Application
-***************
+#################
+ Web Application
+#################
 
 The pre-built artifacts for this mapping database can be downloaded from Zenodo at
 |cellimg| and unzipped. The web application can be run locally on Docker from inside the
@@ -74,7 +75,7 @@ application.
 
 .. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
     :target: https://doi.org/10.5281/zenodo.11091580
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import click
 import pystow

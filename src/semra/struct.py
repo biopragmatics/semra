@@ -359,7 +359,7 @@ Evidence = Annotated[
     Field(discriminator="evidence_type"),
 ]
 
-CONVERTER = bioregistry.get_default_converter()
+CONVERTER = bioregistry.get_default_converter(stubs=True)
 
 
 class Mapping(

@@ -253,13 +253,7 @@ def write_neo4j(
             disable=not use_tqdm,
             leave=False,
         ):
-            try:
-                mapping_curie = mapping.curie
-            except ValueError:
-                # if there's no URI expansion, just move on. maybe the solution is to
-                # make sure that the bioregistry default converter gets dummy expansions
-                # for _all_ prefixes, even if there isn't one (e.g., with https://bioregistry.io/<prefix>:)
-                continue
+            mapping_curie = mapping.curie
 
             if mapping.subject not in seen_concepts:
                 concept_nodes_writer.writerow(

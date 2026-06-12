@@ -1,38 +1,38 @@
-"""
-The SeMRA Gene Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Gene Mappings Database assembles semantic mappings to the following resources:
 
-===============================================  =========================================================
-Prefix                                           Name
-===============================================  =========================================================
-`ncbigene <https://bioregistry.io/ncbigene>`_    NCBI Gene
-`hgnc <https://bioregistry.io/hgnc>`_            HUGO Gene Nomenclature Committee
-`mgi <https://bioregistry.io/mgi>`_              Mouse Genome Informatics
-`rgd <https://bioregistry.io/rgd>`_              Rat Genome Database
-`cgnc <https://bioregistry.io/cgnc>`_            Chicken Gene Nomenclature Consortium
-`wormbase <https://bioregistry.io/wormbase>`_    WormBase
-`flybase <https://bioregistry.io/flybase>`_      FlyBase Gene
-`sgd <https://bioregistry.io/sgd>`_              Saccharomyces Genome Database
-`omim <https://bioregistry.io/omim>`_            Online Mendelian Inheritance in Man
-`civic.gid <https://bioregistry.io/civic.gid>`_  CIViC gene
-`umls <https://bioregistry.io/umls>`_            Unified Medical Language System Concept Unique Identifier
-`ncit <https://bioregistry.io/ncit>`_            NCI Thesaurus
-`wikidata <https://bioregistry.io/wikidata>`_    Wikidata
-===============================================  =========================================================
+=============================================== =======================================
+Prefix                                          Name
+=============================================== =======================================
+`ncbigene <https://bioregistry.io/ncbigene>`_   NCBI Gene
+`hgnc <https://bioregistry.io/hgnc>`_           HUGO Gene Nomenclature Committee
+`mgi <https://bioregistry.io/mgi>`_             Mouse Genome Informatics
+`rgd <https://bioregistry.io/rgd>`_             Rat Genome Database
+`cgnc <https://bioregistry.io/cgnc>`_           Chicken Gene Nomenclature Consortium
+`wormbase <https://bioregistry.io/wormbase>`_   WormBase
+`flybase <https://bioregistry.io/flybase>`_     FlyBase Gene
+`sgd <https://bioregistry.io/sgd>`_             Saccharomyces Genome Database
+`omim <https://bioregistry.io/omim>`_           Online Mendelian Inheritance in Man
+`civic.gid <https://bioregistry.io/civic.gid>`_ CIViC gene
+`umls <https://bioregistry.io/umls>`_           Unified Medical Language System Concept
+                                                Unique Identifier
+`ncit <https://bioregistry.io/ncit>`_           NCI Thesaurus
+`wikidata <https://bioregistry.io/wikidata>`_   Wikidata
+=============================================== =======================================
 
-Results
-*******
+#########
+ Results
+#########
 
-The SeMRA Gene Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |geneimg|.
+The SeMRA Gene Mappings Database is available for download as SSSOM, JSON, and in a
+format ready for loading into a Neo4j graph database on Zenodo at |geneimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
 `landscape/gene
 <https://github.com/biopragmatics/semra/tree/main/landscape/gene#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Gene Mappings Database can be rebuilt with the following commands:
 
@@ -52,8 +52,9 @@ The SeMRA Gene Mappings Database can be rebuilt with the following commands:
     Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
     MacBook Pro with 36GB RAM).
 
-Web Application
-***************
+#################
+ Web Application
+#################
 
 The pre-built artifacts for this mapping database can be downloaded from Zenodo at
 |geneimg| and unzipped. The web application can be run locally on Docker from inside the

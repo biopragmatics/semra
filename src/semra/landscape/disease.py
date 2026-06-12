@@ -1,44 +1,57 @@
-"""
-The SeMRA Disease Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Disease Mappings Database assembles semantic mappings to the following resources:
 
-=======================================================  ================================================================================
-Prefix                                                   Name
-=======================================================  ================================================================================
-`doid <https://bioregistry.io/doid>`_                    Human Disease Ontology
-`mondo <https://bioregistry.io/mondo>`_                  Mondo Disease Ontology
-`efo <https://bioregistry.io/efo>`_                      Experimental Factor Ontology
-`mesh <https://bioregistry.io/mesh>`_                    Medical Subject Headings
-`ncit <https://bioregistry.io/ncit>`_                    NCI Thesaurus
-`orphanet <https://bioregistry.io/orphanet>`_            Orphanet
-`orphanet.ordo <https://bioregistry.io/orphanet.ordo>`_  Orphanet Rare Disease Ontology
-`umls <https://bioregistry.io/umls>`_                    Unified Medical Language System Concept Unique Identifier
-`omim <https://bioregistry.io/omim>`_                    Online Mendelian Inheritance in Man
-`omim.ps <https://bioregistry.io/omim.ps>`_              OMIM Phenotypic Series
-`gard <https://bioregistry.io/gard>`_                    Genetic and Rare Diseases Information Center
-`icd10 <https://bioregistry.io/icd10>`_                  International Classification of Diseases, 10th Revision
-`icd10cm <https://bioregistry.io/icd10cm>`_              International Classification of Diseases, 10th Revision, Clinical Modification
-`icd10pcs <https://bioregistry.io/icd10pcs>`_            International Classification of Diseases, 10th Revision, Procedure Coding System
-`icd11 <https://bioregistry.io/icd11>`_                  International Classification of Diseases, 11th Revision (Foundation Component)
-`icd11.code <https://bioregistry.io/icd11.code>`_        ICD 11 Codes
-`icd9 <https://bioregistry.io/icd9>`_                    International Classification of Diseases, 9th Revision
-`icd9cm <https://bioregistry.io/icd9cm>`_                International Classification of Diseases, 9th Revision, Clinical Modification
-`icdo <https://bioregistry.io/icdo>`_                    International Classification of Diseases for Oncology
-=======================================================  ================================================================================
+======================================================= ================================
+Prefix                                                  Name
+======================================================= ================================
+`doid <https://bioregistry.io/doid>`_                   Human Disease Ontology
+`mondo <https://bioregistry.io/mondo>`_                 Mondo Disease Ontology
+`efo <https://bioregistry.io/efo>`_                     Experimental Factor Ontology
+`mesh <https://bioregistry.io/mesh>`_                   Medical Subject Headings
+`ncit <https://bioregistry.io/ncit>`_                   NCI Thesaurus
+`orphanet <https://bioregistry.io/orphanet>`_           Orphanet
+`orphanet.ordo <https://bioregistry.io/orphanet.ordo>`_ Orphanet Rare Disease Ontology
+`umls <https://bioregistry.io/umls>`_                   Unified Medical Language System
+                                                        Concept Unique Identifier
+`omim <https://bioregistry.io/omim>`_                   Online Mendelian Inheritance in
+                                                        Man
+`omim.ps <https://bioregistry.io/omim.ps>`_             OMIM Phenotypic Series
+`gard <https://bioregistry.io/gard>`_                   Genetic and Rare Diseases
+                                                        Information Center
+`icd10 <https://bioregistry.io/icd10>`_                 International Classification of
+                                                        Diseases, 10th Revision
+`icd10cm <https://bioregistry.io/icd10cm>`_             International Classification of
+                                                        Diseases, 10th Revision,
+                                                        Clinical Modification
+`icd10pcs <https://bioregistry.io/icd10pcs>`_           International Classification of
+                                                        Diseases, 10th Revision,
+                                                        Procedure Coding System
+`icd11 <https://bioregistry.io/icd11>`_                 International Classification of
+                                                        Diseases, 11th Revision
+                                                        (Foundation Component)
+`icd11.code <https://bioregistry.io/icd11.code>`_       ICD 11 Codes
+`icd9 <https://bioregistry.io/icd9>`_                   International Classification of
+                                                        Diseases, 9th Revision
+`icd9cm <https://bioregistry.io/icd9cm>`_               International Classification of
+                                                        Diseases, 9th Revision, Clinical
+                                                        Modification
+`icdo <https://bioregistry.io/icdo>`_                   International Classification of
+                                                        Diseases for Oncology
+======================================================= ================================
 
-Results
-*******
+#########
+ Results
+#########
 
-The SeMRA Disease Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |diseaseimg|.
+The SeMRA Disease Mappings Database is available for download as SSSOM, JSON, and in a
+format ready for loading into a Neo4j graph database on Zenodo at |diseaseimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
 `landscape/disease
 <https://github.com/biopragmatics/semra/tree/main/landscape/disease#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Disease Mappings Database can be rebuilt with the following commands:
 
@@ -58,8 +71,9 @@ The SeMRA Disease Mappings Database can be rebuilt with the following commands:
     Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
     MacBook Pro with 36GB RAM).
 
-Web Application
-***************
+#################
+ Web Application
+#################
 
 The pre-built artifacts for this mapping database can be downloaded from Zenodo at
 |diseaseimg| and unzipped. The web application can be run locally on Docker from inside

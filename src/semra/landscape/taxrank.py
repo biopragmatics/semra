@@ -1,17 +1,16 @@
-"""
-The SeMRA Taxonomical Ranks Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Taxonomical Ranks Mappings Database assembles semantic mappings to the following resources:
 
-=========================================================  =============================
-Prefix                                                     Name
-=========================================================  =============================
-`taxrank <https://bioregistry.io/taxrank>`_                Taxonomic rank vocabulary
-`ncbitaxon <https://bioregistry.io/ncbitaxon>`_            NCBI Taxonomy
-`tdwg.taxonrank <https://bioregistry.io/tdwg.taxonrank>`_  TDWG Taxon Rank LSID Ontology
-=========================================================  =============================
+========================================================= =============================
+Prefix                                                    Name
+========================================================= =============================
+`taxrank <https://bioregistry.io/taxrank>`_               Taxonomic rank vocabulary
+`ncbitaxon <https://bioregistry.io/ncbitaxon>`_           NCBI Taxonomy
+`tdwg.taxonrank <https://bioregistry.io/tdwg.taxonrank>`_ TDWG Taxon Rank LSID Ontology
+========================================================= =============================
 
-Results
-*******
+#########
+ Results
+#########
 
 The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON,
 and in a format ready for loading into a Neo4j graph database on Zenodo at |taxrankimg|.
@@ -20,8 +19,9 @@ A summary of the results can be viewed on the SeMRA GitHub repository in the
 `landscape/taxrank
 <https://github.com/biopragmatics/semra/tree/main/landscape/taxrank#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Taxonomical Ranks Mappings Database can be rebuilt with the following
 commands:
@@ -42,8 +42,9 @@ commands:
     Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
     MacBook Pro with 36GB RAM).
 
-Web Application
-***************
+#################
+ Web Application
+#################
 
 After building the database, the web application can be run locally on Docker with the
 following commands:

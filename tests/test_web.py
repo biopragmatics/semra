@@ -93,9 +93,9 @@ class MockClient(BaseClient):
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
-            If None, defaults to the relations defined in the client.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component. If None,
+            defaults to the relations defined in the client.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """

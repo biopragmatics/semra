@@ -42,11 +42,11 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 
     :param mappings: An iterable of mappings
     :param progress: Should a progress bar be shown? Defaults to true.
-    :returns:
-        A list where if a mapping can be flipped (i.e., :func:`flip`), a flipped
+
+    :returns: A list where if a mapping can be flipped (i.e., :func:`flip`), a flipped
         mapping is added. Flipped mappings contain reasoned evidence
-        :class:`ReasonedEvidence` objects that point to the mapping from which
-        the evidence was derived.
+        :class:`ReasonedEvidence` objects that point to the mapping from which the
+        evidence was derived.
 
     Flipping a mapping means switching the subject and object, then modifying the
     predicate as follows:
@@ -68,9 +68,9 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
 
     .. warning::
 
-        This operation does not "assemble", meaning if you had existing evidence
-        for an inverse mapping, they will be seperate. Therefore, you can chain
-        it with the :func:`semra.api.assemble_evidences` operation:
+        This operation does not "assemble", meaning if you had existing evidence for an
+        inverse mapping, they will be seperate. Therefore, you can chain it with the
+        :func:`semra.api.assemble_evidences` operation:
 
         >>> from semra import Mapping, Reference, EXACT_MATCH
         >>> from semra.api import get_test_reference
@@ -83,7 +83,6 @@ def infer_reversible(mappings: t.Iterable[Mapping], *, progress: bool = True) ->
         >>> mappings = assemble_evidences(mappings)
         >>> len(mappings)
         2
-
     """
     rv = []
     for mapping in semra_tqdm(mappings, desc="Infer reverse", progress=progress):
@@ -108,11 +107,13 @@ def infer_chains(
     :param backwards: Should inference be done in reverse?
     :param progress: Should a progress bar be shown? Defaults to true.
     :param cutoff: What's the maximum length path to infer over?
-    :param minimum_component_size: The smallest size of a component to consider, defaults to 2
-    :param maximum_component_size: The smallest size of a component to consider, defaults to 100.
-        Components that are very large (i.e., much larger than the number of target prefixes)
-        likely are the result of many broad/narrow mappings
-    :return: The list of input mappings _plus_ inferred mappings
+    :param minimum_component_size: The smallest size of a component to consider,
+        defaults to 2
+    :param maximum_component_size: The smallest size of a component to consider,
+        defaults to 100. Components that are very large (i.e., much larger than the
+        number of target prefixes) likely are the result of many broad/narrow mappings
+
+    :returns: The list of input mappings _plus_ inferred mappings
     """
     mappings = assemble_evidences(mappings, progress=progress)
     graph = to_multidigraph(mappings, progress=progress)
@@ -199,12 +200,12 @@ def _reason_multiple_predicates(predicates: t.Iterable[Reference]) -> Reference 
     """Return a single reasoned predicate based on a set, if possible.
 
     :param predicates: A collection of predicates
-    :return:
-        A single predicate that represents the set, if possible
 
-        For example, if a predicate set with exact + broad are given, then
-        the most specific possible is exact. If a predicate contains
-        exact, broad, and narrow, then no reasoning can be done and None is returned.
+    :returns: A single predicate that represents the set, if possible
+
+        For example, if a predicate set with exact + broad are given, then the most
+        specific possible is exact. If a predicate contains exact, broad, and narrow,
+        then no reasoning can be done and None is returned.
     """
     predicate_set = set(predicates)
     if predicate_set == {EXACT_MATCH}:
@@ -236,19 +237,21 @@ def infer_mutual_dbxref_mutations(
     """Upgrade database cross-references into exact matches for the given pairs.
 
     :param mappings: A list of mappings
-    :param prefixes: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
-        If giving a collection of pairs, will use the ``confidence`` value as given.
-    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
-        Defaults to 0.7
+    :param prefixes: A dictionary of source/target prefix pairs to the confidence of
+        upgrading dbxrefs. If giving a collection of pairs, will use the ``confidence``
+        value as given.
+    :param confidence: The default confidence to be used if ``pairs`` is given as a
+        collection. Defaults to 0.7
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A new list of mappings containing upgrades
 
-    In the following example, we use four different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge
-    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
+    :returns: A new list of mappings containing upgrades
+
+    In the following example, we use four different terms for *cranioectodermal
+    dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH), and
+    Unified Medical Language System (UMLS). We use the prior knowledge that there's a
+    high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets
+    us infer ``m3`` from ``m1``. We don't make any assertions about DOID-UMLS or
+    MeSH-UMLS mappings here, so the example mapping ``m2`` comes along for the ride.
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -269,8 +272,9 @@ def infer_mutual_dbxref_mutations(
     ...     m2,
     ... ]
 
-    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
-    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
+    This function is a thin wrapper around :func:`infer_mutations` where
+    :data:`semra.DB_XREF` is used as the "old" predicated and :data:`semra.EXACT_MATCH`
+    is used as the "new" predicate.
     """
     prefixes = cleanup_prefixes(prefixes)
     pairs = {
@@ -290,19 +294,21 @@ def infer_dbxref_mutations(
     """Upgrade database cross-references into exact matches for the given pairs.
 
     :param mappings: A list of mappings
-    :param pairs: A dictionary of source/target prefix pairs to the confidence of upgrading dbxrefs.
-        If giving a collection of pairs, will use the ``confidence`` value as given.
-    :param confidence: The default confidence to be used if ``pairs`` is given as a collection.
-        Defaults to 0.7
+    :param pairs: A dictionary of source/target prefix pairs to the confidence of
+        upgrading dbxrefs. If giving a collection of pairs, will use the ``confidence``
+        value as given.
+    :param confidence: The default confidence to be used if ``pairs`` is given as a
+        collection. Defaults to 0.7
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A new list of mappings containing upgrades
 
-    In the following example, we use four different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge
-    that there's a high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
+    :returns: A new list of mappings containing upgrades
+
+    In the following example, we use four different terms for *cranioectodermal
+    dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH), and
+    Unified Medical Language System (UMLS). We use the prior knowledge that there's a
+    high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets
+    us infer ``m3`` from ``m1``. We don't make any assertions about DOID-UMLS or
+    MeSH-UMLS mappings here, so the example mapping ``m2`` comes along for the ride.
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference, NARROW_MATCH
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -321,8 +327,9 @@ def infer_dbxref_mutations(
     ... )  # this is what we are inferring
     >>> assert infer_dbxref_mutations(mappings, pairs) == [m1, m3, m2]
 
-    This function is a thin wrapper around :func:`infer_mutations` where :data:`semra.DB_XREF`
-    is used as the "old" predicated and :data:`semra.EXACT_MATCH` is used as the "new" predicate.
+    This function is a thin wrapper around :func:`infer_mutations` where
+    :data:`semra.DB_XREF` is used as the "old" predicated and :data:`semra.EXACT_MATCH`
+    is used as the "new" predicate.
     """
     if confidence is None:
         confidence = 0.7
@@ -348,19 +355,20 @@ def infer_mutations(
     """Infer mappings with alternate predicates for the given prefix pairs.
 
     :param mappings: Mappings to infer from
-    :param pairs: A dictionary of pairs of (subject prefix, object prefix) to the confidence
-        of inference
+    :param pairs: A dictionary of pairs of (subject prefix, object prefix) to the
+        confidence of inference
     :param old_predicate: The predicate on which inference should be done
     :param new_predicate: The predicate to get inferred
     :param progress: Should a progress bar be shown? Defaults to true.
+
     :returns: A list of all old mapping plus inferred ones interspersed.
 
-    In the following example, we use three different terms for
-    *cranioectodermal dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH),
-    and Unified Medical Language System (UMLS). We use the prior knowledge that there's a high
-    confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets us infer
-    ``m3`` from ``m1``.  We don't make any assertions about DOID-UMLS or MeSH-UMLS mappings here,
-    so the example mapping ``m2`` comes along for the ride.
+    In the following example, we use three different terms for *cranioectodermal
+    dysplasia* from the Disease Ontology (DOID), Medical Subject Headings (MeSH), and
+    Unified Medical Language System (UMLS). We use the prior knowledge that there's a
+    high confidence that dbxrefs from DOID to MeSH are actually exact matches. This lets
+    us infer ``m3`` from ``m1``. We don't make any assertions about DOID-UMLS or
+    MeSH-UMLS mappings here, so the example mapping ``m2`` comes along for the ride.
 
     >>> from semra.vocabulary import KNOWLEDGE_MAPPING
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
@@ -464,11 +472,14 @@ def infer_generalizations(
 
     :param mappings: Mappings to process
     :param progress: Should a progress bar be used?
-    :returns:
-        Mappings that have been mutated to relax relations configured
-        by :data:`semra.rules.GENERALIZATIONS`
 
-    .. seealso:: Rules definition in SSSOM https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules
+    :returns: Mappings that have been mutated to relax relations configured by
+        :data:`semra.rules.GENERALIZATIONS`
+
+    .. seealso::
+
+        Rules definition in SSSOM
+        https://mapping-commons.github.io/sssom/chaining-rules/#generalisation-rules
     """
     configurations = [
         Configuration(old=old, new=new, default_confidence=1.0)

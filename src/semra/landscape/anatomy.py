@@ -1,30 +1,31 @@
-"""
-The SeMRA Anatomy Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Anatomy Mappings Database assembles semantic mappings to the following resources:
 
-=========================================  =========================================================
-Prefix                                     Name
-=========================================  =========================================================
-`uberon <https://bioregistry.io/uberon>`_  Uber Anatomy Ontology
-`mesh <https://bioregistry.io/mesh>`_      Medical Subject Headings
-`bto <https://bioregistry.io/bto>`_        BRENDA Tissue Ontology
-`caro <https://bioregistry.io/caro>`_      Common Anatomy Reference Ontology
-`ncit <https://bioregistry.io/ncit>`_      NCI Thesaurus
-`umls <https://bioregistry.io/umls>`_      Unified Medical Language System Concept Unique Identifier
-=========================================  =========================================================
+========================================= ==============================================
+Prefix                                    Name
+========================================= ==============================================
+`uberon <https://bioregistry.io/uberon>`_ Uber Anatomy Ontology
+`mesh <https://bioregistry.io/mesh>`_     Medical Subject Headings
+`bto <https://bioregistry.io/bto>`_       BRENDA Tissue Ontology
+`caro <https://bioregistry.io/caro>`_     Common Anatomy Reference Ontology
+`ncit <https://bioregistry.io/ncit>`_     NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_     Unified Medical Language System Concept Unique
+                                          Identifier
+========================================= ==============================================
 
-Results
-*******
-The SeMRA Anatomy Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |anatomyimg|.
+#########
+ Results
+#########
+
+The SeMRA Anatomy Mappings Database is available for download as SSSOM, JSON, and in a
+format ready for loading into a Neo4j graph database on Zenodo at |anatomyimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/anatomy <https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_
-folder.
+`landscape/anatomy
+<https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
 
@@ -37,25 +38,27 @@ The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
-Web Application
-***************
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |anatomyimg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+#################
+ Web Application
+#################
+
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|anatomyimg| and unzipped. The web application can be run locally on Docker from inside
+the folder where the data was unzipped with:
 
 .. code-block:: console
 
     $ sh run_on_docker.sh
 
-If you reproduced the database yourself, you can ``cd``
-to the right folder and run with:
+If you reproduced the database yourself, you can ``cd`` to the right folder and run
+with:
 
 .. code-block:: console
 
@@ -67,8 +70,7 @@ application.
 
 .. |anatomyimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
     :target: https://doi.org/10.5281/zenodo.11091802
-
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import pystow
 

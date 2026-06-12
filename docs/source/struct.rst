@@ -1,5 +1,6 @@
-Data Structure
-==============
+################
+ Data Structure
+################
 
 .. automodapi:: semra.struct
     :skip: Reference,Triple

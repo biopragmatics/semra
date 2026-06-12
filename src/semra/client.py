@@ -89,7 +89,8 @@ class BaseClient:
         """Get a mappings set.
 
         :param uri: The URI for a mapping set, e.g.,
-            `https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv` for biomappings
+            `https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv` for
+            biomappings
 
         :returns: A mapping set object
         """
@@ -153,10 +154,10 @@ class BaseClient:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component.
 
-        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings
         """
         raise NotImplementedError
 
@@ -562,9 +563,9 @@ as label, count UNION ALL
 
         :param curie: A CURIE string or reference
         :param max_distance: The maximum number of hops to consider
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
-            If None, defaults to the relations defined in the client.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component. If None,
+            defaults to the relations defined in the client.
 
         :returns: A pair of:
 
@@ -621,8 +622,8 @@ as label, count UNION ALL
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """

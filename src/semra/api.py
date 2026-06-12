@@ -173,8 +173,8 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
     """Count pairs of source/target prefixes.
 
     :param mappings: An iterable of mappings
-    :return:
-        A counter whose keys are pairs of source prefixes and target prefixes
+
+    :returns: A counter whose keys are pairs of source prefixes and target prefixes
         appearing in the mappings
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
@@ -190,12 +190,14 @@ def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> s
     """Create a table of counts of source/target prefix via :mod:`tabulate`.
 
     :param mappings: An iterable of mappings
-    :param minimum: The minimum count to display in the table. Defaults to zero,
-        which displays all source/target prefix pairs.
-    :return:
-        A table representing the counts for each source/target prefix pair.
+    :param minimum: The minimum count to display in the table. Defaults to zero, which
+        displays all source/target prefix pairs.
 
-    .. seealso:: This table is generated with :func:`count_source_target`
+    :returns: A table representing the counts for each source/target prefix pair.
+
+    .. seealso::
+
+        This table is generated with :func:`count_source_target`
     """
     from tabulate import tabulate
 
@@ -211,10 +213,12 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
     """Print the counts of source/target prefixes.
 
     :param mappings: An iterable of mappings
-    :param minimum: The minimum count to display in the table. Defaults to zero,
-        which displays all source/target prefix pairs.
+    :param minimum: The minimum count to display in the table. Defaults to zero, which
+        displays all source/target prefix pairs.
 
-    .. seealso:: This table is generated with :func:`str_source_target_counts`
+    .. seealso::
+
+        This table is generated with :func:`str_source_target_counts`
     """
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
@@ -230,15 +234,15 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool
 def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Assemble evidences.
 
-    More specifically, this aggregates evidences for all subject-predicate-object triples
-    into a single :class:`semra.Mapping` instance.
+    More specifically, this aggregates evidences for all subject-predicate-object
+    triples into a single :class:`semra.Mapping` instance.
 
     :param mappings: An iterable of mappings
     :param progress: Should a progress bar be shown? Defaults to true.
-    :returns: A processed list of mappings, that is guaranteed to have
-        exactly 1 Mapping object for each subject-predicate-object triple.
-        Note that if the predicate is different, evidences are not assembled
-        into the same Mapping object.
+
+    :returns: A processed list of mappings, that is guaranteed to have exactly 1 Mapping
+        object for each subject-predicate-object triple. Note that if the predicate is
+        different, evidences are not assembled into the same Mapping object.
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_evidence, get_test_reference
@@ -270,14 +274,14 @@ def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
     """Flip a mapping, if the relation is configured with an inversion.
 
     :param mapping: An input mapping
-    :return:
-        If the input mapping's predicate is configured with an inversion
-        (e.g., broad match is configured by default to invert to narrow
-        match), a new mapping is returned with the subject and object swapped,
-        with the inverted predicate, and with a "mutated" evidence to
-        track original provenance. If the mapping's predicate is not configured
-        with an inversion (e.g., for practical purposes, regular dbrefs and
-        close matches are not configured to invert), then None is returned
+
+    :returns: If the input mapping's predicate is configured with an inversion (e.g.,
+        broad match is configured by default to invert to narrow match), a new mapping
+        is returned with the subject and object swapped, with the inverted predicate,
+        and with a "mutated" evidence to track original provenance. If the mapping's
+        predicate is not configured with an inversion (e.g., for practical purposes,
+        regular dbrefs and close matches are not configured to invert), then None is
+        returned
     """
     if (p := FLIP.get(mapping.predicate)) is not None:
         return Mapping(
@@ -301,11 +305,11 @@ def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[set[Reference]]
 def tabulate_index(index: Index) -> str:
     """Create a table of all mappings contained in an index.
 
-    :param index: An index of mappings - a dictionary
-        whose keys are subject-predicate-object tuples
-        and values are lists of associated evidence (pre-deduplicated)
-    :return:
-        A table with four columns:
+    :param index: An index of mappings - a dictionary whose keys are
+        subject-predicate-object tuples and values are lists of associated evidence
+        (pre-deduplicated)
+
+    :returns: A table with four columns:
 
         1. Source
         2. Predicate
@@ -337,7 +341,9 @@ def keep_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose subject and object are both in the given prefix list
+
+    :returns: A subset of the original mappings whose subject and object are both in the
+        given prefix list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -366,7 +372,9 @@ def keep_subject_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings' subjects
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose subjects are in the given prefix list
+
+    :returns: A subset of the original mappings whose subjects are in the given prefix
+        list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -393,7 +401,9 @@ def keep_object_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings' objects
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose objects are in the given prefix list
+
+    :returns: A subset of the original mappings whose objects are in the given prefix
+        list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -577,16 +587,18 @@ def prioritize(
 
         .. warning::
 
-            This assumes that inference and inversion have already been run.
-            This means that if there exists any exact match mapping path between
-            ``A`` and ``B``, then there exists an edge `A, exact, B``. Further,
-            if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
+            This assumes that inference and inversion have already been run. This means
+            that if there exists any exact match mapping path between ``A`` and ``B``,
+            then there exists an edge `A, exact, B``. Further, if there exists a mapping
+            ``A, exact, B``, there must be a ``B, exact, A``.
 
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
-    :return:
-        A list of mappings representing a "prioritization", meaning that each element only
-        appears as subject once. This condition means that the prioritization mapping can be applied
-        to upgrade any reference to a "canonical" reference.
+    :param priority: A priority list of prefixes, where earlier in the list means the
+        priority is higher.
+
+    :returns: A list of mappings representing a "prioritization", meaning that each
+        element only appears as subject once. This condition means that the
+        prioritization mapping can be applied to upgrade any reference to a "canonical"
+        reference.
 
     This algorithm works in the following way
 
@@ -594,15 +606,15 @@ def prioritize(
     2. Convert the exact matches to an undirected mapping graph
     3. Extract connected components.
 
-        .. note::
+           .. note::
 
-            because of construction, connected components might contain
-            just two mappings, ``A, exact, B`` and ``B, exact, A``.
+               because of construction, connected components might contain just two
+               mappings, ``A, exact, B`` and ``B, exact, A``.
 
     4. For each component
-        1. Get the "priority" reference using :func:`get_priority_reference`
-        2. Construct new mappings where all references in the component are the subject
-           and the priority reference is the object (skip the self mapping)
+           1. Get the "priority" reference using :func:`get_priority_reference`
+           2. Construct new mappings where all references in the component are the
+              subject and the priority reference is the object (skip the self mapping)
 
     Here's an example usage, where inference is run ahead of prioritization.
 
@@ -683,12 +695,14 @@ def get_priority_reference(
 ) -> Reference | None:
     """Get the priority reference from a component.
 
-    :param component: A set of references with the pre-condition that they're all "equivalent"
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
-    :returns:
-        Returns the reference with the prefix that has the highest priority.
-        If multiple references have the highest priority prefix, returns the first one encountered.
-        If none have a priority prefix, return None.
+    :param component: A set of references with the pre-condition that they're all
+        "equivalent"
+    :param priority: A priority list of prefixes, where earlier in the list means the
+        priority is higher
+
+    :returns: Returns the reference with the prefix that has the highest priority. If
+        multiple references have the highest priority prefix, returns the first one
+        encountered. If none have a priority prefix, return None.
 
     >>> from semra import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
@@ -698,7 +712,6 @@ def get_priority_reference(
     >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
     'doid:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
-
     """
     prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
     for reference in component:
@@ -719,12 +732,14 @@ def get_priority_reference(
 def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     """Convert a mapping index into a list of mapping objects.
 
-    :param index: A mapping from subject-predicate-object triples to lists of evidence objects
+    :param index: A mapping from subject-predicate-object triples to lists of evidence
+        objects
     :param progress: Should a progress bar be shown? Defaults to true.
+
     :returns: A list of mapping objects
 
-    In the following example, a very simple index for a single mapping
-    is used to reconstruct a mapping list.
+    In the following example, a very simple index for a single mapping is used to
+    reconstruct a mapping list.
 
     >>> from semra.api import get_test_reference, get_test_evidence, unindex
     >>> s, o = get_test_reference(2)
@@ -834,7 +849,10 @@ def hydrate_subsets(
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
     :param show_progress: Should progress bars be shown?
-    :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
+
+    :returns: A dictionary that uses the is-a hierarchy within the resources to get full
+        term lists
+
     :raises ValueError: If a prefix can't be looked up with PyOBO
 
     To get all the cells from MeSH:
@@ -843,11 +861,14 @@ def hydrate_subsets(
 
         from semra.api import hydrate_subsets, filter_subsets
 
-        configuration = {"mesh": ["mesh:D002477"], ...}
+        configuration = {
+            "mesh": ["mesh:D002477"],
+            # and so on
+        }
         prefix_to_references = hydrate_subsets(configuration)
 
-    It's also possible to use parents outside the vocabulary, such as when search for entity
-    type in UMLS:
+    It's also possible to use parents outside the vocabulary, such as when search for
+    entity type in UMLS:
 
     .. code-block:: python
 
@@ -863,10 +884,9 @@ def hydrate_subsets(
                 Reference.from_curie("sty:T050"),  # experimental model of disease
                 Reference.from_curie("sty:T048"),  # mental or behavioral dysfunction
             ],
-            ...
+            # and so on
         }
         prefix_to_references = hydrate_subsets(configuration)
-
     """
     import pyobo
 
@@ -901,16 +921,19 @@ def filter_subsets(
     """Filter mappings that don't appear in the given subsets.
 
     :param mappings: An iterable of semantic mappings
-    :param prefix_to_references: A dictionary whose keys are prefixes and whose values are collections
-        of references for a subset of terms in the resource to keep.
+    :param prefix_to_references: A dictionary whose keys are prefixes and whose values
+        are collections of references for a subset of terms in the resource to keep.
 
-        In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
-        is skipped.
-    :return: A list that has been filtered based on the prefix_to_identifiers dict
+        In situations where a mapping's subject or object's prefix does not appear in
+        this dictionary, the check is skipped.
+
+    :returns: A list that has been filtered based on the prefix_to_identifiers dict
+
     :raises ValueError: If CURIEs are given instead of identifiers
 
     If you have a simple configuration dictionary that contains the parent terms, like
-    ``{"mesh": [Reference.from_curie("mesh:D002477")]}``, you'll want to do the following first:
+    ``{"mesh": [Reference.from_curie("mesh:D002477")]}``, you'll want to do the
+    following first:
 
     .. code-block:: python
 
@@ -958,8 +981,11 @@ def aggregate_components(
     """Get a counter where the keys are the set of all prefixes in a weakly connected component.
 
     :param mappings: Mappings to aggregate
-    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this list
-    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets of references
+    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this
+        list
+
+    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets
+        of references
     """
     dd: defaultdict[frozenset[str], set[frozenset[Reference]]] = defaultdict(set)
     components = iter_components(mappings)
@@ -1014,7 +1040,8 @@ def update_literal_mappings(
     :param literal_mappings: A list of literal mappings
     :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
         This means that each mapping has a unique subject.
-    :return: A new list of literal mappings that have been remapped
+
+    :returns: A new list of literal mappings that have been remapped
 
     .. code-block:: python
 
@@ -1038,7 +1065,6 @@ def update_literal_mappings(
         # 3. Update terms and use them (i.e., to construct a grounder)
         new_literal_mappings = update_literal_mappings(literal_mappings, mappings)
         grounder = make_grounder(new_literal_mappings)
-
     """
     assert_projection(mappings)
     return ssslm.remap_literal_mappings(
@@ -1087,10 +1113,11 @@ def get_identifier_index(
 
     :param mappings: An iterable of mappings to be indexed
     :param predicates: If given, filter to mappings with these predicates
-    :return: A directed index
 
-    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and
-    ``P1:1 skos:exactMatch P3:X``, we would have the following index:
+    :returns: A directed index
+
+    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and ``P1:1
+    skos:exactMatch P3:X``, we would have the following index:
 
     .. code-block:: python
 
@@ -1123,10 +1150,9 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     """Get the set of terms appearing in each prefix.
 
     :param mappings: An iterable of mappings
-    :return:
-        A dictionary from prefixes appearing in subjects/objects
-        of mappings to the set local unique identifiers appearing
-        in mappings
+
+    :returns: A dictionary from prefixes appearing in subjects/objects of mappings to
+        the set local unique identifiers appearing in mappings
 
     >>> m1 = Mapping(
     ...     subject=Reference.from_curie("chebi:10084"),

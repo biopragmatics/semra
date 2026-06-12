@@ -1,5 +1,6 @@
-Prioritizing CURIEs in a Dataframe
-==================================
+####################################
+ Prioritizing CURIEs in a Dataframe
+####################################
 
 SeMRA provides tools for data scientists to standardize references using semantic
 mappings.

@@ -179,11 +179,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference, Statistics
-from semra.utils import (
-    PrefixListValidator,
-    PrefixPairListValidator,
-    get_jinja_template,
-)
+from semra.utils import PrefixListValidator, get_jinja_template
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -390,12 +386,6 @@ class Configuration(BaseModel):
             ],
         ),
     ] = None
-
-    exclude_pairs: Annotated[list[tuple[str, str]], PrefixPairListValidator] = Field(
-        default_factory=list,
-        description="A list of pairs of prefixes. Remove all mappings whose source "
-        "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
-    )
     remove_prefixes: Annotated[
         list[str] | None,
         PrefixListValidator,

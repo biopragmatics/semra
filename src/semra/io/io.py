@@ -108,7 +108,10 @@ def from_pyobo(
     metadata = pyobo.get_semantic_mapping_metadata(
         prefix, confidence=confidence, version=kwargs["version"]
     )
-    mappings = pyobo.get_semantic_mappings(prefix, names=False, **kwargs)
+    try:
+        mappings = pyobo.get_semantic_mappings(prefix, names=False, **kwargs)
+    except pyobo.getters.NoBuildError:
+        return []
     if target_prefix:
         target_prefix = bioregistry.normalize_prefix(target_prefix, strict=True)
         mappings = [m for m in mappings if m.object.prefix == target_prefix]

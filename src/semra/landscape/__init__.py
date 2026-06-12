@@ -7,17 +7,17 @@ reconstructed with the following commands:
     $ uv pip install semra[landscape]
     $ semra landscape
 
-The ``semra landscape`` command runs all pre-configured domain-specific mapping
-database construction, landscape analyses, and the meta-landscape analysis.
+The ``semra landscape`` command runs all pre-configured domain-specific mapping database
+construction, landscape analyses, and the meta-landscape analysis.
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
 The results can be found here:
 

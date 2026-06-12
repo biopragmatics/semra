@@ -24,13 +24,14 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |cellimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/cell <https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_
-folder.
+`landscape/cell
+<https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_ folder.
 
 Reproduction
 ************
 
-The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following commands:
+The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
+commands:
 
 .. code-block:: console
 
@@ -41,12 +42,12 @@ The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
 Web Application
 ***************

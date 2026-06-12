@@ -53,9 +53,9 @@ commands:
 Web Application
 ***************
 
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |cellimg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|cellimg| and unzipped. The web application can be run locally on Docker from inside the
+folder where the data was unzipped with:
 
 .. code-block:: console
 
@@ -74,7 +74,6 @@ application.
 
 .. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
     :target: https://doi.org/10.5281/zenodo.11091580
-
 """  # noqa:D205,D400
 
 import click

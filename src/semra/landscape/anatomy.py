@@ -21,8 +21,8 @@ in a format ready for loading into a Neo4j graph database
 on Zenodo at |anatomyimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/anatomy <https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_
-folder.
+`landscape/anatomy
+<https://github.com/biopragmatics/semra/tree/main/landscape/anatomy#readme>`_ folder.
 
 Reproduction
 ************
@@ -48,9 +48,9 @@ The SeMRA Anatomy Mappings Database can be rebuilt with the following commands:
 Web Application
 ***************
 
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |anatomyimg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|anatomyimg| and unzipped. The web application can be run locally on Docker from inside
+the folder where the data was unzipped with:
 
 .. code-block:: console
 
@@ -69,7 +69,6 @@ application.
 
 .. |anatomyimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
     :target: https://doi.org/10.5281/zenodo.11091802
-
 """  # noqa:D205,D400
 
 import pystow

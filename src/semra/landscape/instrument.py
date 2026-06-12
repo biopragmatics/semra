@@ -1,6 +1,8 @@
 """Instrument."""
 
 import pystow
+from pydantic import AnyUrl
+from sssom_pydantic import MappingSet
 
 from semra.pipeline import Configuration, Input
 from semra.vocabulary import CHARLIE
@@ -9,9 +11,8 @@ __all__ = [
     "INSTRUMENT_CONFIGURATION",
 ]
 
-from sssom_pydantic import MappingSet
-
-MODULE = pystow.module("semra", "case-studies", "instrument")
+KEY = "instrument"
+MODULE = pystow.module("semra", "case-studies", KEY)
 PREFIXES = PRIORITY = [
     "chmo",
     "fbbi",
@@ -23,7 +24,7 @@ PREFIXES = PRIORITY = [
 
 #: Configuration for the instrument mappings database
 INSTRUMENT_CONFIGURATION = Configuration(
-    key="instrument",
+    key=KEY,
     name="SeMRA Instrument Mappings Database",
     description="Analyze the landscape of instrument nomenclature resources, species-agnostic.",
     creators=[CHARLIE],
@@ -34,8 +35,10 @@ INSTRUMENT_CONFIGURATION = Configuration(
             prefix="https://github.com/nfdi-de/section-metadata-wg-onto/raw/refs/heads/main/sssom/data/positive.sssom.tsv",
             extras={
                 "metadata": MappingSet(
-                    id="https://github.com/nfdi-de/section-metadata-wg-onto/raw/refs/heads/main/sssom/data/positive.sssom.tsv",
-                    source=["https://wikidata.org/wiki/Q139055838"],
+                    id=AnyUrl(
+                        "https://github.com/nfdi-de/section-metadata-wg-onto/raw/refs/heads/main/sssom/data/positive.sssom.tsv"
+                    ),
+                    source=[AnyUrl("https://wikidata.org/wiki/Q139055838")],
                 )
             },
         ),

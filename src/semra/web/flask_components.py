@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typing as t
 from typing import cast
 
 import flask
@@ -10,13 +9,13 @@ import werkzeug
 from bioregistry import NormalizedNamableReference
 from curies import Reference
 from flask import Blueprint, current_app, render_template
+from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
+from semra.utils import format_number
+from semra.version import get_version as get_semra_version
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
-from semra.web.shared import State, _figure_number
-
-if t.TYPE_CHECKING:
-    import biomappings.resources
+from semra.web.shared import State
 
 __all__ = [
     "flask_blueprint",
@@ -25,6 +24,7 @@ __all__ = [
 
 flask_blueprint = Blueprint("ui", __name__)
 
+SEMRA_VERSION = get_semra_version()
 
 # TODO use replaced by relationship for rewiring
 
@@ -45,14 +45,13 @@ def home() -> str:
         mapping_set_counter=state.summary.MAPPING_SET_COUNTER,
         node_counter=state.summary.NODE_COUNTER,
         mapping_sets=mapping_sets,
-        format_number=_figure_number,
+        format_number=format_number,
         justification_counter=state.summary.JUSTIFICATION_COUNTER,
         evidence_type_counter=state.summary.EVIDENCE_TYPE_COUNTER,
         prefix_counter=state.summary.PREFIX_COUNTER,
         author_counter=state.summary.AUTHOR_COUNTER,
         high_matches_counter=state.summary.HIGH_MATCHES_COUNTER,
-        example_concept_name=state.example_reference.name,
-        example_concept_curie=state.example_reference.curie,
+        example_concept=state.example_reference,
     )
 
 
@@ -103,14 +102,16 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
         target, name=client.get_concept_name(target)
     )
 
-    mapping = biomappings.resources.SemanticMapping.model_validate(
+    mapping = SemanticMapping.model_validate(
         {
             "subject": subject_reference,
             "predicate": EXACT_MATCH,
             "object": target_reference,
-            "mapping_justification": MANUAL_MAPPING,
-            "author": state.current_author,
+            "justification": MANUAL_MAPPING,
+            "authors": [state.current_author],
             "mapping_tool": "semra",
+            "mapping_tool_id": "Q127259663",
+            "mapping_tool_version": SEMRA_VERSION,
         }
     )
 
@@ -121,12 +122,15 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
     return flask.redirect(flask.url_for("." + view_concept.__name__, curie=source))
 
 
-@flask_blueprint.get("/mapping_set/<mapping_set_id>")
-def view_mapping_set(mapping_set_id: str) -> str:
+@flask_blueprint.get("/mapping_set/")
+def view_mapping_set() -> str:
     """View a mapping set by its ID."""
+    mapping_set_id = flask.request.args.get("id")
+    if not mapping_set_id:
+        raise flask.abort(422)
     client = _flask_get_client()
     mapping_set = client.get_mapping_set(mapping_set_id)
-    examples = client.sample_mappings_from_set(mapping_set_id, n=10)
+    examples = client.get_mappings_by_set(mapping_set_id, n=10)
     return render_template(
         "mapping_set.html",
         mapping_set=mapping_set,
@@ -154,9 +158,7 @@ def _flask_get_false_mapping_index() -> set[tuple[str, str]]:
     return _flask_get_state().false_mapping_index
 
 
-def index_biomapping(
-    mapping_index: set[tuple[str, str]], mapping: biomappings.resources.SemanticMapping
-) -> None:
+def index_biomapping(mapping_index: set[tuple[str, str]], mapping: SemanticMapping) -> None:
     """Index a mapping from biomappings."""
     if mapping.predicate.curie != "skos:exactMatch":
         return

@@ -2,65 +2,45 @@
 
 from __future__ import annotations
 
-from typing import Any
+from sssom_pydantic import SemanticMapping
 
-from semra.io import from_sssom
-from semra.struct import Mapping
+from semra.constants import CC0_URL
+from semra.struct import Reference
 
 __all__ = [
-    "from_biomappings_negative",
-    "from_biomappings_predicted",
+    "get_biomappings_negative_mappings",
     "get_biomappings_positive_mappings",
+    "get_biomappings_predicted_mappings",
 ]
 
-_NAME = "Biomappings"
+URL = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
+BIOMAPPINGS_WIKIDATA_ID = "Q111239110"
 
 
-def get_biomappings_positive_mappings(*, remote_only: bool = False) -> list[Mapping]:
+def get_biomappings_positive_mappings() -> list[SemanticMapping]:
     """Get positive mappings from Biomappings."""
-    if remote_only:
-        return read_remote_tsv("positive.sssom.tsv", mapping_set_title=_NAME)
+    from biomappings import load_positive_mappings
 
-    try:
-        from biomappings.utils import POSITIVES_SSSOM_PATH
-    except ImportError:
-        return read_remote_tsv(
-            "positive.sssom.tsv",
-            mapping_set_title=_NAME,
-        )
-    else:
-        return from_sssom(POSITIVES_SSSOM_PATH, mapping_set_title=_NAME)
+    return _fix_biomappings(load_positive_mappings())
 
 
-def from_biomappings_negative(*, remote_only: bool = False) -> list[Mapping]:
+def get_biomappings_negative_mappings() -> list[SemanticMapping]:
     """Get negative mappings from Biomappings."""
-    if remote_only:
-        return read_remote_tsv("negative.sssom.tsv", mapping_set_title=_NAME)
+    from biomappings import load_false_mappings
 
-    try:
-        from biomappings.utils import NEGATIVES_SSSOM_PATH
-    except ImportError:
-        return read_remote_tsv("negative.sssom.tsv", mapping_set_title=_NAME)
-    else:
-        return from_sssom(NEGATIVES_SSSOM_PATH, mapping_set_title=_NAME)
+    return _fix_biomappings(load_false_mappings())
 
 
-def from_biomappings_predicted(*, remote_only: bool = False) -> list[Mapping]:
+def get_biomappings_predicted_mappings() -> list[SemanticMapping]:
     """Get predicted mappings from Biomappings."""
-    if remote_only:
-        return read_remote_tsv("predictions.sssom.tsv", mapping_set_title=_NAME)
+    from biomappings import load_predictions
 
-    try:
-        from biomappings.utils import PREDICTIONS_SSSOM_PATH
-    except ImportError:
-        return read_remote_tsv("predictions.sssom.tsv", mapping_set_title="Biomappings")
-    else:
-        return from_sssom(PREDICTIONS_SSSOM_PATH, mapping_set_title="Biomappings")
+    return _fix_biomappings(load_predictions())
 
 
-BASE_URL = "https://github.com/biopragmatics/biomappings/raw/master/src/biomappings/resources"
-
-
-def read_remote_tsv(name: str, **kwargs: Any) -> list[Mapping]:
-    """Load a remote mapping file from the Biomappings GitHub repository."""
-    return from_sssom(f"{BASE_URL}/{name}", **kwargs)
+def _fix_biomappings(mappings: list[SemanticMapping]) -> list[SemanticMapping]:
+    update = {
+        "source": Reference(prefix="wikidata", identifier=BIOMAPPINGS_WIKIDATA_ID),
+        "license": CC0_URL,
+    }
+    return [mapping.model_copy(update=update) for mapping in mappings]

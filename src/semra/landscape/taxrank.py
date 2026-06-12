@@ -1,29 +1,30 @@
-"""
-The SeMRA Taxonomical Ranks Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Taxonomical Ranks Mappings Database assembles semantic mappings to the following resources:
 
-=========================================================  =============================
-Prefix                                                     Name
-=========================================================  =============================
-`taxrank <https://bioregistry.io/taxrank>`_                Taxonomic rank vocabulary
-`ncbitaxon <https://bioregistry.io/ncbitaxon>`_            NCBI Taxonomy
-`tdwg.taxonrank <https://bioregistry.io/tdwg.taxonrank>`_  TDWG Taxon Rank LSID Ontology
-=========================================================  =============================
+========================================================= =============================
+Prefix                                                    Name
+========================================================= =============================
+`taxrank <https://bioregistry.io/taxrank>`_               Taxonomic rank vocabulary
+`ncbitaxon <https://bioregistry.io/ncbitaxon>`_           NCBI Taxonomy
+`tdwg.taxonrank <https://bioregistry.io/tdwg.taxonrank>`_ TDWG Taxon Rank LSID Ontology
+========================================================= =============================
 
-Results
-*******
-The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |taxrankimg|.
+#########
+ Results
+#########
+
+The SeMRA Taxonomical Ranks Mappings Database is available for download as SSSOM, JSON,
+and in a format ready for loading into a Neo4j graph database on Zenodo at |taxrankimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/taxrank <https://github.com/biopragmatics/semra/tree/main/landscape/taxrank#readme>`_
-folder.
+`landscape/taxrank
+<https://github.com/biopragmatics/semra/tree/main/landscape/taxrank#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
-The SeMRA Taxonomical Ranks Mappings Database can be rebuilt with the following commands:
+The SeMRA Taxonomical Ranks Mappings Database can be rebuilt with the following
+commands:
 
 .. code-block:: console
 
@@ -34,17 +35,19 @@ The SeMRA Taxonomical Ranks Mappings Database can be rebuilt with the following 
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
-Web Application
-***************
-After building the database, the web application can be run locally on Docker
-with the following commands:
+#################
+ Web Application
+#################
+
+After building the database, the web application can be run locally on Docker with the
+following commands:
 
 .. code-block:: console
 
@@ -56,8 +59,7 @@ application.
 
 .. |taxrankimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.None.svg
     :target: https://doi.org/10.5281/zenodo.None
-
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import pystow
 
@@ -71,18 +73,28 @@ __all__ = [
 MODULE = pystow.module("semra", "case-studies", "taxranks")
 PRIORITY = [
     "taxrank",
-    "ncbitaxon",
+    # "ncbitaxon",
     "tdwg.taxonrank",
+    "ncit",
+    # "gfbio.biol",
 ]
-SUBSETS = {"ncbitaxon": [semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank")]}
+SUBSETS: dict[str, list[semra.Reference]] = {
+    # "ncbitaxon": [
+    #     semra.Reference(prefix="ncbitaxon", identifier="taxonomic_rank"),
+    #     # will need to enumerate explicitly here since they're all marked as obsolete
+    # ],
+    "ncit": [semra.Reference(prefix="ncit", identifier="C40098")],
+}
 
 TAXRANK_CONFIGURATION = semra.Configuration(
     key="taxrank",
     name="SeMRA Taxonomical Ranks Mappings Database",
-    description="Supports the analysis of the landscape of taxnomical rank nomenclature resources.",
+    description="Supports the analysis of the landscape of taxonomical rank nomenclature resources.",
     creators=[CHARLIE],
     inputs=[
         semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
+        semra.Input(prefix="tdwg.taxonrank", source="pyobo", confidence=0.99),
+        semra.Input(prefix="positive", source="biomappings", confidence=0.99),
     ],
     subsets=SUBSETS,
     add_labels=False,

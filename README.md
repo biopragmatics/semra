@@ -62,7 +62,7 @@ mapping = Mapping(
             confidence=0.99,
             author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
             mapping_set=MappingSet(
-                name="biomappings", license="CC0", confidence=0.90,
+                name="biomappings", license="https://creativecommons.org/publicdomain/zero/1.0/", confidence=0.90,
             ),
         )
     ]
@@ -93,7 +93,7 @@ mappings_alt = semra.from_sssom(
 go_mappings = semra.from_pyobo("go")
 
 # load mappings from the Uber Anatomy Ontology (via OWL format)
-uberon_mappings = semra.from_bioontologies("uberon")
+uberon_mappings = semra.from_pyobo("uberon")
 ```
 
 SeMRA also implements custom importers in the `semra.sources` submodule. It's
@@ -339,20 +339,23 @@ The code in this package is licensed under the MIT License.
 
 ### 📖 Citation
 
-> <a href="https://www.biorxiv.org/content/10.1101/2025.04.16.649126">Assembly
-> and reasoning over semantic mappings at scale for biomedical data
-> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B. M.<br/>_bioRxiv_,
-> 2025.04.16.649126
+> <a href="https://doi.org/10.1093/bioinformatics/btaf542">Assembly and
+> reasoning over semantic mappings at scale for biomedical data
+> integration</a><br/>Hoyt, C. T., Karis K., and Gyori, B.
+> M.<br/>_Bioinformatics_, 2025, btaf542.
 
 ```bibtex
-@article {hoyt2025semra,
+@article{hoyt2025semra,
     author = {Hoyt, Charles Tapley and Karis, Klas and Gyori, Benjamin M},
     title = {Assembly and reasoning over semantic mappings at scale for biomedical data integration},
+    journal = {Bioinformatics},
+    pages = {btaf542},
     year = {2025},
-    doi = {10.1101/2025.04.16.649126},
-    publisher = {Cold Spring Harbor Laboratory},
-    URL = {https://www.biorxiv.org/content/early/2025/04/21/2025.04.16.649126},
-    journal = {bioRxiv}
+    month = {09},
+    issn = {1367-4811},
+    doi = {10.1093/bioinformatics/btaf542},
+    url = {https://doi.org/10.1093/bioinformatics/btaf542},
+    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btaf542/64428329/btaf542.pdf},
 }
 ```
 

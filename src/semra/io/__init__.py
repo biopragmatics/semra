@@ -2,13 +2,12 @@
 
 from .graph import from_digraph, from_multidigraph, to_digraph, to_multidigraph
 from .io import (
-    from_bioontologies,
-    from_cache_df,
     from_jsonl,
     from_pickle,
     from_pyobo,
     from_sssom,
-    from_sssom_df,
+    from_sssom_pydantic,
+    from_sssom_pydantic_iter,
     get_sssom_df,
     write_jsonl,
     write_pickle,
@@ -17,15 +16,14 @@ from .io import (
 from .neo4j_io import write_neo4j
 
 __all__ = [
-    "from_bioontologies",
-    "from_cache_df",
     "from_digraph",
     "from_jsonl",
     "from_multidigraph",
     "from_pickle",
     "from_pyobo",
     "from_sssom",
-    "from_sssom_df",
+    "from_sssom_pydantic",
+    "from_sssom_pydantic_iter",
     "get_sssom_df",
     "to_digraph",
     "to_multidigraph",

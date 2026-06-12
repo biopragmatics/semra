@@ -1,6 +1,4 @@
-"""
-The SeMRA Protein Complex Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Protein Complex Mappings Database assembles semantic mappings to the following resources:
 
 =======================================================  ===================================
 Prefix                                                   Name
@@ -15,18 +13,20 @@ Prefix                                                   Name
 `intact <https://bioregistry.io/intact>`_                IntAct protein interaction database
 =======================================================  ===================================
 
-Results
-*******
-The SeMRA Protein Complex Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |compleximg|.
+#########
+ Results
+#########
+
+The SeMRA Protein Complex Mappings Database is available for download as SSSOM, JSON,
+and in a format ready for loading into a Neo4j graph database on Zenodo at |compleximg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/complex <https://github.com/biopragmatics/semra/tree/main/landscape/complex#readme>`_
-folder.
+`landscape/complex
+<https://github.com/biopragmatics/semra/tree/main/landscape/complex#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
 The SeMRA Protein Complex Mappings Database can be rebuilt with the following commands:
 
@@ -39,25 +39,27 @@ The SeMRA Protein Complex Mappings Database can be rebuilt with the following co
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
-Web Application
-***************
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |compleximg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+#################
+ Web Application
+#################
+
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|compleximg| and unzipped. The web application can be run locally on Docker from inside
+the folder where the data was unzipped with:
 
 .. code-block:: console
 
     $ sh run_on_docker.sh
 
-If you reproduced the database yourself, you can ``cd``
-to the right folder and run with:
+If you reproduced the database yourself, you can ``cd`` to the right folder and run
+with:
 
 .. code-block:: console
 
@@ -69,8 +71,7 @@ application.
 
 .. |compleximg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg
     :target: https://doi.org/10.5281/zenodo.11091421
-
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import pystow
 
@@ -87,6 +88,7 @@ PREFIXES = PRIORITY = [
     "complexportal",
     "fplx",
     "go",
+    "mesh",
     "chembl.target",
     "wikidata",
     "scomp",

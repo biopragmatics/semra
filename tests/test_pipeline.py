@@ -5,41 +5,38 @@ import unittest
 from collections.abc import Collection
 from pathlib import Path
 from typing import cast
+from uuid import uuid4
 
+import sssom_pydantic
 from curies import Triple
+from pydantic import AnyUrl
+from sssom_pydantic import SemanticMapping
 
 import semra
 from semra.api import get_index
-from semra.io import write_sssom
+from semra.io import from_sssom, write_sssom
 from semra.pipeline import AssembleReturnType, Configuration, Input, MappingPack, get_raw_mappings
 from semra.sources import SOURCE_RESOLVER
 from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
 from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
-from tests.constants import a1, b1
-
-TEST_MAPPING_SET = MappingSet(
-    name="test",
-    confidence=1.0,
+from tests.constants import (
+    R1,
+    R2,
+    TEST_CONVERTER,
+    TEST_MAPPING_1,
+    TEST_MAPPING_SET,
+    TEST_SSSOM_MAPPING_1,
+    assert_mappings_equal,
 )
+
 TEST_MAPPINGS = [
-    Mapping(
-        subject=a1,
-        predicate=EXACT_MATCH,
-        object=b1,
-        evidence=[
-            SimpleEvidence(
-                justification=MANUAL_MAPPING,
-                mapping_set=TEST_MAPPING_SET,
-                author=CHARLIE,
-            )
-        ],
-    )
+    TEST_MAPPING_1,
 ]
 
 
-def get_test_mappings() -> list[Mapping]:
+def get_test_mappings() -> list[SemanticMapping]:
     """Get test mappings."""
-    return TEST_MAPPINGS
+    return [TEST_SSSOM_MAPPING_1]
 
 
 # Register a function for getting test mappings in order to test the way Inputs are handled
@@ -49,13 +46,40 @@ SOURCE_RESOLVER.register(get_test_mappings)
 class TestPipeline(unittest.TestCase):
     """Test case for the automated assembly pipeline."""
 
-    def assert_test_mappings(self, mappings: list[Mapping]) -> None:
+    def setUp(self) -> None:
+        """Set up the test case."""
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temporary_directory.name)
+
+    def tearDown(self) -> None:
+        """Tear down the test case."""
+        self.temporary_directory.cleanup()
+
+    def assert_triple_in(
+        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
+    ) -> None:
+        """Assert triples."""
+        triple_strs = {t.as_str_triple() for t in triples}
+        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
+        self.assertIn(triple.as_str_triple(), triple_strs, msg=msg)
+
+    def assert_triple_not_in(
+        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
+    ) -> None:
+        """Assert triples."""
+        triple_strs = {t.as_str_triple() for t in triples}
+        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
+        self.assertNotIn(triple.as_str_triple(), triple_strs, msg=msg)
+
+    def assert_test_mappings(
+        self, mappings: list[Mapping], mapping_set_id: str | None = None
+    ) -> None:
         """Check that the mappings are the test mappings."""
         self.assertEqual(1, len(mappings))
         mapping = mappings[0]
         self.assertIsInstance(mapping, Mapping)
-        self.assertEqual(a1, mapping.subject)
-        self.assertEqual(b1, mapping.object)
+        self.assertEqual(R2, mapping.subject)
+        self.assertEqual(R1, mapping.object)
         self.assertEqual(1, len(mapping.evidence))
         ev = mapping.evidence[0]
         self.assertIsInstance(ev, SimpleEvidence)
@@ -64,48 +88,76 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(CHARLIE.pair, cast(Reference, ev.author).pair)
         self.assertIsNotNone(ev.mapping_set)
         mapping_set: MappingSet = cast(MappingSet, ev.mapping_set)
-        self.assertEqual("test", mapping_set.name)
-        self.assertEqual(1.0, mapping_set.confidence)
+        if mapping_set_id is not None:
+            self.assertEqual(AnyUrl(mapping_set_id), mapping_set.id)
+        else:
+            self.assertEqual(TEST_MAPPING_SET.id, mapping_set.id)
 
     def test_custom(self) -> None:
         """Test using custom sources in the configuration."""
-        inp = Input(source="custom", prefix="get_test_mappings")
-        with tempfile.TemporaryDirectory() as directory:
-            config = Configuration(
-                inputs=[inp],
-                priority=["chebi", "mesh"],
-                key="test",
-                name="Test Configuration",
-                description="Tests using custom sources",
-                directory=Path(directory),
-            )
-            mappings = get_raw_mappings(config, show_progress=False)
-        self.assert_test_mappings(mappings)
+        key = str(uuid4())
+
+        config = Configuration(
+            inputs=[Input(source="custom", prefix="get_test_mappings")],
+            priority=["chebi", "mesh"],
+            key=key,
+            name=f"Configuration for {key}",
+            description=f"Description for {key}",
+            directory=self.directory,
+        )
+        mappings = get_raw_mappings(config, progress=False)
+        self.assert_test_mappings(
+            mappings, mapping_set_id="https://w3id.org/biopragmatics/semra/custom/test.sssom.tsv"
+        )
 
     def test_sssom(self) -> None:
         """Test using SSSOM sources in the configuration."""
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d).resolve().joinpath("test.sssom.tsv")
-            res = write_sssom(TEST_MAPPINGS, path)
-            self.assertIsNone(res, msg="streaming should not be activated")
+        key = str(uuid4())
 
-            inp = Input(source="sssom", prefix=path.as_posix(), extras={"mapping_set_name": "test"})
-            config = Configuration(
-                inputs=[inp],
-                priority=["a", "b"],
-                key="test",
-                name="Test Configuration",
-                description="Tests using SSSOM sources",
-                directory=Path(d).joinpath("output"),
-            )
-            mappings = get_raw_mappings(config, show_progress=False)
-            self.assert_test_mappings(mappings)
+        path = self.directory.joinpath("test.sssom.tsv")
+        res = write_sssom(
+            TEST_MAPPINGS,
+            path,
+            metadata=TEST_MAPPING_SET,
+            converter=TEST_CONVERTER,
+        )
+        self.assertIsNone(res, msg="streaming should not be activated")
+
+        s_mappings, _converter, _metadata, errors = sssom_pydantic.read(path, return_errors=True)
+        self.assertEqual(
+            1,
+            len(s_mappings),
+            msg=f"\nSSSOM was not written correctly. Errors: {errors}\n\nText:\n\n{path.read_text()}",
+        )
+
+        xx = from_sssom(path)
+        assert_mappings_equal(self, TEST_MAPPINGS, xx)
+
+        config = Configuration(
+            inputs=[Input(source="sssom", prefix=path.as_posix())],
+            priority=["chebi", "mesh"],
+            key=key,
+            name=f"Configuration for {key}",
+            description=f"Description for {key}",
+            directory=self.directory.joinpath("output"),
+        )
+        mappings = get_raw_mappings(config, progress=False)
+        self.assert_test_mappings(mappings)
 
     def test_sssom_stream(self) -> None:
         """Test writing SSSOM with a stream."""
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d).resolve().joinpath("test.sssom.tsv")
-            write_sssom(TEST_MAPPINGS, path, prune=False, add_labels=False)
+        path = self.directory.joinpath("test.sssom.tsv")
+        mappings = list(
+            write_sssom(
+                TEST_MAPPINGS,
+                path,
+                prune=False,
+                add_labels=False,
+                stream=True,
+                metadata=TEST_MAPPING_SET,
+            )
+        )
+        self.assertEqual(TEST_MAPPINGS, mappings)
 
     def test_taxrank(self) -> None:
         """A configuration for assembling mappings for taxonomical rank terms."""
@@ -114,27 +166,27 @@ class TestPipeline(unittest.TestCase):
             "ncbitaxon",
             "tdwg.taxonrank",
         ]
-        with tempfile.TemporaryDirectory() as directory:
-            configuration = semra.Configuration(
-                key="taxrank",
-                name="Taxonomical Ranks",
-                inputs=[
-                    semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
-                ],
-                negative_inputs=[],
-                priority=priority,
-                mutations=[
-                    # This means, take all mappings where either the subject or object is taxrank,
-                    # and the predicicate is dbxref and upgrade it to be exact match
-                    semra.Mutation(source="taxrank", confidence=0.99, old=DB_XREF, new=EXACT_MATCH),
-                ],
-                directory=Path(directory),
-                remove_imprecise=True,
-            )
-            m: MappingPack = configuration.get_mappings(
-                return_type=AssembleReturnType.all,
-                refresh_processed=True,
-            )
+        configuration = semra.Configuration(
+            key="taxrank",
+            name="Taxonomical Ranks",
+            inputs=[
+                semra.Input(prefix="taxrank", source="pyobo", confidence=0.99),
+            ],
+            negative_inputs=[],
+            priority=priority,
+            mutations=[
+                # This means, take all mappings where either the subject or object is taxrank,
+                # and the predicicate is dbxref and upgrade it to be exact match
+                semra.Mutation(source="taxrank", confidence=0.99, old=DB_XREF, new=EXACT_MATCH),
+            ],
+            directory=self.directory,
+            remove_imprecise=True,
+        )
+        m: MappingPack = configuration.get_mappings(
+            return_type=AssembleReturnType.all,
+            refresh_processed=True,
+            progress=False,
+        )
 
         self.assertNotEqual([], m.raw, msg="empty raw mappings")
         msg_part = "\n".join(" - ".join(m.as_str_triple()) for m in m.raw)
@@ -165,19 +217,3 @@ class TestPipeline(unittest.TestCase):
             ),
             index,
         )
-
-    def assert_triple_in(
-        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
-    ) -> None:
-        """Assert triples."""
-        triple_strs = {t.as_str_triple() for t in triples}
-        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
-        self.assertIn(triple.as_str_triple(), triple_strs, msg=msg)
-
-    def assert_triple_not_in(
-        self, triple: Triple, triples: Collection[Triple], msg: str | None = None
-    ) -> None:
-        """Assert triples."""
-        triple_strs = {t.as_str_triple() for t in triples}
-        self.assertNotEqual(0, len(triple_strs), msg="get empty mapping index")
-        self.assertNotIn(triple.as_str_triple(), triple_strs, msg=msg)

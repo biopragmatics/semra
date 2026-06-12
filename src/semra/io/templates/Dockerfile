@@ -1,15 +1,15 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 WORKDIR /sw
 
-# Install and configure neo4j and python environment
+# Install and configure Neo4j 5 and Python environment
 RUN apt-get update && \
     apt-get install -y apt-transport-https ca-certificates curl wget software-properties-common && \
     curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | apt-key add - && \
-    add-apt-repository "deb https://debian.neo4j.com stable 4.4" && \
+    add-apt-repository "deb https://debian.neo4j.com stable 5" && \
     apt-get install -y neo4j
 
-# Install python
+# Install Python
 RUN apt-get update && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get install -y git zip unzip bzip2 gcc pkg-config {{ python }}
@@ -25,7 +25,7 @@ ENV UV_LINK_MODE=copy \
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system "{{ pip_install }}"
 
-# Ingest graph content into neo4j. Mount the data
+# Ingest graph content into Neo4j 5. Mount the data
 RUN \
     {%- for name in edge_names %}
     --mount=type=bind,source={{ name }},target=/sw/{{ name }} \
@@ -35,7 +35,7 @@ RUN \
     {%- endfor %}
     sed -i 's/#dbms.default_listen_address/dbms.default_listen_address/' /etc/neo4j/neo4j.conf && \
     sed -i 's/#dbms.security.auth_enabled/dbms.security.auth_enabled/' /etc/neo4j/neo4j.conf && \
-    neo4j-admin import --delimiter='TAB' --skip-duplicate-nodes=true \
+    neo4j-admin database import full --delimiter='TAB' --skip-duplicate-nodes=true \
         {%- for name in edge_names %}
         --relationships /sw/{{ name }} \
         {%- endfor %}

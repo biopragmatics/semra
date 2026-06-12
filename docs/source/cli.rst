@@ -1,5 +1,6 @@
-Command Line Interface
-======================
+########################
+ Command Line Interface
+########################
 
 semra automatically installs the command ``semra``. See ``semra --help`` for usage
 details.

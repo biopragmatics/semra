@@ -1,36 +1,38 @@
-"""
-The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following
-resources:
+"""The SeMRA Cell and Cell Line Mappings Database assembles semantic mappings to the following resources:
 
-===================================================  =========================================================
-Prefix                                               Name
-===================================================  =========================================================
-`mesh <https://bioregistry.io/mesh>`_                Medical Subject Headings
-`efo <https://bioregistry.io/efo>`_                  Experimental Factor Ontology
-`cellosaurus <https://bioregistry.io/cellosaurus>`_  Cellosaurus
-`ccle <https://bioregistry.io/ccle>`_                Cancer Cell Line Encyclopedia Cells
-`depmap <https://bioregistry.io/depmap>`_            DepMap Cell Lines
-`bto <https://bioregistry.io/bto>`_                  BRENDA Tissue Ontology
-`cl <https://bioregistry.io/cl>`_                    Cell Ontology
-`clo <https://bioregistry.io/clo>`_                  Cell Line Ontology
-`ncit <https://bioregistry.io/ncit>`_                NCI Thesaurus
-`umls <https://bioregistry.io/umls>`_                Unified Medical Language System Concept Unique Identifier
-===================================================  =========================================================
+=================================================== ===================================
+Prefix                                              Name
+=================================================== ===================================
+`mesh <https://bioregistry.io/mesh>`_               Medical Subject Headings
+`efo <https://bioregistry.io/efo>`_                 Experimental Factor Ontology
+`cellosaurus <https://bioregistry.io/cellosaurus>`_ Cellosaurus
+`ccle <https://bioregistry.io/ccle>`_               Cancer Cell Line Encyclopedia Cells
+`depmap <https://bioregistry.io/depmap>`_           DepMap Cell Lines
+`bto <https://bioregistry.io/bto>`_                 BRENDA Tissue Ontology
+`cl <https://bioregistry.io/cl>`_                   Cell Ontology
+`clo <https://bioregistry.io/clo>`_                 Cell Line Ontology
+`ncit <https://bioregistry.io/ncit>`_               NCI Thesaurus
+`umls <https://bioregistry.io/umls>`_               Unified Medical Language System
+                                                    Concept Unique Identifier
+=================================================== ===================================
 
-Results
-*******
-The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON, and
-in a format ready for loading into a Neo4j graph database
-on Zenodo at |cellimg|.
+#########
+ Results
+#########
+
+The SeMRA Cell and Cell Line Mappings Database is available for download as SSSOM, JSON,
+and in a format ready for loading into a Neo4j graph database on Zenodo at |cellimg|.
 
 A summary of the results can be viewed on the SeMRA GitHub repository in the
-`landscape/cell <https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_
-folder.
+`landscape/cell
+<https://github.com/biopragmatics/semra/tree/main/landscape/cell#readme>`_ folder.
 
-Reproduction
-************
+##############
+ Reproduction
+##############
 
-The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following commands:
+The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
+commands:
 
 .. code-block:: console
 
@@ -41,25 +43,27 @@ The SeMRA Cell and Cell Line Mappings Database can be rebuilt with the following
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
-Web Application
-***************
-The pre-built artifacts for this mapping database can be downloaded from Zenodo
-at |cellimg| and unzipped. The web application can be run
-locally on Docker from inside the folder where the data was unzipped with:
+#################
+ Web Application
+#################
+
+The pre-built artifacts for this mapping database can be downloaded from Zenodo at
+|cellimg| and unzipped. The web application can be run locally on Docker from inside the
+folder where the data was unzipped with:
 
 .. code-block:: console
 
     $ sh run_on_docker.sh
 
-If you reproduced the database yourself, you can ``cd``
-to the right folder and run with:
+If you reproduced the database yourself, you can ``cd`` to the right folder and run
+with:
 
 .. code-block:: console
 
@@ -71,16 +75,17 @@ application.
 
 .. |cellimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
     :target: https://doi.org/10.5281/zenodo.11091580
-
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import click
 import pystow
+import sssom_pydantic
 
 from semra import Reference
 from semra.api import project
 from semra.io import write_sssom
 from semra.pipeline import Configuration, Input, MappingPack, Mutation
+from semra.utils import get_semra_uri
 from semra.vocabulary import CHARLIE
 
 __all__ = [
@@ -123,16 +128,11 @@ CELL_CONFIGURATION = Configuration(
         Input(source="biomappings"),
         Input(source="gilda"),
         Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
-        Input(prefix="bto", source="bioontologies", confidence=0.99),
-        Input(prefix="cl", source="bioontologies", confidence=0.99),
+        Input(prefix="bto", source="pyobo", confidence=0.99),
+        Input(prefix="cl", source="pyobo", confidence=0.99),
         Input(prefix="clo", source="custom", confidence=0.65),
         Input(prefix="efo", source="pyobo", confidence=0.99),
-        Input(
-            prefix="depmap",
-            source="pyobo",
-            confidence=0.99,
-            extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
-        ),
+        Input(prefix="depmap", source="pyobo", confidence=0.99),
         Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
         Input(prefix="ncit", source="pyobo", confidence=0.99),
         Input(prefix="umls", source="pyobo", confidence=0.99),
@@ -171,12 +171,20 @@ def cell_consolidation_hook(config: Configuration, pack: MappingPack) -> None:
             f"{s_prefix} and {t_prefix}"
         )
 
-        path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}.tsv")
+        metadata = sssom_pydantic.MappingSet(
+            id=get_semra_uri("landscape", "cell", f"{s_prefix}-{t_prefix}-consolidation"),
+            title=f"Consolidation between {s_prefix} and {t_prefix}",
+        )
+        path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}.ssssom.tsv")
         click.echo(f"Output to {path}")
-        write_sssom(consolidation_mappings, path)
+        write_sssom(consolidation_mappings, path, metadata=metadata)
 
+        metadata = sssom_pydantic.MappingSet(
+            id=get_semra_uri("landscape", "cell", f"reproduction_{s_prefix}_{t_prefix}_suspicious"),
+            title=f"Suspicious mappings between {s_prefix} and {t_prefix}",
+        )
         sus_path = MODULE.join(name=f"reproduction_{s_prefix}_{t_prefix}_suspicious.tsv")
-        write_sssom(sus, sus_path)
+        write_sssom(sus, sus_path, metadata=metadata)
 
 
 if __name__ == "__main__":

@@ -6,8 +6,9 @@ import dataclasses
 import os
 import typing as t
 from collections import Counter
+from collections.abc import Iterable
 from textwrap import dedent
-from typing import Any, NamedTuple, TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
 import bioregistry
 import neo4j
@@ -16,9 +17,8 @@ import networkx as nx
 import pydantic
 from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from neo4j import ManagedTransaction, unit_of_work
-from typing_extensions import Self
 
-from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_MAPPING_SET_PREFIX
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX
 from semra.rules import RELATIONS
 from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
 from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
@@ -85,12 +85,12 @@ class BaseClient:
         """Get all mappings sets."""
         raise NotImplementedError
 
-    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
+    def get_mapping_set(self, uri: str) -> MappingSet | None:
         """Get a mappings set.
 
-        :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
-            prefix. For example, use
-            ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
+        :param uri: The URI for a mapping set, e.g.,
+            `https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv` for
+            biomappings
 
         :returns: A mapping set object
         """
@@ -154,10 +154,10 @@ class BaseClient:
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component.
 
-        :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
+        :returns: A networkx MultiDiGraph where mappings subject CURIE strings
         """
         raise NotImplementedError
 
@@ -165,11 +165,11 @@ class BaseClient:
         """Get the name for a CURIE or reference."""
         raise NotImplementedError
 
-    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
+    def get_mappings_by_set(self, uri: str, *, n: int = 10) -> list[Mapping]:
         """Get n mappings from a given set (by CURIE)."""
         raise NotImplementedError
 
-    def get_example_mappings(self) -> list[ExampleMapping]:
+    def get_example_mappings(self) -> list[Mapping]:
         """Get example mappings."""
         raise NotImplementedError
 
@@ -195,7 +195,7 @@ class BaseClient:
         """Get autocompletion."""
         raise NotImplementedError
 
-    def get_example_concept(self) -> NormalizedNamableReference:
+    def get_example_concept(self) -> NormalizedNamableReference | None:
         """Get an example concept."""
         raise NotImplementedError
 
@@ -215,7 +215,7 @@ class Neo4jClient(BaseClient):
         :param user: The username for the Neo4j database.
         :param password: The password for the Neo4j database.
         """
-        uri = uri or os.environ.get("NEO4J_URL") or "bolt://0.0.0.0:7687"
+        uri = uri or os.environ.get("NEO4J_URL") or "neo4j://localhost:7687"
         user = user or os.environ.get("NEO4J_USER")
         password = password or os.environ.get("NEO4J_PASSWORD")
         auth: tuple[str, str] | None
@@ -260,7 +260,7 @@ class Neo4jClient(BaseClient):
         :returns: The result of the write query
         """
         with self.driver.session() as session:
-            session.write_transaction(_do_cypher_tx, query, **query_params)  # type:ignore
+            session.execute_write(_do_cypher_tx, query, **query_params)  # type:ignore
 
     def get_autocompletion(self, prefix: str, top_n: int = 100) -> AutocompletionResults:
         """Get autocompletion."""
@@ -346,13 +346,6 @@ class Neo4jClient(BaseClient):
 
         self.write_query(query)
 
-    def _get_node_by_curie(self, curie: ReferenceHint, node_type: str | None = None) -> Node:
-        if isinstance(curie, Reference):
-            curie = curie.curie
-        query = "MATCH (n%s {curie: $curie}) RETURN n" % (":" + node_type if node_type else "")
-        res = self.read_query(query, curie=curie)
-        return cast(Node, res[0][0])
-
     def get_mapping(self, curie: ReferenceHint) -> Mapping | None:
         """Get a mapping.
 
@@ -373,30 +366,73 @@ class Neo4jClient(BaseClient):
             (evidence)-[:fromSet]->(mset:mappingset)
         OPTIONAL MATCH
             (evidence)-[:hasAuthor]->(author)
-        RETURN mapping, source.curie, target.curie, collect([evidence, mset, author.curie])
+        RETURN mapping, source.curie, source.name, target.curie, target.name, collect([evidence, mset, author.curie])
         LIMIT 1
         """
-        mapping, source_curie, target_curie, evidence_pairs = self.read_query(query, curie=curie)[0]
-        evidence: list[Evidence] = []
-        for evidence_node, mapping_set_node, author_curie in evidence_pairs:
-            evidence_dict = dict(evidence_node)
-            if mapping_set_node:
-                evidence_dict["mapping_set"] = MappingSet.model_validate(mapping_set_node)
-            if author_curie:
-                evidence_dict["author"] = Reference.from_curie(author_curie)
-            evidence_dict["evidence_type"] = evidence_dict.pop("type")
-            if evidence_dict["evidence_type"] == "reasoned":
-                evidence_dict["mappings"] = []  # TODO add in mappings?
-            evidence_dict["justification"] = Reference.from_curie(
-                evidence_dict.pop("mapping_justification")
+        mappings = list(self._mappings(query, curie=curie))
+        if mappings:
+            return mappings[0]
+        return None
+
+    def get_example_mappings(self) -> list[Mapping]:
+        """Get example mappings."""
+        query = dedent("""\
+            MATCH
+                (mapping:mapping)-[:`owl:annotatedSource`]->(source:concept) ,
+                (mapping)-[:`owl:annotatedTarget`]->(target:concept) ,
+                (mapping)-[:hasEvidence]->(evidence:evidence)-[:fromSet]->(mset:mappingset)
+            OPTIONAL MATCH
+                (evidence)-[:hasAuthor]->(author)
+            WHERE source.name IS NOT NULL and target.name IS NOT NULL and source.curie < target.curie
+            RETURN mapping, source.curie, source.name, target.curie, target.name, collect([evidence, mset, author.curie])
+            LIMIT 5
+        """)
+        return list(self._mappings(query))
+
+    def _mappings(self, query: str, **kwargs: Any) -> Iterable[Mapping]:
+        for (
+            mapping,
+            source_curie,
+            source_name,
+            target_curie,
+            target_name,
+            evidence_pairs,
+        ) in self.read_query(query, **kwargs):
+            evidence: list[Evidence] = []
+            for evidence_node, mapping_set_node, author_curie in evidence_pairs:
+                evidence_dict = dict(evidence_node)
+                if mapping_set_node:
+                    evidence_dict["mapping_set"] = MappingSet.model_validate(dict(mapping_set_node))
+                if author_curie:
+                    evidence_dict["author"] = Reference.from_curie(author_curie)
+                evidence_dict["evidence_type"] = evidence_dict.pop("type")
+                if evidence_dict["evidence_type"] == "reasoned":
+                    evidence_dict["mappings"] = []  # TODO add in mappings?
+                evidence_dict["justification"] = Reference.from_curie(
+                    evidence_dict.pop("mapping_justification")
+                )
+                evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
+            yield Mapping(
+                subject=Reference.from_curie(source_curie, name=source_name),
+                predicate=Reference.from_curie(mapping["predicate"]),
+                object=Reference.from_curie(target_curie, name=target_name),
+                evidence=evidence,
             )
-            evidence.append(pydantic.parse_obj_as(Evidence, evidence_dict))  # type:ignore
-        return Mapping(
-            subject=Reference.from_curie(source_curie),
-            predicate=Reference.from_curie(mapping["predicate"]),
-            object=Reference.from_curie(target_curie),
-            evidence=evidence,
-        )
+
+    def get_mappings_by_set(self, uri: str, *, n: int = 10) -> list[Mapping]:
+        """Get n mappings from a given set (by CURIE)."""
+        query = dedent(f"""\
+            MATCH
+                (mapping:mapping)-[:`owl:annotatedSource`]->(source:concept) ,
+                (mapping)-[:`owl:annotatedTarget`]->(target:concept) ,
+                (mapping)-[:hasEvidence]->(evidence:evidence)-[:fromSet]->(mset:mappingset {{ id: $uri }})
+            OPTIONAL MATCH
+                (evidence)-[:hasAuthor]->(author)
+            WHERE source.name IS NOT NULL and target.name IS NOT NULL and source.curie < target.curie
+            RETURN mapping, source.curie, source.name, target.curie, target.name, collect([evidence, mset, author.curie])
+            LIMIT {n}
+        """)
+        return list(self._mappings(query, uri=uri))
 
     def get_equivalent(self, curie: ReferenceHint) -> list[Reference]:
         """Get equivalent references."""
@@ -405,21 +441,19 @@ class Neo4jClient(BaseClient):
     def get_mapping_sets(self) -> list[MappingSet]:
         """Get all mappings sets."""
         query = "MATCH (m:mappingset) RETURN m"
-        records = self.read_query(query)
-        return [MappingSet.model_validate(record) for (record,) in records]
+        records: Iterable[neo4j.graph.Node] = (node for (node,) in self.read_query(query))
+        return [MappingSet.model_validate(dict(record)) for record in records]
 
-    def get_mapping_set(self, curie: ReferenceHint) -> MappingSet | None:
+    def get_mapping_set(self, uri: str) -> MappingSet | None:
         """Get a mappings set.
 
-        :param curie: The CURIE for a mapping set, using ``semra.mappingset`` as a
-            prefix. For example, use
-            ``semra.mappingset:7831d5bc95698099fb6471667e5282cd`` for biomappings
+        :param uri: The mapping set ID (a URI)
 
         :returns: A mapping set object
         """
-        curie = _safe_curie(curie, SEMRA_MAPPING_SET_PREFIX)
-        node = self._get_node_by_curie(curie, "mappingset")
-        return MappingSet.model_validate(node)
+        query = "MATCH (n:mappingset {id: $uri}) RETURN n"
+        res = self.read_query(query, uri=uri)
+        return MappingSet.model_validate(res[0][0])
 
     def get_evidence(self, curie: ReferenceHint) -> Evidence | None:
         """Get an evidence.
@@ -529,9 +563,9 @@ as label, count UNION ALL
 
         :param curie: A CURIE string or reference
         :param max_distance: The maximum number of hops to consider
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
-            If None, defaults to the relations defined in the client.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component. If None,
+            defaults to the relations defined in the client.
 
         :returns: A pair of:
 
@@ -588,8 +622,8 @@ as label, count UNION ALL
         """Get a networkx MultiDiGraph representing the connected component of mappings around the given CURIE.
 
         :param curie: A CURIE string or reference
-        :param relation_constraint: Relation type constraints (separated by |)
-            to apply when considering relations in the connected component.
+        :param relation_constraint: Relation type constraints (separated by a pipe) to
+            apply when considering relations in the connected component.
 
         :returns: A networkx MultiDiGraph where mappings subject CURIE strings are th
         """
@@ -618,28 +652,7 @@ as label, count UNION ALL
         else:
             return cast(str, name)
 
-    def sample_mappings_from_set(self, curie: ReferenceHint, n: int = 10) -> list[ExampleMapping]:
-        """Get n mappings from a given set (by CURIE)."""
-        if isinstance(curie, Reference):
-            curie = curie.curie
-        query = f"""\
-        MATCH
-            (:mappingset {{curie: $curie}})<-[:fromSet]-(:evidence)<-[:hasEvidence]-(n:mapping)
-        MATCH
-            (n)-[:`owl:annotatedSource`]->(s:concept)
-        MATCH
-            (n)-[:`owl:annotatedTarget`]->(t:concept)
-        WHERE s.name IS NOT NULL and t.name IS NOT NULL and s.curie < t.curie
-        RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
-        LIMIT {n}
-        """
-        return [ExampleMapping(*row) for row in self.read_query(query, curie=curie)]
-
-    def get_example_mappings(self) -> list[ExampleMapping]:
-        """Get example mappings."""
-        return [ExampleMapping(*row) for row in self.read_query(EXAMPLE_MAPPINGS_QUERY)]
-
-    def get_example_concept(self) -> NormalizedNamableReference:
+    def get_example_concept(self) -> NormalizedNamableReference | None:
         """Get an example concept."""
         name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1"
         name_example_list = self.read_query(name_query)
@@ -650,44 +663,11 @@ as label, count UNION ALL
             curie_query = "MATCH (n:concept) RETURN n.curie LIMIT 1"
             curie_example_list = self.read_query(curie_query)
             if not curie_example_list:
-                # There should always be at least one example concept in the database
-                # with a curie
-                raise ValueError("No CURIE example found in the database")
+                # there isn't any data in the database
+                return None
 
             curie_example = curie_example_list[0][0]
         return NormalizedNamableReference.from_curie(curie_example, name=name_example)
-
-
-EXAMPLE_MAPPINGS_QUERY = dedent("""\
-    MATCH
-        (t:concept)<-[`owl:annotatedTarget`]-(n:mapping)-[`owl:annotatedSource`]->(s:concept)
-    WHERE n.predicate = 'skos:exactMatch'
-    RETURN n.curie, n.predicate, s.curie, s.name, t.curie, t.name
-    LIMIT 5
-""")
-
-
-class ExampleMapping(NamedTuple):
-    """Example mapping."""
-
-    mapping_curie: str
-    predicate: str
-    subject_curie: str
-    subject_name: str
-    object_curie: str
-    object_name: str
-
-    @classmethod
-    def from_mapping(cls, mapping: Mapping) -> Self:
-        """Get from a mapping."""
-        return cls(
-            mapping.curie,
-            mapping.predicate.curie,
-            mapping.subject.curie,
-            mapping.subject.name or "",
-            mapping.object.curie,
-            mapping.object.name or "",
-        )
 
 
 @dataclasses.dataclass
@@ -702,7 +682,7 @@ class FullSummary:
     PREFIX_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
     AUTHOR_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
     HIGH_MATCHES_COUNTER: t.Counter[tuple[str, str]] = dataclasses.field(default_factory=t.Counter)
-    example_mappings: list[ExampleMapping] = dataclasses.field(default_factory=list)
+    example_mappings: list[Mapping] = dataclasses.field(default_factory=list)
 
 
 # Follows example here:

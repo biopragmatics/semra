@@ -65,7 +65,7 @@
             <div class="card">
                 <div class="card-body">
                     <h3 class="card-title text-center">
-                        Semantic Reasoning Assembler
+                        Semantic Mapping Reasoner and Assembler
                     </h3>
                     <div class="row text-center stats" style="padding-top: 1em; padding-bottom: 1em;">
                         {{ count_column(node_counter, "Concepts", "dna") }}
@@ -78,8 +78,8 @@
                     <div class="mb-3">
                         <label for="conceptNameSearch" class="form-label">
                         Enter a concept
-                            {% if example_concept_name %}name (e.g. {{ example_concept_name }}) or {% endif %}
-                            CURIE (e.g. {{ example_concept_curie }}) to search for a concept.
+                            {% if example_concept and example_concept.name %}name (e.g. {{ example_concept.name }}) or {% endif %}
+                            CURIE {% if example_concept %} (e.g. {{ example_concept.curie }}){% endif %} to search for a concept.
                         </label>
                         <div class="input-group">
                             <input class="form-control" list="conceptOptions" id="conceptNameSearch" placeholder="Type to search...">
@@ -113,25 +113,21 @@
                     <tr>
                         <td>Inferred</td>
                         <td>-</td>
-                        <td>-</td>
+                        <td>https://creativecommons.org/publicdomain/zero/1.0/</td>
                         <td>-</td>
                         <td align="right">{{ "{:,}".format(evidence_type_counter["reasoned"]) }}</td>
                     </tr>
                     {% for mapping_set in mapping_sets %}
                     <tr>
                         <td class="text-break">
-                            <a href="{{ url_for('.view_mapping_set', mapping_set_id=mapping_set.curie) }}">
-                                {{ mapping_set.name }}
+                            <a href="{{ url_for('.view_mapping_set', id=mapping_set.id.encoded_string()) }}">
+                                {{ mapping_set.title }}
                             </a>
                         </td>
-                        <td class="text-nowrap">{{ mapping_set.version }}</td>
+                        <td class="text-nowrap">{% if mapping_set.version %}{{ mapping_set.version }}{% endif %}</td>
                         <td class="text-break">
                             {% if mapping_set.license %}
-                                {% if mapping_set.license.startswith('http') %}
-                                    See <a href="{{ mapping_set.license }}" target="_blank">homepage</a>
-                                {% else %}
-                                    {{ mapping_set.license }}
-                                {% endif %}
+                                <a href="{{ mapping_set.license }}" target="_blank">{{ mapping_set.license }}</a>
                             {% endif %}
                         </td>
                         <td>{{ mapping_set.confidence }}</td>

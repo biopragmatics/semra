@@ -1,11 +1,13 @@
 """CLI for landscape builds."""
 
+from __future__ import annotations
+
+import logging
 import os
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
-import bioversions
 import click
-import pandas as pd
 from more_click import verbose_option
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -20,36 +22,79 @@ from semra.pipeline import (
 )
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 
+if TYPE_CHECKING:
+    import pandas as pd
+
 __all__ = [
     "compile_landscape_metaanalysis",
     "landscape",
 ]
 
 
-@lru_cache(1)
-def _get_functions() -> list[tuple[Configuration, click.Command]]:
+@lru_cache(2)
+def _get_functions(
+    include_large: bool = False, copy_to_landscape: bool = False, **kwargs: Any
+) -> list[tuple[Configuration, click.Command]]:
     from . import (
         ANATOMY_CONFIGURATION,
         CELL_CONFIGURATION,
         COMPLEX_CONFIGURATION,
         DISEASE_CONFIGURATION,
         GENE_CONFIGURATION,
+        INSTRUMENT_CONFIGURATION,
         TAXRANK_CONFIGURATION,
     )
     from .cell import cell_consolidation_hook
 
     functions: list[tuple[Configuration, click.Command]] = [
-        (DISEASE_CONFIGURATION, DISEASE_CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (
+            TAXRANK_CONFIGURATION,
+            TAXRANK_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
+        (
+            INSTRUMENT_CONFIGURATION,
+            INSTRUMENT_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
+        (
+            ANATOMY_CONFIGURATION,
+            ANATOMY_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
+        (
+            COMPLEX_CONFIGURATION,
+            COMPLEX_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
         (
             CELL_CONFIGURATION,
-            CELL_CONFIGURATION.get_cli(copy_to_landscape=True, hooks=[cell_consolidation_hook]),
+            CELL_CONFIGURATION.get_cli(
+                copy_to_landscape=copy_to_landscape, hooks=[cell_consolidation_hook], **kwargs
+            ),
         ),
-        (ANATOMY_CONFIGURATION, ANATOMY_CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (COMPLEX_CONFIGURATION, COMPLEX_CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (GENE_CONFIGURATION, GENE_CONFIGURATION.get_cli(copy_to_landscape=True)),
-        (TAXRANK_CONFIGURATION, TAXRANK_CONFIGURATION.get_cli(copy_to_landscape=True)),
+        (
+            DISEASE_CONFIGURATION,
+            DISEASE_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
     ]
+    big_functions: list[tuple[Configuration, click.Command]] = [
+        (
+            GENE_CONFIGURATION,
+            GENE_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
+    ]
+    if include_large:
+        functions.extend(big_functions)
     return functions
+
+
+def is_docker_running() -> bool:
+    """Check if docker is running."""
+    import subprocess
+
+    try:
+        result = subprocess.run(["docker", "info"], capture_output=True, timeout=5)  # noqa:S607
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    else:
+        return result.returncode == 0
 
 
 @click.command()
@@ -62,9 +107,13 @@ def _get_functions() -> list[tuple[Configuration, click.Command]]:
     help="If enabled, upload each landscape to their respective Zenodo records.",
 )
 @BUILD_DOCKER_OPTION
-@verbose_option  # type:ignore
+@verbose_option
 @click.option("--only", help="if given, only runs this configuration", multiple=True)
-@click.option("--readme-only", is_flag=True, help="if given, only creat ethe readme")
+@click.option("--readme-only", is_flag=True, help="if given, only create the readme")
+@click.option("--lazy-versions", is_flag=True, help="if given, don't lookup versions up-front")
+@click.option("--include-all", is_flag=True, help="if given, include large configs like `gene`")
+@click.option("--pin-version", multiple=True, nargs=2)
+@click.option("--copy-to-landscape", is_flag=True)
 @click.pass_context
 def landscape(
     ctx: click.Context,
@@ -75,16 +124,32 @@ def landscape(
     build_docker: bool,
     only: list[str] | None,
     readme_only: bool,
+    lazy_versions: bool,
+    include_all: bool,
+    pin_version: list[tuple[str, str]],
+    copy_to_landscape: bool,
 ) -> None:
     """Construct pre-configured domain-specific mapping databases and run landscape analyses."""
+    import sys
+
+    import bioversions
+    import pyobo.api.utils
+
+    for prefix, version in pin_version:
+        pyobo.api.utils.pin_version(prefix, version)
+
     if not readme_only:
-        if build_docker:
-            pass  # TODO check if docker is running
+        if build_docker and not is_docker_running():
+            click.secho("docker is not running", fg="red")
+            raise sys.exit(0)
 
-        click.echo("caching versions w/ Bioversions")
-        list(bioversions.iter_versions(use_tqdm=True))
+        if not lazy_versions:
+            click.echo("caching versions w/ Bioversions")
+            list(bioversions.iter_versions(use_tqdm=True))
 
-        functions = _get_functions()
+        logging.getLogger("pyobo").setLevel(logging.ERROR)
+
+        functions = _get_functions(include_large=include_all, copy_to_landscape=copy_to_landscape)
         with logging_redirect_tqdm():
             tqdm(functions, unit="configuration", desc="landscape analysis")
             for conf, func in functions:
@@ -100,10 +165,11 @@ def landscape(
                     build_docker=build_docker,
                 )
 
-    compile_landscape_metaanalysis()
+    if not only:
+        compile_landscape_metaanalysis()
 
 
-def compile_landscape_metaanalysis() -> None:
+def compile_landscape_metaanalysis(paper_table: bool = False) -> None:
     """Compile the landscape meta-analysis and write the README file.
 
     This function is also run as part of the :func:`landscape` CLI functionality.
@@ -125,12 +191,16 @@ def compile_landscape_metaanalysis() -> None:
         f'npx --yes prettier --write --prose-wrap always "{path.as_posix()}"'
     )
 
-    click.echo("\nTable as LaTeX for paper\n")
-    click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
+    if paper_table:
+        click.echo("\nTable as LaTeX for paper\n")
+        click.echo(df.to_latex(label="landscape-summary-table", caption="", index=False))
 
 
 def _get_metaanalysis_df() -> pd.DataFrame:
-    from ..summarize import Statistics, _copy_into_landscape_folder
+    import pandas as pd
+
+    from ..struct import Statistics
+    from ..summarize import _copy_into_landscape_folder
 
     rows = []
 

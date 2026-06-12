@@ -34,15 +34,15 @@ In the following demo, which closely resembles the configuration in
             Input(source="biomappings"),
             Input(source="gilda"),
             Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
-            Input(prefix="bto", source="bioontologies", confidence=0.99),
-            Input(prefix="cl", source="bioontologies", confidence=0.99),
+            Input(prefix="bto", source="pyobo", confidence=0.99),
+            Input(prefix="cl", source="pyobo", confidence=0.99),
             Input(prefix="clo", source="custom", confidence=0.65),
             Input(prefix="efo", source="pyobo", confidence=0.99),
             Input(
                 prefix="depmap",
                 source="pyobo",
                 confidence=0.99,
-                extras={"version": "22Q4", "standardize": True, "license": "CC-BY-4.0"},
+                extras={"version": "22Q4", "license": "CC-BY-4.0"},
             ),
             Input(prefix="ccle", source="pyobo", confidence=0.99, extras={"version": "2019"}),
             Input(prefix="ncit", source="pyobo", confidence=0.99),
@@ -123,6 +123,7 @@ configurations.
 
 from __future__ import annotations
 
+import datetime
 import enum
 import logging
 import time
@@ -130,15 +131,19 @@ import typing as t
 from collections.abc import Callable, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal, NamedTuple, overload
+from typing import Annotated, Any, Literal, NamedTuple, Self, overload
 
 import bioregistry
 import click
+import humanize
 import requests
+import sssom_pydantic
+from curies.triples import keep_prefixes_both
 from pydantic import BaseModel, Field, model_validator
+from pystow.utils import read_pydantic_json
+from sssom_pydantic import MappingSet
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from typing_extensions import Self
 
 from semra.api import (
     Mutation,
@@ -155,27 +160,30 @@ from semra.api import (
 )
 from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_reversible
 from semra.io import (
-    from_bioontologies,
-    from_cache_df,
     from_jsonl,
     from_pickle,
     from_pyobo,
     from_sssom,
+    from_sssom_pydantic,
     write_jsonl,
     write_neo4j,
     write_sssom,
 )
 from semra.rules import IMPRECISE, SubsetConfiguration
-from semra.sources import SOURCE_RESOLVER
+from semra.sources import SOURCE_RESOLVER, normalize_custom_func_name
 from semra.sources.biopragmatics import (
-    from_biomappings_negative,
-    from_biomappings_predicted,
+    get_biomappings_negative_mappings,
     get_biomappings_positive_mappings,
+    get_biomappings_predicted_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
-from semra.struct import Mapping, Reference
-from semra.utils import get_jinja_template
+from semra.struct import Mapping, Reference, Statistics
+from semra.utils import (
+    PrefixListValidator,
+    PrefixPairListValidator,
+    get_jinja_template,
+)
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -239,8 +247,98 @@ class Input(BaseModel):
 
     source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda", "wikidata"]
     prefix: str | None = None
-    confidence: float = 1.0
-    extras: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = Field(
+        1.0,
+        description="confidence the creator of the configuration has in the source",
+        ge=0.0,
+        le=1.0,
+    )
+    extras: dict[str, Any] | None = None
+    pre_filter_prefixes: bool | None = Field(
+        None,
+        description="should the raw mappings be filtered by the priority prefix list? if not set, will default to false.",
+    )
+
+    @model_validator(mode="after")
+    def validate_after(self) -> Self:
+        """Check prefixes are okay."""
+        if self.source not in {"pyobo", "bioontologies", "wikidata"}:
+            return self
+        if self.prefix is None:
+            raise ValueError
+        assert_bioregistry_canonical(self.prefix)
+        return self
+
+    def load(self, *, refresh_source: bool) -> list[Mapping] | None:
+        """Load mappings from the source."""
+        if self.source is None:
+            return None
+        elif self.source in {"pyobo", "bioontologies"}:
+            if self.prefix is None:
+                raise ValueError
+            rv = from_pyobo(
+                self.prefix,
+                confidence=self.confidence,
+                force_process=refresh_source,
+                **(self.extras or {}),
+            )
+        elif self.source == "biomappings":
+            if self.pre_filter_prefixes is None:
+                self.pre_filter_prefixes = True
+            if self.prefix in {None, "positive"}:
+                rv = from_sssom_pydantic(get_biomappings_positive_mappings())
+            elif self.prefix == "negative":
+                rv = from_sssom_pydantic(get_biomappings_negative_mappings())
+            elif self.prefix == "predicted":
+                rv = from_sssom_pydantic(get_biomappings_predicted_mappings())
+            else:
+                raise ValueError(f"invalid prefix for biomappings: {self.prefix}")
+        elif self.source == "gilda":
+            if self.pre_filter_prefixes is None:
+                self.pre_filter_prefixes = True
+            # TODO fold into custom source
+            rv = from_sssom_pydantic(get_gilda_mappings())
+        elif self.source == "custom":
+            func = SOURCE_RESOLVER.make(self.prefix, self.extras)
+            func_name = normalize_custom_func_name(func)
+            rv = from_sssom_pydantic(
+                func(),
+                mapping_set=MappingSet(
+                    id=f"https://w3id.org/biopragmatics/semra/custom/{func_name}.sssom.tsv"
+                ),
+            )
+        elif self.source == "wikidata":
+            if self.prefix is None:
+                raise ValueError("prefix is required to be set when wikidata is used as a source")
+            rv = from_sssom_pydantic(
+                get_wikidata_mappings_by_prefix(self.prefix, **(self.extras or {}))
+            )
+        elif self.source == "sssom":
+            if self.prefix is None:
+                raise ValueError
+            rv = from_sssom(self.prefix, **(self.extras or {}))
+        else:
+            raise ValueError
+        return rv
+
+
+def assert_bioregistry_canonical(prefix: str) -> None:
+    """Assert the prefix is canonical."""
+    resource = bioregistry.get_resource(prefix, strict=True)
+    if resource.prefix != prefix:
+        raise ValueError(f"{prefix} should be standardized to {resource.prefix}")
+    if resource.provides:
+        raise ValueError(
+            f"{resource.prefix} provides for {resource.provides} - should use {resource.provides}"
+        )
+    if resource.part_of:
+        raise ValueError(
+            f"{resource.prefix} is part of {resource.part_of} - should use {resource.part_of}"
+        )
+    if resource.has_canonical:
+        raise ValueError(
+            f"{resource.prefix} has canonical resource {resource.has_canonical} - should use {resource.has_canonical}"
+        )
 
 
 class Configuration(BaseModel):
@@ -260,7 +358,7 @@ class Configuration(BaseModel):
     negative_inputs: list[Input] = Field(
         default_factory=lambda: [Input(source="biomappings", prefix="negative")]
     )
-    priority: list[str] = Field(
+    priority: Annotated[list[str], PrefixListValidator] = Field(
         default_factory=list,
         description="If no priority is given, is inferred from the order of inputs",
     )
@@ -277,19 +375,21 @@ class Configuration(BaseModel):
         ],
     )
 
-    exclude_pairs: list[tuple[str, str]] = Field(
+    exclude_pairs: Annotated[list[tuple[str, str]], PrefixPairListValidator] = Field(
         default_factory=list,
         description="A list of pairs of prefixes. Remove all mappings whose source "
         "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
     )
-    remove_prefixes: list[str] | None = Field(
+    remove_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
         None, description="Prefixes to remove before processing"
     )
-    keep_prefixes: list[str] | None = Field(None, description="Prefixes to keep before processing")
+    keep_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
+        None, description="Prefixes to keep before processing"
+    )
     post_remove_prefixes: list[str] | None = Field(
         None, description="Prefixes to remove after processing"
     )
-    post_keep_prefixes: list[str] | None = Field(
+    post_keep_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
         None, description="Prefixes to keep after processing"
     )
     remove_imprecise: bool = True
@@ -313,6 +413,8 @@ class Configuration(BaseModel):
     )
 
     zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
+
+    purl_base: str = "https://w3id.org/biopragmatics/semra/"
 
     def _get_header_text(self) -> str:
         """Get header text for SemRA built-in configuration."""
@@ -541,6 +643,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.none] = AssembleReturnType.none,
+        progress: bool = ...,
     ) -> None: ...
 
     # docstr-coverage: inherited
@@ -552,6 +655,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.all] = AssembleReturnType.all,
+        progress: bool = ...,
     ) -> MappingPack: ...
 
     # docstr-coverage: inherited
@@ -563,6 +667,7 @@ class Configuration(BaseModel):
         refresh_processed: bool = ...,
         refresh_source: bool = ...,
         return_type: Literal[AssembleReturnType.priority] = AssembleReturnType.priority,
+        progress: bool = ...,
     ) -> list[Mapping]: ...
 
     def get_mappings(
@@ -584,12 +689,29 @@ class Configuration(BaseModel):
             progress=progress,
         )
 
+    def _read_stats(self) -> Statistics | None:
+        if self.stats_path.is_file():
+            return read_pydantic_json(self.stats_path, Statistics)
+        return None
+
     def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
+        progress_kwargs: dict[str, Any] = {
+            "desc": f"[{self.key}] reading raw mappings",
+        }
+        if (statistics := self._read_stats()) and statistics.raw_mappings:
+            progress_kwargs["total"] = statistics.raw_mappings
+
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.raw_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
+            (
+                self.raw_jsonl_path,
+                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+            ),
             (self.raw_pickle_path, from_pickle),
-            (self.raw_sssom_path, from_sssom),
+            (
+                self.raw_sssom_path,
+                partial(from_sssom, progress=True, progress_kwargs=progress_kwargs),
+            ),
         ]
         for path, opener in paths:
             if path.is_file():
@@ -599,10 +721,22 @@ class Configuration(BaseModel):
 
     def read_processed_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
+        progress_kwargs: dict[str, Any] = {
+            "desc": f"[{self.key}] reading processed mappings",
+        }
+        if (statistics := self._read_stats()) and statistics.processed_mappings:
+            progress_kwargs["total"] = statistics.processed_mappings
+
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.processed_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
+            (
+                self.processed_jsonl_path,
+                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+            ),
             (self.processed_pickle_path, from_pickle),
-            (self.processed_sssom_path, from_sssom),
+            (
+                self.processed_sssom_path,
+                partial(from_sssom, progress=True, progress_kwargs=progress_kwargs),
+            ),
         ]
         for path, opener in paths:
             if path.is_file():
@@ -612,10 +746,22 @@ class Configuration(BaseModel):
 
     def read_priority_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
         """Read priority mappings from pickle, if already cached."""
+        progress_kwargs: dict[str, Any] = {
+            "desc": f"[{self.key}] reading priority mappings",
+        }
+        if (statistics := self._read_stats()) and statistics.priority_mappings:
+            progress_kwargs["total"] = statistics.priority_mappings
+
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
-            (self.priority_jsonl_path, partial(from_jsonl, show_progress=show_progress)),
+            (
+                self.priority_jsonl_path,
+                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+            ),
             (self.priority_pickle_path, from_pickle),
-            (self.priority_sssom_path, from_sssom),
+            (
+                self.priority_sssom_path,
+                partial(from_sssom, progress=True, progress_kwargs=progress_kwargs),
+            ),
         ]
         for path, opener in paths:
             if path.is_file():
@@ -733,7 +879,7 @@ class Configuration(BaseModel):
             args,
             check=True,
             cwd=str(self.processed_neo4j_path),
-            env=dict(os.environ, DOCKER_CLI_HINTS="false"),
+            env=dict(os.environ, DOCKER_CLI_HINTS="false", DOCKER_BUILDKIT="1"),
         )
         click.echo(f"Result: {res}")
 
@@ -770,7 +916,7 @@ class Configuration(BaseModel):
         @REFRESH_RAW_OPTION
         @REFRESH_PROCESSED_OPTION
         @BUILD_DOCKER_OPTION
-        @verbose_option  # type:ignore
+        @verbose_option
         def main(
             upload: bool,
             refresh_source: bool,
@@ -794,6 +940,8 @@ class Configuration(BaseModel):
             if write_summary:
                 from . import summarize
 
+                click.secho("summarizing mappings", fg="green")
+                start = time.time()
                 summarize.write_summary(
                     self,
                     show_progress=True,
@@ -803,6 +951,10 @@ class Configuration(BaseModel):
                     priority_mappings=pack.priority,
                     refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
                     refresh_source_timedelta=timedelta if refresh_source else None,
+                )
+                click.secho(
+                    f"done summarizing mappings in {humanize.naturaldelta(time.time() - start)}",
+                    fg="green",
                 )
 
             for hook in hooks or []:
@@ -901,6 +1053,9 @@ def assemble(
     if refresh_raw:
         refresh_processed = True
 
+    def _echo(s: str, *args: Any, **kwargs: Any) -> None:
+        click.echo(f"[{configuration.key}] " + click.style(s, *args, **kwargs))
+
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
         match return_type:
             case AssembleReturnType.none:
@@ -925,16 +1080,16 @@ def assemble(
             start = time.time()
             raw_mappings = configuration.read_raw_mappings()
             logger.info(
-                "loaded cached raw mappings from %s in %.2f seconds",
+                "loaded cached raw mappings from %s in %s",
                 configuration.raw_pickle_path,
-                time.time() - start,
+                humanize.naturaldelta(time.time() - start),
             )
         else:
             configuration.configuration_path.write_text(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
             raw_mappings = get_raw_mappings(
-                configuration, refresh_source=refresh_source, show_progress=progress
+                configuration, refresh_source=refresh_source, progress=progress
             )
             if not raw_mappings:
                 raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
@@ -946,6 +1101,11 @@ def assemble(
                 raw_mappings,
                 configuration.raw_sssom_path,
                 # add_labels=configuration.add_labels
+                metadata=_mapping_set_from_conf(
+                    configuration,
+                    subtitle="Raw Mappings",
+                    path=configuration.raw_sssom_path,
+                ),
             )
             write_jsonl(
                 raw_mappings,
@@ -974,19 +1134,49 @@ def assemble(
             subsets=configuration.get_hydrated_subsets(),
             progress=progress,
         )
+        _echo("done processing raw mappings", fg="green")
 
+    _echo("prioritizing mappings", fg="green")
+    start = time.time()
     prioritized_mappings = prioritize(processed_mappings, configuration.priority, progress=progress)
+    _echo(
+        f"done prioritizing mappings in {humanize.naturaldelta(time.time() - start)}",
+        fg="green",
+    )
+
+    _echo("calculating equivalence classes", fg="green")
+    start = time.time()
     equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
+    _echo(
+        f"done calculating equivalences classes in {humanize.naturaldelta(time.time() - start)}",
+        fg="green",
+    )
+
+    _echo("writing SSSOM (processed mappings)", fg="green")
+    start = time.time()
     write_sssom(
         processed_mappings,
         configuration.processed_sssom_path,
         add_labels=configuration.add_labels,
+        metadata=_mapping_set_from_conf(
+            configuration,
+            subtitle="Processed Mappings",
+            path=configuration.processed_sssom_path,
+        ),
     )
+    _echo(f"done writing SSSOM in {humanize.naturaldelta(time.time() - start)}", fg="green")
+
+    _echo("writing JSONL (processed mappings)", fg="green")
+    start = time.time()
     write_jsonl(
         processed_mappings,
         configuration.processed_jsonl_path,
         show_progress=progress,
     )
+    _echo(f"done writing JSONL in {humanize.naturaldelta(time.time() - start)}", fg="green")
+
+    _echo("writing Neo4j (processed mappings)", fg="green")
+    start = time.time()
     write_neo4j(
         processed_mappings,
         configuration.processed_neo4j_path,
@@ -996,12 +1186,31 @@ def assemble(
         compress=configuration.neo4j_gzip,
         use_tqdm=progress,
     )
+    _echo(f"done writing Neo4j in {humanize.naturaldelta(time.time() - start)}", fg="green")
 
+    _echo("writing JSONL (prioritized mappings)", fg="green")
+    start = time.time()
     write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, show_progress=progress)
+    _echo(
+        f"done writing JSONL (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
+        fg="green",
+    )
+
+    _echo("writing SSSOM (prioritized mappings)", fg="green")
+    start = time.time()
     write_sssom(
         prioritized_mappings,
         configuration.priority_sssom_path,
         add_labels=configuration.add_labels,
+        metadata=_mapping_set_from_conf(
+            configuration,
+            subtitle="Priority Mappings",
+            path=configuration.priority_sssom_path,
+        ),
+    )
+    _echo(
+        f"done writing SSSOM (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
+        fg="green",
     )
 
     match return_type:
@@ -1021,6 +1230,27 @@ def assemble(
             return prioritized_mappings
 
 
+def _mapping_set_from_conf(
+    configuration: Configuration, *, path: Path, subtitle: str
+) -> sssom_pydantic.MappingSet:
+    sources: list[str] = []
+    for input in configuration.inputs:
+        match input.source:
+            case "pyobo" if input.prefix is not None:
+                resource = bioregistry.get_resource(input.prefix, strict=True)
+                if download := resource.get_download():
+                    sources.append(download)
+            # FIXME need to be exhaustive
+    return sssom_pydantic.MappingSet(
+        id=f"{configuration.purl_base}{configuration.key}/{path.name}",
+        title=f"{configuration.name} - {subtitle}",
+        comment="Produced by SeMRA",
+        publication_date=datetime.date.today(),
+        creators=configuration.creators,
+        sources=sources,
+    )
+
+
 def _get_equivalence_classes(
     mappings: Iterable[Mapping], prioritized_mappings: Iterable[Mapping]
 ) -> dict[Reference, bool]:
@@ -1034,67 +1264,43 @@ def _get_equivalence_classes(
 
 def get_raw_mappings(
     configuration: Configuration,
-    show_progress: bool = True,
+    *,
+    progress: bool = True,
     refresh_source: bool = False,
 ) -> list[Mapping]:
     """Get raw mappings based on the inputs in a configuration."""
-    mappings = []
+    n_inputs = len(configuration.inputs)
+
+    def _write(zz: int, txt: str, fg: str = "green") -> None:
+        tqdm.write(f"[{configuration.key}] {zz}/{n_inputs} " + click.style(txt, fg=fg))
+
+    rv = []
     for i, inp in enumerate(
         tqdm(
             configuration.inputs,
             desc=f"[{configuration.key}] getting raw mappings",
             unit="source",
-            disable=not show_progress,
+            disable=not progress,
         ),
         start=1,
     ):
-        tqdm.write(
-            f"[{configuration.key}] {i}/{len(configuration.inputs)} "
-            + click.style(f"Loading mappings from {inp.source}", fg="green")
-            + (f" ({inp.prefix})" if inp.prefix else "")
+        _write(
+            i, f"Loading mappings from {inp.source}" + (f" ({inp.prefix})" if inp.prefix else "")
         )
-        if inp.source is None:
+        start = time.time()
+        mappings = inp.load(refresh_source=refresh_source)
+        if mappings is None:
+            _write(i, f"incorrect configuration for {inp.source}", fg="red")
             continue
-        elif inp.source == "bioontologies":
-            if inp.prefix is None:
-                raise ValueError
-            mappings.extend(from_bioontologies(inp.prefix, confidence=inp.confidence, **inp.extras))
-        elif inp.source == "pyobo":
-            if inp.prefix is None:
-                raise ValueError
-            mappings.extend(
-                from_pyobo(
-                    inp.prefix,
-                    confidence=inp.confidence,
-                    force_process=refresh_source,
-                    **inp.extras,
-                )
-            )
-        elif inp.source == "biomappings":
-            if inp.prefix in {None, "positive"}:
-                mappings.extend(get_biomappings_positive_mappings())
-            elif inp.prefix == "negative":
-                mappings.extend(from_biomappings_negative())
-            elif inp.prefix == "predicted":
-                mappings.extend(from_biomappings_predicted())
-            else:
-                raise ValueError
-        elif inp.source == "gilda":
-            mappings.extend(get_gilda_mappings(confidence=inp.confidence))
-        elif inp.source == "custom":
-            func = SOURCE_RESOLVER.make(inp.prefix, inp.extras)
-            mappings.extend(func())
-        elif inp.source == "wikidata":
-            if inp.prefix is None:
-                raise ValueError("prefix is required to be set when wikidata is used as a source")
-            mappings.extend(get_wikidata_mappings_by_prefix(inp.prefix, **inp.extras))
-        elif inp.source == "sssom":
-            mappings.extend(from_sssom(inp.prefix, **inp.extras))
-        elif inp.source == "cache":
-            mappings.extend(from_cache_df(**inp.extras))
-        else:
-            raise ValueError
-    return mappings
+        if inp.pre_filter_prefixes:
+            mappings = list(keep_prefixes_both(mappings, configuration.priority))
+        _write(
+            i,
+            f"Loaded {len(mappings):,} mappings from {inp.source} in {humanize.naturaldelta(time.time() - start)}"
+            + (f" ({inp.prefix})" if inp.prefix else ""),
+        )
+        rv.extend(mappings)
+    return rv
 
 
 def process_raw_mappings(
@@ -1111,8 +1317,6 @@ def process_raw_mappings(
     progress: bool = True,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
-    from semra.sources.biopragmatics import from_biomappings_negative
-
     if keep_prefix_set:
         mappings = keep_prefixes(mappings, keep_prefix_set, progress=progress)
 
@@ -1123,8 +1327,11 @@ def process_raw_mappings(
         mappings = list(filter_subsets(mappings, subsets))
 
     start = time.time()
-    negatives = from_biomappings_negative()
-    logger.info(f"Loaded {len(negatives):,} negative mappings in %.2f seconds", time.time() - start)
+    negatives = from_sssom_pydantic(get_biomappings_negative_mappings())
+    logger.info(
+        f"Loaded {len(negatives):,} negative mappings in %s",
+        humanize.naturaldelta(time.time() - start),
+    )
 
     before = len(mappings)
     start = time.time()
@@ -1210,6 +1417,6 @@ def process_raw_mappings(
 def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float) -> None:
     logger.info(
         f"{verb} from {before:,} to {len(mappings):,} mappings "
-        f"(Δ={len(mappings) - before:,}) in %.2f seconds.",
-        elapsed,
+        f"(Δ={len(mappings) - before:,}) in s.",
+        humanize.naturaldelta(elapsed),
     )

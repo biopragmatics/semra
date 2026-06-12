@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import shutil
@@ -17,7 +16,6 @@ from typing import cast
 import bioregistry
 import networkx as nx
 import pandas as pd
-from pydantic import BaseModel
 
 from semra.api import (
     IdentifierIndex,
@@ -34,14 +32,13 @@ from semra.api import (
 )
 from semra.pipeline import Configuration
 from semra.rules import SubsetConfiguration
-from semra.struct import Mapping
+from semra.struct import Mapping, Statistics
 from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
 from semra.vocabulary import DB_XREF, EXACT_MATCH
 
 __all__ = [
     "LandscapeResult",
     "OverlapResults",
-    "Statistics",
     "Summarizer",
     "SummaryResults",
     "write_summary",
@@ -124,11 +121,14 @@ def write_summary(
     logger.info("writing summary to %s", configuration.readme_path)
     configuration.readme_path.write_text(vv)
     os.system(  # noqa:S605
-        f'npx --yes prettier --write --prose-wrap always "{configuration.readme_path.as_posix()}"'
+        f'npx --yes prettier --write --log-level silent --prose-wrap always "{configuration.readme_path.as_posix()}"'
     )
 
     stats = Statistics.model_validate(
         {
+            "raw_mappings": len(summarizer.raw_mappings),
+            "processed_mappings": len(summarizer.processed_mappings),
+            "priority_mappings": len(summarizer.priority_mappings),
             "raw_term_count": landscape_results.total_term_count,
             "unique_term_count": landscape_results.reduced_term_count,
             "reduction": landscape_results.reduction_percent,
@@ -137,23 +137,12 @@ def write_summary(
             "refresh_source_timedelta": refresh_source_timedelta,
         }
     )
-    configuration.stats_path.write_text(json.dumps(stats.model_dump(), indent=2, sort_keys=True))
+    configuration.stats_path.write_text(stats.model_dump_json(indent=2) + "\n")
 
     if copy_to_landscape:
         _copy_into_landscape_folder(configuration, paths)
 
     return overlap_results, landscape_results, paths
-
-
-class Statistics(BaseModel):
-    """Summary statistics."""
-
-    raw_term_count: int
-    unique_term_count: int
-    reduction: float
-    distribution: dict[int, int]
-    refresh_raw_timedelta: float | None = None
-    refresh_source_timedelta: float | None = None
 
 
 def _copy_into_landscape_folder(config: Configuration, paths: list[Path]) -> None:
@@ -526,7 +515,9 @@ def draw_counter(
     for (source_prefix, target_prefix), weight in counter.items():
         if not weight:
             continue
-        x = 1 + scaling_factor * (weight - bottom) / rr
+        x = 1.0
+        if rr > 0:
+            x += scaling_factor * (weight - bottom) / rr
         if agraph.has_edge(source_prefix, target_prefix):
             edge = agraph.get_edge(source_prefix, target_prefix)
             edge.attr["penwidth"] = x
@@ -739,7 +730,7 @@ class LandscapeResult:
         import seaborn as sns
         from matplotlib import pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(1 + len(self.distribution) * width_ratio, height))
+        _fig, ax = plt.subplots(figsize=(1 + len(self.distribution) * width_ratio, height))
         sns.barplot(self.distribution, ax=ax)
 
         for index, value in self.distribution.items():
@@ -756,6 +747,7 @@ class LandscapeResult:
 
         ax.set_xlabel(f"# {self.configuration.key.title()} Resources a Concept Appears in")
         ax.set_ylabel("Count")
+        # TODO if number of bars is < 4, need to insert some newlines so the title fits
         ax.set_title(
             f"{self.configuration.key.title()} Landscape of {self.reduced_term_count:,} Unique Concepts"
         )

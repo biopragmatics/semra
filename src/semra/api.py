@@ -4,18 +4,35 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
+import time
 import typing
 import typing as t
 from collections import Counter, defaultdict
-from collections.abc import Collection, Iterable
-from typing import Literal, NamedTuple, TypeAlias, TypeVar, cast, overload
+from collections.abc import Callable, Collection, Iterable
+from typing import (
+    Annotated,
+    Any,
+    Literal,
+    NamedTuple,
+    ParamSpec,
+    TypeAlias,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import bioregistry
+import click
+import curies.api
+import humanize
 import networkx as nx
 import pandas as pd
 import ssslm
-from pydantic import BaseModel, Field
+from curies import triples as ct
+from curies.triples import TripleType
+from pydantic import BaseModel, BeforeValidator, Field
 from ssslm import LiteralMapping
+from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
 from semra.io.graph import _from_digraph_edge, to_digraph
@@ -29,7 +46,7 @@ from semra.struct import (
     SimpleEvidence,
     Triple,
 )
-from semra.utils import cleanup_prefixes, semra_tqdm
+from semra.utils import PrefixValidator, cleanup_prefixes, semra_tqdm
 from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 
 __all__ = [
@@ -86,33 +103,53 @@ logger = logging.getLogger(__name__)
 #: An index allows for the aggregation of evidences for each core triple
 Index = dict[Triple, list[Evidence]]
 
+P = ParamSpec("P")
 X = TypeVar("X")
 
 #: A test mapping set that can be used in examples.
-TEST_MAPPING_SET = MappingSet(name="Test Mapping Set", confidence=0.95)
+TEST_MAPPING_SET = MappingSet(
+    id="https://example.org/test.sssom.tsv", name="Test Mapping Set", confidence=0.95
+)
+
+
+def replace_with(f: Any) -> Callable[[Callable[P, X]], Callable[P, X]]:
+    """Annotate a function as being deprecated."""
+    return lambda x: x
 
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: int) -> list[SimpleEvidence]: ...
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: int
+) -> list[SimpleEvidence]: ...
 
 
 # docstr-coverage: inherited
 @typing.overload
-def get_test_evidence(n: None) -> SimpleEvidence: ...
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: None
+) -> SimpleEvidence: ...
 
 
-def get_test_evidence(n: int | None = None) -> SimpleEvidence | list[SimpleEvidence]:
+def get_test_evidence(
+    subject: str | Reference, object: str | Reference, n: int | None = None
+) -> SimpleEvidence | list[SimpleEvidence]:
     """Get test evidence."""
     if isinstance(n, int):
         return [
             SimpleEvidence(
+                mapping=SemanticMapping.exact(
+                    subject,
+                    object,
+                    authors=[Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}")],
+                ),
                 mapping_set=TEST_MAPPING_SET,
-                author=Reference(prefix="orcid", identifier=f"0000-0000-0000-000{n}"),
             )
             for n in range(n)
         ]
-    return SimpleEvidence(mapping_set=TEST_MAPPING_SET)
+    return SimpleEvidence(
+        mapping=SemanticMapping.exact(subject, object), mapping_set=TEST_MAPPING_SET
+    )
 
 
 # docstr-coverage: inherited
@@ -136,8 +173,8 @@ def count_source_target(mappings: Iterable[Mapping]) -> Counter[tuple[str, str]]
     """Count pairs of source/target prefixes.
 
     :param mappings: An iterable of mappings
-    :return:
-        A counter whose keys are pairs of source prefixes and target prefixes
+
+    :returns: A counter whose keys are pairs of source prefixes and target prefixes
         appearing in the mappings
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
@@ -153,12 +190,14 @@ def str_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) -> s
     """Create a table of counts of source/target prefix via :mod:`tabulate`.
 
     :param mappings: An iterable of mappings
-    :param minimum: The minimum count to display in the table. Defaults to zero,
-        which displays all source/target prefix pairs.
-    :return:
-        A table representing the counts for each source/target prefix pair.
+    :param minimum: The minimum count to display in the table. Defaults to zero, which
+        displays all source/target prefix pairs.
 
-    .. seealso:: This table is generated with :func:`count_source_target`
+    :returns: A table representing the counts for each source/target prefix pair.
+
+    .. seealso::
+
+        This table is generated with :func:`count_source_target`
     """
     from tabulate import tabulate
 
@@ -174,10 +213,12 @@ def print_source_target_counts(mappings: Iterable[Mapping], minimum: int = 0) ->
     """Print the counts of source/target prefixes.
 
     :param mappings: An iterable of mappings
-    :param minimum: The minimum count to display in the table. Defaults to zero,
-        which displays all source/target prefix pairs.
+    :param minimum: The minimum count to display in the table. Defaults to zero, which
+        displays all source/target prefix pairs.
 
-    .. seealso:: This table is generated with :func:`str_source_target_counts`
+    .. seealso::
+
+        This table is generated with :func:`str_source_target_counts`
     """
     print(str_source_target_counts(mappings=mappings, minimum=minimum))  # noqa:T201
 
@@ -193,20 +234,20 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool
 def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Assemble evidences.
 
-    More specifically, this aggregates evidences for all subject-predicate-object triples
-    into a single :class:`semra.Mapping` instance.
+    More specifically, this aggregates evidences for all subject-predicate-object
+    triples into a single :class:`semra.Mapping` instance.
 
     :param mappings: An iterable of mappings
     :param progress: Should a progress bar be shown? Defaults to true.
-    :returns: A processed list of mappings, that is guaranteed to have
-        exactly 1 Mapping object for each subject-predicate-object triple.
-        Note that if the predicate is different, evidences are not assembled
-        into the same Mapping object.
+
+    :returns: A processed list of mappings, that is guaranteed to have exactly 1 Mapping
+        object for each subject-predicate-object triple. Note that if the predicate is
+        different, evidences are not assembled into the same Mapping object.
 
     >>> from semra import Mapping, Reference, EXACT_MATCH
     >>> from semra.api import get_test_evidence, get_test_reference
     >>> r1, r2 = get_test_reference(2)
-    >>> e1, e2 = get_test_evidence(2)
+    >>> e1, e2 = get_test_evidence(r1, r2, 2)
     >>> m1 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e1])
     >>> m2 = Mapping(subject=r1, predicate=EXACT_MATCH, object=r2, evidence=[e2])
     >>> m = assemble_evidences([m1, m2])
@@ -233,14 +274,14 @@ def flip(mapping: Mapping, *, strict: bool = False) -> Mapping | None:
     """Flip a mapping, if the relation is configured with an inversion.
 
     :param mapping: An input mapping
-    :return:
-        If the input mapping's predicate is configured with an inversion
-        (e.g., broad match is configured by default to invert to narrow
-        match), a new mapping is returned with the subject and object swapped,
-        with the inverted predicate, and with a "mutated" evidence to
-        track original provenance. If the mapping's predicate is not configured
-        with an inversion (e.g., for practical purposes, regular dbrefs and
-        close matches are not configured to invert), then None is returned
+
+    :returns: If the input mapping's predicate is configured with an inversion (e.g.,
+        broad match is configured by default to invert to narrow match), a new mapping
+        is returned with the subject and object swapped, with the inverted predicate,
+        and with a "mutated" evidence to track original provenance. If the mapping's
+        predicate is not configured with an inversion (e.g., for practical purposes,
+        regular dbrefs and close matches are not configured to invert), then None is
+        returned
     """
     if (p := FLIP.get(mapping.predicate)) is not None:
         return Mapping(
@@ -264,11 +305,11 @@ def iter_components(mappings: t.Iterable[Mapping]) -> t.Iterable[set[Reference]]
 def tabulate_index(index: Index) -> str:
     """Create a table of all mappings contained in an index.
 
-    :param index: An index of mappings - a dictionary
-        whose keys are subject-predicate-object tuples
-        and values are lists of associated evidence (pre-deduplicated)
-    :return:
-        A table with four columns:
+    :param index: An index of mappings - a dictionary whose keys are
+        subject-predicate-object tuples and values are lists of associated evidence
+        (pre-deduplicated)
+
+    :returns: A table with four columns:
 
         1. Source
         2. Predicate
@@ -291,6 +332,7 @@ def tabulate_index(index: Index) -> str:
     return tabulate(rows, headers=["s", "p", "o", "ev"], tablefmt="github")
 
 
+@replace_with(ct.keep_prefixes_both)
 def keep_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -299,7 +341,9 @@ def keep_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose subject and object are both in the given prefix list
+
+    :returns: A subset of the original mappings whose subject and object are both in the
+        given prefix list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -319,6 +363,7 @@ def keep_prefixes(
     ]
 
 
+@replace_with(ct.keep_subject_prefixes)
 def keep_subject_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -327,7 +372,9 @@ def keep_subject_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings' subjects
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose subjects are in the given prefix list
+
+    :returns: A subset of the original mappings whose subjects are in the given prefix
+        list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -345,6 +392,7 @@ def keep_subject_prefixes(
     ]
 
 
+@replace_with(ct.keep_object_prefixes)
 def keep_object_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -353,7 +401,9 @@ def keep_object_prefixes(
     :param mappings: A list of mappings
     :param prefixes: A set of prefixes to use for filtering the mappings' objects
     :param progress: Should a progress bar be shown? Defaults to true.
-    :return: A subset of the original mappings whose objects are in the given prefix list
+
+    :returns: A subset of the original mappings whose objects are in the given prefix
+        list
 
     >>> from semra import DB_XREF, EXACT_MATCH, Reference
     >>> curies = "DOID:0050577", "mesh:C562966", "umls:C4551571"
@@ -371,6 +421,7 @@ def keep_object_prefixes(
     ]
 
 
+@replace_with(ct.exclude_prefixes_both)
 def filter_prefixes(
     mappings: Iterable[Mapping], prefixes: str | Iterable[str], *, progress: bool = True
 ) -> list[Mapping]:
@@ -394,6 +445,7 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
     ]
 
 
+@replace_with(ct.exclude_triples)
 def filter_mappings(
     mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True
 ) -> list[Mapping]:
@@ -412,13 +464,14 @@ def filter_mappings(
 #:
 #: This data structure can be used to index either forward or backwards mappings,
 #: as done inside :func:`get_many_to_many`
-M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[Mapping]]]]
+M2MIndex = defaultdict[tuple[str, str], defaultdict[str, defaultdict[str, list[TripleType]]]]
 
 
-def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
-    """Get many-to-many mappings, disregarding predicate type."""
-    forward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    backward: M2MIndex = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+def _get_m2m_indexes(
+    mappings: Iterable[TripleType],
+) -> tuple[M2MIndex[TripleType], M2MIndex[TripleType]]:
+    forward: M2MIndex[TripleType] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    backward: M2MIndex[TripleType] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for mapping in mappings:
         forward[mapping.subject.prefix, mapping.object.prefix][mapping.subject.identifier][
             mapping.object.identifier
@@ -426,7 +479,12 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
         backward[mapping.subject.prefix, mapping.object.prefix][mapping.object.identifier][
             mapping.subject.identifier
         ].append(mapping)
+    return forward, backward
 
+
+def _get_index(
+    forward: M2MIndex[Mapping], backward: M2MIndex[Mapping]
+) -> dict[Triple, list[Evidence]]:
     index: defaultdict[Triple, list[Evidence]] = defaultdict(list)
     for preindex in [forward, backward]:
         for d1 in preindex.values():
@@ -434,6 +492,13 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
                 if len(d2) > 1:  # means there are multiple identifiers mapped
                     for mapping in itt.chain.from_iterable(d2.values()):
                         index[mapping.triple].extend(mapping.evidence)
+    return dict(index)
+
+
+def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
+    """Get many-to-many mappings, disregarding predicate type."""
+    forward, backward = _get_m2m_indexes(mappings)
+    index = _get_index(forward, backward)
 
     # this is effectively the same as :func:`unindex` except the deduplicate_evidence is called
     # explicitly
@@ -444,6 +509,7 @@ def get_many_to_many(mappings: list[Mapping]) -> list[Mapping]:
     return rv
 
 
+@replace_with(ct.exclude_prefix_stratified_many_to_many)
 def filter_many_to_many(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Filter out many to many mappings."""
     skip_mappings = get_many_to_many(mappings)
@@ -521,16 +587,18 @@ def prioritize(
 
         .. warning::
 
-            This assumes that inference and inversion have already been run.
-            This means that if there exists any exact match mapping path between
-            ``A`` and ``B``, then there exists an edge `A, exact, B``. Further,
-            if there exists a mapping ``A, exact, B``, there must be a ``B, exact, A``.
+            This assumes that inference and inversion have already been run. This means
+            that if there exists any exact match mapping path between ``A`` and ``B``,
+            then there exists an edge `A, exact, B``. Further, if there exists a mapping
+            ``A, exact, B``, there must be a ``B, exact, A``.
 
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher.
-    :return:
-        A list of mappings representing a "prioritization", meaning that each element only
-        appears as subject once. This condition means that the prioritization mapping can be applied
-        to upgrade any reference to a "canonical" reference.
+    :param priority: A priority list of prefixes, where earlier in the list means the
+        priority is higher.
+
+    :returns: A list of mappings representing a "prioritization", meaning that each
+        element only appears as subject once. This condition means that the
+        prioritization mapping can be applied to upgrade any reference to a "canonical"
+        reference.
 
     This algorithm works in the following way
 
@@ -538,15 +606,15 @@ def prioritize(
     2. Convert the exact matches to an undirected mapping graph
     3. Extract connected components.
 
-        .. note::
+           .. note::
 
-            because of construction, connected components might contain
-            just two mappings, ``A, exact, B`` and ``B, exact A``.
+               because of construction, connected components might contain just two
+               mappings, ``A, exact, B`` and ``B, exact, A``.
 
     4. For each component
-        1. Get the "priority" reference using :func:`get_priority_reference`
-        2. Construct new mappings where all references in the component are the subject
-           and the priority reference is the object (skip the self mapping)
+           1. Get the "priority" reference using :func:`get_priority_reference`
+           2. Construct new mappings where all references in the component are the
+              subject and the priority reference is the object (skip the self mapping)
 
     Here's an example usage, where inference is run ahead of prioritization.
 
@@ -567,10 +635,15 @@ def prioritize(
     exact_mappings = len(mappings)
     priority = _clean_priority_prefixes(priority)
 
-    graph = to_digraph(mappings).to_undirected()
+    graph = to_digraph(mappings, progress=progress)
     rv: list[Mapping] = []
     for component in tqdm(
-        nx.connected_components(graph), unit="component", unit_scale=True, disable=not progress
+        nx.weakly_connected_components(graph),
+        unit="component",
+        unit_scale=True,
+        disable=not progress,
+        desc="Prioritizing",
+        leave=False,
     ):
         o = get_priority_reference(component, priority)
         if o is None:
@@ -622,12 +695,14 @@ def get_priority_reference(
 ) -> Reference | None:
     """Get the priority reference from a component.
 
-    :param component: A set of references with the pre-condition that they're all "equivalent"
-    :param priority: A priority list of prefixes, where earlier in the list means the priority is higher
-    :returns:
-        Returns the reference with the prefix that has the highest priority.
-        If multiple references have the highest priority prefix, returns the first one encountered.
-        If none have a priority prefix, return None.
+    :param component: A set of references with the pre-condition that they're all
+        "equivalent"
+    :param priority: A priority list of prefixes, where earlier in the list means the
+        priority is higher
+
+    :returns: Returns the reference with the prefix that has the highest priority. If
+        multiple references have the highest priority prefix, returns the first one
+        encountered. If none have a priority prefix, return None.
 
     >>> from semra import Reference
     >>> curies = ["DOID:0050577", "mesh:C562966", "umls:C4551571"]
@@ -637,7 +712,6 @@ def get_priority_reference(
     >>> get_priority_reference(references, ["DOID", "mesh", "umls"]).curie
     'doid:0050577'
     >>> get_priority_reference(references, ["hpo", "ordo", "symp"])
-
     """
     prefix_to_references: defaultdict[str, list[Reference]] = defaultdict(list)
     for reference in component:
@@ -658,18 +732,22 @@ def get_priority_reference(
 def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     """Convert a mapping index into a list of mapping objects.
 
-    :param index: A mapping from subject-predicate-object triples to lists of evidence objects
+    :param index: A mapping from subject-predicate-object triples to lists of evidence
+        objects
     :param progress: Should a progress bar be shown? Defaults to true.
+
     :returns: A list of mapping objects
 
-    In the following example, a very simple index for a single mapping
-    is used to reconstruct a mapping list.
+    In the following example, a very simple index for a single mapping is used to
+    reconstruct a mapping list.
 
     >>> from semra.api import get_test_reference, get_test_evidence, unindex
-    >>> s, p, o = get_test_reference(3)
-    >>> e1 = get_test_evidence()
-    >>> index = {(s, p, o): [e1]}
-    >>> assert unindex(index) == [Mapping(subject=s, predicate=p, object=o, evidence=[e1])]
+    >>> s, o = get_test_reference(2)
+    >>> e1 = get_test_evidence(s, o)
+    >>> index = {(s, EXACT_MATCH, o): [e1]}
+    >>> assert unindex(index) == [
+    ...     Mapping(subject=s, predicate=EXACT_MATCH, object=o, evidence=[e1])
+    ... ]
     """
     return [
         Mapping.from_triple(triple, evidence=evidence)
@@ -679,18 +757,30 @@ def unindex(index: Index, *, progress: bool = True) -> list[Mapping]:
     ]
 
 
-def deduplicate_evidence(triple: Triple | Mapping, evidence: list[Evidence]) -> list[Evidence]:
+def deduplicate_evidence(triple: Triple | Mapping, evidences: list[Evidence]) -> list[Evidence]:
     """Deduplicate a list of evidences based on their "key" function."""
-    d = {e.key(triple): e for e in evidence}
-    return list(d.values())
+    hash_to_evidence = {}
+    for evidence in evidences:
+        try:
+            key = evidence.get_identifier(triple)
+        except curies.api.ExpansionError:
+            # this happens in some weird cases where there is a
+            # valid prefix but it doesn't have an expansion
+            pass
+        else:
+            hash_to_evidence[key] = evidence
+    return list(hash_to_evidence.values())
 
 
 def validate_mappings(mappings: list[Mapping], *, progress: bool = True) -> None:
     """Validate mappings against the Bioregistry and raise an error on the first invalid."""
-    import bioregistry
-
     for mapping in tqdm(
-        mappings, desc="Validating mappings", unit_scale=True, unit="mapping", disable=not progress
+        mappings,
+        desc="Validating mappings",
+        unit_scale=True,
+        unit="mapping",
+        disable=not progress,
+        leave=False,
     ):
         if bioregistry.normalize_prefix(mapping.subject.prefix) != mapping.subject.prefix:
             raise ValueError(
@@ -746,7 +836,7 @@ def filter_minimum_confidence(
             confidence = mapping.get_confidence()
         except ValueError:
             continue
-        if confidence >= cutoff:
+        if confidence is not None and confidence >= cutoff:
             yield mapping
 
 
@@ -759,7 +849,10 @@ def hydrate_subsets(
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
     :param show_progress: Should progress bars be shown?
-    :return: A dictionary that uses the is-a hierarchy within the resources to get full term lists
+
+    :returns: A dictionary that uses the is-a hierarchy within the resources to get full
+        term lists
+
     :raises ValueError: If a prefix can't be looked up with PyOBO
 
     To get all the cells from MeSH:
@@ -768,11 +861,14 @@ def hydrate_subsets(
 
         from semra.api import hydrate_subsets, filter_subsets
 
-        configuration = {"mesh": ["mesh:D002477"], ...}
+        configuration = {
+            "mesh": ["mesh:D002477"],
+            # and so on
+        }
         prefix_to_references = hydrate_subsets(configuration)
 
-    It's also possible to use parents outside the vocabulary, such as when search for entity
-    type in UMLS:
+    It's also possible to use parents outside the vocabulary, such as when search for
+    entity type in UMLS:
 
     .. code-block:: python
 
@@ -788,10 +884,9 @@ def hydrate_subsets(
                 Reference.from_curie("sty:T050"),  # experimental model of disease
                 Reference.from_curie("sty:T048"),  # mental or behavioral dysfunction
             ],
-            ...
+            # and so on
         }
         prefix_to_references = hydrate_subsets(configuration)
-
     """
     import pyobo
 
@@ -826,16 +921,19 @@ def filter_subsets(
     """Filter mappings that don't appear in the given subsets.
 
     :param mappings: An iterable of semantic mappings
-    :param prefix_to_references: A dictionary whose keys are prefixes and whose values are collections
-        of references for a subset of terms in the resource to keep.
+    :param prefix_to_references: A dictionary whose keys are prefixes and whose values
+        are collections of references for a subset of terms in the resource to keep.
 
-        In situations where a mapping's subject or object's prefix does not appear in this dictionary, the check
-        is skipped.
-    :return: A list that has been filtered based on the prefix_to_identifiers dict
+        In situations where a mapping's subject or object's prefix does not appear in
+        this dictionary, the check is skipped.
+
+    :returns: A list that has been filtered based on the prefix_to_identifiers dict
+
     :raises ValueError: If CURIEs are given instead of identifiers
 
     If you have a simple configuration dictionary that contains the parent terms, like
-    ``{"mesh": [Reference.from_curie("mesh:D002477")]}``, you'll want to do the following first:
+    ``{"mesh": [Reference.from_curie("mesh:D002477")]}``, you'll want to do the
+    following first:
 
     .. code-block:: python
 
@@ -883,8 +981,11 @@ def aggregate_components(
     """Get a counter where the keys are the set of all prefixes in a weakly connected component.
 
     :param mappings: Mappings to aggregate
-    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this list
-    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets of references
+    :param prefix_allowlist: An optional prefix filter - only keeps prefixes in this
+        list
+
+    :returns: A dictionary mapping from a frozenset of prefixes to a set of frozensets
+        of references
     """
     dd: defaultdict[frozenset[str], set[frozenset[Reference]]] = defaultdict(set)
     components = iter_components(mappings)
@@ -939,7 +1040,8 @@ def update_literal_mappings(
     :param literal_mappings: A list of literal mappings
     :param mappings: A list of SeMRA mapping objects, constituting a priority mapping.
         This means that each mapping has a unique subject.
-    :return: A new list of literal mappings that have been remapped
+
+    :returns: A new list of literal mappings that have been remapped
 
     .. code-block:: python
 
@@ -963,7 +1065,6 @@ def update_literal_mappings(
         # 3. Update terms and use them (i.e., to construct a grounder)
         new_literal_mappings = update_literal_mappings(literal_mappings, mappings)
         grounder = make_grounder(new_literal_mappings)
-
     """
     assert_projection(mappings)
     return ssslm.remap_literal_mappings(
@@ -1012,10 +1113,11 @@ def get_identifier_index(
 
     :param mappings: An iterable of mappings to be indexed
     :param predicates: If given, filter to mappings with these predicates
-    :return: A directed index
 
-    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and
-    ``P1:1 skos:exactMatch P3:X``, we would have the following index:
+    :returns: A directed index
+
+    For example, if we have the triples ``P1:1 skos:exactMatch P2:A`` and ``P1:1
+    skos:exactMatch P3:X``, we would have the following index:
 
     .. code-block:: python
 
@@ -1048,10 +1150,9 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     """Get the set of terms appearing in each prefix.
 
     :param mappings: An iterable of mappings
-    :return:
-        A dictionary from prefixes appearing in subjects/objects
-        of mappings to the set local unique identifiers appearing
-        in mappings
+
+    :returns: A dictionary from prefixes appearing in subjects/objects of mappings to
+        the set local unique identifiers appearing in mappings
 
     >>> m1 = Mapping(
     ...     subject=Reference.from_curie("chebi:10084"),
@@ -1067,7 +1168,9 @@ def get_observed_terms(mappings: t.Iterable[Mapping]) -> PrefixIdentifierDict:
     {'chebi': ['10084', '10100'], 'mesh': ['C062735', 'C453820']}
     """
     entities: defaultdict[str, set[str]] = defaultdict(set)
-    for mapping in tqdm(mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms"):
+    for mapping in tqdm(
+        mappings, unit_scale=True, unit="mapping", desc="Indexing observed terms", leave=False
+    ):
         for reference in (mapping.subject, mapping.object):
             entities[reference.prefix].add(reference.identifier)
     return dict(entities)
@@ -1089,19 +1192,25 @@ def get_terms(
         hydrated_subset_configuration = hydrate_subsets(
             subset_configuration, show_progress=show_progress
         )
-    for prefix in tqdm(prefixes, desc="Getting terms"):
+    for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
         tqdm.write(f"[{prefix}] getting terms")
+        start = time.time()
         identifiers = pyobo.get_ids(prefix, use_tqdm=show_progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
+            tqdm.write(f"[{prefix}] got {len(identifiers):,} terms")
             prefix_to_identifiers[prefix] = {
                 identifier
                 for identifier in identifiers
                 if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
             }
+            tqdm.write(f"[{prefix}] subset to {len(prefix_to_identifiers[prefix]):,} terms")
         elif not identifiers:
-            tqdm.write(f"[{prefix}] PyOBO did not return any IDs")
+            tqdm.write(click.style(f"[{prefix}] PyOBO did not return any IDs", fg="yellow"))
         else:
+            tqdm.write(
+                f"[{prefix}] got {len(identifiers):,} terms in {humanize.naturaldelta(time.time() - start)}"
+            )
             prefix_to_identifiers[prefix] = identifiers
     return prefix_to_identifiers
 
@@ -1200,11 +1309,24 @@ def get_asymmetric_counter(
     )
 
 
+def _validator(x: str | list[str] | None) -> str | list[str] | None:
+    if x is None:
+        return None
+    elif isinstance(x, str):
+        return bioregistry.normalize_prefix(x, strict=True)
+    elif isinstance(x, list):
+        return [bioregistry.normalize_prefix(p, strict=True) for p in x]
+    else:
+        raise TypeError
+
+
 class Mutation(BaseModel):
     """Represents a mutation operation on a mapping set."""
 
-    source: str = Field(..., description="The source type")
-    target: str | list[str] | None = Field(None, description="limit mutation to these")
+    source: Annotated[str, PrefixValidator] = Field(..., description="The source type")
+    target: Annotated[str | list[str] | None, BeforeValidator(_validator)] = Field(
+        None, description="limit mutation to these"
+    )
     confidence: float = 1.0
     old: Reference = Field(default=DB_XREF)
     new: Reference = Field(default=EXACT_MATCH)
@@ -1234,7 +1356,12 @@ def apply_mutations(
     """Apply mutations."""
     mutation_index = _index_mutations(mutations)
     for mapping in tqdm(
-        mappings, disable=not progress, desc="Applying mutations", unit_scale=True, unit="mapping"
+        mappings,
+        disable=not progress,
+        desc="Applying mutations",
+        unit_scale=True,
+        unit="mapping",
+        leave=False,
     ):
         yield _handle_mutation(mapping, mutation_index)
 

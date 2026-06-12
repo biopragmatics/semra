@@ -1,45 +1,52 @@
-SeMRA Raw Semantic Mappings Database
-====================================
+######################################
+ SeMRA Raw Semantic Mappings Database
+######################################
 
 .. automodapi:: semra.database
     :no-heading:
 
-Domain-specific Processed Mapping Databases
-===========================================
+#############################################
+ Domain-specific Processed Mapping Databases
+#############################################
 
 .. automodapi:: semra.landscape
     :no-heading:
 
-Disease
--------
+*********
+ Disease
+*********
 
 .. automodapi:: semra.landscape.disease
     :include-all-objects:
     :no-heading:
 
-Cell and Cell Line
-------------------
+********************
+ Cell and Cell Line
+********************
 
 .. automodapi:: semra.landscape.cell
     :include-all-objects:
     :no-heading:
 
-Protein Complex
----------------
+*****************
+ Protein Complex
+*****************
 
 .. automodapi:: semra.landscape.complex
     :include-all-objects:
     :no-heading:
 
-Gene
-----
+******
+ Gene
+******
 
 .. automodapi:: semra.landscape.gene
     :include-all-objects:
     :no-heading:
 
-Anatomy
--------
+*********
+ Anatomy
+*********
 
 .. automodapi:: semra.landscape.anatomy
     :include-all-objects:

@@ -1,17 +1,18 @@
 """Get arbitrary Wikidata mappings."""
 
+import gzip
 import json
 from collections.abc import Iterable
-from typing import Any, cast
 
 import bioregistry
 import curies
 import pystow
-import requests
+import wikidata_client
+from sssom_pydantic import SemanticMapping
 from tqdm import tqdm
 
-from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
-from semra.version import get_version
+from semra.constants import CC0_URL
+from semra.struct import Reference
 from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
@@ -19,15 +20,12 @@ __all__ = [
     "get_wikidata_mappings_by_prefix",
 ]
 
-#: WikiData SPARQL endpoint. See https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service#Interfacing
-URL = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
-
 WIKIDATA_MAPPING_DIRECTORY = pystow.module("wikidata", "mappings")
 
 
 def get_all_wikidata_mappings(
     *, use_tqdm: bool = True, predicate: curies.Reference | None = None
-) -> list[Mapping]:
+) -> list[SemanticMapping]:
     """Iterate over WikiData xref dataframes."""
     if predicate is None:
         predicate = EXACT_MATCH
@@ -35,7 +33,7 @@ def get_all_wikidata_mappings(
     wikidata_properties = bioregistry.get_registry_map("wikidata")
 
     it = tqdm(sorted(wikidata_properties.items()), disable=not use_tqdm, desc="Wikidata properties")
-    rv = []
+    rv: list[SemanticMapping] = []
     for prefix, wikidata_property in it:
         if prefix in {"pubmed", "pmc", "orcid", "inchi", "smiles"}:
             continue  # too many
@@ -44,17 +42,19 @@ def get_all_wikidata_mappings(
     return rv
 
 
-def get_wikidata_mappings(*, prop: str, predicate: curies.Reference | None = None) -> list[Mapping]:
+def get_wikidata_mappings(
+    *, prop: str, predicate: curies.Reference | None = None
+) -> list[SemanticMapping]:
     """Get mappings from Wikidata."""
     prop_to_prefix = bioregistry.get_registry_invmap("wikidata")
     target_prefix = prop_to_prefix[prop]
 
-    return _help(target_prefix=target_prefix, prop=prop, predicate=predicate)
+    return list(_help(target_prefix=target_prefix, prop=prop, predicate=predicate))
 
 
 def get_wikidata_mappings_by_prefix(
     prefix: str, predicate: curies.Reference | None = None
-) -> list[Mapping]:
+) -> Iterable[SemanticMapping]:
     """Get mappings from Wikidata."""
     prefix_to_prop = bioregistry.get_registry_map("wikidata")
     prop = prefix_to_prop[prefix]
@@ -63,16 +63,19 @@ def get_wikidata_mappings_by_prefix(
 
 
 def _help(
-    target_prefix: str, prop: str, *, predicate: curies.Reference | None = None, cache: bool = True
-) -> list[Mapping]:
+    target_prefix: str,
+    prop: str,
+    *,
+    predicate: curies.Reference | None = None,
+    cache: bool = True,
+    confidence: float = 0.99,
+) -> Iterable[SemanticMapping]:
     """Get mappings from Wikidata."""
     if predicate is None:
         predicate = EXACT_MATCH
-
-    _predicate = Reference(prefix=predicate.prefix, identifier=predicate.identifier)
-
-    mapping_set = MappingSet(name="wikidata", license="CC0", confidence=0.99)
-    rv = []
+    else:
+        predicate = Reference.from_reference(predicate)
+    source = Reference(prefix="bioregistry", identifier="wikidata")
     for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
         if not wikidata_id.startswith("Q"):
             continue
@@ -80,14 +83,15 @@ def _help(
             obj = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
         except ValueError:
             continue
-        mapping = Mapping(
+        yield SemanticMapping(
             subject=Reference(prefix="wikidata", identifier=wikidata_id),
-            predicate=_predicate,
+            predicate=predicate,
             object=obj,
-            evidence=[SimpleEvidence(justification=UNSPECIFIED_MAPPING, mapping_set=mapping_set)],
+            justification=UNSPECIFIED_MAPPING,
+            license=CC0_URL,
+            confidence=confidence,
+            source=source,
         )
-        rv.append(mapping)
-    return rv
 
 
 def _clean_xref_id(prefix: str, identifier: str) -> str:
@@ -100,30 +104,15 @@ def iter_wikidata_mappings(
     wikidata_property: str, *, cache: bool = True
 ) -> Iterable[tuple[str, str]]:
     """Iterate over Wikidata xrefs."""
-    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{wikidata_property}.json")
+    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{wikidata_property}.json.gz")
     if path.exists() and cache:
-        with path.open() as file:
+        with gzip.open(path, mode="rt") as file:
             rows = json.load(file)
     else:
-        query = f"SELECT ?wikidata_id ?id WHERE {{?wikidata_id wdt:{wikidata_property} ?id}}"
-        rows = _run_query(query)
-        with path.open("w") as file:
-            json.dump(rows, file, indent=2)
+        sparql = f"SELECT ?wikidata_id ?id WHERE {{?wikidata_id wdt:{wikidata_property} ?id}}"
+        rows = wikidata_client.query(sparql, timeout=300)
+        with gzip.open(path, mode="wt") as file:
+            json.dump(rows, file)
 
     for row in rows:
-        wikidata_id = row["wikidata_id"]["value"].removeprefix("http://www.wikidata.org/entity/")
-        wikidata_id = wikidata_id.removeprefix("http://wikidata.org/entity/")
-        entity_id = row["id"]["value"]
-        yield wikidata_id, entity_id
-
-
-HEADERS = {
-    "User-Agent": f"semra/{get_version()}",
-}
-
-
-def _run_query(query: str, base: str = URL) -> list[dict[str, Any]]:
-    res = requests.get(base, params={"query": query, "format": "json"}, headers=HEADERS, timeout=45)
-    res.raise_for_status()
-    res_json = res.json()
-    return cast(list[dict[str, Any]], res_json["results"]["bindings"])
+        yield row["wikidata_id"], row["id"]

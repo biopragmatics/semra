@@ -179,11 +179,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Reference, Statistics
-from semra.utils import (
-    PrefixListValidator,
-    PrefixPairListValidator,
-    get_jinja_template,
-)
+from semra.utils import PrefixListValidator, get_jinja_template
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -245,19 +241,31 @@ class AssembleReturnType(enum.Enum):
 class Input(BaseModel):
     """Represents the input to a mapping assembly."""
 
-    source: Literal["pyobo", "bioontologies", "biomappings", "custom", "sssom", "gilda", "wikidata"]
+    source: Literal[
+        "pyobo",
+        "bioontologies",
+        "biomappings",
+        "custom",
+        "sssom",
+        "gilda",
+        "wikidata",
+    ]
     prefix: str | None = None
-    confidence: float = Field(
-        1.0,
-        description="confidence the creator of the configuration has in the source",
-        ge=0.0,
-        le=1.0,
-    )
+    confidence: Annotated[
+        float,
+        Field(
+            description="confidence the creator of the configuration has in the source",
+            ge=0.0,
+            le=1.0,
+        ),
+    ] = 1.0
     extras: dict[str, Any] | None = None
-    pre_filter_prefixes: bool | None = Field(
-        None,
-        description="should the raw mappings be filtered by the priority prefix list? if not set, will default to false.",
-    )
+    pre_filter_prefixes: Annotated[
+        bool | None,
+        Field(
+            description="should the raw mappings be filtered by the priority prefix list? if not set, will default to false.",
+        ),
+    ] = None
 
     @model_validator(mode="after")
     def validate_after(self) -> Self:
@@ -344,17 +352,19 @@ def assert_bioregistry_canonical(prefix: str) -> None:
 class Configuration(BaseModel):
     """Represents the steps taken during mapping assembly."""
 
-    name: str = Field(..., description="The name of the mapping set configuration")
-    key: str = Field(
-        ..., description="A short key describing the configuration used for logging purposes"
-    )
-    description: str | None = Field(
-        None, description="An explanation of the purpose of the mapping set configuration"
-    )
-    creators: list[Reference] = Field(
-        default_factory=list, description="A list of the ORCID identifiers for creators"
-    )
-    inputs: list[Input] = Field(..., description="A list of sources of mappings")
+    name: Annotated[str, Field(description="The name of the mapping set configuration")]
+    key: Annotated[
+        str, Field(description="A short key describing the configuration used for logging purposes")
+    ]
+    description: Annotated[
+        str | None,
+        Field(description="An explanation of the purpose of the mapping set configuration"),
+    ] = None
+    creators: Annotated[
+        list[Reference] | None,
+        Field(description="A list of the ORCID identifiers for creators"),
+    ] = None
+    inputs: Annotated[list[Input], Field(description="A list of sources of mappings")]
     negative_inputs: list[Input] = Field(
         default_factory=lambda: [Input(source="biomappings", prefix="negative")]
     )
@@ -362,57 +372,63 @@ class Configuration(BaseModel):
         default_factory=list,
         description="If no priority is given, is inferred from the order of inputs",
     )
-    mutations: list[Mutation] = Field(default_factory=list)
-    subsets: SubsetConfiguration | None = Field(
-        None,
-        description="A field to put restrictions on the sub-hierarchies from each resource."
-        "For example, if you want to assemble cell mappings from MeSH, you don't need all "
-        "possible mesh mappings, but only ones that have to do with terms in the cell hierarchy "
-        "under the mesh:D002477 term. Therefore, this dictionary allows for specifying such "
-        "restrictions",
-        examples=[
-            {"mesh": [Reference.from_curie("mesh:D002477")]},
-        ],
-    )
-
-    exclude_pairs: Annotated[list[tuple[str, str]], PrefixPairListValidator] = Field(
-        default_factory=list,
-        description="A list of pairs of prefixes. Remove all mappings whose source "
-        "prefix is the first in a pair and target prefix is second in a pair. Order matters.",
-    )
-    remove_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
-        None, description="Prefixes to remove before processing"
-    )
-    keep_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
-        None, description="Prefixes to keep before processing"
-    )
-    post_remove_prefixes: list[str] | None = Field(
-        None, description="Prefixes to remove after processing"
-    )
-    post_keep_prefixes: Annotated[list[str] | None, PrefixListValidator] = Field(
-        None, description="Prefixes to keep after processing"
-    )
+    mutations: list[Mutation] | None = None
+    subsets: Annotated[
+        SubsetConfiguration | None,
+        Field(
+            description="A field to put restrictions on the sub-hierarchies from each resource."
+            "For example, if you want to assemble cell mappings from MeSH, you don't need all "
+            "possible mesh mappings, but only ones that have to do with terms in the cell hierarchy "
+            "under the mesh:D002477 term. Therefore, this dictionary allows for specifying such "
+            "restrictions",
+            examples=[
+                {"mesh": [Reference.from_curie("mesh:D002477")]},
+            ],
+        ),
+    ] = None
+    remove_prefixes: Annotated[
+        list[str] | None,
+        PrefixListValidator,
+        Field(description="Prefixes to remove before processing"),
+    ] = None
+    keep_prefixes: Annotated[
+        list[str] | None,
+        PrefixListValidator,
+        Field(description="Prefixes to keep before processing"),
+    ] = None
+    post_remove_prefixes: Annotated[
+        list[str] | None, Field(description="Prefixes to remove after processing")
+    ] = None
+    post_keep_prefixes: Annotated[
+        list[str] | None,
+        PrefixListValidator,
+        Field(description="Prefixes to keep after processing"),
+    ] = None
     remove_imprecise: bool = True
-    validate_raw: bool = Field(
-        default=False,
-        description="Should the raw mappings be validated against Bioregistry "
-        "prefixes and local unique identifier regular expressions (when available)?",
-    )
+    validate_raw: Annotated[
+        bool,
+        Field(
+            description="Should the raw mappings be validated against Bioregistry "
+            "prefixes and local unique identifier regular expressions (when available)?",
+        ),
+    ] = False
 
-    directory: Path = Field(..., description="The directory where contents are written")
+    directory: Annotated[Path, Field(description="The directory where contents are written")]
 
-    write_raw_neo4j: bool = Field(
-        default=False, description="Should a neo4j directory be written for raw mappings?"
-    )
-    neo4j_gzip: None | Literal["during", "after"] = Field(
-        default="during",
-        description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
-    )
-    add_labels: bool = Field(
-        default=False, description="Should PyOBO be used to look up labels for SSSOM output?"
-    )
+    write_raw_neo4j: Annotated[
+        bool, Field(description="Should a neo4j directory be written for raw mappings?")
+    ] = False
+    neo4j_gzip: Annotated[
+        None | Literal["during", "after"],
+        Field(
+            description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
+        ),
+    ] = "during"
+    add_labels: Annotated[
+        bool, Field(description="Should PyOBO be used to look up labels for SSSOM output?")
+    ] = False
 
-    zenodo_record: int | None = Field(None, description="The Zenodo record identifier")
+    zenodo_record: Annotated[int | None, Field(description="The Zenodo record identifier")] = None
 
     purl_base: str = "https://w3id.org/biopragmatics/semra/"
 

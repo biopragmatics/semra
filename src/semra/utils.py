@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 __all__ = [
     "LANDSCAPE_FOLDER",
     "PrefixListValidator",
-    "PrefixPairListValidator",
     "PrefixValidator",
     "cleanup_prefixes",
     "format_number",
@@ -114,20 +113,6 @@ def _validate_prefix_list(prefixes: list[str] | None) -> list[str] | None:
 
 
 PrefixListValidator = BeforeValidator(_validate_prefix_list)
-
-
-def _validate_prefix_pair_list(
-    prefixes: list[tuple[str, str]] | None,
-) -> list[tuple[str, str]] | None:
-    if prefixes is None:
-        return None
-    for left, right in prefixes:
-        _vv(left)
-        _vv(right)
-    return prefixes
-
-
-PrefixPairListValidator = BeforeValidator(_validate_prefix_pair_list)
 
 
 def get_semra_uri(*keys: str, gzip: bool = False) -> str:

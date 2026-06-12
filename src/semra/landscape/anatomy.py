@@ -70,7 +70,7 @@ application.
 
 .. |anatomyimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
     :target: https://doi.org/10.5281/zenodo.11091802
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import pystow
 

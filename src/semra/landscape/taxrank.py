@@ -59,7 +59,7 @@ application.
 
 .. |taxrankimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.None.svg
     :target: https://doi.org/10.5281/zenodo.None
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import pystow
 

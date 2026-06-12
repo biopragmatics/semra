@@ -96,7 +96,7 @@ application.
 
 .. |diseaseimg| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091885.svg
     :target: https://doi.org/10.5281/zenodo.11091885
-"""  # noqa:D205,D400
+"""  # noqa: D400
 
 import bioregistry
 import pystow

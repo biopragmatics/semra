@@ -44,12 +44,12 @@ The SeMRA Gene Mappings Database can be rebuilt with the following commands:
 
 .. note::
 
-    Downloading raw data resources can take on the order of hours to tens
-    of hours depending on your internet connection and the reliability of
-    the resources' respective servers.
+    Downloading raw data resources can take on the order of hours to tens of hours
+    depending on your internet connection and the reliability of the resources'
+    respective servers.
 
-    Processing and analysis can be run overnight on commodity hardware
-    (e.g., a 2023 MacBook Pro with 36GB RAM).
+    Processing and analysis can be run overnight on commodity hardware (e.g., a 2023
+    MacBook Pro with 36GB RAM).
 
 Web Application
 ***************
@@ -61,8 +61,8 @@ locally on Docker from inside the folder where the data was unzipped with:
 
     $ sh run_on_docker.sh
 
-If you reproduced the database yourself, you can ``cd``
-to the right folder and run with:
+If you reproduced the database yourself, you can ``cd`` to the right folder and run
+with:
 
 .. code-block:: console
 

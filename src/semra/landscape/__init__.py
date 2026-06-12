@@ -32,16 +32,16 @@ Gene               :mod:`semra.landscape.gene`    |gene|            `Gene Analys
 ================== ============================== ================= ===============================================================================================
 
 .. |disease| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091885.svg
-  :target: https://doi.org/10.5281/zenodo.11091885
+    :target: https://doi.org/10.5281/zenodo.11091885
 
 .. |cell| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091580.svg
-  :target: https://doi.org/10.5281/zenodo.11091580
+    :target: https://doi.org/10.5281/zenodo.11091580
 
 .. |anatomy| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091802.svg
-  :target: https://doi.org/10.5281/zenodo.11091802
+    :target: https://doi.org/10.5281/zenodo.11091802
 
 .. |complex| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11091421.svg
-  :target: https://doi.org/10.5281/zenodo.11091421
+    :target: https://doi.org/10.5281/zenodo.11091421
 
 .. |gene| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11092012.svg
   :target: https://doi.org/10.5281/zenodo.11092012

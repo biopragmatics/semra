@@ -16,6 +16,7 @@ PREFIXES = [
     "kim.educationlevel",
     "oeh.educationlevel",
     "ans.educationlevel",
+    "openeduhub.context",
 ]
 
 EDUCATION_LEVEL_CONFIGURATION = Configuration(

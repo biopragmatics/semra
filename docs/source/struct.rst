@@ -3,5 +3,5 @@
 ################
 
 .. automodapi:: semra.struct
-    :skip: Reference,Triple
+    :skip: Triple
     :no-heading:

@@ -36,6 +36,7 @@ from ..version import VERSION
 
 __all__ = [
     "CONCEPT_NODES_HEADER",
+    "DEFAULT_PYTHON",
     "DERIVED_PREDICATE",
     "EDGES_HEADER",
     "EDGES_SUPPLEMENT_HEADER",
@@ -56,7 +57,8 @@ STARTUP_TEMPLATE = JINJA_ENV.get_template("startup.sh")
 DOCKERFILE_TEMPLATE = JINJA_ENV.get_template("Dockerfile")
 RUN_ON_STARTUP_TEMPLATE = JINJA_ENV.get_template("run_on_startup.sh")
 
-PYTHON = "python3.13"
+#: The default version of Python to use in Neo4j docker.
+DEFAULT_PYTHON = "python3.13"
 
 #: The column headers for the concept nodes in the SeMRA Neo4j graph database export
 CONCEPT_NODES_HEADER = ["curie:ID", "prefix", "name", "priority:boolean"]
@@ -147,6 +149,7 @@ def write_neo4j(
     compress: None | Literal["during", "after"] = None,
     cleanup: bool = True,
     quiet: bool = False,
+    python: str | None = None,
 ) -> None:
     """Write all files needed to construct a Neo4j graph database from a set of mappings.
 
@@ -176,6 +179,7 @@ def write_neo4j(
         and you're running a development version of SeMRA, will default to the main
         branch on GitHub. If not given and you're using a release version of SeMRA, will
         pin to that.
+    :param python: Which version of python to use in docker? Defaults to :data:`PYTHON`
 
     You can use this function to build your own database like in
 
@@ -208,7 +212,8 @@ def write_neo4j(
             pip_install = "semra[web] @ git+https://github.com/biopragmatics/semra.git"
         else:
             pip_install = f'"semra[web]=={VERSION}"'
-
+    if python is None:
+        python = DEFAULT_PYTHON
     if docker_name is None:
         docker_name = "semra"
     if equivalence_classes is None:
@@ -324,11 +329,7 @@ def write_neo4j(
                     )
 
     startup_path = directory.joinpath(startup_script_name)
-    startup_path.write_text(
-        STARTUP_TEMPLATE.render(
-            python=PYTHON,
-        )
-    )
+    startup_path.write_text(STARTUP_TEMPLATE.render(python=python))
 
     if compress == "after":
         node_names = [
@@ -348,7 +349,7 @@ def write_neo4j(
             node_names=node_names,
             edge_names=edge_names,
             pip_install=pip_install,
-            python=PYTHON,
+            python=python,
         )
     )
 
@@ -356,7 +357,7 @@ def write_neo4j(
     run_path.write_text(
         RUN_ON_STARTUP_TEMPLATE.render(
             docker_name=docker_name,
-            python=PYTHON,
+            python=python,
         )
     )
 

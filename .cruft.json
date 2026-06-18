@@ -15,6 +15,7 @@
       "command_line_interface": true,
       "gitlab": false,
       "runner": "tox",
+      "citation_file": true,
       "__not_charlie": "",
       "__runner": "tox -e",
       "__runner_uv": "--with tox-uv tox -e",

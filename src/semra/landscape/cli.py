@@ -40,6 +40,7 @@ def _get_functions(
         CELL_CONFIGURATION,
         COMPLEX_CONFIGURATION,
         DISEASE_CONFIGURATION,
+        EDUCATION_LEVEL_CONFIGURATION,
         GENE_CONFIGURATION,
         INSTRUMENT_CONFIGURATION,
         TAXRANK_CONFIGURATION,
@@ -54,6 +55,10 @@ def _get_functions(
         (
             INSTRUMENT_CONFIGURATION,
             INSTRUMENT_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
+        ),
+        (
+            EDUCATION_LEVEL_CONFIGURATION,
+            EDUCATION_LEVEL_CONFIGURATION.get_cli(copy_to_landscape=copy_to_landscape, **kwargs),
         ),
         (
             ANATOMY_CONFIGURATION,

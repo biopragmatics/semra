@@ -53,7 +53,7 @@ dependencies = [
     "pandas",
     "pydantic",
     "tqdm",
-    "more_itertools",
+    "more-itertools",
     "networkx",
     "bioregistry>=0.13.61",
     "bioversions>=0.10.11",

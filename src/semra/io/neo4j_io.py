@@ -203,6 +203,8 @@ def write_neo4j(
 
     if pip_install is None:
         if VERSION.endswith("-dev"):
+            # TODO could get more clever and check current branch in local
+            #  repo to add to end
             pip_install = "semra[web] @ git+https://github.com/biopragmatics/semra.git"
         else:
             pip_install = f'"semra[web]=={VERSION}"'

@@ -32,6 +32,7 @@ from ..struct import (
     SimpleEvidence,
     _md5_hexdigest,
 )
+from ..version import VERSION
 
 __all__ = [
     "CONCEPT_NODES_HEADER",
@@ -141,7 +142,7 @@ def write_neo4j(
     startup_script_name: str = "startup.sh",
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
-    pip_install: str = "semra[web] @ git+https://github.com/biopragmatics/semra.git@update-sssom-input",
+    pip_install: str | None = None,
     use_tqdm: bool = True,
     compress: None | Literal["during", "after"] = None,
     cleanup: bool = True,
@@ -171,7 +172,10 @@ def write_neo4j(
     :param run_script_name: The name of the run script that you as the user should call
         to wrap building and running the Docker image
     :param dockerfile_name: The name of the Dockerfile produced
-    :param pip_install: The package that's pip installed in the docker file
+    :param pip_install: The package that's pip installed in the Dockerfile. If not given
+        and you're running a development version of SeMRA, will default to the main
+        branch on GitHub. If not given and you're using a release version of SeMRA, will
+        pin to that.
 
     You can use this function to build your own database like in
 
@@ -196,6 +200,12 @@ def write_neo4j(
     """
     directory = Path(directory).expanduser().resolve()
     directory.mkdir(exist_ok=True)
+
+    if pip_install is None:
+        if VERSION.endswith("-dev"):
+            pip_install = "semra[web] @ git+https://github.com/biopragmatics/semra.git"
+        else:
+            pip_install = f'"semra[web]=={VERSION}"'
 
     if docker_name is None:
         docker_name = "semra"

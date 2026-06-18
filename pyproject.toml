@@ -58,7 +58,7 @@ dependencies = [
     "bioregistry>=0.13.61",
     "bioversions>=0.10.11",
     "biomappings>=0.5.5",
-    "pyobo>=0.12.24",
+    "pyobo>=0.13.0",
     "typing-extensions",
     "zenodo-client",
     "ssslm>=0.2.0",

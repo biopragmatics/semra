@@ -58,18 +58,18 @@ dependencies = [
     "bioregistry>=0.13.61",
     "bioversions>=0.10.11",
     "biomappings>=0.5.5",
-    "pyobo>=0.13.0",
+    "pyobo>=0.13.1",
     "typing-extensions",
     "zenodo-client",
     "ssslm>=0.2.0",
     "curies>=0.13.12",
     "jinja2",  # used in neo4j generation
-    "class-resolver>=0.6.0",
+    "class-resolver>=0.7.1",
     "pyyaml",
     "humanize",
     "tabulate",
     "sssom-pydantic>=0.5.10",
-    "wikidata-client",
+    "wikidata-client>=0.0.4",
     "obographs>=0.0.11",
 ]
 

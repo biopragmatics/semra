@@ -13,7 +13,7 @@ import bioregistry
 import curies
 import pydantic
 import sssom_pydantic
-from bioregistry import NormalizedNamableReference as Reference
+from pyobo import Reference
 from pystow.utils import (
     iter_pydantic_jsonl,
     reyield,

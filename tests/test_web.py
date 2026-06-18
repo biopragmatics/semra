@@ -4,7 +4,6 @@ import unittest
 from typing import ClassVar, cast
 
 import networkx as nx
-from bioregistry import NormalizedNamableReference
 from fastapi import FastAPI
 from flask import Flask
 from sssom_pydantic import SemanticMapping
@@ -118,7 +117,7 @@ class MockClient(BaseClient):
         """Mock getting an autocompletion."""
         raise NotImplementedError(f"need mock for {prefix}")
 
-    def get_example_concept(self) -> NormalizedNamableReference:
+    def get_example_concept(self) -> Reference:
         """Mock getting an example concept."""
         return R2
 

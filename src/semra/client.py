@@ -15,7 +15,6 @@ import neo4j
 import neo4j.graph
 import networkx as nx
 import pydantic
-from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from neo4j import ManagedTransaction, unit_of_work
 
 from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX
@@ -64,7 +63,7 @@ RELATIONS_CYPHER = "CALL db.relationshipTypes() YIELD relationshipType RETURN re
 CONCEPT_NAME_CYPHER = "MATCH (n:concept) WHERE n.curie = $curie RETURN n.name LIMIT 1"
 
 #: The result returned by an autocompletion
-AutocompletionResults: TypeAlias = list[NormalizedNamableReference]
+AutocompletionResults: TypeAlias = list[Reference]
 
 
 class BaseClient:
@@ -195,7 +194,7 @@ class BaseClient:
         """Get autocompletion."""
         raise NotImplementedError
 
-    def get_example_concept(self) -> NormalizedNamableReference | None:
+    def get_example_concept(self) -> Reference | None:
         """Get an example concept."""
         raise NotImplementedError
 
@@ -276,7 +275,7 @@ class Neo4jClient(BaseClient):
         LIMIT $top_n
         """
         res = self.read_query(query, top_n=top_n, prefix=prefix_clause)
-        return [NormalizedNamedReference.from_curie(curie, name=name) for name, curie in res]
+        return [Reference.from_curie(curie, name=name) for name, curie in res]
 
     def initialize_autocomplete(self) -> None:
         """Create indexes in Neo4j for autocomplete."""
@@ -652,7 +651,7 @@ as label, count UNION ALL
         else:
             return cast(str, name)
 
-    def get_example_concept(self) -> NormalizedNamableReference | None:
+    def get_example_concept(self) -> Reference | None:
         """Get an example concept."""
         name_query = "MATCH (n:concept) WHERE n.name IS NOT NULL RETURN n.name, n.curie LIMIT 1"
         name_example_list = self.read_query(name_query)
@@ -667,7 +666,7 @@ as label, count UNION ALL
                 return None
 
             curie_example = curie_example_list[0][0]
-        return NormalizedNamableReference.from_curie(curie_example, name=name_example)
+        return Reference.from_curie(curie_example, name=name_example)
 
 
 @dataclasses.dataclass

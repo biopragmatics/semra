@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import bioregistry
-from bioregistry import NormalizedNamableReference as Reference
+from pyobo import Reference
 from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX as SEMRA_EVIDENCE_PREFIX
 from sssom_pydantic.api import MAPPING_HASH_URI_PREFIX as SEMRA_EVIDENCE_URI_PREFIX
 from sssom_pydantic.api import (

@@ -9,9 +9,9 @@ from typing import Literal, overload
 
 import fastapi
 from a2wsgi import WSGIMiddleware
-from bioregistry import NormalizedNamedReference
 from flask import Flask
 from flask_bootstrap import Bootstrap5
+from pyobo import Reference
 
 from semra.client import BaseClient, Neo4jClient
 from semra.web.fastapi_components import api_router, auto_router
@@ -67,7 +67,7 @@ def get_app(
 
     biomappings_git_hash: str | None = None
     false_mapping_index: set[tuple[str, str]] = set()
-    current_author: NormalizedNamedReference | None = None
+    current_author: Reference | None = None
 
     if use_biomappings:
         try:

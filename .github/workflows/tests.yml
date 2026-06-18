@@ -6,13 +6,13 @@ name: Tests
 
 # by default, give the GITHUB_TOKEN no permissions
 # See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/controlling-permissions-for-github_token
-permissions: { }
+permissions: {}
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint:
@@ -25,8 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.14", "3.11" ]
-        tox-command: [ "lint", "pyroma", "mypy" ]
+        python-version: ["3.14", "3.11"]
+        tox-command: ["lint", "pyroma", "mypy"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.14" ]
+        python-version: ["3.14"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -84,8 +84,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ "3.14", "3.11" ]
+        os: [ubuntu-latest]
+        python-version: ["3.14", "3.11"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -97,11 +97,9 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
           python-version: ${{ matrix.python-version }}
       - name: Test with pytest and generate coverage file
-        run:
-          uvx --with tox-uv tox -e py
+        run: uvx --with tox-uv tox -e py
       - name: Run doctests
-        run:
-          uvx --with tox-uv tox -e doctests
+        run: uvx --with tox-uv tox -e doctests
       - name: Upload coverage report to codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         if: success()

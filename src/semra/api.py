@@ -35,17 +35,10 @@ from ssslm import LiteralMapping
 from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
+from semra.constants import Reference
 from semra.io.graph import _from_digraph_edge, to_digraph
 from semra.rules import FLIP, SubsetConfiguration
-from semra.struct import (
-    Evidence,
-    Mapping,
-    MappingSet,
-    ReasonedEvidence,
-    Reference,
-    SimpleEvidence,
-    Triple,
-)
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence, Triple
 from semra.utils import PrefixValidator, cleanup_prefixes, semra_tqdm
 from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 

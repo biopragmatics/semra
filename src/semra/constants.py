@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import bioregistry
-from bioregistry import NormalizedNamableReference as Reference
+from pyobo import Reference
 from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX as SEMRA_EVIDENCE_PREFIX
 from sssom_pydantic.api import MAPPING_HASH_URI_PREFIX as SEMRA_EVIDENCE_URI_PREFIX
 from sssom_pydantic.api import (
@@ -24,6 +24,7 @@ __all__ = [
     "SEMRA_NEO4J_MAPPING_LABEL",
     "SEMRA_NEO4J_MAPPING_SET_LABEL",
     "SEMRA_SOURCE",
+    "Reference",
 ]
 
 #: The label used for nodes representing mappings in SeMRA's Neo4j export

@@ -6,12 +6,11 @@ from typing import cast
 
 import flask
 import werkzeug
-from bioregistry import NormalizedNamableReference
-from curies import Reference
 from flask import Blueprint, current_app, render_template
 from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
+from semra.constants import Reference
 from semra.utils import format_number
 from semra.version import get_version as get_semra_version
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
@@ -95,12 +94,8 @@ def mark_exact_incorrect(source: str, target: str) -> werkzeug.Response:
 
     import biomappings.resources
 
-    subject_reference = NormalizedNamableReference.from_curie(
-        source, name=client.get_concept_name(source)
-    )
-    target_reference = NormalizedNamableReference.from_curie(
-        target, name=client.get_concept_name(target)
-    )
+    subject_reference = Reference.from_curie(source, name=client.get_concept_name(source))
+    target_reference = Reference.from_curie(target, name=client.get_concept_name(target))
 
     mapping = SemanticMapping.model_validate(
         {

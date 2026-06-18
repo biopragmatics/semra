@@ -14,10 +14,11 @@ from sssom_pydantic import SemanticMapping
 
 import semra
 from semra.api import get_index
+from semra.constants import Reference
 from semra.io import from_sssom, write_sssom
 from semra.pipeline import AssembleReturnType, Configuration, Input, MappingPack, get_raw_mappings
 from semra.sources import SOURCE_RESOLVER
-from semra.struct import Mapping, MappingSet, Reference, SimpleEvidence
+from semra.struct import Mapping, MappingSet, SimpleEvidence
 from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
 from tests.constants import (
     R1,

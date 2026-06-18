@@ -4,11 +4,10 @@ from collections.abc import Iterable
 
 import pandas as pd
 from pydantic import AnyUrl
-from pyobo import Reference
 from pystow.utils import get_commit
 from sssom_pydantic import SemanticMapping
 
-from semra.constants import CC0_URL
+from semra.constants import CC0_URL, Reference
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING
 
 __all__ = [

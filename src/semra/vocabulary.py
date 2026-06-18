@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import curies
 from curies import vocabulary as v
-from pyobo import Reference
+
+from semra.constants import Reference
 
 __all__ = [
     "BEN_REFERENCE",

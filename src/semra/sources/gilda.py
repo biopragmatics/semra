@@ -8,11 +8,10 @@ import bioregistry
 import pandas as pd
 import sssom_pydantic
 from pydantic import AnyUrl
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
-from semra.constants import CC0_URL
+from semra.constants import CC0_URL, Reference
 from semra.vocabulary import EXACT_MATCH, LEXICAL_MAPPING
 
 __all__ = [

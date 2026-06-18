@@ -8,7 +8,6 @@ from typing import Literal
 
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from pyobo import Reference
 from pystow.utils import gzip_compress, safe_open_writer
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -22,6 +21,7 @@ from ..constants import (
     SEMRA_NEO4J_EVIDENCE_LABEL,
     SEMRA_NEO4J_MAPPING_LABEL,
     SEMRA_NEO4J_MAPPING_SET_LABEL,
+    Reference,
 )
 from ..struct import (
     ConfidenceMixin,

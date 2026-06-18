@@ -18,3 +18,4 @@ to build your own mapping processing workflows and I/O.
 
 .. automodapi:: semra.constants
     :include-all-objects:
+    :skip: Reference

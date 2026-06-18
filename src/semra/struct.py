@@ -105,13 +105,18 @@ import bioregistry
 import curies
 import pydantic
 import sssom_pydantic
-from bioregistry import NormalizedNamableReference as Reference
 from bioregistry.constants import FailureReturnType
 from curies.triples import Triple
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from sssom_pydantic import MappingSet, SemanticMapping
 
-from semra.constants import CC0_URL, SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, SEMRA_SOURCE
+from semra.constants import (
+    CC0_URL,
+    SEMRA_EVIDENCE_PREFIX,
+    SEMRA_MAPPING_PREFIX,
+    SEMRA_SOURCE,
+    Reference,
+)
 
 if TYPE_CHECKING:
     import sssom_pydantic
@@ -123,7 +128,6 @@ __all__ = [
     "Mapping",
     "MappingSet",
     "ReasonedEvidence",
-    "Reference",
     "SimpleEvidence",
     "Statistics",
     "Triple",

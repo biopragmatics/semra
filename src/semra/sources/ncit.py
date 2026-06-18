@@ -9,10 +9,10 @@ import pandas as pd
 import pystow
 import requests
 from pydantic import AnyUrl, ValidationError
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 from tqdm.asyncio import tqdm
 
+from semra.constants import Reference
 from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [

@@ -11,8 +11,7 @@ import wikidata_client
 from sssom_pydantic import SemanticMapping
 from tqdm import tqdm
 
-from semra.constants import CC0_URL
-from semra.struct import Reference
+from semra.constants import CC0_URL, Reference
 from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import bioregistry
+import curies
 import pyobo
-from curies import Reference
 
 from ..utils import get_orcid_name
 
@@ -23,7 +23,7 @@ SKIP_PREFIXES = {
 SKIP_PREFIXES.update(bioregistry.get_collection("0000004", strict=True).get_prefixes())
 
 
-def get_name_by_reference(reference: Reference) -> str | None:
+def get_name_by_reference(reference: curies.Reference) -> str | None:
     """Get a name from a CURIE."""
     if any(reference.prefix == p for p in SKIP_PREFIXES):
         return None

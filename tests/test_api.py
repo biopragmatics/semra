@@ -30,9 +30,10 @@ from semra.api import (
     prioritize_df,
     project,
 )
+from semra.constants import Reference
 from semra.inference import infer_chains, infer_mutations, infer_reversible
 from semra.io.graph import from_digraph, to_digraph
-from semra.struct import Mapping, ReasonedEvidence, Reference, SimpleEvidence
+from semra.struct import Mapping, ReasonedEvidence, SimpleEvidence
 from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,

@@ -109,7 +109,7 @@ def from_pyobo(
         prefix, confidence=confidence, version=kwargs["version"]
     )
     try:
-        mappings = pyobo.get_semantic_mappings(prefix, names=False, **kwargs)
+        mappings = pyobo.get_semantic_mappings(prefix, **kwargs)
     except pyobo.getters.NoBuildError:
         return []
     if target_prefix:

@@ -7,10 +7,10 @@ from typing import cast
 import flask
 import werkzeug
 from flask import Blueprint, current_app, render_template
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 
 from semra.client import BaseClient
+from semra.constants import Reference
 from semra.utils import format_number
 from semra.version import get_version as get_semra_version
 from semra.vocabulary import EXACT_MATCH, MANUAL_MAPPING

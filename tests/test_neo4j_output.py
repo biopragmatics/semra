@@ -17,9 +17,9 @@ from semra import (
     Mapping,
     MappingSet,
     ReasonedEvidence,
-    Reference,
     SimpleEvidence,
 )
+from semra.constants import Reference
 from semra.io import write_neo4j
 from semra.struct import Triple
 from semra.utils import get_semra_uri

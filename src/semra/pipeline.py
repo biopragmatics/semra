@@ -158,6 +158,7 @@ from semra.api import (
     prioritize,
     validate_mappings,
 )
+from semra.constants import Reference
 from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_reversible
 from semra.io import (
     from_jsonl,
@@ -178,7 +179,7 @@ from semra.sources.biopragmatics import (
 )
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings_by_prefix
-from semra.struct import Mapping, Reference, Statistics
+from semra.struct import Mapping, Statistics
 from semra.utils import PrefixListValidator, get_jinja_template
 
 if t.TYPE_CHECKING:

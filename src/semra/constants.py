@@ -24,6 +24,7 @@ __all__ = [
     "SEMRA_NEO4J_MAPPING_LABEL",
     "SEMRA_NEO4J_MAPPING_SET_LABEL",
     "SEMRA_SOURCE",
+    "Reference",
 ]
 
 #: The label used for nodes representing mappings in SeMRA's Neo4j export

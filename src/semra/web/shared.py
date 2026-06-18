@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from pyobo import Reference
-
 from semra.client import BaseClient, FullSummary
+from semra.constants import Reference
 
 __all__ = [
     "EXAMPLE_CONCEPTS",

@@ -22,6 +22,7 @@ from semra.constants import (
     SEMRA_EVIDENCE_URI_PREFIX,
     SEMRA_MAPPING_PREFIX,
     SEMRA_MAPPING_URI_PREFIX,
+    Reference,
 )
 from semra.io import (
     from_digraph,
@@ -37,15 +38,7 @@ from semra.io import (
     write_sssom,
 )
 from semra.sources.biopragmatics import get_biomappings_negative_mappings
-from semra.struct import (
-    CONVERTER,
-    Mapping,
-    MappingSet,
-    ReasonedEvidence,
-    Reference,
-    SimpleEvidence,
-    Triple,
-)
+from semra.struct import CONVERTER, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence, Triple
 from semra.utils import get_semra_uri
 from semra.vocabulary import (
     BEN_REFERENCE,

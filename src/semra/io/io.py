@@ -13,7 +13,6 @@ import bioregistry
 import curies
 import pydantic
 import sssom_pydantic
-from pyobo import Reference
 from pystow.utils import (
     iter_pydantic_jsonl,
     reyield,
@@ -26,6 +25,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Unpack
 
 from .io_utils import get_name_by_reference
+from ..constants import Reference
 from ..struct import Mapping
 
 if TYPE_CHECKING:

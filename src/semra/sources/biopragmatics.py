@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from sssom_pydantic import SemanticMapping
 
-from semra.constants import CC0_URL
-from semra.struct import Reference
+from semra.constants import CC0_URL, Reference
 
 __all__ = [
     "get_biomappings_negative_mappings",

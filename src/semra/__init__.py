@@ -1,8 +1,9 @@
 """Semantic Mapping Reasoner and Assembler."""
 
+from semra.constants import Reference
 from semra.io import from_jsonl, from_pyobo, from_sssom
 from semra.pipeline import Configuration, Input, Mutation
-from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, Reference, SimpleEvidence
+from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence
 from semra.vocabulary import (
     BROAD_MATCH,
     DB_XREF,

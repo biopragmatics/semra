@@ -8,7 +8,8 @@ from collections import defaultdict
 import networkx as nx
 from tqdm import tqdm
 
-from semra.struct import Evidence, Mapping, Reference
+from semra.constants import Reference
+from semra.struct import Evidence, Mapping
 from semra.utils import semra_tqdm
 
 __all__ = [

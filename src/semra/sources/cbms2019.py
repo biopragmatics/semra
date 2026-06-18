@@ -8,10 +8,10 @@
 import pandas as pd
 import sssom_pydantic
 from pydantic import AnyUrl, ValidationError
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 from tqdm import tqdm
 
+from semra.constants import Reference
 from semra.vocabulary import CHAIN_MAPPING, EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [

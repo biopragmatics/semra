@@ -17,9 +17,9 @@ import networkx as nx
 import pydantic
 from neo4j import ManagedTransaction, unit_of_work
 
-from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX
+from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_MAPPING_PREFIX, Reference
 from semra.rules import RELATIONS
-from semra.struct import Evidence, Mapping, MappingSet, Reference, SimpleEvidence
+from semra.struct import Evidence, Mapping, MappingSet, SimpleEvidence
 from semra.vocabulary import CHAIN_MAPPING, INVERSION_MAPPING
 
 __all__ = [

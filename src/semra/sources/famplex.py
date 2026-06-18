@@ -5,9 +5,9 @@ from __future__ import annotations
 import bioregistry
 import pandas as pd
 from pydantic import AnyUrl
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 
+from semra.constants import Reference
 from semra.vocabulary import BEN_REFERENCE, EXACT_MATCH, MANUAL_MAPPING
 
 __all__ = [

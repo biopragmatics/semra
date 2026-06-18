@@ -4,9 +4,9 @@ import bioregistry
 import bioversions
 import pandas as pd
 from pydantic import AnyUrl
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 
+from semra.constants import Reference
 from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = ["get_omim_gene_mappings"]

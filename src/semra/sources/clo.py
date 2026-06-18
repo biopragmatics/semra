@@ -11,10 +11,10 @@ import curies
 import obographs
 import robot_obo_tool
 from pydantic import AnyUrl
-from pyobo import Reference
 from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
+from semra.constants import Reference
 from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]

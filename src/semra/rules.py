@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from typing import TypeAlias
 
 from curies import vocabulary as v
-from pyobo import Reference
 
+from semra.constants import Reference
 from semra.vocabulary import (
     BROAD_MATCH,
     CLOSE_MATCH,

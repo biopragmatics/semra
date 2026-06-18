@@ -13,9 +13,10 @@ from pydantic import BaseModel
 from tqdm.asyncio import tqdm
 
 from semra.api import assemble_evidences, flip
+from semra.constants import Reference
 from semra.io.graph import MULTIDIGRAPH_DATA_KEY, to_multidigraph
 from semra.rules import FLIP, GENERALIZATIONS
-from semra.struct import Evidence, Mapping, ReasonedEvidence, Reference
+from semra.struct import Evidence, Mapping, ReasonedEvidence
 from semra.utils import cleanup_prefixes, semra_tqdm
 from semra.vocabulary import (
     BROAD_MATCH,

@@ -11,9 +11,9 @@ import fastapi
 from a2wsgi import WSGIMiddleware
 from flask import Flask
 from flask_bootstrap import Bootstrap5
-from pyobo import Reference
 
 from semra.client import BaseClient, Neo4jClient
+from semra.constants import Reference
 from semra.web.fastapi_components import api_router, auto_router
 from semra.web.flask_components import flask_blueprint, index_biomapping
 from semra.web.shared import State

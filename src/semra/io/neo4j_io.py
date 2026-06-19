@@ -211,7 +211,7 @@ def write_neo4j(
             #  repo to add to end
             pip_install = "semra[web] @ git+https://github.com/biopragmatics/semra.git"
         else:
-            pip_install = f'"semra[web]=={VERSION}"'
+            pip_install = f"semra[web]=={VERSION}"
     if python is None:
         python = DEFAULT_PYTHON
     if docker_name is None:

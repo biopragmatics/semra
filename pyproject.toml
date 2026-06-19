@@ -49,16 +49,16 @@ license-files = ["LICENSE"]
 
 requires-python = ">=3.11"
 dependencies = [
-    "pystow>=0.8.12",
+    "pystow>=0.8.19",
     "pandas",
     "pydantic",
     "tqdm",
     "more-itertools",
     "networkx",
-    "bioregistry>=0.13.61",
+    "bioregistry>=0.13.62",
     "bioversions>=0.10.11",
     "biomappings>=0.5.5",
-    "pyobo>=0.13.1",
+    "pyobo>=0.13.2",
     "typing-extensions",
     "zenodo-client",
     "ssslm>=0.2.0",

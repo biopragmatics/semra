@@ -51,7 +51,7 @@ def write_summary(
     configuration: Configuration,
     *,
     minimum_count: int | None = None,
-    show_progress: bool = False,
+    progress: bool = False,
     copy_to_landscape: bool = False,
     raw_mappings: list[Mapping] | None = None,
     processed_mappings: list[Mapping] | None = None,
@@ -74,7 +74,7 @@ def write_summary(
         raw_mappings=raw_mappings,
         processed_mappings=processed_mappings,
         priority_mappings=priority_mappings,
-        show_progress=show_progress,
+        progress=progress,
     )
 
     summary = summarizer.get_source_summary()
@@ -82,7 +82,7 @@ def write_summary(
 
     overlap_results = summarizer.overlap_analysis(
         minimum_count=minimum_count,
-        show_progress=show_progress,
+        progress=progress,
     )
     overlap_results.raw_counts_df.to_csv(configuration.raw_counts_path, sep="\t", index=True)
     overlap_results.processed_counts_df.to_csv(
@@ -164,7 +164,7 @@ class Summarizer:
         self,
         configuration: Configuration,
         *,
-        show_progress: bool = False,
+        progress: bool = False,
         raw_mappings: list[Mapping] | None = None,
         processed_mappings: list[Mapping] | None = None,
         priority_mappings: list[Mapping] | None = None,
@@ -173,7 +173,7 @@ class Summarizer:
         self.configuration = configuration
 
         self.terms_exact = get_terms(
-            configuration.priority, configuration.subsets, show_progress=show_progress
+            configuration.priority, configuration.subsets, progress=progress
         )
 
         self.raw_mappings = (
@@ -185,7 +185,7 @@ class Summarizer:
             else processed_mappings
         )
         if configuration.subsets:
-            hydrated_subsets = configuration.get_hydrated_subsets(show_progress=show_progress)
+            hydrated_subsets = configuration.get_hydrated_subsets(progress=progress)
             self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)
             self.processed_mappings = filter_subsets(self.processed_mappings, hydrated_subsets)
 
@@ -216,7 +216,7 @@ class Summarizer:
         )
 
     def overlap_analysis(
-        self, *, minimum_count: int | None = None, show_progress: bool = False
+        self, *, minimum_count: int | None = None, progress: bool = False
     ) -> OverlapResults:
         """Get overlap analysis results."""
         return overlap_analysis(
@@ -227,7 +227,7 @@ class Summarizer:
             processed_mappings=self.processed_mappings,
             priority_mappings=self.priority_mappings,
             terms_observed=self.terms_observed,
-            show_progress=show_progress,
+            progress=progress,
         )
 
     def landscape_analysis(self, overlap_results: OverlapResults) -> LandscapeResult:
@@ -319,7 +319,7 @@ def overlap_analysis(
     processed_mappings: list[Mapping],
     priority_mappings: list[Mapping],
     minimum_count: int | None = None,
-    show_progress: bool = True,
+    progress: bool = True,
 ) -> OverlapResults:
     """Run overlap analysis."""
     if not configuration.raw_pickle_path:
@@ -328,7 +328,7 @@ def overlap_analysis(
     predicates = {EXACT_MATCH, DB_XREF}
 
     raw_index = get_identifier_index(
-        raw_mappings, show_progress=show_progress, predicates=predicates, directed=False
+        raw_mappings, progress=progress, predicates=predicates, directed=False
     )
     raw_counts, raw_counts_df = get_symmetric_counts_df(
         raw_index,
@@ -339,7 +339,7 @@ def overlap_analysis(
 
     processed_index = get_identifier_index(
         processed_mappings,
-        show_progress=show_progress,
+        progress=progress,
         predicates=predicates,
         directed=False,
     )
@@ -352,7 +352,7 @@ def overlap_analysis(
 
     priority_index = get_identifier_index(
         priority_mappings,
-        show_progress=show_progress,
+        progress=progress,
         predicates=predicates,
         directed=True,
     )

@@ -267,7 +267,7 @@ def build(
     )
     # neo4j doesn't need to stream since it's last. to avoid SIGKILLs,
     # write the file to disk, then compress after.
-    write_neo4j(mappings, NEO4J_DIR, compress="after", use_tqdm=False, cleanup=cleanup)
+    write_neo4j(mappings, NEO4J_DIR, compress="after", progress=False, cleanup=cleanup)
 
     # gzip these after the fact to avoid SIGKILLs
     jsonl_gz_path = gzip_compress(JSONL_PATH, cleanup=cleanup)

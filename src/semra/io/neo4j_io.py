@@ -145,7 +145,7 @@ def write_neo4j(
     run_script_name: str = "run_on_docker.sh",
     dockerfile_name: str = "Dockerfile",
     pip_install: str | None = None,
-    use_tqdm: bool = True,
+    progress: bool = True,
     compress: None | Literal["during", "after"] = None,
     cleanup: bool = True,
     quiet: bool = False,
@@ -267,7 +267,7 @@ def write_neo4j(
             unit="mapping",
             unit_scale=True,
             desc="streaming writing to Neo4j",
-            disable=not use_tqdm,
+            disable=not progress,
             leave=False,
         ):
             mapping_curie = mapping.curie

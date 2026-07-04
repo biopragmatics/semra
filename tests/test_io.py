@@ -202,7 +202,7 @@ class TestIO(unittest.TestCase):
             path = self.directory.joinpath(n)
             with self.subTest(path=path):
                 write_jsonl(self.mappings, path)
-                new_mappings = from_jsonl(path, show_progress=False, failure_action="raise")
+                new_mappings = from_jsonl(path, progress=False, failure_action="raise")
                 self.assertIsInstance(new_mappings, list)
                 self.assertEqual(self.mappings, new_mappings)
 

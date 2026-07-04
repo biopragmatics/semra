@@ -836,12 +836,12 @@ def filter_minimum_confidence(
 def hydrate_subsets(
     subset_configuration: SubsetConfiguration,
     *,
-    show_progress: bool = True,
+    progress: bool = True,
 ) -> SubsetConfiguration:
     """Convert a subset configuration dictionary into a subset artifact.
 
     :param subset_configuration: A dictionary of prefixes to sets of parent terms
-    :param show_progress: Should progress bars be shown?
+    :param progress: Should progress bars be shown?
 
     :returns: A dictionary that uses the is-a hierarchy within the resources to get full
         term lists
@@ -889,7 +889,7 @@ def hydrate_subsets(
     for prefix, parents in subset_configuration.items():
         try:
             hierarchy = pyobo.get_hierarchy(
-                prefix, include_part_of=False, include_has_member=False, use_tqdm=show_progress
+                prefix, include_part_of=False, include_has_member=False, use_tqdm=progress
             )
         except RuntimeError:  # e.g., no build
             rv[prefix] = set()
@@ -1098,7 +1098,7 @@ IdentifierIndex: TypeAlias = dict[tuple[str, str], set[str]]
 def get_identifier_index(
     mappings: t.Iterable[Mapping],
     *,
-    show_progress: bool = True,
+    progress: bool = True,
     predicates: Collection[Reference] | None = None,
     directed: bool = False,
 ) -> IdentifierIndex:
@@ -1121,7 +1121,7 @@ def get_identifier_index(
             ("P3", "P1"): {"X"},
         }
     """
-    triples: Iterable[Triple] = iter(get_index(mappings, progress=show_progress, leave=False))
+    triples: Iterable[Triple] = iter(get_index(mappings, progress=progress, leave=False))
     index: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     if predicates is not None:
         target_predicates_ = set(predicates)
@@ -1173,7 +1173,7 @@ def get_terms(
     prefixes: list[str],
     subset_configuration: SubsetConfiguration | None = None,
     *,
-    show_progress: bool = True,
+    progress: bool = True,
 ) -> PrefixIdentifierDict:
     """Get the set of identifiers for each of the resources."""
     import pyobo
@@ -1182,13 +1182,11 @@ def get_terms(
     if subset_configuration is None:
         hydrated_subset_configuration: SubsetConfiguration = {}
     else:
-        hydrated_subset_configuration = hydrate_subsets(
-            subset_configuration, show_progress=show_progress
-        )
+        hydrated_subset_configuration = hydrate_subsets(subset_configuration, progress=progress)
     for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
         tqdm.write(f"[{prefix}] getting terms")
         start = time.time()
-        identifiers = pyobo.get_ids(prefix, use_tqdm=show_progress)
+        identifiers = pyobo.get_ids(prefix, use_tqdm=progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
             tqdm.write(f"[{prefix}] got {len(identifiers):,} terms")

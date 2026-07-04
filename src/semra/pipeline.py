@@ -711,7 +711,7 @@ class Configuration(BaseModel):
             return read_pydantic_json(self.stats_path, Statistics)
         return None
 
-    def read_raw_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
+    def read_raw_mappings(self, *, progress: bool = False) -> list[Mapping]:
         """Read raw mappings from pickle, if already cached."""
         progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading raw mappings",
@@ -722,7 +722,7 @@ class Configuration(BaseModel):
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (
                 self.raw_jsonl_path,
-                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+                partial(from_jsonl, progress=progress, tqdm_kwargs=progress_kwargs),
             ),
             (self.raw_pickle_path, from_pickle),
             (
@@ -736,7 +736,7 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"raw mappings have not yet been cached in {self.directory}")
 
-    def read_processed_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
+    def read_processed_mappings(self, *, progress: bool = False) -> list[Mapping]:
         """Read processed mappings from pickle, if already cached."""
         progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading processed mappings",
@@ -747,7 +747,7 @@ class Configuration(BaseModel):
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (
                 self.processed_jsonl_path,
-                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+                partial(from_jsonl, progress=progress, tqdm_kwargs=progress_kwargs),
             ),
             (self.processed_pickle_path, from_pickle),
             (
@@ -761,7 +761,7 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"processed mappings have not yet been cached in {self.directory}")
 
-    def read_priority_mappings(self, *, show_progress: bool = False) -> list[Mapping]:
+    def read_priority_mappings(self, *, progress: bool = False) -> list[Mapping]:
         """Read priority mappings from pickle, if already cached."""
         progress_kwargs: dict[str, Any] = {
             "desc": f"[{self.key}] reading priority mappings",
@@ -772,7 +772,7 @@ class Configuration(BaseModel):
         paths: list[tuple[Path, Callable[[Path], list[Mapping]]]] = [
             (
                 self.priority_jsonl_path,
-                partial(from_jsonl, show_progress=show_progress, tqdm_kwargs=progress_kwargs),
+                partial(from_jsonl, progress=progress, tqdm_kwargs=progress_kwargs),
             ),
             (self.priority_pickle_path, from_pickle),
             (
@@ -786,11 +786,11 @@ class Configuration(BaseModel):
                 return opener(path)
         raise ValueError(f"priority mappings have not yet been cached in {self.directory}")
 
-    def get_hydrated_subsets(self, *, show_progress: bool = True) -> SubsetConfiguration:
+    def get_hydrated_subsets(self, *, progress: bool = True) -> SubsetConfiguration:
         """Get the full subset filter lists based on the parent configuration."""
         if not self.subsets:
             return {}
-        return hydrate_subsets(self.subsets, show_progress=show_progress)
+        return hydrate_subsets(self.subsets, progress=progress)
 
     def _get_zenodo_metadata(self) -> zenodo_client.Metadata:
         if not self.creators:
@@ -961,7 +961,7 @@ class Configuration(BaseModel):
                 start = time.time()
                 summarize.write_summary(
                     self,
-                    show_progress=True,
+                    progress=True,
                     copy_to_landscape=copy_to_landscape,
                     raw_mappings=pack.raw,
                     processed_mappings=pack.processed,
@@ -1083,9 +1083,9 @@ def assemble(
                 if not configuration.has_processed_path():
                     raise FileNotFoundError
                 return MappingPack(
-                    raw=configuration.read_raw_mappings(show_progress=progress),
-                    processed=configuration.read_processed_mappings(show_progress=progress),
-                    priority=configuration.read_priority_mappings(show_progress=progress),
+                    raw=configuration.read_raw_mappings(progress=progress),
+                    processed=configuration.read_processed_mappings(progress=progress),
+                    priority=configuration.read_priority_mappings(progress=progress),
                 )
             case AssembleReturnType.priority:
                 return configuration.read_priority_mappings()
@@ -1117,6 +1117,7 @@ def assemble(
             write_sssom(
                 raw_mappings,
                 configuration.raw_sssom_path,
+                progress=progress,
                 # add_labels=configuration.add_labels
                 metadata=_mapping_set_from_conf(
                     configuration,
@@ -1127,7 +1128,7 @@ def assemble(
             write_jsonl(
                 raw_mappings,
                 configuration.raw_jsonl_path,
-                show_progress=progress,
+                progress=progress,
             )
             if configuration.write_raw_neo4j:
                 write_neo4j(
@@ -1136,7 +1137,7 @@ def assemble(
                     docker_name=configuration.raw_neo4j_name,
                     add_labels=False,  # configuration.add_labels,
                     compress=configuration.neo4j_gzip,
-                    use_tqdm=progress,
+                    progress=progress,
                 )
 
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
@@ -1174,6 +1175,7 @@ def assemble(
     write_sssom(
         processed_mappings,
         configuration.processed_sssom_path,
+        progress=progress,
         add_labels=configuration.add_labels,
         metadata=_mapping_set_from_conf(
             configuration,
@@ -1188,7 +1190,7 @@ def assemble(
     write_jsonl(
         processed_mappings,
         configuration.processed_jsonl_path,
-        show_progress=progress,
+        progress=progress,
     )
     _echo(f"done writing JSONL in {humanize.naturaldelta(time.time() - start)}", fg="green")
 
@@ -1201,13 +1203,13 @@ def assemble(
         equivalence_classes=equivalence_classes,
         add_labels=configuration.add_labels,
         compress=configuration.neo4j_gzip,
-        use_tqdm=progress,
+        progress=progress,
     )
     _echo(f"done writing Neo4j in {humanize.naturaldelta(time.time() - start)}", fg="green")
 
     _echo("writing JSONL (prioritized mappings)", fg="green")
     start = time.time()
-    write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, show_progress=progress)
+    write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, progress=progress)
     _echo(
         f"done writing JSONL (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
         fg="green",
@@ -1219,6 +1221,7 @@ def assemble(
         prioritized_mappings,
         configuration.priority_sssom_path,
         add_labels=configuration.add_labels,
+        progress=progress,
         metadata=_mapping_set_from_conf(
             configuration,
             subtitle="Priority Mappings",

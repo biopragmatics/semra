@@ -154,7 +154,7 @@ class TestNeo4jOutput(unittest.TestCase):
         with tempfile.TemporaryDirectory() as _directory:
             directory = Path(_directory)
 
-            write_neo4j(mappings, directory, use_tqdm=False, quiet=True)
+            write_neo4j(mappings, directory, progress=False, quiet=True)
             # write_neo4j(mappings, resources.HERE, use_tqdm=False, quiet=True)
             for path in [
                 resources.CONCEPT_NODES_TSV_PATH,

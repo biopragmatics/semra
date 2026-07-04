@@ -197,6 +197,7 @@ def write_sssom(
     stream: Literal[True] = ...,
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = ...,
+    progress: bool = ...,
 ) -> Generator[Mapping, None, None]: ...
 
 
@@ -211,6 +212,7 @@ def write_sssom(
     stream: Literal[False] = ...,
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = ...,
+    progress: bool = ...,
 ) -> None: ...
 
 
@@ -223,6 +225,7 @@ def write_sssom(
     stream: bool = False,
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
+    progress: bool = False,
 ) -> None | Generator[Mapping, None, None]:
     """Export mappings as an SSSOM file (could be lossy)."""
     if converter is None:
@@ -236,6 +239,7 @@ def write_sssom(
             add_labels=add_labels,
             metadata=metadata,
             converter=converter,
+            progress=progress,
         )
     elif stream:
         raise ValueError("can not prune and stream at the same time")
@@ -246,6 +250,7 @@ def write_sssom(
             add_labels=add_labels,
             metadata=metadata,
             converter=converter,
+            progress=progress,
         )
         return None
 
@@ -260,6 +265,7 @@ def _write_sssom(
     stream: bool = False,
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
+    progress: bool = False,
     **kwargs: Any,
 ) -> None:
     sssom_pydantic.write(
@@ -268,6 +274,7 @@ def _write_sssom(
         metadata=metadata,
         converter=converter,
         exclude_columns={"predicate_label"},
+        progress=progress,
         **kwargs,
     )
 
@@ -306,6 +313,7 @@ def _write_sssom_stream(
     add_labels: bool = False,
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
+    progress: bool = False,
 ) -> Generator[Mapping, None, None] | None:
     yv = reyield(
         _write_sssom,
@@ -317,6 +325,7 @@ def _write_sssom_stream(
         condense=False,
         reduce_prefix_map=False,
         columns=SSSOM_STREAMING_COLUMNS,
+        progress=progress,
     )
     if stream:
         return yv
@@ -360,7 +369,7 @@ def write_jsonl(
     objects: Iterable[X],
     path: str | Path,
     *,
-    show_progress: bool = ...,
+    progress: bool = ...,
     stream: Literal[False] = False,
 ) -> None: ...
 
@@ -371,13 +380,13 @@ def write_jsonl(
     objects: Iterable[X],
     path: str | Path,
     *,
-    show_progress: bool = ...,
+    progress: bool = ...,
     stream: Literal[True] = True,
 ) -> Generator[X]: ...
 
 
 def write_jsonl(
-    objects: Iterable[X], path: str | Path, *, show_progress: bool = False, stream: bool = False
+    objects: Iterable[X], path: str | Path, *, progress: bool = False, stream: bool = False
 ) -> None | Generator[X]:
     """Write a list of Pydantic objects into a JSONL file."""
     models = tqdm(
@@ -386,7 +395,7 @@ def write_jsonl(
         leave=False,
         unit="object",
         unit_scale=True,
-        disable=not show_progress,
+        disable=not progress,
     )
     # need this to include the evidence_type
     kwargs = {"exclude_defaults": False, "exclude_unset": False}
@@ -402,7 +411,7 @@ def write_jsonl(
 def from_jsonl(
     path: str | Path,
     *,
-    show_progress: bool = ...,
+    progress: bool = ...,
     stream: Literal[False] = False,
     failure_action: Literal["raise", "skip"] = ...,
     tqdm_kwargs: dict[str, Any] | None = ...,
@@ -414,7 +423,7 @@ def from_jsonl(
 def from_jsonl(
     path: str | Path,
     *,
-    show_progress: bool = ...,
+    progress: bool = ...,
     stream: Literal[True] = True,
     failure_action: Literal["raise", "skip"] = ...,
     tqdm_kwargs: dict[str, Any] | None = ...,
@@ -424,7 +433,7 @@ def from_jsonl(
 def from_jsonl(
     path: str | Path,
     *,
-    show_progress: bool = False,
+    progress: bool = False,
     stream: bool = False,
     failure_action: Literal["raise", "skip"] = "skip",
     tqdm_kwargs: dict[str, Any] | None = None,
@@ -433,7 +442,7 @@ def from_jsonl(
     rv = iter_pydantic_jsonl(
         path,
         Mapping,
-        progress=show_progress,
+        progress=progress,
         failure_action=failure_action,
         tqdm_kwargs=tqdm_kwargs,
     )

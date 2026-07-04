@@ -23,7 +23,7 @@ WIKIDATA_MAPPING_DIRECTORY = pystow.module("wikidata", "mappings")
 
 
 def get_all_wikidata_mappings(
-    *, use_tqdm: bool = True, predicate: curies.Reference | None = None
+    *, progress: bool = True, predicate: curies.Reference | None = None
 ) -> list[SemanticMapping]:
     """Iterate over WikiData xref dataframes."""
     if predicate is None:
@@ -31,7 +31,7 @@ def get_all_wikidata_mappings(
 
     wikidata_properties = bioregistry.get_registry_map("wikidata")
 
-    it = tqdm(sorted(wikidata_properties.items()), disable=not use_tqdm, desc="Wikidata properties")
+    it = tqdm(sorted(wikidata_properties.items()), disable=not progress, desc="Wikidata properties")
     rv: list[SemanticMapping] = []
     for prefix, wikidata_property in it:
         if prefix in {"pubmed", "pmc", "orcid", "inchi", "smiles"}:

@@ -68,7 +68,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
 
     mappings = []
     for node in tqdm(graph.nodes, unit_scale=True, unit="node"):
-        if not node.reference.prefix == "clo" or node.meta is None:
+        if node.reference.prefix != "clo" or node.meta is None:
             continue
         for prop in node.meta.properties or []:
             if prop.predicate.curie != "rdfs:seeAlso" or isinstance(prop.value, curies.Reference):
@@ -130,7 +130,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
                 else:
                     try:
                         prefix, identifier = bioregistry.parse_curie(curie)
-                    except Exception:
+                    except Exception:  # noqa:BLE001
                         tqdm.write(
                             f"{node.reference.curie} unparsed: {click.style(curie, fg='red')} "
                             f"from line:\n  {prop.value}"

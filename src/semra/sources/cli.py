@@ -20,7 +20,7 @@ def main() -> None:
         start = time.time()
         try:
             mappings = from_sssom_pydantic(func())
-        except Exception as e:
+        except Exception as e:  # noqa:BLE001
             tqdm.write(click.style(f"[{name}] failed:\n{e}", fg="red"))
         else:
             tqdm.write(

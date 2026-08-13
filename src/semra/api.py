@@ -49,7 +49,6 @@ __all__ = [
     "M2MIndex",
     "Mutation",
     "PrefixIdentifierDict",
-    "PrefixIdentifierDict",
     "PrefixPairCounter",
     "apply_mutations",
     "assemble_evidences",
@@ -1368,9 +1367,7 @@ def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:
 
 def _handle_mutation(mapping: Mapping, mutation_index: MutationIndex) -> Mapping:
     mutation = mutation_index.get(mapping.subject.prefix)
-    if not mutation:
-        return mapping
-    elif not mutation.should_apply_to(mapping):
+    if not mutation or not mutation.should_apply_to(mapping):
         return mapping
     else:
         return Mapping(

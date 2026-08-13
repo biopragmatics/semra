@@ -146,7 +146,7 @@ def write_neo4j(
     dockerfile_name: str = "Dockerfile",
     pip_install: str | None = None,
     progress: bool = True,
-    compress: None | Literal["during", "after"] = None,
+    compress: Literal["during", "after"] | None = None,
     cleanup: bool = True,
     quiet: bool = False,
     python: str | None = None,

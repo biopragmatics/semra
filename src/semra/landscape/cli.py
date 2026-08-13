@@ -95,7 +95,7 @@ def is_docker_running() -> bool:
     import subprocess
 
     try:
-        result = subprocess.run(["docker", "info"], capture_output=True, timeout=5)  # noqa:S607
+        result = subprocess.run(["docker", "info"], capture_output=True, timeout=5, check=False)  # noqa:S607
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
     else:

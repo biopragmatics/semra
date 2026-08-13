@@ -420,7 +420,7 @@ class Configuration(BaseModel):
         bool, Field(description="Should a neo4j directory be written for raw mappings?")
     ] = False
     neo4j_gzip: Annotated[
-        None | Literal["during", "after"],
+        Literal["during", "after"] | None,
         Field(
             description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
         ),
@@ -1043,7 +1043,7 @@ def assemble(
     refresh_processed: bool = False,
     return_type: AssembleReturnType = AssembleReturnType.none,
     progress: bool = True,
-) -> None | list[Mapping] | MappingPack:
+) -> list[Mapping] | MappingPack | None:
     """Get prioritized mappings based on an assembly configuration.
 
     :param configuration: The mapping assembly configuration

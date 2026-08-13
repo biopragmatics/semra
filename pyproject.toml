@@ -49,28 +49,28 @@ license-files = ["LICENSE"]
 
 requires-python = ">=3.11"
 dependencies = [
-    "pystow>=0.8.19",
+    "pystow>=0.9.0",
     "pandas",
     "pydantic",
     "tqdm",
     "more-itertools",
     "networkx",
-    "bioregistry>=0.13.62",
+    "bioregistry>=0.14.0",
     "bioversions>=0.10.11",
-    "biomappings>=0.5.5",
-    "pyobo>=0.13.2",
+    "biomappings>=0.6.0",
+    "pyobo>=0.13.3",
     "typing-extensions",
     "zenodo-client",
-    "ssslm>=0.2.0",
-    "curies>=0.14.1",
+    "ssslm>=0.2.2",
+    "curies>=0.15.0",
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.7.1",
     "pyyaml",
     "humanize",
     "tabulate",
-    "sssom-pydantic>=0.5.12",
+    "sssom-pydantic>=0.6.1",
     "wikidata-client>=0.0.4",
-    "obographs>=0.0.11",
+    "obographs>=0.0.15",
 ]
 
 [dependency-groups]
@@ -207,6 +207,7 @@ ignore = [
     "C901", # FIXME
     "E501",
     "S301",
+    "DTZ011",
 ]
 
 # See https://docs.astral.sh/ruff/settings/#per-file-ignores

@@ -226,7 +226,7 @@ def write_sssom(
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
     progress: bool = False,
-) -> None | Generator[Mapping, None, None]:
+) -> Generator[Mapping, None, None] | None:
     """Export mappings as an SSSOM file (could be lossy)."""
     if converter is None:
         converter = bioregistry.get_default_converter()
@@ -387,7 +387,7 @@ def write_jsonl(
 
 def write_jsonl(
     objects: Iterable[X], path: str | Path, *, progress: bool = False, stream: bool = False
-) -> None | Generator[X]:
+) -> Generator[X] | None:
     """Write a list of Pydantic objects into a JSONL file."""
     models = tqdm(
         objects,

@@ -99,10 +99,8 @@ PREFIXES = PRIORITY = [
     "wormbase",
     "flybase",
     "sgd",
-    #
     "omim",
     "civic.gid",
-    #
     "umls",
     "ncit",
     "wikidata",

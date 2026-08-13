@@ -646,7 +646,7 @@ as label, count UNION ALL
             curie = curie.curie
         try:
             name = self.read_query(CONCEPT_NAME_CYPHER, curie=curie)[0][0]
-        except Exception:
+        except Exception:  # noqa:BLE001
             return None
         else:
             return cast(str, name)

@@ -229,9 +229,9 @@ class SimpleEvidence(
     @property
     def authors(self) -> list[Reference] | None:
         """Get the authors."""
-        if not self.mapping.authors:
-            return None
-        return [Reference.from_reference(a) for a in self.mapping.authors]
+        if self.mapping.authors:
+            return [Reference.from_reference(a) for a in self.mapping.authors]
+        return None
 
     @property
     def justification(self) -> Reference:

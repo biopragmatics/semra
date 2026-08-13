@@ -413,7 +413,7 @@ def _yield_pyobo(
                     resource_mappings = from_pyobo(
                         resource.prefix, force_process=refresh_source, cache=False
                     )
-            except Exception as e:
+            except Exception as e:  # noqa:BLE001
                 tqdm.write(f"[{resource.prefix}] failed PyOBO parsing: ({type(e)}) {e}")
                 continue
             else:
@@ -588,7 +588,7 @@ def _write_source(
     *,
     stream: bool = False,
     start: float,
-) -> None | Iterable[Mapping]:
+) -> Iterable[Mapping] | None:
     jsonl_path = _get_jsonl_path(subdirectory, key)
     sssom_path = _get_sssom_path(subdirectory, key)
     metadata = sssom_pydantic.MappingSet(
@@ -608,7 +608,7 @@ def _write_source(
         count = 0
         for mapping in mappings:
             yield mapping
-            count += 1
+            count += 1  # noqa:SIM113
     else:
         mappings = list(mappings)
         write_jsonl(mappings, jsonl_path, stream=False)

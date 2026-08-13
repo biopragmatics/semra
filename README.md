@@ -55,17 +55,23 @@ r1 = Reference(prefix="chebi", identifier="107635", name="2,3-diacetyloxybenzoic
 r2 = Reference(prefix="mesh", identifier="C011748", name="tosiben")
 
 mapping = Mapping(
-    subject=r1, predicate=EXACT_MATCH, object=r2,
+    subject=r1,
+    predicate=EXACT_MATCH,
+    object=r2,
     evidence=[
         SimpleEvidence(
             justification=MANUAL_MAPPING,
             confidence=0.99,
-            author=Reference(prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"),
+            author=Reference(
+                prefix="orcid", identifier="0000-0003-4423-4370", name="Charles Tapley Hoyt"
+            ),
             mapping_set=MappingSet(
-                name="biomappings", license="https://creativecommons.org/publicdomain/zero/1.0/", confidence=0.90,
+                name="biomappings",
+                license="https://creativecommons.org/publicdomain/zero/1.0/",
+                confidence=0.90,
             ),
         )
-    ]
+    ],
 )
 ```
 
@@ -80,13 +86,14 @@ import semra
 # load mappings from any standardized SSSOM file as a file path or URL, via `pandas.read_csv`
 sssom_url = "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv"
 mappings = semra.from_sssom(
-    sssom_url, license="spdx:CC0-1.0", mapping_set_title="biomappings",
+    sssom_url,
+    license="spdx:CC0-1.0",
+    mapping_set_title="biomappings",
 )
 
 # alternatively, metadata can be passed via a file/URL
 mappings_alt = semra.from_sssom(
-    sssom_url,
-    metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
+    sssom_url, metadata="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.yml"
 )
 
 # load mappings from the Gene Ontology (via OBO format)
@@ -227,9 +234,15 @@ chebi_to_mesh = project(mappings, source_prefix="chebi", target_prefix="mesh")
 # a "star" graph for every equivalent entity, where the center
 # of the star is determined by the equivalent entity with the
 # highest priority based on the given list
-priority_mapping = prioritize(mappings, priority=[
-    "chebi", "chembl.compound", "pubchem.compound", "drugbank",
-])
+priority_mapping = prioritize(
+    mappings,
+    priority=[
+        "chebi",
+        "chembl.compound",
+        "pubchem.compound",
+        "drugbank",
+    ],
+)
 ```
 
 The prioritization described by the code above works like this:

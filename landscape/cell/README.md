@@ -283,7 +283,9 @@ mappings_from_sssom = semra.from_sssom("priority.sssom.tsv.gz")
 
 # Apply in a data science scenario
 df = ...
-semra.api.prioritize_df(mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id")
+semra.api.prioritize_df(
+    mappings_from_jsonl, df, column="source_column_id", target_column="target_column_id"
+)
 ```
 
 ## Web Application

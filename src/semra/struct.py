@@ -90,7 +90,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from typing import (
-    TYPE_CHECKING,
     Annotated,
     Any,
     ClassVar,
@@ -117,9 +116,6 @@ from semra.constants import (
     SEMRA_SOURCE,
     Reference,
 )
-
-if TYPE_CHECKING:
-    import sssom_pydantic
 
 __all__ = [
     "ConfidenceMixin",
@@ -174,9 +170,9 @@ class KeyedMixin(ABC, Generic[P]):
         return Reference(prefix=self._prefix, identifier=self.get_identifier(*args, **kwargs))
 
     @property
-    def curie(self, *args: P.args, **kwargs: P.kwargs) -> str:
+    def curie(self) -> str:
         """Get a string representing the CURIE."""
-        return self.get_reference(*args, **kwargs).curie
+        return self.get_reference().curie
 
 
 class ConfidenceMixin:

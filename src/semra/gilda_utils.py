@@ -99,7 +99,7 @@ def update_gilda_terms(terms: list[gilda.Term], mappings: list[Mapping]) -> list
 
     # Unwind the terms index
     new_terms = list(itt.chain.from_iterable(terms_index.values()))
-    return cast(list[gilda.Term], gilda.term.filter_out_duplicates(new_terms))
+    return cast(list[gilda.Term], gilda.term.filter_out_duplicates(new_terms))  # type:ignore[no-untyped-call]
 
 
 def standardize_gilda_terms(
@@ -148,7 +148,7 @@ def make_new_gilda_term(
         from indra.ontology.bio import bio_ontology
 
         target_name = bio_ontology.get_name(target_db, target_id)
-    return gilda.Term(
+    return gilda.Term(  # type:ignore[no-untyped-call]
         norm_text=term.norm_text,
         text=term.text,
         db=target_db,

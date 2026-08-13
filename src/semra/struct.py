@@ -172,7 +172,8 @@ class KeyedMixin(ABC, Generic[P]):
     @property
     def curie(self) -> str:
         """Get a string representing the CURIE."""
-        return self.get_reference().curie
+        # i think this type error is a false positive
+        return self.get_reference().curie  # type:ignore[call-arg]
 
 
 class ConfidenceMixin:

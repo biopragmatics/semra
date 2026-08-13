@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from hashlib import md5
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,6 @@ from ..struct import (
     MappingSet,
     ReasonedEvidence,
     SimpleEvidence,
-    _md5_hexdigest,
 )
 from ..version import VERSION
 
@@ -369,7 +369,8 @@ def write_neo4j(
 
 
 def _get_mapping_set_curie(m: MappingSet) -> str:
-    return f"{SEMRA_MAPPING_SET_PREFIX}:{_md5_hexdigest(str(m.id))}"
+    hasher = md5(m.id.encoded_string().encode("utf-8"), usedforsecurity=False)
+    return f"{SEMRA_MAPPING_SET_PREFIX}:{hasher.hexdigest()}"
 
 
 def _neo4j_bool(b: bool, /) -> str:

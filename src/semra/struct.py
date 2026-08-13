@@ -85,10 +85,8 @@ example, we justify the inverse mapping from the first one:
 from __future__ import annotations
 
 import math
-import pickle
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from hashlib import md5
 from typing import (
     Annotated,
     Any,
@@ -131,12 +129,6 @@ __all__ = [
 
 P = ParamSpec("P")
 X = TypeVar("X")
-
-
-def _md5_hexdigest(picklable: object) -> str:
-    hasher = md5()  # noqa: S324
-    hasher.update(pickle.dumps(picklable))
-    return hasher.hexdigest()
 
 
 def _upgrade(x: curies.Reference | Reference | None) -> Reference | None:
@@ -286,7 +278,6 @@ class ReasonedEvidence(
             justification=self.justification,
             confidence=self.get_confidence(),
             license=CC0_URL,
-            authors=self.authors,
             comment=self.explanation,
             source=SEMRA_SOURCE,
             derived_from=[mapping.get_reference() for mapping in self.mappings],

@@ -272,7 +272,6 @@ class ReasonedEvidence(
             description="A list of mappings and their evidences consumed to create this evidence"
         ),
     ]
-    authors: Annotated[list[Reference] | None, ReferenceValidator] = None
     confidence_factor: Annotated[
         float, Field(description="The probability that the reasoning method is correct")
     ] = 1.0

@@ -312,19 +312,22 @@ def write_neo4j(
                         edge_writer.writerow(
                             (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
                         )
+
+                        # Add authorship information for the evidence, if available
+                        for author in evidence.authors or []:
+                            if author not in seen_concepts:
+                                concept_nodes_writer.writerow(
+                                    _concept_to_row(author, add_labels, equivalence_classes)
+                                )
+                                seen_concepts.add(author)
+
+                            edge_writer.writerow(
+                                (evidence_curie, HAS_AUTHOR_PREDICATE, author.curie)
+                            )
+
                     case ReasonedEvidence():
                         for mmm in evidence.mappings:
                             edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
-
-                # Add authorship information for the evidence, if available
-                for author in evidence.authors or []:
-                    if author not in seen_concepts:
-                        concept_nodes_writer.writerow(
-                            _concept_to_row(author, add_labels, equivalence_classes)
-                        )
-                        seen_concepts.add(author)
-
-                    edge_writer.writerow((evidence_curie, HAS_AUTHOR_PREDICATE, author.curie))
 
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render(python=python))

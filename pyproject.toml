@@ -84,7 +84,7 @@ typing = [
 tests = [
     "pytest",
     "coverage[toml]",
-    "httpx",
+    "httpx2",
 ]
 docs = [
     "sphinx>=8",

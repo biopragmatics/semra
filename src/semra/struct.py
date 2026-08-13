@@ -85,10 +85,8 @@ example, we justify the inverse mapping from the first one:
 from __future__ import annotations
 
 import math
-import pickle
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from hashlib import md5
 from typing import (
     Annotated,
     Any,
@@ -133,12 +131,6 @@ P = ParamSpec("P")
 X = TypeVar("X")
 
 
-def _md5_hexdigest(picklable: object) -> str:
-    hasher = md5()  # noqa: S324
-    hasher.update(pickle.dumps(picklable))
-    return hasher.hexdigest()
-
-
 def _upgrade(x: curies.Reference | Reference | None) -> Reference | None:
     if x is None:
         return None
@@ -176,9 +168,10 @@ class KeyedMixin(ABC, Generic[P]):
         return self.get_reference().curie  # type:ignore[call-arg]
 
 
-class ConfidenceMixin:
+class ConfidenceMixin(ABC):
     """A mixin for classes that have confidence information."""
 
+    @abstractmethod
     def get_confidence(self) -> float | None:
         """Get the confidence.
 
@@ -188,7 +181,6 @@ class ConfidenceMixin:
             calculates its confidence based on all of its prior probability *and* the
             confidences of the mappings on which it depends.
         """
-        raise NotImplementedError
 
 
 class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
@@ -198,11 +190,6 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
     def explanation(self) -> str | None:
         """Get a textual explanation for this evidence."""
         return None
-
-    @property
-    def mapping_set_names(self) -> set[str]:
-        """Get set of mapping set names that contribute to this evidence."""
-        raise NotImplementedError
 
     def get_identifier(self, triple: Triple) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
@@ -232,23 +219,16 @@ class SimpleEvidence(
     ]
 
     @property
-    def author(self) -> Reference | None:
-        """Get the author."""
+    def authors(self) -> list[Reference] | None:
+        """Get the authors."""
         if self.mapping.authors:
-            return Reference.from_reference(self.mapping.authors[0])
+            return [Reference.from_reference(a) for a in self.mapping.authors]
         return None
 
     @property
     def justification(self) -> Reference:
         """Get the justification."""
         return Reference.from_reference(self.mapping.justification)
-
-    @property
-    def mapping_set_names(self) -> set[str]:
-        """Get a set containing 1 element - this evidence's mapping set's name."""
-        if self.mapping_set.title is None:
-            return set()
-        return {self.mapping_set.title}
 
     def get_confidence(self) -> float | None:
         """Get the confidence from the mapping set."""
@@ -284,7 +264,6 @@ class ReasonedEvidence(
             description="A list of mappings and their evidences consumed to create this evidence"
         ),
     ]
-    author: Annotated[Reference | None, ReferenceValidator] = None
     confidence_factor: Annotated[
         float, Field(description="The probability that the reasoning method is correct")
     ] = 1.0
@@ -299,7 +278,6 @@ class ReasonedEvidence(
             justification=self.justification,
             confidence=self.get_confidence(),
             license=CC0_URL,
-            authors=[self.author] if self.author else None,
             comment=self.explanation,
             source=SEMRA_SOURCE,
             derived_from=[mapping.get_reference() for mapping in self.mappings],
@@ -327,16 +305,6 @@ class ReasonedEvidence(
     def mapping_set(self) -> None:
         """Return an empty mapping set, since this is a reasoned evidence."""
         return None
-
-    @property
-    def mapping_set_names(self) -> set[str]:
-        """Get a set containing the union of all the mappings' evidences' mapping set names."""
-        return {
-            name
-            for mapping in self.mappings
-            for evidence in mapping.evidence
-            for name in evidence.mapping_set_names
-        }
 
     @property
     def explanation(self) -> str | None:

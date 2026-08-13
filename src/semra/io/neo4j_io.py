@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from hashlib import md5
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,6 @@ from ..struct import (
     MappingSet,
     ReasonedEvidence,
     SimpleEvidence,
-    _md5_hexdigest,
 )
 from ..version import VERSION
 
@@ -312,21 +312,22 @@ def write_neo4j(
                         edge_writer.writerow(
                             (evidence_curie, FROM_SET_PREDICATE, mapping_set_curie)
                         )
+
+                        # Add authorship information for the evidence, if available
+                        for author in evidence.authors or []:
+                            if author not in seen_concepts:
+                                concept_nodes_writer.writerow(
+                                    _concept_to_row(author, add_labels, equivalence_classes)
+                                )
+                                seen_concepts.add(author)
+
+                            edge_writer.writerow(
+                                (evidence_curie, HAS_AUTHOR_PREDICATE, author.curie)
+                            )
+
                     case ReasonedEvidence():
                         for mmm in evidence.mappings:
                             edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
-
-                # Add authorship information for the evidence, if available
-                if evidence.author:
-                    if evidence.author not in seen_concepts:
-                        concept_nodes_writer.writerow(
-                            _concept_to_row(evidence.author, add_labels, equivalence_classes)
-                        )
-                        seen_concepts.add(evidence.author)
-
-                    edge_writer.writerow(
-                        (evidence_curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
-                    )
 
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render(python=python))
@@ -368,7 +369,8 @@ def write_neo4j(
 
 
 def _get_mapping_set_curie(m: MappingSet) -> str:
-    return f"{SEMRA_MAPPING_SET_PREFIX}:{_md5_hexdigest(str(m.id))}"
+    hasher = md5(m.id.encoded_string().encode("utf-8"), usedforsecurity=False)
+    return f"{SEMRA_MAPPING_SET_PREFIX}:{hasher.hexdigest()}"
 
 
 def _neo4j_bool(b: bool, /) -> str:
@@ -378,7 +380,7 @@ def _neo4j_bool(b: bool, /) -> str:
 
 def _concept_to_row(
     concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
-) -> Sequence[str]:
+) -> tuple[str, str, str, str]:
     concept_curie = concept.curie
     if add_labels:
         with logging_redirect_tqdm():

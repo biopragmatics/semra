@@ -168,7 +168,7 @@ class TestIO(unittest.TestCase):
                     raise self.fail()
                 self.assertEqual(evidence.justification, UNSPECIFIED_MAPPING)
                 self.assertIsNone(evidence.get_confidence())
-                self.assertIsNone(evidence.author)
+                self.assertIsNone(evidence.mapping.authors)
                 if evidence.mapping_set is None:
                     raise self.fail()
                 self.assertEqual(

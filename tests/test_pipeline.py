@@ -18,7 +18,7 @@ from semra.constants import Reference
 from semra.io import from_sssom, write_sssom
 from semra.pipeline import AssembleReturnType, Configuration, Input, MappingPack, get_raw_mappings
 from semra.sources import SOURCE_RESOLVER
-from semra.struct import Mapping, MappingSet, SimpleEvidence
+from semra.struct import Mapping, SimpleEvidence
 from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
 from tests.constants import (
     R1,
@@ -82,13 +82,15 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(R2, mapping.subject)
         self.assertEqual(R1, mapping.object)
         self.assertEqual(1, len(mapping.evidence))
-        ev = mapping.evidence[0]
-        self.assertIsInstance(ev, SimpleEvidence)
+        self.assertIsInstance(mapping.evidence[0], SimpleEvidence)
+        ev = cast(SimpleEvidence, mapping.evidence[0])
         self.assertEqual(MANUAL_MAPPING, ev.justification)
-        self.assertIsNotNone(ev.author)
-        self.assertEqual(CHARLIE.pair, cast(Reference, ev.author).pair)
+        self.assertIsNotNone(ev.mapping.authors)
+        authors = cast(list[Reference], ev.mapping.authors)
+        self.assertEqual(1, len(authors))
+        self.assertEqual(CHARLIE, authors[0])
         self.assertIsNotNone(ev.mapping_set)
-        mapping_set: MappingSet = cast(MappingSet, ev.mapping_set)
+        mapping_set = ev.mapping_set
         if mapping_set_id is not None:
             self.assertEqual(AnyUrl(mapping_set_id), mapping_set.id)
         else:

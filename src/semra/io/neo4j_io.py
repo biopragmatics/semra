@@ -317,16 +317,14 @@ def write_neo4j(
                             edge_writer.writerow((evidence_curie, DERIVED_PREDICATE, mmm.curie))
 
                 # Add authorship information for the evidence, if available
-                if evidence.author:
-                    if evidence.author not in seen_concepts:
+                for author in evidence.authors or []:
+                    if author not in seen_concepts:
                         concept_nodes_writer.writerow(
-                            _concept_to_row(evidence.author, add_labels, equivalence_classes)
+                            _concept_to_row(author, add_labels, equivalence_classes)
                         )
-                        seen_concepts.add(evidence.author)
+                        seen_concepts.add(author)
 
-                    edge_writer.writerow(
-                        (evidence_curie, HAS_AUTHOR_PREDICATE, evidence.author.curie)
-                    )
+                    edge_writer.writerow((evidence_curie, HAS_AUTHOR_PREDICATE, author.curie))
 
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render(python=python))
@@ -378,7 +376,7 @@ def _neo4j_bool(b: bool, /) -> str:
 
 def _concept_to_row(
     concept: Reference, add_labels: bool, equivalence_classes: dict[Reference, bool]
-) -> Sequence[str]:
+) -> tuple[str, str, str, str]:
     concept_curie = concept.curie
     if add_labels:
         with logging_redirect_tqdm():

@@ -395,23 +395,26 @@ def get_summary_df(
 
     :param prefixes: The list of prefixes
     :param subsets: The subset configuration
-    :param terms_exact: The dictionary of prefix -> collection of identifiers from :mod:`pyobo`
-    :param terms_observed:
-        The dictionary of prefix -> collection of identifiers encountered in the mappings
-        appearing in the landscape analysis. This should be calculated from raw mappings
-        to make sure that it accounts for any that might be filtered out during processing.
-    :return: A pandas dataframe with the following columns:
+    :param terms_exact: The dictionary of prefix -> collection of identifiers from
+        :mod:`pyobo`
+    :param terms_observed: The dictionary of prefix -> collection of identifiers
+        encountered in the mappings appearing in the landscape analysis. This should be
+        calculated from raw mappings to make sure that it accounts for any that might be
+        filtered out during processing.
+
+    :returns: A pandas dataframe with the following columns:
 
         1. Prefix
         2. Name
         3. License
         4. Version
-        5. Terms - the number of terms in the resource. If the full term list can be looked up
-           with :mod:`pyobo`, then this is considered as exact. Otherwise, this will be estimated
-           based on the number of unique terms appearing in the mappings. This is typically an
-           underestimate since not necessarily all terms appear in mappings.
-        6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the resource.
-           Otherwise, will be "false"
+        5. Terms - the number of terms in the resource. If the full term list can be
+           looked up with :mod:`pyobo`, then this is considered as exact. Otherwise,
+           this will be estimated based on the number of unique terms appearing in the
+           mappings. This is typically an underestimate since not necessarily all terms
+           appear in mappings.
+        6. Exact. Will be "true" if :mod:`pyobo` supports looking up all terms from the
+           resource. Otherwise, will be "false"
     """
     import bioversions
 
@@ -691,9 +694,8 @@ class LandscapeResult:
             """Here's what the output from upsetplot.plot looks like:
 
             {'matrix': <Axes: >,
-             'shading': <Axes: >,
-             'totals': <Axes: >,
-             'intersections': <Axes: ylabel='Intersection size'>}
+                'shading': <Axes: >, 'totals': <Axes: >, 'intersections': <Axes:
+                ylabel='Intersection size'>}
             """
 
             plot_result = upsetplot.plot(

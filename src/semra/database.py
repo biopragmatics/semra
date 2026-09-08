@@ -516,7 +516,7 @@ def _yield_ontology_resources(
             try:
                 with logging_redirect_tqdm():
                     resource_mappings = from_pyobo(
-                        resource.prefix, force_process=refresh_source, cache=False, use_tqdm=True
+                        resource.prefix, force_process=refresh_source, cache=False, progress=True
                     )
             except (
                 ValueError,

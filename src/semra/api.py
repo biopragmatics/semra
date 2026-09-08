@@ -888,7 +888,7 @@ def hydrate_subsets(
     for prefix, parents in subset_configuration.items():
         try:
             hierarchy = pyobo.get_hierarchy(
-                prefix, include_part_of=False, include_has_member=False, use_tqdm=progress
+                prefix, include_part_of=False, include_has_member=False, progress=progress
             )
         except RuntimeError:  # e.g., no build
             rv[prefix] = set()
@@ -1185,7 +1185,7 @@ def get_terms(
     for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
         tqdm.write(f"[{prefix}] getting terms")
         start = time.time()
-        identifiers = pyobo.get_ids(prefix, use_tqdm=progress)
+        identifiers = pyobo.get_ids(prefix, progress=progress)
         subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
         if subset:
             tqdm.write(f"[{prefix}] got {len(identifiers):,} terms")

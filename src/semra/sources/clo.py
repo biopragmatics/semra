@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import tempfile
 from pathlib import Path
 
@@ -18,6 +19,8 @@ from semra.constants import Reference
 from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]
+
+logger = logging.getLogger(__name__)
 
 SKIP_PREFIXES = {"omim"}
 CLO_URI_PREFIX = "http://purl.obolibrary.org/obo/CLO_"
@@ -131,14 +134,14 @@ def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
                     try:
                         prefix, identifier = bioregistry.parse_curie(curie)
                     except Exception:  # noqa:BLE001
-                        tqdm.write(
+                        logger.debug(
                             f"{node.reference.curie} unparsed: {click.style(curie, fg='red')} "
                             f"from line:\n  {prop.value}"
                         )
                         continue
 
                 if prefix is None or identifier is None:
-                    tqdm.write(
+                    logger.debug(
                         f"{node.reference.curie} unparsed: {click.style(curie, fg='red')} "
                         f"from line:\n  {prop.value}"
                     )
@@ -149,7 +152,7 @@ def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
                     raise ValueError(f"Missing pattern for prefix `{prefix}`")
                 if not bioregistry.is_valid_identifier(prefix, identifier):
                     c = click.style(f"{prefix}:{identifier}", fg="yellow")
-                    tqdm.write(f"{node.reference.curie} invalid: {c} from line:\n  {prop.value}")
+                    logger.debug(f"{node.reference.curie} invalid: {c} from line:\n  {prop.value}")
                     continue
 
                 mappings.append(

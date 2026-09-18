@@ -43,7 +43,7 @@ def _removeprefix(s: str, prefix: str) -> str:
 CLO_OWL_URL = "http://purl.obolibrary.org/obo/clo.owl"
 
 
-def get_clo_mappings(confidence: float = 0.8) -> list[SemanticMapping]:
+def get_clo_mappings(*, confidence: float = 0.8) -> list[SemanticMapping]:
     """Get Cell Line Ontology mappings.
 
     :param confidence: How confidence are you in the quality of these mappings being

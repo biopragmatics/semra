@@ -158,7 +158,7 @@ from semra.api import (
     prioritize,
     validate_mappings,
 )
-from semra.constants import Reference
+from semra.constants import CC0_URL, Reference
 from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_reversible
 from semra.io import (
     from_jsonl,
@@ -178,7 +178,7 @@ from semra.sources.biopragmatics import (
     get_biomappings_predicted_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
-from semra.sources.wikidata import get_wikidata_mappings_by_prefix
+from semra.sources.wikidata import get_wikidata_mappings, get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Statistics
 from semra.utils import PrefixListValidator, get_jinja_template
 
@@ -284,7 +284,7 @@ class Input(BaseModel):
         elif self.source == "pyobo":
             if self.prefix is None:
                 raise ValueError
-            rv = from_pyobo(
+            return from_pyobo(
                 self.prefix,
                 confidence=self.confidence,
                 force_process=refresh_source,
@@ -294,22 +294,22 @@ class Input(BaseModel):
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             if self.prefix in {None, "positive"}:
-                rv = from_sssom_pydantic(get_biomappings_positive_mappings())
+                return from_sssom_pydantic(get_biomappings_positive_mappings())
             elif self.prefix == "negative":
-                rv = from_sssom_pydantic(get_biomappings_negative_mappings())
+                return from_sssom_pydantic(get_biomappings_negative_mappings())
             elif self.prefix == "predicted":
-                rv = from_sssom_pydantic(get_biomappings_predicted_mappings())
+                return from_sssom_pydantic(get_biomappings_predicted_mappings())
             else:
                 raise ValueError(f"invalid prefix for biomappings: {self.prefix}")
         elif self.source == "gilda":
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             # TODO fold into custom source
-            rv = from_sssom_pydantic(get_gilda_mappings())
+            return from_sssom_pydantic(get_gilda_mappings())
         elif self.source == "custom":
             func = SOURCE_RESOLVER.make(self.prefix, self.extras)
             func_name = normalize_custom_func_name(func)
-            rv = from_sssom_pydantic(
+            return from_sssom_pydantic(
                 func(),
                 mapping_set=MappingSet(
                     id=f"https://w3id.org/biopragmatics/semra/custom/{func_name}.sssom.tsv"
@@ -317,17 +317,22 @@ class Input(BaseModel):
             )
         elif self.source == "wikidata":
             if self.prefix is None:
-                raise ValueError("prefix is required to be set when wikidata is used as a source")
-            rv = from_sssom_pydantic(
-                get_wikidata_mappings_by_prefix(self.prefix, **(self.extras or {}))
+                mappings = get_wikidata_mappings()
+                mapping_set_id = "https://w3id.org/biopragmatics/semra/custom/wikidata.sssom.tsv"
+            else:
+                mappings = list(get_wikidata_mappings_by_prefix(self.prefix, **(self.extras or {})))
+                mapping_set_id = (
+                    f"https://w3id.org/biopragmatics/semra/custom/wikidata-{self.prefix}.sssom.tsv"
+                )
+            return from_sssom_pydantic(
+                mappings, mapping_set=MappingSet(id=mapping_set_id, license=CC0_URL)
             )
         elif self.source == "sssom":
             if self.prefix is None:
                 raise ValueError
-            rv = from_sssom(self.prefix, **(self.extras or {}))
+            return from_sssom(self.prefix, **(self.extras or {}))
         else:
             raise ValueError
-        return rv
 
 
 def assert_bioregistry_canonical(prefix: str) -> None:

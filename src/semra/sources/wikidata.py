@@ -1,18 +1,19 @@
 """Get arbitrary Wikidata mappings."""
 
-import gzip
-import json
 from collections.abc import Iterable
+from textwrap import dedent
 
 import bioregistry
-import curies
 import pystow
+import requests
+import sssom_pydantic
 import wikidata_client
-from sssom_pydantic import SemanticMapping
+from pydantic import AnyUrl
+from sssom_pydantic import MappingSet, SemanticMapping
 from tqdm import tqdm
 
 from semra.constants import CC0_URL, Reference
-from semra.vocabulary import EXACT_MATCH, UNSPECIFIED_MAPPING
+from semra.vocabulary import CHARLIE, EXACT_MATCH, UNSPECIFIED_MAPPING
 
 __all__ = [
     "get_wikidata_mappings",
@@ -23,68 +24,90 @@ WIKIDATA_MAPPING_DIRECTORY = pystow.module("wikidata", "mappings")
 
 
 def get_all_wikidata_mappings(
-    *, progress: bool = True, predicate: curies.Reference | None = None
+    *, progress: bool = True, endpoint: str | None = None
 ) -> list[SemanticMapping]:
     """Iterate over WikiData xref dataframes."""
-    if predicate is None:
-        predicate = EXACT_MATCH
+    return list(_get_all_wikidata_mappings(endpoint=endpoint, progress=progress))
 
+
+def _get_all_wikidata_mappings(
+    *, progress: bool = True, endpoint: str | None = None
+) -> Iterable[SemanticMapping]:
+    """Iterate over WikiData xref dataframes."""
     wikidata_properties = bioregistry.get_registry_map("wikidata")
-
     it = tqdm(sorted(wikidata_properties.items()), disable=not progress, desc="Wikidata properties")
-    rv: list[SemanticMapping] = []
     for prefix, wikidata_property in it:
         if prefix in {"pubmed", "pmc", "orcid", "inchi", "smiles"}:
             continue  # too many
-        it.set_postfix({"prefix": prefix})
-        rv.extend(_help(target_prefix=prefix, prop=wikidata_property, predicate=predicate))
-    return rv
+        it.set_postfix({"prefix": prefix, "prop": wikidata_property})
+        try:
+            yield from get_wikidata_mappings_by_prefix(prefix=prefix, endpoint=endpoint)
+        except requests.exceptions.JSONDecodeError:
+            tqdm.write(f"faild to get {prefix}/{wikidata_property}")
+            continue
 
 
-def get_wikidata_mappings(
-    *, prop: str, predicate: curies.Reference | None = None
-) -> list[SemanticMapping]:
+def get_wikidata_mappings(prop: str, *, endpoint: str | None = None) -> list[SemanticMapping]:
     """Get mappings from Wikidata."""
     prop_to_prefix = bioregistry.get_registry_invmap("wikidata")
     target_prefix = prop_to_prefix[prop]
-
-    return list(_help(target_prefix=target_prefix, prop=prop, predicate=predicate))
+    return list(_help(prefix=target_prefix, prop=prop))
 
 
 def get_wikidata_mappings_by_prefix(
-    prefix: str, predicate: curies.Reference | None = None
+    prefix: str, *, endpoint: str | None = None
 ) -> Iterable[SemanticMapping]:
     """Get mappings from Wikidata."""
     prefix_to_prop = bioregistry.get_registry_map("wikidata")
     prop = prefix_to_prop[prefix]
-
-    return _help(target_prefix=prefix, prop=prop, predicate=predicate)
+    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{prefix}-{prop}.sssom.tsv.gz")
+    if path.is_file():
+        tqdm.write(f"reading cache for {prefix}/{prop} at {path}")
+        with sssom_pydantic.read_iterable(path) as file:
+            for record in file.mappings:
+                if isinstance(record, SemanticMapping):
+                    yield record
+    else:
+        metadata = MappingSet(
+            id=AnyUrl(f"https://w3id.org/biopragmatics/mappings/wikidata/{prop}.sssom.tsv.gz"),
+            license=AnyUrl(CC0_URL),
+            creators=[CHARLIE],
+            confidence=0.99,
+        )
+        converter = bioregistry.get_default_converter()
+        mappings = list(_help(prefix=prefix, prop=prop, endpoint=endpoint))
+        sssom_pydantic.write(mappings=mappings, path=path, metadata=metadata, converter=converter)
+        yield from mappings
 
 
 def _help(
-    target_prefix: str,
+    prefix: str,
     prop: str,
     *,
-    predicate: curies.Reference | None = None,
-    cache: bool = True,
     confidence: float = 0.99,
+    timeout: int = 300,
+    endpoint: str | None = None,
 ) -> Iterable[SemanticMapping]:
     """Get mappings from Wikidata."""
-    if predicate is None:
-        predicate = EXACT_MATCH
-    else:
-        predicate = Reference.from_reference(predicate)
     source = Reference(prefix="bioregistry", identifier="wikidata")
-    for wikidata_id, xref_id in iter_wikidata_mappings(prop, cache=cache):
-        if not wikidata_id.startswith("Q"):
+    sparql = dedent(f"""\
+        SELECT ?entity ?entityLabel ?id
+        WHERE {{
+            ?entity wdt:{prop} ?id .
+            SERVICE wikibase:label {{ bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }}
+        }}
+    """)
+    rows = wikidata_client.query(sparql, timeout=timeout, endpoint=endpoint)
+    for row in rows:
+        if not row["entity"].startswith("Q"):
             continue
         try:
-            obj = Reference(prefix=target_prefix, identifier=_clean_xref_id(target_prefix, xref_id))
+            obj = Reference(prefix=prefix, identifier=_clean_xref_id(prefix, row["id"]))
         except ValueError:
             continue
         yield SemanticMapping(
-            subject=Reference(prefix="wikidata", identifier=wikidata_id),
-            predicate=predicate,
+            subject=Reference(prefix="wikidata", identifier=row["entity"], name=row["entityLabel"]),
+            predicate=EXACT_MATCH,
             object=obj,
             justification=UNSPECIFIED_MAPPING,
             license=CC0_URL,
@@ -99,19 +122,6 @@ def _clean_xref_id(prefix: str, identifier: str) -> str:
     return identifier
 
 
-def iter_wikidata_mappings(
-    wikidata_property: str, *, cache: bool = True
-) -> Iterable[tuple[str, str]]:
-    """Iterate over Wikidata xrefs."""
-    path = WIKIDATA_MAPPING_DIRECTORY.join(name=f"{wikidata_property}.json.gz")
-    if path.exists() and cache:
-        with gzip.open(path, mode="rt") as file:
-            rows = json.load(file)
-    else:
-        sparql = f"SELECT ?wikidata_id ?id WHERE {{?wikidata_id wdt:{wikidata_property} ?id}}"
-        rows = wikidata_client.query(sparql, timeout=300)
-        with gzip.open(path, mode="wt") as file:
-            json.dump(rows, file)
-
-    for row in rows:
-        yield row["wikidata_id"], row["id"]
+if __name__ == "__main__":
+    for _ in _get_all_wikidata_mappings():
+        pass

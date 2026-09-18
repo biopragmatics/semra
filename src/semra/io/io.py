@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import pickle
-import warnings
 from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, overload

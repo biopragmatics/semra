@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from functools import lru_cache
 from hashlib import md5
 from pathlib import Path
-from typing import Literal
 
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -134,6 +134,9 @@ MAPPING_EDGES_FILENAME = "mapping_edges.tsv"
 EDGES_FILENAME = "edges.tsv"
 
 
+BUFFERING = 1024**2
+
+
 def write_neo4j(
     mappings: Iterable[Mapping],
     directory: str | Path,
@@ -146,7 +149,6 @@ def write_neo4j(
     dockerfile_name: str = "Dockerfile",
     pip_install: str | None = None,
     progress: bool = True,
-    compress: Literal["during", "after"] | None = None,
     cleanup: bool = True,
     quiet: bool = False,
     python: str | None = None,
@@ -220,24 +222,18 @@ def write_neo4j(
         equivalence_classes = {}
 
     # FIXME use different mechanism for adding nodes into the graph
-    #  so we don't need ot keep track of what's been written as we go.
+    #  so we don't need to keep track of what's been written as we go.
     seen_concepts: set[Reference] = set()
 
     # keep track of the CURIEs for mapping sets
     mapping_set_curies: set[str] = set()
 
-    def _join_gzip(name: str) -> Path:
-        if compress == "during":
-            return directory.joinpath(name + ".gz")
-        else:
-            return directory.joinpath(name)
-
-    concept_nodes_path = _join_gzip(CONCEPT_NODES_FILENAME)
-    mapping_nodes_path = _join_gzip(MAPPING_NODES_FILENAME)
-    evidence_nodes_path = _join_gzip(EVIDENCE_NODES_FILENAME)
-    mapping_set_nodes_path = _join_gzip(MAPPING_SET_NODES_FILENAME)
-    mapping_edges_path = _join_gzip(MAPPING_EDGES_FILENAME)
-    edges_path = _join_gzip(EDGES_FILENAME)
+    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
+    edges_path = directory.joinpath(EDGES_FILENAME)
 
     node_paths = [
         (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),
@@ -248,12 +244,12 @@ def write_neo4j(
     edge_paths = [mapping_edges_path, edges_path]
 
     with (
-        safe_open_writer(mapping_edges_path) as mapping_edges_writer,
-        safe_open_writer(edges_path) as edge_writer,
-        safe_open_writer(concept_nodes_path) as concept_nodes_writer,
-        safe_open_writer(mapping_nodes_path) as mapping_nodes_writer,
-        safe_open_writer(evidence_nodes_path) as evidence_nodes_writer,
-        safe_open_writer(mapping_set_nodes_path) as mapping_set_writer,
+        safe_open_writer(mapping_edges_path, buffering=BUFFERING) as mapping_edges_writer,
+        safe_open_writer(edges_path, buffering=BUFFERING) as edge_writer,
+        safe_open_writer(concept_nodes_path, buffering=BUFFERING) as concept_nodes_writer,
+        safe_open_writer(mapping_nodes_path, buffering=BUFFERING) as mapping_nodes_writer,
+        safe_open_writer(evidence_nodes_path, buffering=BUFFERING) as evidence_nodes_writer,
+        safe_open_writer(mapping_set_nodes_path, buffering=BUFFERING) as mapping_set_writer,
     ):
         mapping_edges_writer.writerow(EDGES_HEADER)
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
@@ -332,17 +328,14 @@ def write_neo4j(
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render(python=python))
 
-    if compress == "after":
-        node_names = [
-            (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
-            for label, path in node_paths
-        ]
-        edge_names = [
-            gzip_compress(path, cleanup=cleanup).relative_to(directory) for path in edge_paths
-        ]
-    else:
-        node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
-        edge_names = [path.relative_to(directory) for path in edge_paths]
+    node_names = [
+        (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
+        for label, path in tqdm(node_paths, desc="Compressing node TSVs", leave=False)
+    ]
+    edge_names = [
+        gzip_compress(path, cleanup=cleanup).relative_to(directory)
+        for path in tqdm(edge_paths, desc="Compressing edge TSVs", leave=False)
+    ]
 
     docker_path = directory.joinpath(dockerfile_name)
     docker_path.write_text(
@@ -368,8 +361,13 @@ def write_neo4j(
         click.secho(f"  sh {run_script_name}")
 
 
-def _get_mapping_set_curie(m: MappingSet) -> str:
-    hasher = md5(m.id.encoded_string().encode("utf-8"), usedforsecurity=False)
+def _get_mapping_set_curie(mapping_set: MappingSet, /) -> str:
+    return _help_hash(str(mapping_set.id))
+
+
+@lru_cache
+def _help_hash(url: str) -> str:
+    hasher = md5(url.encode("utf-8"), usedforsecurity=False)
     return f"{SEMRA_MAPPING_SET_PREFIX}:{hasher.hexdigest()}"
 
 

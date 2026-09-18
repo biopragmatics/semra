@@ -419,12 +419,6 @@ class Configuration(BaseModel):
     write_raw_neo4j: Annotated[
         bool, Field(description="Should a neo4j directory be written for raw mappings?")
     ] = False
-    neo4j_gzip: Annotated[
-        Literal["during", "after"] | None,
-        Field(
-            description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
-        ),
-    ] = "during"
     add_labels: Annotated[
         bool, Field(description="Should PyOBO be used to look up labels for SSSOM output?")
     ] = False
@@ -1136,7 +1130,6 @@ def assemble(
                     configuration.raw_neo4j_path,
                     docker_name=configuration.raw_neo4j_name,
                     add_labels=False,  # configuration.add_labels,
-                    compress=configuration.neo4j_gzip,
                     progress=progress,
                 )
 
@@ -1202,7 +1195,6 @@ def assemble(
         docker_name=configuration.processed_neo4j_name,
         equivalence_classes=equivalence_classes,
         add_labels=configuration.add_labels,
-        compress=configuration.neo4j_gzip,
         progress=progress,
     )
     _echo(f"done writing Neo4j in {humanize.naturaldelta(time.time() - start)}", fg="green")

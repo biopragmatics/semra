@@ -265,9 +265,8 @@ def build(
     mappings = write_sssom(
         mappings, SSSOM_PATH, metadata=metadata, add_labels=False, prune=False, stream=True
     )
-    # neo4j doesn't need to stream since it's last. to avoid SIGKILLs,
-    # write the file to disk, then compress after.
-    write_neo4j(mappings, NEO4J_DIR, compress="after", progress=False, cleanup=cleanup)
+    # neo4j doesn't need to stream since it's last
+    write_neo4j(mappings, NEO4J_DIR, progress=False, cleanup=cleanup)
 
     # gzip these after the fact to avoid SIGKILLs
     jsonl_gz_path = gzip_compress(JSONL_PATH, cleanup=cleanup)

@@ -152,7 +152,8 @@ def landscape(
 
         if not lazy_versions:
             click.echo("caching versions w/ Bioversions")
-            list(bioversions.iter_versions(use_tqdm=True))
+            with logging_redirect_tqdm():
+                list(bioversions.iter_versions(use_tqdm=True))
 
         logging.getLogger("pyobo").setLevel(logging.ERROR)
 

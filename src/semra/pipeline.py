@@ -244,7 +244,6 @@ class Input(BaseModel):
 
     source: Literal[
         "pyobo",
-        "bioontologies",
         "biomappings",
         "custom",
         "sssom",
@@ -271,7 +270,7 @@ class Input(BaseModel):
     @model_validator(mode="after")
     def validate_after(self) -> Self:
         """Check prefixes are okay."""
-        if self.source not in {"pyobo", "bioontologies", "wikidata"}:
+        if self.source not in {"pyobo", "wikidata"}:
             return self
         if self.prefix is None:
             raise ValueError
@@ -282,7 +281,7 @@ class Input(BaseModel):
         """Load mappings from the source."""
         if self.source is None:
             return None
-        elif self.source in {"pyobo", "bioontologies"}:
+        elif self.source == "pyobo":
             if self.prefix is None:
                 raise ValueError
             rv = from_pyobo(

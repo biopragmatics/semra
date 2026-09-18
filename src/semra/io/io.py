@@ -118,14 +118,6 @@ def from_pyobo(
     return from_sssom_pydantic(mappings, metadata)
 
 
-def from_bioontologies(
-    prefix: str, confidence: float | None = None, **kwargs: Any
-) -> list[Mapping]:
-    """Get mappings from a given ontology via :mod:`bioontologies`."""
-    warnings.warn("use from_pyobo, which now wraps bioontologies", DeprecationWarning, stacklevel=2)
-    return from_pyobo(prefix, confidence=confidence, **kwargs)
-
-
 def from_sssom(
     path: str | Path, confidence: float | None = None, *, strict: bool = False, **kwargs: Any
 ) -> list[Mapping]:

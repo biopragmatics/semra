@@ -42,8 +42,8 @@ def _get_all_wikidata_mappings(
         it.set_postfix({"prefix": prefix, "prop": wikidata_property})
         try:
             yield from get_wikidata_mappings_by_prefix(prefix=prefix, endpoint=endpoint)
-        except requests.exceptions.JSONDecodeError:
-            tqdm.write(f"faild to get {prefix}/{wikidata_property}")
+        except IOError:
+            tqdm.write(f"failed to get {prefix}/{wikidata_property}")
             continue
 
 

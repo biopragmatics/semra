@@ -30,11 +30,21 @@ def get_wikidata_mappings(
 ) -> list[SemanticMapping]:
     """Iterate over WikiData xref dataframes."""
     converter = bioregistry.get_default_converter()
-    return [
-        *get_equivalent_property_mappings(converter=converter, **kwargs),
-        *get_exact_match_mappings(converter=converter, **kwargs),
-        *_get_all_wikidata_mappings(progress=progress, **kwargs),
-    ]
+    rv = []
+    try:
+        rv.extend(get_equivalent_property_mappings(converter=converter, **kwargs))
+    except OSError:
+        tqdm.write("failed to get equivalent property mappings")
+
+    try:
+        rv.extend(get_exact_match_mappings(converter=converter, **kwargs))
+    except OSError:
+        tqdm.write("failed to get exact match mappings")
+
+    # error handling is baked in
+    rv.extend(_get_all_wikidata_mappings(progress=progress, **kwargs))
+
+    return rv
 
 
 def _get_all_wikidata_mappings(
@@ -71,6 +81,7 @@ def get_wikidata_mappings_by_prefix(
             id=AnyUrl(
                 f"https://w3id.org/biopragmatics/mappings/wikidata/{property_id}.sssom.tsv.gz"
             ),
+            title=f"Wikidata to {bioregistry.get_name(prefix, strict=True)}",
             license=AnyUrl(CC0_URL),
             creators=[v.charlie],
             confidence=0.99,
@@ -83,4 +94,4 @@ def get_wikidata_mappings_by_prefix(
 
 
 if __name__ == "__main__":
-    get_wikidata_mappings()
+    get_wikidata_mappings(timeout=300)

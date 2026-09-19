@@ -60,17 +60,17 @@ dependencies = [
     "biomappings>=0.6.0",
     "pyobo>=0.14.1",
     "typing-extensions",
-    "zenodo-client",
-    "ssslm>=0.2.2",
+    "zenodo-client>=0.4.2",
+    "ssslm>=0.3.0",
     "curies>=0.15.0",
     "jinja2",  # used in neo4j generation
     "class-resolver>=0.7.1",
     "pyyaml",
     "humanize",
     "tabulate",
-    "sssom-pydantic>=0.6.1",
-    "wikidata-client>=0.0.4",
-    "obographs>=0.0.15",
+    "sssom-pydantic>=0.6.8",
+    "wikidata-client>=0.0.6",
+    "obographs>=0.1.0",
 ]
 
 [dependency-groups]

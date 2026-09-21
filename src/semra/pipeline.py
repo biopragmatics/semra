@@ -123,12 +123,14 @@ configurations.
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import enum
 import logging
+import tempfile
 import time
 import typing as t
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple, Self, overload
@@ -140,7 +142,7 @@ import requests
 import sssom_pydantic
 from curies.triples import keep_prefixes_both
 from pydantic import BaseModel, Field, model_validator
-from pystow.utils import read_pydantic_json
+from pystow.utils import gzip_compress, read_pydantic_json
 from sssom_pydantic import MappingSet
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -1071,6 +1073,21 @@ def assemble(
     def _echo(s: str, *args: Any, **kwargs: Any) -> None:
         click.echo(f"[{configuration.key}] " + click.style(s, *args, **kwargs))
 
+    @contextlib.contextmanager
+    def _compress_after(name: str, label: str, target: Path) -> Generator[Path]:
+        """Create a temporary file, then gzip it into the target after."""
+        with _echo_timed(f"writing {label}"), tempfile.TemporaryDirectory() as directory:
+            path = Path(directory).joinpath(name)
+            yield path
+            gzip_compress(path, target=target)
+
+    @contextlib.contextmanager
+    def _echo_timed(label: str, fg: str = "green") -> Generator[None]:
+        _echo(label, fg=fg)
+        start = time.time()
+        yield
+        _echo(f"done {label} in {humanize.naturaldelta(time.time() - start)}", fg=fg)
+
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
         match return_type:
             case AssembleReturnType.none:
@@ -1103,131 +1120,117 @@ def assemble(
             configuration.configuration_path.write_text(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
-            raw_mappings = get_raw_mappings(
-                configuration, refresh_source=refresh_source, progress=progress
-            )
+            # TODO add getting lables here
+            with _echo_timed("getting raw mappings"):
+                raw_mappings = get_raw_mappings(
+                    configuration, refresh_source=refresh_source, progress=progress
+                )
             if not raw_mappings:
                 raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
             if configuration.validate_raw:
-                validate_mappings(raw_mappings, progress=progress)
+                with _echo_timed("validating raw mappings"):
+                    validate_mappings(raw_mappings, progress=progress)
 
             # TODO stream?
-            write_sssom(
-                raw_mappings,
-                configuration.raw_sssom_path,
-                progress=progress,
-                # add_labels=configuration.add_labels
-                metadata=_mapping_set_from_conf(
-                    configuration,
-                    subtitle="Raw Mappings",
-                    path=configuration.raw_sssom_path,
-                ),
-            )
-            write_jsonl(
-                raw_mappings,
-                configuration.raw_jsonl_path,
-                progress=progress,
-            )
-            if configuration.write_raw_neo4j:
-                write_neo4j(
+            with _compress_after(
+                "raw.sssom.tsv", "raw SSSOM", configuration.raw_sssom_path
+            ) as path:
+                write_sssom(
                     raw_mappings,
-                    configuration.raw_neo4j_path,
-                    docker_name=configuration.raw_neo4j_name,
-                    add_labels=False,  # configuration.add_labels,
+                    path,
                     progress=progress,
+                    # add_labels=configuration.add_labels
+                    metadata=_mapping_set_from_conf(
+                        configuration,
+                        subtitle="Raw Mappings",
+                        path=configuration.raw_sssom_path,
+                    ),
                 )
 
+            with _compress_after("raw.jsonl", "raw JSONL", configuration.raw_jsonl_path) as path:
+                write_jsonl(raw_mappings, path, progress=progress)
+
+            if configuration.write_raw_neo4j:
+                with _echo_timed("writing Neo4j (raw)"):
+                    write_neo4j(
+                        raw_mappings,
+                        configuration.raw_neo4j_path,
+                        docker_name=configuration.raw_neo4j_name,
+                        add_labels=False,  # configuration.add_labels,
+                        progress=progress,
+                    )
+
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-        processed_mappings = process_raw_mappings(
-            raw_mappings,
-            mutations=configuration.mutations,
-            remove_prefix_set=configuration.remove_prefixes,
-            keep_prefix_set=configuration.keep_prefixes,
-            post_remove_prefixes=configuration.post_remove_prefixes,
-            post_keep_prefixes=configuration.post_keep_prefixes,
-            remove_imprecise=configuration.remove_imprecise,
-            subsets=configuration.get_hydrated_subsets(),
+        with _echo_timed("processing raw mappings"):
+            processed_mappings = process_raw_mappings(
+                raw_mappings,
+                mutations=configuration.mutations,
+                remove_prefix_set=configuration.remove_prefixes,
+                keep_prefix_set=configuration.keep_prefixes,
+                post_remove_prefixes=configuration.post_remove_prefixes,
+                post_keep_prefixes=configuration.post_keep_prefixes,
+                remove_imprecise=configuration.remove_imprecise,
+                subsets=configuration.get_hydrated_subsets(),
+                progress=progress,
+            )
+
+    with _echo_timed("prioritizing mappings"):
+        prioritized_mappings = prioritize(
+            processed_mappings, configuration.priority, progress=progress
+        )
+
+    with _echo_timed("calculating equivalence classes"):
+        equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
+
+    with _compress_after(
+        "processed.sssom.tsv", "processed SSSOM", configuration.processed_sssom_path
+    ) as path:
+        write_sssom(
+            processed_mappings,
+            path,
+            progress=progress,
+            add_labels=configuration.add_labels,
+            metadata=_mapping_set_from_conf(
+                configuration,
+                subtitle="Processed Mappings",
+                path=configuration.processed_sssom_path,
+            ),
+        )
+
+    with _compress_after(
+        "processed.jsonl", "processed JSONL", configuration.processed_jsonl_path
+    ) as path:
+        write_jsonl(processed_mappings, path, progress=progress)
+
+    with _echo_timed("writing Neo4j (processed mappings)"):
+        write_neo4j(
+            processed_mappings,
+            configuration.processed_neo4j_path,
+            docker_name=configuration.processed_neo4j_name,
+            equivalence_classes=equivalence_classes,
+            add_labels=configuration.add_labels,
             progress=progress,
         )
-        _echo("done processing raw mappings", fg="green")
 
-    _echo("prioritizing mappings", fg="green")
-    start = time.time()
-    prioritized_mappings = prioritize(processed_mappings, configuration.priority, progress=progress)
-    _echo(
-        f"done prioritizing mappings in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
+    with _compress_after(
+        "priority.jsonl", "prioritized JSONL", configuration.priority_jsonl_path
+    ) as path:
+        write_jsonl(prioritized_mappings, path, progress=progress)
 
-    _echo("calculating equivalence classes", fg="green")
-    start = time.time()
-    equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
-    _echo(
-        f"done calculating equivalences classes in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
-
-    _echo("writing SSSOM (processed mappings)", fg="green")
-    start = time.time()
-    write_sssom(
-        processed_mappings,
-        configuration.processed_sssom_path,
-        progress=progress,
-        add_labels=configuration.add_labels,
-        metadata=_mapping_set_from_conf(
-            configuration,
-            subtitle="Processed Mappings",
-            path=configuration.processed_sssom_path,
-        ),
-    )
-    _echo(f"done writing SSSOM in {humanize.naturaldelta(time.time() - start)}", fg="green")
-
-    _echo("writing JSONL (processed mappings)", fg="green")
-    start = time.time()
-    write_jsonl(
-        processed_mappings,
-        configuration.processed_jsonl_path,
-        progress=progress,
-    )
-    _echo(f"done writing JSONL in {humanize.naturaldelta(time.time() - start)}", fg="green")
-
-    _echo("writing Neo4j (processed mappings)", fg="green")
-    start = time.time()
-    write_neo4j(
-        processed_mappings,
-        configuration.processed_neo4j_path,
-        docker_name=configuration.processed_neo4j_name,
-        equivalence_classes=equivalence_classes,
-        add_labels=configuration.add_labels,
-        progress=progress,
-    )
-    _echo(f"done writing Neo4j in {humanize.naturaldelta(time.time() - start)}", fg="green")
-
-    _echo("writing JSONL (prioritized mappings)", fg="green")
-    start = time.time()
-    write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, progress=progress)
-    _echo(
-        f"done writing JSONL (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
-
-    _echo("writing SSSOM (prioritized mappings)", fg="green")
-    start = time.time()
-    write_sssom(
-        prioritized_mappings,
-        configuration.priority_sssom_path,
-        add_labels=configuration.add_labels,
-        progress=progress,
-        metadata=_mapping_set_from_conf(
-            configuration,
-            subtitle="Priority Mappings",
-            path=configuration.priority_sssom_path,
-        ),
-    )
-    _echo(
-        f"done writing SSSOM (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
+    with _compress_after(
+        "priority.sssom.tsv", "prioritize SSSOM", configuration.priority_sssom_path
+    ) as path:
+        write_sssom(
+            prioritized_mappings,
+            path,
+            add_labels=configuration.add_labels,
+            progress=progress,
+            metadata=_mapping_set_from_conf(
+                configuration,
+                subtitle="Priority Mappings",
+                path=configuration.priority_sssom_path,
+            ),
+        )
 
     match return_type:
         case AssembleReturnType.none:

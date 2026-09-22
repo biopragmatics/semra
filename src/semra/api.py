@@ -223,7 +223,7 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool
     return {triple: deduplicate_evidence(triple, evidence) for triple, evidence in dd.items()}
 
 
-def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
+def assemble_evidences(mappings: Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Assemble evidences.
 
     More specifically, this aggregates evidences for all subject-predicate-object
@@ -1342,18 +1342,20 @@ MutationIndex: TypeAlias = dict[str, Mutation]
 
 def apply_mutations(
     mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
-) -> Iterable[Mapping]:
+) -> list[Mapping]:
     """Apply mutations."""
     mutation_index = _index_mutations(mutations)
-    for mapping in tqdm(
-        mappings,
-        disable=not progress,
-        desc="Applying mutations",
-        unit_scale=True,
-        unit="mapping",
-        leave=False,
-    ):
-        yield _handle_mutation(mapping, mutation_index)
+    return [
+        _handle_mutation(mapping, mutation_index)
+        for mapping in tqdm(
+            mappings,
+            disable=not progress,
+            desc="Applying mutations",
+            unit_scale=True,
+            unit="mapping",
+            leave=False,
+        )
+    ]
 
 
 def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:

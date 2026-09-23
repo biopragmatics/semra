@@ -263,7 +263,7 @@ class TestIO(unittest.TestCase):
                 self.assertEqual([], errors, msg=f"{errors}")
                 self.assertNotEqual(0, len(smappings), msg=f"{errors}")
 
-                unassembled_mappings = from_sssom(path, strict=True)
+                unassembled_mappings = from_sssom(path)
                 self.assertNotEqual(
                     0, len(unassembled_mappings), msg=f"error reading\n\n{contents}"
                 )

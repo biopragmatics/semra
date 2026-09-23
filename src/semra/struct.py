@@ -205,7 +205,6 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
         mapping: Triple,
         subject: Reference | None = None,
         object: Reference | None = None,
-        calculate_hashes: bool = False,
     ) -> sssom_pydantic.SemanticMapping:
         raise NotImplementedError
 
@@ -280,9 +279,8 @@ class ReasonedEvidence(
         triple: Triple,
         subject: Reference | None = None,
         object: Reference | None = None,
-        calculate_hash: bool = False,
     ) -> sssom_pydantic.SemanticMapping:
-        mapping = sssom_pydantic.SemanticMapping(
+        return sssom_pydantic.SemanticMapping(
             subject=subject or triple.subject,
             predicate=triple.predicate,
             object=object or triple.object,
@@ -292,10 +290,7 @@ class ReasonedEvidence(
             comment=self.explanation,
             source=SEMRA_SOURCE,
             derived_from=[mapping.get_reference() for mapping in self.mappings],
-        )
-        if calculate_hash:
-            mapping = mapping.with_hash(CONVERTER)
-        return mapping
+        ).with_hash(CONVERTER)
 
     def get_confidence(self) -> float | None:
         r"""Calculate confidence for the reasoned evidence.

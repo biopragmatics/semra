@@ -155,15 +155,12 @@ def to_sssom_pydantic(
     mappings: Iterable[Mapping],
     *,
     add_labels: bool = False,
-    calculate_hashes: bool = False,
 ) -> Iterable[sssom_pydantic.SemanticMapping]:
     """Iterate over SSSOM-Pydantic mappings."""
     for mapping in mappings:
         subject, obj = _get_subject_object(mapping, add_labels)
         for evidence in mapping.evidence:
-            yield evidence._to_sssom_pydantic(
-                mapping, subject=subject, object=obj, calculate_hash=calculate_hashes
-            )
+            yield evidence._to_sssom_pydantic(mapping, subject=subject, object=obj)
 
 
 def _get_subject_object(mapping: Mapping, add_labels: bool) -> tuple[Reference, Reference]:
@@ -271,11 +268,10 @@ def _write_sssom(
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
     progress: bool = False,
-    calculate_hashes: bool = False,
     **kwargs: Any,
 ) -> None:
     sssom_pydantic.write(
-        to_sssom_pydantic(mappings, add_labels=add_labels, calculate_hashes=calculate_hashes),
+        to_sssom_pydantic(mappings, add_labels=add_labels),
         file,
         metadata=metadata,
         converter=converter,

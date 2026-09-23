@@ -3,7 +3,6 @@
 import unittest
 from typing import Any
 
-import curies
 import sssom_pydantic
 from curies import vocabulary as cv
 from pydantic import AnyUrl
@@ -12,7 +11,8 @@ from sssom_pydantic import MappingSet
 from sssom_pydantic import examples as ex
 
 from semra import MANUAL_MAPPING, Evidence, Mapping, ReasonedEvidence, Reference, SimpleEvidence
-from semra.constants import SEMRA_EVIDENCE_PREFIX, SEMRA_EVIDENCE_URI_PREFIX, SEMRA_SOURCE
+from semra.constants import SEMRA_SOURCE
+from semra.struct import CONVERTER
 
 R2_curie = ex.R2.curie
 R2 = Reference.from_reference(ex.R2)
@@ -42,12 +42,12 @@ TEST_SSSOM_MAPPING_1 = sssom_pydantic.SemanticMapping(
     object=R1,
     justification=MANUAL_MAPPING,
     authors=[cv.charlie],
-)
+).with_hash(CONVERTER)
 TEST_MAPPING_1 = Mapping.from_sssom_pydantic(TEST_SSSOM_MAPPING_1, TEST_MAPPING_SET)
 
 TEST_SSSOM_MAPPING_2 = sssom_pydantic.SemanticMapping(
     subject=R3, predicate=P1, object=R4, justification=MANUAL_MAPPING
-)
+).with_hash(CONVERTER)
 TEST_MAPPING_2 = Mapping.from_sssom_pydantic(TEST_SSSOM_MAPPING_2, TEST_MAPPING_SET)
 
 TEST_MAPPING_4 = Mapping(subject=ex.R5, predicate=P1, object=ex.R6)
@@ -72,14 +72,7 @@ TEST_SSSOM_MAPPING_6 = sssom_pydantic.SemanticMapping(
     source=SEMRA_SOURCE,
     license=CC0_URL,
     comment="mesh:C027957 chebi:133530 cas:30223-92-8",
-)
-
-
-TEST_PREFIX_MAP = {
-    SEMRA_EVIDENCE_PREFIX: SEMRA_EVIDENCE_URI_PREFIX,
-    **ex.TEST_PREFIX_MAP,
-}
-TEST_CONVERTER = curies.Converter.from_prefix_map(TEST_PREFIX_MAP)
+).with_hash(CONVERTER)
 
 
 def assert_mappings_equal(

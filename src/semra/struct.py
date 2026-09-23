@@ -104,8 +104,9 @@ import pydantic
 import sssom_pydantic
 from bioregistry.constants import FailureReturnType
 from curies.triples import Triple
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from sssom_pydantic import MappingSet, SemanticMapping
+from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX
 
 from semra.constants import (
     CC0_URL,
@@ -193,7 +194,10 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
 
     def get_identifier(self, triple: Triple) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        return sssom_pydantic.hash_mapping(self._to_sssom_pydantic(triple), CONVERTER)
+        mapping = self._to_sssom_pydantic(triple)
+        if mapping.record and mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
+            return mapping.record.identifier
+        return sssom_pydantic.hash_mapping(mapping, CONVERTER)
 
     @abstractmethod
     def _to_sssom_pydantic(
@@ -205,6 +209,12 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
         raise NotImplementedError
 
 
+def _ensure_mapping_record(mapping: SemanticMapping) -> SemanticMapping:
+    if mapping.record is None:
+        return mapping.with_hash(CONVERTER)
+    return mapping
+
+
 class SimpleEvidence(
     pydantic.BaseModel, EvidenceMixin, ConfidenceMixin, prefix=SEMRA_EVIDENCE_PREFIX
 ):
@@ -213,7 +223,8 @@ class SimpleEvidence(
     model_config = ConfigDict(frozen=True)
 
     evidence_type: Literal["simple"] = Field(default="simple", exclude=False)
-    mapping: SemanticMapping
+    #: A mapping that has been hashed
+    mapping: Annotated[SemanticMapping, AfterValidator(_ensure_mapping_record)]
     mapping_set: Annotated[
         MappingSet, Field(description="The name of the dataset from which the mapping comes")
     ]
@@ -281,7 +292,7 @@ class ReasonedEvidence(
             comment=self.explanation,
             source=SEMRA_SOURCE,
             derived_from=[mapping.get_reference() for mapping in self.mappings],
-        )
+        ).with_hash(CONVERTER)
 
     def get_confidence(self) -> float | None:
         r"""Calculate confidence for the reasoned evidence.
@@ -408,8 +419,7 @@ class Mapping(
         # if there's a source, then we want to expand this to create the mapping
         #  set, just with the ID. otherwise, were reuse the mapping_set given
         if mapping.source is not None:
-            c = bioregistry.get_default_converter()
-            url = c.expand_reference(mapping.source, strict=True)
+            url = CONVERTER.expand_reference(mapping.source, strict=True)
             mapping_set = MappingSet(id=url, license=mapping.license)
         elif mapping.provider:
             mapping_set = MappingSet(id=mapping.provider, license=mapping.license)

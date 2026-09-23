@@ -123,7 +123,13 @@ def infer_chains(
     components = sorted(
         (
             component
-            for component in nx.weakly_connected_components(graph)
+            for component in tqdm(
+                nx.weakly_connected_components(graph),
+                desc="constructing components",
+                leave=False,
+                unit_scale=True,
+                disable=not progress,
+            )
             if minimum_component_size < len(component) <= maximum_component_size
         ),
         key=len,
@@ -132,7 +138,7 @@ def infer_chains(
     it = tqdm(
         components,
         unit="component",
-        desc="Inferring chains",
+        desc="inferring chains",
         unit_scale=True,
         disable=not progress,
         leave=False,

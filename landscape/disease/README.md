@@ -423,9 +423,8 @@ number that appear in each group of resources.
 
 The landscape of 19 resources has 421,300 total terms. After merging redundant
 nodes based on mappings, inference, and reasoning, there are 194,155 unique
-concepts. Using the reduction formula
-$\frac{{\text{{total terms}} - \text{{reduced terms}}}}{{\text{{total terms}}}}$,
-this is a 53.92% reduction.
+concepts. Using the reduction formula $\frac{{\text{{total terms}} -
+\text{{reduced terms}}}}{{\text{{total terms}}}}$, this is a 53.92% reduction.
 
 This is only an estimate and is susceptible to a few things:
 

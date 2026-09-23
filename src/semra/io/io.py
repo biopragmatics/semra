@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import pickle
-import warnings
 from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, overload
@@ -71,7 +70,9 @@ def from_sssom_pydantic_iter(
     strict: bool = False,
 ) -> Iterable[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
-    for mapping in mappings:
+    for mapping in tqdm(
+        mappings, leave=False, desc="ingesting from sssom-pydantic", unit_scale=True
+    ):
         try:
             xx = Mapping.from_sssom_pydantic(mapping, mapping_set)
         except pydantic.ValidationError as e:
@@ -116,14 +117,6 @@ def from_pyobo(
         target_prefix = bioregistry.normalize_prefix(target_prefix, strict=True)
         mappings = [m for m in mappings if m.object.prefix == target_prefix]
     return from_sssom_pydantic(mappings, metadata)
-
-
-def from_bioontologies(
-    prefix: str, confidence: float | None = None, **kwargs: Any
-) -> list[Mapping]:
-    """Get mappings from a given ontology via :mod:`bioontologies`."""
-    warnings.warn("use from_pyobo, which now wraps bioontologies", DeprecationWarning, stacklevel=2)
-    return from_pyobo(prefix, confidence=confidence, **kwargs)
 
 
 def from_sssom(

@@ -26,7 +26,7 @@ from .ncit import (
 )
 from .omim import get_omim_gene_mappings
 from .pubchem import get_pubchem_mesh_mappings
-from .wikidata import get_wikidata_mappings
+from .wikidata import get_wikidata_mappings, get_wikidata_mappings_by_prefix
 
 __all__ = [
     "SOURCE_RESOLVER",
@@ -46,6 +46,7 @@ __all__ = [
     "get_omim_gene_mappings",
     "get_pubchem_mesh_mappings",
     "get_wikidata_mappings",
+    "get_wikidata_mappings_by_prefix",
     "normalize_custom_func_name",
 ]
 
@@ -62,7 +63,6 @@ SOURCE_RESOLVER: FunctionResolver[[], list[SemanticMapping]] = FunctionResolver(
         get_biomappings_positive_mappings,
         get_gilda_mappings,
         get_clo_mappings,
-        get_wikidata_mappings,  # type:ignore
         get_omim_gene_mappings,
         get_cbms2019_mappings,
         get_compath_mappings,

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from functools import lru_cache, partial
 from hashlib import md5
 from pathlib import Path
-from typing import Literal
 
 import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -133,6 +133,9 @@ MAPPING_SET_NODES_FILENAME = "mapping_set_nodes.tsv"
 MAPPING_EDGES_FILENAME = "mapping_edges.tsv"
 EDGES_FILENAME = "edges.tsv"
 
+BUFFERING = 32 * 1024**2
+BATCH_SIZE = 10_000
+
 
 def write_neo4j(
     mappings: Iterable[Mapping],
@@ -146,7 +149,6 @@ def write_neo4j(
     dockerfile_name: str = "Dockerfile",
     pip_install: str | None = None,
     progress: bool = True,
-    compress: Literal["during", "after"] | None = None,
     cleanup: bool = True,
     quiet: bool = False,
     python: str | None = None,
@@ -220,24 +222,18 @@ def write_neo4j(
         equivalence_classes = {}
 
     # FIXME use different mechanism for adding nodes into the graph
-    #  so we don't need ot keep track of what's been written as we go.
+    #  so we don't need to keep track of what's been written as we go.
     seen_concepts: set[Reference] = set()
 
     # keep track of the CURIEs for mapping sets
     mapping_set_curies: set[str] = set()
 
-    def _join_gzip(name: str) -> Path:
-        if compress == "during":
-            return directory.joinpath(name + ".gz")
-        else:
-            return directory.joinpath(name)
-
-    concept_nodes_path = _join_gzip(CONCEPT_NODES_FILENAME)
-    mapping_nodes_path = _join_gzip(MAPPING_NODES_FILENAME)
-    evidence_nodes_path = _join_gzip(EVIDENCE_NODES_FILENAME)
-    mapping_set_nodes_path = _join_gzip(MAPPING_SET_NODES_FILENAME)
-    mapping_edges_path = _join_gzip(MAPPING_EDGES_FILENAME)
-    edges_path = _join_gzip(EDGES_FILENAME)
+    concept_nodes_path = directory.joinpath(CONCEPT_NODES_FILENAME)
+    mapping_nodes_path = directory.joinpath(MAPPING_NODES_FILENAME)
+    evidence_nodes_path = directory.joinpath(EVIDENCE_NODES_FILENAME)
+    mapping_set_nodes_path = directory.joinpath(MAPPING_SET_NODES_FILENAME)
+    mapping_edges_path = directory.joinpath(MAPPING_EDGES_FILENAME)
+    edges_path = directory.joinpath(EDGES_FILENAME)
 
     node_paths = [
         (SEMRA_NEO4J_CONCEPT_LABEL, concept_nodes_path),
@@ -247,13 +243,14 @@ def write_neo4j(
     ]
     edge_paths = [mapping_edges_path, edges_path]
 
+    _open_writer = partial(safe_open_writer, buffering=BUFFERING, batch_size=BATCH_SIZE)
     with (
-        safe_open_writer(mapping_edges_path) as mapping_edges_writer,
-        safe_open_writer(edges_path) as edge_writer,
-        safe_open_writer(concept_nodes_path) as concept_nodes_writer,
-        safe_open_writer(mapping_nodes_path) as mapping_nodes_writer,
-        safe_open_writer(evidence_nodes_path) as evidence_nodes_writer,
-        safe_open_writer(mapping_set_nodes_path) as mapping_set_writer,
+        _open_writer(mapping_edges_path) as mapping_edges_writer,
+        _open_writer(edges_path) as edge_writer,
+        _open_writer(concept_nodes_path) as concept_nodes_writer,
+        _open_writer(mapping_nodes_path) as mapping_nodes_writer,
+        _open_writer(evidence_nodes_path) as evidence_nodes_writer,
+        _open_writer(mapping_set_nodes_path) as mapping_set_writer,
     ):
         mapping_edges_writer.writerow(EDGES_HEADER)
         edge_writer.writerow(EDGES_SUPPLEMENT_HEADER)
@@ -270,26 +267,50 @@ def write_neo4j(
             disable=not progress,
             leave=False,
         ):
+            # store into variables to avoid multiple lookup/calculation
             mapping_curie = mapping.curie
+            mapping_subject = mapping.subject
+            mapping_subject_curie = mapping_subject.curie
+            mapping_object = mapping.object
+            mapping_object_curie = mapping_object.curie
 
-            if mapping.subject not in seen_concepts:
+            if mapping_subject not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.subject, add_labels, equivalence_classes)
+                    _concept_to_row(mapping_subject, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.subject)
-            if mapping.object not in seen_concepts:
+                seen_concepts.add(mapping_subject)
+            if mapping_object not in seen_concepts:
                 concept_nodes_writer.writerow(
-                    _concept_to_row(mapping.object, add_labels, equivalence_classes)
+                    _concept_to_row(mapping_object, add_labels, equivalence_classes)
                 )
-                seen_concepts.add(mapping.object)
+                seen_concepts.add(mapping_object)
 
             mapping_nodes_writer.writerow(_mapping_to_node_row(mapping_curie, mapping))
-            mapping_edges_writer.writerow(_mapping_to_edge_row(mapping))
+            mapping_edges_writer.writerow(
+                (
+                    mapping_subject_curie,
+                    mapping.predicate.curie,
+                    mapping_object_curie,
+                    get_confidence_str(mapping),
+                    _neo4j_bool(mapping.has_primary),
+                    _neo4j_bool(mapping.has_secondary),
+                    _neo4j_bool(mapping.has_tertiary),
+                    "|".join(
+                        sorted(
+                            {
+                                evidence.mapping_set.title
+                                for evidence in mapping.evidence
+                                if evidence.mapping_set and evidence.mapping_set.title
+                            }
+                        )
+                    ),
+                )
+            )
 
             # these connect the node representing the mappings to the
             # subject and object using the RDF reified edge data model
-            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping.subject.curie))
-            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping.object.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping_subject_curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping_object_curie))
 
             for evidence in mapping.evidence:
                 evidence_curie = evidence.get_reference(mapping).curie
@@ -332,17 +353,14 @@ def write_neo4j(
     startup_path = directory.joinpath(startup_script_name)
     startup_path.write_text(STARTUP_TEMPLATE.render(python=python))
 
-    if compress == "after":
-        node_names = [
-            (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
-            for label, path in node_paths
-        ]
-        edge_names = [
-            gzip_compress(path, cleanup=cleanup).relative_to(directory) for path in edge_paths
-        ]
-    else:
-        node_names = [(label, path.relative_to(directory)) for label, path in node_paths]
-        edge_names = [path.relative_to(directory) for path in edge_paths]
+    node_names = [
+        (label, gzip_compress(path, cleanup=cleanup).relative_to(directory))
+        for label, path in tqdm(node_paths, desc="Compressing node TSVs", leave=False)
+    ]
+    edge_names = [
+        gzip_compress(path, cleanup=cleanup).relative_to(directory)
+        for path in tqdm(edge_paths, desc="Compressing edge TSVs", leave=False)
+    ]
 
     docker_path = directory.joinpath(dockerfile_name)
     docker_path.write_text(
@@ -368,8 +386,13 @@ def write_neo4j(
         click.secho(f"  sh {run_script_name}")
 
 
-def _get_mapping_set_curie(m: MappingSet) -> str:
-    hasher = md5(m.id.encoded_string().encode("utf-8"), usedforsecurity=False)
+def _get_mapping_set_curie(mapping_set: MappingSet, /) -> str:
+    return _help_hash(str(mapping_set.id))
+
+
+@lru_cache
+def _help_hash(url: str) -> str:
+    hasher = md5(url.encode("utf-8"), usedforsecurity=False)
     return f"{SEMRA_MAPPING_SET_PREFIX}:{hasher.hexdigest()}"
 
 
@@ -414,24 +437,6 @@ def _evidence_to_row(evidence_curie: str, evidence: Evidence) -> Sequence[str]:
         evidence.evidence_type,
         evidence.justification.curie,
         get_confidence_str(evidence),
-    )
-
-
-def _mapping_to_edge_row(mapping: Mapping) -> Sequence[str]:
-    titles = {
-        evidence.mapping_set.title
-        for evidence in mapping.evidence
-        if evidence.mapping_set and evidence.mapping_set.title
-    }
-    return (
-        mapping.subject.curie,
-        mapping.predicate.curie,
-        mapping.object.curie,
-        get_confidence_str(mapping),
-        _neo4j_bool(mapping.has_primary),
-        _neo4j_bool(mapping.has_secondary),
-        _neo4j_bool(mapping.has_tertiary),
-        "|".join(sorted(titles)),
     )
 
 

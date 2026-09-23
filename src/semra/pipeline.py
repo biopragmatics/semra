@@ -123,15 +123,17 @@ configurations.
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import enum
 import logging
+import tempfile
 import time
 import typing as t
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple, Self, overload
+from typing import Annotated, Any, Concatenate, Literal, NamedTuple, ParamSpec, Self, overload
 
 import bioregistry
 import click
@@ -140,7 +142,7 @@ import requests
 import sssom_pydantic
 from curies.triples import keep_prefixes_both
 from pydantic import BaseModel, Field, model_validator
-from pystow.utils import read_pydantic_json
+from pystow.utils import gzip_compress, read_pydantic_json
 from sssom_pydantic import MappingSet
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -158,7 +160,7 @@ from semra.api import (
     prioritize,
     validate_mappings,
 )
-from semra.constants import Reference
+from semra.constants import CC0_URL, Reference
 from semra.inference import infer_chains, infer_mutual_dbxref_mutations, infer_reversible
 from semra.io import (
     from_jsonl,
@@ -178,9 +180,9 @@ from semra.sources.biopragmatics import (
     get_biomappings_predicted_mappings,
 )
 from semra.sources.gilda import get_gilda_mappings
-from semra.sources.wikidata import get_wikidata_mappings_by_prefix
+from semra.sources.wikidata import get_wikidata_mappings, get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Statistics
-from semra.utils import PrefixListValidator, get_jinja_template
+from semra.utils import PrefixListValidator, echo_timed, get_jinja_template, s_log
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -197,6 +199,8 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
 
 HERE = Path(__file__).parent.resolve()
 
@@ -244,7 +248,6 @@ class Input(BaseModel):
 
     source: Literal[
         "pyobo",
-        "bioontologies",
         "biomappings",
         "custom",
         "sssom",
@@ -271,7 +274,7 @@ class Input(BaseModel):
     @model_validator(mode="after")
     def validate_after(self) -> Self:
         """Check prefixes are okay."""
-        if self.source not in {"pyobo", "bioontologies", "wikidata"}:
+        if self.source not in {"pyobo", "wikidata"}:
             return self
         if self.prefix is None:
             raise ValueError
@@ -282,35 +285,37 @@ class Input(BaseModel):
         """Load mappings from the source."""
         if self.source is None:
             return None
-        elif self.source in {"pyobo", "bioontologies"}:
+        elif self.source == "pyobo":
             if self.prefix is None:
                 raise ValueError
-            rv = from_pyobo(
+            extras = dict(self.extras or {})
+            extras.setdefault("progress", True)
+            return from_pyobo(
                 self.prefix,
                 confidence=self.confidence,
                 force_process=refresh_source,
-                **(self.extras or {}),
+                **extras,
             )
         elif self.source == "biomappings":
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             if self.prefix in {None, "positive"}:
-                rv = from_sssom_pydantic(get_biomappings_positive_mappings())
+                return from_sssom_pydantic(get_biomappings_positive_mappings())
             elif self.prefix == "negative":
-                rv = from_sssom_pydantic(get_biomappings_negative_mappings())
+                return from_sssom_pydantic(get_biomappings_negative_mappings())
             elif self.prefix == "predicted":
-                rv = from_sssom_pydantic(get_biomappings_predicted_mappings())
+                return from_sssom_pydantic(get_biomappings_predicted_mappings())
             else:
                 raise ValueError(f"invalid prefix for biomappings: {self.prefix}")
         elif self.source == "gilda":
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             # TODO fold into custom source
-            rv = from_sssom_pydantic(get_gilda_mappings())
+            return from_sssom_pydantic(get_gilda_mappings())
         elif self.source == "custom":
             func = SOURCE_RESOLVER.make(self.prefix, self.extras)
             func_name = normalize_custom_func_name(func)
-            rv = from_sssom_pydantic(
+            return from_sssom_pydantic(
                 func(),
                 mapping_set=MappingSet(
                     id=f"https://w3id.org/biopragmatics/semra/custom/{func_name}.sssom.tsv"
@@ -318,17 +323,22 @@ class Input(BaseModel):
             )
         elif self.source == "wikidata":
             if self.prefix is None:
-                raise ValueError("prefix is required to be set when wikidata is used as a source")
-            rv = from_sssom_pydantic(
-                get_wikidata_mappings_by_prefix(self.prefix, **(self.extras or {}))
+                mappings = get_wikidata_mappings()
+                mapping_set_id = "https://w3id.org/biopragmatics/semra/custom/wikidata.sssom.tsv"
+            else:
+                mappings = list(get_wikidata_mappings_by_prefix(self.prefix, **(self.extras or {})))
+                mapping_set_id = (
+                    f"https://w3id.org/biopragmatics/semra/custom/wikidata-{self.prefix}.sssom.tsv"
+                )
+            return from_sssom_pydantic(
+                mappings, mapping_set=MappingSet(id=mapping_set_id, license=CC0_URL)
             )
         elif self.source == "sssom":
             if self.prefix is None:
                 raise ValueError
-            rv = from_sssom(self.prefix, **(self.extras or {}))
+            return from_sssom(self.prefix, **(self.extras or {}))
         else:
             raise ValueError
-        return rv
 
 
 def assert_bioregistry_canonical(prefix: str) -> None:
@@ -419,12 +429,9 @@ class Configuration(BaseModel):
     write_raw_neo4j: Annotated[
         bool, Field(description="Should a neo4j directory be written for raw mappings?")
     ] = False
-    neo4j_gzip: Annotated[
-        Literal["during", "after"] | None,
-        Field(
-            description="When should gzipping be applied? Defaults to during write, but if the files are big and it causes memory issues, then change to 'after'. If no gzipping is desired, explicilty set to None.",
-        ),
-    ] = "during"
+    write_processed_neo4j: Annotated[
+        bool, Field(description="Should a neo4j directory be written for processed mappings?")
+    ] = True
     add_labels: Annotated[
         bool, Field(description="Should PyOBO be used to look up labels for SSSOM output?")
     ] = False
@@ -957,22 +964,19 @@ class Configuration(BaseModel):
             if write_summary:
                 from . import summarize
 
-                click.secho("summarizing mappings", fg="green")
-                start = time.time()
-                summarize.write_summary(
-                    self,
-                    progress=True,
-                    copy_to_landscape=copy_to_landscape,
-                    raw_mappings=pack.raw,
-                    processed_mappings=pack.processed,
-                    priority_mappings=pack.priority,
-                    refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
-                    refresh_source_timedelta=timedelta if refresh_source else None,
-                )
-                click.secho(
-                    f"done summarizing mappings in {humanize.naturaldelta(time.time() - start)}",
-                    fg="green",
-                )
+                with echo_timed(self.key, "summarizing mappings"):
+                    summarize.write_summary(
+                        self,
+                        progress=True,
+                        copy_to_landscape=copy_to_landscape,
+                        raw_mappings=pack.raw,
+                        processed_mappings=pack.processed,
+                        priority_mappings=pack.priority,
+                        refresh_raw_timedelta=timedelta
+                        if refresh_raw and not refresh_source
+                        else None,
+                        refresh_source_timedelta=timedelta if refresh_source else None,
+                    )
 
             for hook in hooks or []:
                 hook(self, pack)
@@ -1070,8 +1074,15 @@ def assemble(
     if refresh_raw:
         refresh_processed = True
 
-    def _echo(s: str, *args: Any, **kwargs: Any) -> None:
-        click.echo(f"[{configuration.key}] " + click.style(s, *args, **kwargs))
+    _echo_timed = partial(echo_timed, configuration.key)
+
+    @contextlib.contextmanager
+    def _compress_after(name: str, label: str, target: Path) -> Generator[Path]:
+        """Create a temporary file, then gzip it into the target after."""
+        with _echo_timed(f"writing {label}"), tempfile.TemporaryDirectory() as directory:
+            path = Path(directory).joinpath(name)
+            yield path
+            gzip_compress(path, target=target)
 
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
         match return_type:
@@ -1105,133 +1116,119 @@ def assemble(
             configuration.configuration_path.write_text(
                 configuration.model_dump_json(exclude_none=True, exclude_unset=True, indent=2)
             )
-            raw_mappings = get_raw_mappings(
-                configuration, refresh_source=refresh_source, progress=progress
-            )
+            # TODO add getting lables here
+            with _echo_timed("getting raw mappings"):
+                raw_mappings = get_raw_mappings(
+                    configuration, refresh_source=refresh_source, progress=progress
+                )
             if not raw_mappings:
                 raise ValueError(f"no raw mappings found for configuration: {configuration.name}")
             if configuration.validate_raw:
-                validate_mappings(raw_mappings, progress=progress)
+                with _echo_timed("validating raw mappings"):
+                    validate_mappings(raw_mappings, progress=progress)
 
             # TODO stream?
-            write_sssom(
-                raw_mappings,
-                configuration.raw_sssom_path,
-                progress=progress,
-                # add_labels=configuration.add_labels
-                metadata=_mapping_set_from_conf(
-                    configuration,
-                    subtitle="Raw Mappings",
-                    path=configuration.raw_sssom_path,
-                ),
-            )
-            write_jsonl(
-                raw_mappings,
-                configuration.raw_jsonl_path,
-                progress=progress,
-            )
-            if configuration.write_raw_neo4j:
-                write_neo4j(
+            with _compress_after(
+                "raw.sssom.tsv", "raw SSSOM", configuration.raw_sssom_path
+            ) as path:
+                write_sssom(
                     raw_mappings,
-                    configuration.raw_neo4j_path,
-                    docker_name=configuration.raw_neo4j_name,
-                    add_labels=False,  # configuration.add_labels,
-                    compress=configuration.neo4j_gzip,
+                    path,
                     progress=progress,
+                    # add_labels=configuration.add_labels
+                    metadata=_mapping_set_from_conf(
+                        configuration,
+                        subtitle="Raw Mappings",
+                        path=configuration.raw_sssom_path,
+                    ),
                 )
 
+            with _compress_after("raw.jsonl", "raw JSONL", configuration.raw_jsonl_path) as path:
+                write_jsonl(raw_mappings, path, progress=progress)
+
+            if configuration.write_raw_neo4j:
+                with _echo_timed("writing neo4j (raw)"):
+                    write_neo4j(
+                        raw_mappings,
+                        configuration.raw_neo4j_path,
+                        docker_name=configuration.raw_neo4j_name,
+                        add_labels=False,  # configuration.add_labels,
+                        progress=progress,
+                    )
+
         # click.echo(semra.api.str_source_target_counts(mappings, minimum=20))
-        processed_mappings = process_raw_mappings(
-            raw_mappings,
-            mutations=configuration.mutations,
-            remove_prefix_set=configuration.remove_prefixes,
-            keep_prefix_set=configuration.keep_prefixes,
-            post_remove_prefixes=configuration.post_remove_prefixes,
-            post_keep_prefixes=configuration.post_keep_prefixes,
-            remove_imprecise=configuration.remove_imprecise,
-            subsets=configuration.get_hydrated_subsets(),
-            progress=progress,
+        with _echo_timed("processing raw mappings"):
+            processed_mappings = process_raw_mappings(
+                raw_mappings,
+                mutations=configuration.mutations,
+                remove_prefix_set=configuration.remove_prefixes,
+                keep_prefix_set=configuration.keep_prefixes,
+                post_remove_prefixes=configuration.post_remove_prefixes,
+                post_keep_prefixes=configuration.post_keep_prefixes,
+                remove_imprecise=configuration.remove_imprecise,
+                subsets=configuration.get_hydrated_subsets(),
+                progress=progress,
+                logging_tag=configuration.key,
+            )
+
+    with _echo_timed("prioritizing mappings"):
+        prioritized_mappings = prioritize(
+            processed_mappings, configuration.priority, progress=progress
         )
-        _echo("done processing raw mappings", fg="green")
 
-    _echo("prioritizing mappings", fg="green")
-    start = time.time()
-    prioritized_mappings = prioritize(processed_mappings, configuration.priority, progress=progress)
-    _echo(
-        f"done prioritizing mappings in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
+    with _echo_timed("calculating equivalence classes"):
+        equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
 
-    _echo("calculating equivalence classes", fg="green")
-    start = time.time()
-    equivalence_classes = _get_equivalence_classes(processed_mappings, prioritized_mappings)
-    _echo(
-        f"done calculating equivalences classes in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
+    with _compress_after(
+        "processed.sssom.tsv", "processed SSSOM", configuration.processed_sssom_path
+    ) as path:
+        write_sssom(
+            processed_mappings,
+            path,
+            progress=progress,
+            add_labels=configuration.add_labels,
+            metadata=_mapping_set_from_conf(
+                configuration,
+                subtitle="Processed Mappings",
+                path=configuration.processed_sssom_path,
+            ),
+        )
 
-    _echo("writing SSSOM (processed mappings)", fg="green")
-    start = time.time()
-    write_sssom(
-        processed_mappings,
-        configuration.processed_sssom_path,
-        progress=progress,
-        add_labels=configuration.add_labels,
-        metadata=_mapping_set_from_conf(
-            configuration,
-            subtitle="Processed Mappings",
-            path=configuration.processed_sssom_path,
-        ),
-    )
-    _echo(f"done writing SSSOM in {humanize.naturaldelta(time.time() - start)}", fg="green")
+    with _compress_after(
+        "processed.jsonl", "processed JSONL", configuration.processed_jsonl_path
+    ) as path:
+        write_jsonl(processed_mappings, path, progress=progress)
 
-    _echo("writing JSONL (processed mappings)", fg="green")
-    start = time.time()
-    write_jsonl(
-        processed_mappings,
-        configuration.processed_jsonl_path,
-        progress=progress,
-    )
-    _echo(f"done writing JSONL in {humanize.naturaldelta(time.time() - start)}", fg="green")
+    if configuration.write_processed_neo4j:
+        with _echo_timed("writing Neo4j", "for processed mappings"):
+            write_neo4j(
+                processed_mappings,
+                configuration.processed_neo4j_path,
+                docker_name=configuration.processed_neo4j_name,
+                equivalence_classes=equivalence_classes,
+                add_labels=configuration.add_labels,
+                progress=progress,
+            )
 
-    _echo("writing Neo4j (processed mappings)", fg="green")
-    start = time.time()
-    write_neo4j(
-        processed_mappings,
-        configuration.processed_neo4j_path,
-        docker_name=configuration.processed_neo4j_name,
-        equivalence_classes=equivalence_classes,
-        add_labels=configuration.add_labels,
-        compress=configuration.neo4j_gzip,
-        progress=progress,
-    )
-    _echo(f"done writing Neo4j in {humanize.naturaldelta(time.time() - start)}", fg="green")
+    with _compress_after(
+        "priority.jsonl", "prioritized JSONL", configuration.priority_jsonl_path
+    ) as path:
+        write_jsonl(prioritized_mappings, path, progress=progress)
 
-    _echo("writing JSONL (prioritized mappings)", fg="green")
-    start = time.time()
-    write_jsonl(prioritized_mappings, configuration.priority_jsonl_path, progress=progress)
-    _echo(
-        f"done writing JSONL (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
-
-    _echo("writing SSSOM (prioritized mappings)", fg="green")
-    start = time.time()
-    write_sssom(
-        prioritized_mappings,
-        configuration.priority_sssom_path,
-        add_labels=configuration.add_labels,
-        progress=progress,
-        metadata=_mapping_set_from_conf(
-            configuration,
-            subtitle="Priority Mappings",
-            path=configuration.priority_sssom_path,
-        ),
-    )
-    _echo(
-        f"done writing SSSOM (prioritized mappings) in {humanize.naturaldelta(time.time() - start)}",
-        fg="green",
-    )
+    with _compress_after(
+        "priority.sssom.tsv", "prioritize SSSOM", configuration.priority_sssom_path
+    ) as path:
+        write_sssom(
+            prioritized_mappings,
+            path,
+            add_labels=configuration.add_labels,
+            progress=progress,
+            metadata=_mapping_set_from_conf(
+                configuration,
+                subtitle="Priority Mappings",
+                path=configuration.priority_sssom_path,
+            ),
+        )
 
     match return_type:
         case AssembleReturnType.none:
@@ -1291,9 +1288,6 @@ def get_raw_mappings(
     """Get raw mappings based on the inputs in a configuration."""
     n_inputs = len(configuration.inputs)
 
-    def _write(zz: int, txt: str, fg: str = "green") -> None:
-        tqdm.write(f"[{configuration.key}] {zz}/{n_inputs} " + click.style(txt, fg=fg))
-
     rv = []
     for i, inp in enumerate(
         tqdm(
@@ -1301,24 +1295,28 @@ def get_raw_mappings(
             desc=f"[{configuration.key}] getting raw mappings",
             unit="source",
             disable=not progress,
+            leave=False,
         ),
         start=1,
     ):
-        _write(
-            i, f"Loading mappings from {inp.source}" + (f" ({inp.prefix})" if inp.prefix else "")
-        )
-        start = time.time()
-        mappings = inp.load(refresh_source=refresh_source)
-        if mappings is None:
-            _write(i, f"incorrect configuration for {inp.source}", fg="red")
-            continue
-        if inp.pre_filter_prefixes:
-            mappings = list(keep_prefixes_both(mappings, configuration.priority))
-        _write(
-            i,
-            f"Loaded {len(mappings):,} mappings from {inp.source} in {humanize.naturaldelta(time.time() - start)}"
-            + (f" ({inp.prefix})" if inp.prefix else ""),
-        )
+        if inp.prefix:
+            txt = f"loading {inp.prefix}"
+            context = f" from {inp.source} ({i}/{n_inputs})"
+        else:
+            txt = f"loading {inp.source}"
+            context = f" ({i}/{n_inputs})"
+        with echo_timed(configuration.key, txt, context):
+            mappings = inp.load(refresh_source=refresh_source)
+            if mappings is None:
+                s_log(configuration.key, f"  incorrect configuration for {inp.source}", fg="red")
+                continue
+            if inp.pre_filter_prefixes:
+                s_log(configuration.key, "  filtering to priority")
+                mappings = list(keep_prefixes_both(mappings, configuration.priority))
+        if n_mappings := len(mappings):
+            s_log(configuration.key, f"  loaded {n_mappings:,} mappings")
+        else:
+            s_log(configuration.key, "  loaded no mappings", fg="yellow")
         rv.extend(mappings)
     return rv
 
@@ -1335,108 +1333,113 @@ def process_raw_mappings(
     *,
     remove_imprecise: bool = True,
     progress: bool = True,
+    logging_tag: str | None = None,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
+    with echo_timed(logging_tag, "loading negative mappings"):
+        negatives = from_sssom_pydantic(get_biomappings_negative_mappings())
+
+    def _apply(
+        label: str,
+        func: Callable[Concatenate[list[Mapping], P], list[Mapping]],
+        mappings: list[Mapping],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> list[Mapping]:
+        s_log(logging_tag, label, fg="green")
+        start = time.time()
+        before = len(mappings)
+        mappings = func(mappings, *args, **kwargs)
+        after = len(mappings)
+        s_log(
+            logging_tag,
+            f"  done {label} in {humanize.naturaldelta(time.time() - start)} from {before:,} to {after:,} (Δ={after - before:,})",
+        )
+        return mappings
+
     if keep_prefix_set:
-        mappings = keep_prefixes(mappings, keep_prefix_set, progress=progress)
+        mappings = _apply(
+            "filtering to prefixes", keep_prefixes, mappings, keep_prefix_set, progress=progress
+        )
 
     if remove_prefix_set:
-        mappings = filter_prefixes(mappings, remove_prefix_set, progress=progress)
+        mappings = _apply(
+            "filtering out prefixes",
+            filter_prefixes,
+            mappings,
+            remove_prefix_set,
+            progress=progress,
+        )
 
     if subsets:
-        mappings = list(filter_subsets(mappings, subsets))
+        mappings = _apply(
+            "filtering by subset", filter_subsets, mappings, subsets, progress=progress
+        )
 
-    start = time.time()
-    negatives = from_sssom_pydantic(get_biomappings_negative_mappings())
-    logger.info(
-        f"Loaded {len(negatives):,} negative mappings in %s",
-        humanize.naturaldelta(time.time() - start),
+    mappings = _apply(
+        "removing negative mappings evidences",
+        filter_mappings,
+        mappings,
+        negatives,
+        progress=progress,
     )
 
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives, progress=progress)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
+    mappings = _apply("deduplicating evidences", assemble_evidences, mappings, progress=progress)
 
-    # deduplicate
-    before = len(mappings)
-    start = time.time()
-    mappings = assemble_evidences(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Assembled", elapsed=time.time() - start)
-
-    # only keep relevant prefixes
-    # mappings = filter_prefixes(mappings, PREFIXES)
-    # logger.debug(f"Filtered to {len(mappings):,} mappings")
-
-    # remove mapping between self, such as EFO-EFO
-    # TODO handle self-mappings better using "replaced by" relations
-    # logger.info("Removing self mappings (i.e., within a given semantic space)")
-    # before = len(mappings)
-    # start = time.time()
+    # TODO remove mapping between self, such as EFO-EFO, e.g.,
+    #  handle self-mappings better using "replaced by" relations
     # mappings = filter_self_matches(mappings)
-    # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
     if mutations:
-        logger.info("Applying mutations")
-        before = len(mappings)
-        start = time.time()
-        mappings = list(apply_mutations(mappings, mutations, progress=progress))
-        _log_diff(before, mappings, verb="Applied mutations", elapsed=time.time() - start)
+        mappings = _apply(
+            "applying mutations", apply_mutations, mappings, mutations, progress=progress
+        )
 
     if upgrade_prefixes and len(upgrade_prefixes) > 1:
-        logger.info("Inferring mapping upgrades")
         # 2. using the assumption that primary mappings from each of these
         # resources to each other are exact matches, rewrite the prefixes
-        before = len(mappings)
-        start = time.time()
-        mappings = infer_mutual_dbxref_mutations(
-            mappings, upgrade_prefixes, confidence=0.95, progress=progress
+        mappings = _apply(
+            "inferring mapping upgrades",
+            infer_mutual_dbxref_mutations,
+            mappings,
+            upgrade_prefixes,
+            confidence=0.95,
+            progress=progress,
         )
-        _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
 
     # remove database cross-references
     if remove_imprecise:
-        logger.info("Removing unqualified database xrefs")
-        before = len(mappings)
-        start = time.time()
-        mappings = [m for m in mappings if m.predicate not in IMPRECISE]
-        _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
+        mappings = _apply("removing imprecise", _do_remove_imprecise, mappings)
 
     # 3. Inference based on adding reverse relations then doing multichain hopping
-    logger.info("Inferring reverse mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = infer_reversible(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
-
-    logger.info("Inferring based on chains")
-    before = len(mappings)
-    time.time()
-    mappings = infer_chains(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
+    mappings = _apply("inferring reverse mappings", infer_reversible, mappings, progress=progress)
+    mappings = _apply("inferring based on chains", infer_chains, mappings, progress=progress)
 
     # 4/5. Filtering negative
-    logger.info("Filtering out negative mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives, progress=progress)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
+    mappings = _apply(
+        "removing negative mappings", filter_mappings, mappings, negatives, progress=progress
+    )
 
     # filter out self mappings again, just in case
-    mappings = filter_self_matches(mappings, progress=progress)
+    mappings = _apply("filtering self matches", filter_self_matches, mappings, progress=progress)
 
     if post_keep_prefixes:
-        mappings = keep_prefixes(mappings, post_keep_prefixes, progress=progress)
+        mappings = _apply(
+            "filtering to prefixes", keep_prefixes, mappings, post_keep_prefixes, progress=progress
+        )
 
     if post_remove_prefixes:
-        mappings = filter_prefixes(mappings, post_remove_prefixes, progress=progress)
+        mappings = _apply(
+            "filtering out prefixes",
+            filter_prefixes,
+            mappings,
+            post_remove_prefixes,
+            progress=progress,
+        )
 
     return mappings
 
 
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float) -> None:
-    logger.info(
-        f"{verb} from {before:,} to {len(mappings):,} mappings "
-        f"(Δ={len(mappings) - before:,}) in s.",
-        humanize.naturaldelta(elapsed),
-    )
+def _do_remove_imprecise(mappings: Iterable[Mapping]) -> list[Mapping]:
+    """Remove imprecie mappings."""
+    return [m for m in mappings if m.predicate not in IMPRECISE]

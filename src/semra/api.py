@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import itertools as itt
 import logging
-import time
 import typing
 import typing as t
 from collections import Counter, defaultdict
 from collections.abc import Callable, Collection, Iterable
+from functools import partial
 from typing import (
     Annotated,
     Any,
@@ -22,9 +22,7 @@ from typing import (
 )
 
 import bioregistry
-import click
 import curies.api
-import humanize
 import networkx as nx
 import pandas as pd
 import ssslm
@@ -39,7 +37,7 @@ from semra.constants import Reference
 from semra.io.graph import _from_digraph_edge, to_digraph
 from semra.rules import FLIP, SubsetConfiguration
 from semra.struct import Evidence, Mapping, MappingSet, ReasonedEvidence, SimpleEvidence, Triple
-from semra.utils import PrefixValidator, cleanup_prefixes, semra_tqdm
+from semra.utils import PrefixValidator, cleanup_prefixes, echo_timed, s_log, semra_tqdm
 from semra.vocabulary import DB_XREF, EXACT_MATCH, INVERSION_MAPPING, KNOWLEDGE_MAPPING
 
 __all__ = [
@@ -223,7 +221,7 @@ def get_index(mappings: Iterable[Mapping], *, progress: bool = True, leave: bool
     return {triple: deduplicate_evidence(triple, evidence) for triple, evidence in dd.items()}
 
 
-def assemble_evidences(mappings: list[Mapping], *, progress: bool = True) -> list[Mapping]:
+def assemble_evidences(mappings: Iterable[Mapping], *, progress: bool = True) -> list[Mapping]:
     """Assemble evidences.
 
     More specifically, this aggregates evidences for all subject-predicate-object
@@ -439,7 +437,7 @@ def filter_self_matches(mappings: Iterable[Mapping], *, progress: bool = True) -
 
 @replace_with(ct.exclude_triples)
 def filter_mappings(
-    mappings: list[Mapping], skip_mappings: list[Mapping], *, progress: bool = True
+    mappings: Iterable[Mapping], skip_mappings: list[Mapping], *, progress: bool = True
 ) -> list[Mapping]:
     """Filter out mappings in the second set from the first set."""
     skip_triples = {skip_mapping.triple for skip_mapping in skip_mappings}
@@ -908,7 +906,10 @@ def hydrate_subsets(
 
 
 def filter_subsets(
-    mappings: t.Iterable[Mapping], prefix_to_references: SubsetConfiguration
+    mappings: t.Iterable[Mapping],
+    prefix_to_references: SubsetConfiguration,
+    *,
+    progress: bool = False,
 ) -> list[Mapping]:
     """Filter mappings that don't appear in the given subsets.
 
@@ -939,7 +940,7 @@ def filter_subsets(
     """
     clean_prefix_to_identifiers = _clean_subset_configuration(prefix_to_references)
     rv = []
-    for mapping in mappings:
+    for mapping in semra_tqdm(mappings, desc="filtering subsets", progress=progress):
         if (
             mapping.subject.prefix in clean_prefix_to_identifiers
             and mapping.subject not in clean_prefix_to_identifiers[mapping.subject.prefix]
@@ -1173,35 +1174,48 @@ def get_terms(
     subset_configuration: SubsetConfiguration | None = None,
     *,
     progress: bool = True,
+    logging_tag: str | None = None,
 ) -> PrefixIdentifierDict:
-    """Get the set of identifiers for each of the resources."""
+    """Get the set of identifiers for each of the resources.
+
+    :param prefixes: An iterable of prefixes
+    :param subset_configuration: A configuration for subsetting the results
+    :param progress: Whether to show a progress bar
+    :param logging_tag: A tag for logging
+    :returns: A mapping from prefix to sets of local unique identifiers
+    """
     import pyobo
 
-    prefix_to_identifiers: dict[str, set[str]] = {}
+    _e = partial(s_log, logging_tag)
+
     if subset_configuration is None:
         hydrated_subset_configuration: SubsetConfiguration = {}
     else:
-        hydrated_subset_configuration = hydrate_subsets(subset_configuration, progress=progress)
+        with echo_timed(logging_tag, "hydrating subsets"):
+            hydrated_subset_configuration = hydrate_subsets(subset_configuration, progress=progress)
+
+    prefix_to_identifiers: dict[str, set[str]] = {}
     for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
-        tqdm.write(f"[{prefix}] getting terms")
-        start = time.time()
-        identifiers = pyobo.get_ids(prefix, progress=progress)
-        subset: set[Reference] = set(hydrated_subset_configuration.get(prefix) or [])
-        if subset:
-            tqdm.write(f"[{prefix}] got {len(identifiers):,} terms")
-            prefix_to_identifiers[prefix] = {
-                identifier
-                for identifier in identifiers
-                if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
-            }
-            tqdm.write(f"[{prefix}] subset to {len(prefix_to_identifiers[prefix]):,} terms")
-        elif not identifiers:
-            tqdm.write(click.style(f"[{prefix}] PyOBO did not return any IDs", fg="yellow"))
-        else:
-            tqdm.write(
-                f"[{prefix}] got {len(identifiers):,} terms in {humanize.naturaldelta(time.time() - start)}"
-            )
-            prefix_to_identifiers[prefix] = identifiers
+        with echo_timed(logging_tag, "getting terms", f"for {prefix}"):
+            identifiers = pyobo.get_ids(prefix, progress=progress)
+            if subset := set(hydrated_subset_configuration.get(prefix) or []):
+                _e(f"  got {len(identifiers):,} terms to subset")
+                prefix_to_identifiers[prefix] = {
+                    identifier
+                    for identifier in tqdm(
+                        identifiers,
+                        desc="subsetting terms",
+                        leave=False,
+                        unit_scale=True,
+                    )
+                    if _keep_in_subset(prefix=prefix, identifier=identifier, subset=subset)
+                }
+                _e(f"  subset to {len(prefix_to_identifiers[prefix]):,} terms")
+            elif not identifiers:
+                _e("  PyOBO did not return any IDs", fg="yellow")
+            else:
+                _e(f"  got {len(identifiers):,} terms")
+                prefix_to_identifiers[prefix] = identifiers
     return prefix_to_identifiers
 
 
@@ -1342,18 +1356,20 @@ MutationIndex: TypeAlias = dict[str, Mutation]
 
 def apply_mutations(
     mappings: Iterable[Mapping], mutations: Iterable[Mutation], *, progress: bool = True
-) -> Iterable[Mapping]:
+) -> list[Mapping]:
     """Apply mutations."""
     mutation_index = _index_mutations(mutations)
-    for mapping in tqdm(
-        mappings,
-        disable=not progress,
-        desc="Applying mutations",
-        unit_scale=True,
-        unit="mapping",
-        leave=False,
-    ):
-        yield _handle_mutation(mapping, mutation_index)
+    return [
+        _handle_mutation(mapping, mutation_index)
+        for mapping in tqdm(
+            mappings,
+            disable=not progress,
+            desc="Applying mutations",
+            unit_scale=True,
+            unit="mapping",
+            leave=False,
+        )
+    ]
 
 
 def _index_mutations(mutations: Iterable[Mutation]) -> MutationIndex:

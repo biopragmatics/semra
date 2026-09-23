@@ -114,6 +114,7 @@ def is_docker_running() -> bool:
 @BUILD_DOCKER_OPTION
 @verbose_option
 @click.option("--only", help="if given, only runs this configuration", multiple=True)
+@click.option("--exclude", help="if given, exclude this configuration", multiple=True)
 @click.option("--readme-only", is_flag=True, help="if given, only create the readme")
 @click.option("--lazy-versions", is_flag=True, help="if given, don't lookup versions up-front")
 @click.option("--include-all", is_flag=True, help="if given, include large configs like `gene`")
@@ -128,6 +129,7 @@ def landscape(
     refresh_processed: bool,
     build_docker: bool,
     only: list[str] | None,
+    exclude: list[str] | None,
     readme_only: bool,
     lazy_versions: bool,
     include_all: bool,
@@ -150,7 +152,8 @@ def landscape(
 
         if not lazy_versions:
             click.echo("caching versions w/ Bioversions")
-            list(bioversions.iter_versions(use_tqdm=True))
+            with logging_redirect_tqdm():
+                list(bioversions.iter_versions(use_tqdm=True))
 
         logging.getLogger("pyobo").setLevel(logging.ERROR)
 
@@ -159,6 +162,8 @@ def landscape(
             tqdm(functions, unit="configuration", desc="landscape analysis")
             for conf, func in functions:
                 if only and conf.key not in only:
+                    continue
+                if exclude and conf.key in exclude:
                     continue
                 tqdm.write(click.style(conf.key, bold=True, fg="green"))
                 ctx.invoke(

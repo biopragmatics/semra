@@ -309,8 +309,8 @@ def write_neo4j(
 
             # these connect the node representing the mappings to the
             # subject and object using the RDF reified edge data model
-            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping_subject.curie))
-            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping_object.curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_SOURCE_CURIE, mapping_subject_curie))
+            edge_writer.writerow((mapping_curie, ANNOTATED_TARGET_CURIE, mapping_object_curie))
 
             for evidence in mapping.evidence:
                 evidence_curie = evidence.get_reference(mapping).curie

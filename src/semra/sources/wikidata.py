@@ -19,6 +19,8 @@ from sssom_pydantic.contrib.wikidata import (
 from tqdm import tqdm
 from wikidata_client import QueryKwargs
 
+from semra.struct import CONVERTER
+
 __all__ = [
     "get_wikidata_mappings",
     "get_wikidata_mappings_by_prefix",
@@ -29,15 +31,14 @@ def get_wikidata_mappings(
     *, progress: bool = True, **kwargs: Unpack[QueryKwargs]
 ) -> list[SemanticMapping]:
     """Iterate over WikiData xref dataframes."""
-    converter = bioregistry.get_default_converter()
     rv = []
     try:
-        rv.extend(get_equivalent_property_mappings(converter=converter, **kwargs))
+        rv.extend(get_equivalent_property_mappings(converter=CONVERTER, **kwargs))
     except OSError:
         tqdm.write("failed to get equivalent property mappings")
 
     try:
-        rv.extend(get_exact_match_mappings(converter=converter, **kwargs))
+        rv.extend(get_exact_match_mappings(converter=CONVERTER, **kwargs))
     except OSError:
         tqdm.write("failed to get exact match mappings")
 
@@ -87,9 +88,8 @@ def get_wikidata_mappings_by_prefix(
             confidence=0.99,
             publication_date=datetime.date.today(),
         )
-        converter = bioregistry.get_default_converter()
         mappings = list(get_mappings_by_property(prefix=prefix, property_id=property_id, **kwargs))
-        sssom_pydantic.write(mappings=mappings, path=path, metadata=metadata, converter=converter)
+        sssom_pydantic.write(mappings=mappings, path=path, metadata=metadata, converter=CONVERTER)
         yield from mappings
 
 

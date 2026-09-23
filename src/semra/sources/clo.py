@@ -16,6 +16,7 @@ from sssom_pydantic import SemanticMapping
 from tqdm.auto import tqdm
 
 from semra.constants import Reference
+from semra.struct import CONVERTER
 from semra.vocabulary import DB_XREF, UNSPECIFIED_MAPPING
 
 __all__ = ["get_clo_mappings"]
@@ -59,11 +60,10 @@ def get_clo_mappings(*, confidence: float = 0.8) -> list[SemanticMapping]:
     Note that this function exists because CLO doesn't use standard curation for xrefs
     and instead uses a combination of messy references inside rdfs:seeAlso annotations
     """
-    converter = bioregistry.get_default_converter()
     with tempfile.TemporaryDirectory() as tmpdir:
         clo_json_path = Path(tmpdir).joinpath("clo.json")
         robot_obo_tool.convert(CLO_OWL_URL, clo_json_path)
-        graph = obographs.read(clo_json_path, squeeze=True).standardize(converter)
+        graph = obographs.read(clo_json_path, squeeze=True).standardize(CONVERTER)
 
     license_url = bioregistry.get_license_url("clo")
     source = Reference(prefix="bioregistry", identifier="clo")

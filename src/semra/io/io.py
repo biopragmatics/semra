@@ -25,7 +25,7 @@ from typing_extensions import Unpack
 
 from .io_utils import get_name_by_reference
 from ..constants import Reference
-from ..struct import Mapping
+from ..struct import CONVERTER, Mapping
 
 if TYPE_CHECKING:
     import pandas
@@ -222,7 +222,7 @@ def write_sssom(
 ) -> Generator[Mapping, None, None] | None:
     """Export mappings as an SSSOM file (could be lossy)."""
     if converter is None:
-        converter = bioregistry.get_default_converter()
+        converter = CONVERTER
 
     if not prune:
         return _write_sssom_stream(  # type:ignore[no-any-return,call-overload]

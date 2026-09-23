@@ -73,6 +73,7 @@ def from_sssom_pydantic_iter(
     func = partial(_safe_from_sssom_pydantic, mapping_set)
     for mapping in process_map(
         func,
+        mappings,
         leave=False,
         chunksize=chunksize or 20_000,
         desc="ingesting from sssom-pydantic",

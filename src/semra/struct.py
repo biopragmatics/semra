@@ -195,8 +195,8 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
     def get_identifier(self, triple: Triple) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
         mapping = self._to_sssom_pydantic(triple)
-        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
-            return self.mapping.record.identifier
+        if mapping.record and mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
+            return mapping.record.identifier
         return sssom_pydantic.hash_mapping(mapping, CONVERTER)
 
     @abstractmethod
@@ -205,6 +205,7 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
         mapping: Triple,
         subject: Reference | None = None,
         object: Reference | None = None,
+        calculate_hashes: bool = False,
     ) -> sssom_pydantic.SemanticMapping:
         raise NotImplementedError
 
@@ -241,18 +242,6 @@ class SimpleEvidence(
         if self.mapping_set.confidence is not None:
             return self.mapping_set.confidence
         return None
-
-    def get_reference(self, *args: P.args, **kwargs: P.kwargs) -> Reference:
-        """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
-        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
-            return self.mapping.record
-        return super().get_reference(*args, **kwargs)
-
-    def get_identifier(self, triple: Triple) -> str:
-        """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
-            return self.mapping.record.identifier
-        return super().get_identifier(triple)
 
     def _to_sssom_pydantic(
         self,

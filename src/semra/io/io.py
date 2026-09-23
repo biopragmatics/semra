@@ -152,9 +152,7 @@ def from_sssom(
 
 
 def to_sssom_pydantic(
-    mappings: Iterable[Mapping],
-    *,
-    add_labels: bool = False,
+    mappings: Iterable[Mapping], *, add_labels: bool = False
 ) -> Iterable[sssom_pydantic.SemanticMapping]:
     """Iterate over SSSOM-Pydantic mappings."""
     for mapping in mappings:

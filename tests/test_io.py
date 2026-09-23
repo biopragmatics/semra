@@ -298,7 +298,6 @@ class TestSSSOM(unittest.TestCase):
 
     def test_to_sssom_pydantic_reasoned(self) -> None:
         """Test converting a reasoned evidence to Pydantic."""
-        self.maxDiff = None
         self.assertIsNotNone(TEST_MAPPING_6.subject.name)
         self.assertIsNotNone(TEST_MAPPING_6.object.name)
         self.assertIsNotNone(TEST_SSSOM_MAPPING_6.subject.name)

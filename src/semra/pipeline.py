@@ -431,7 +431,7 @@ class Configuration(BaseModel):
     ] = False
     write_processed_neo4j: Annotated[
         bool, Field(description="Should a neo4j directory be written for processed mappings?")
-    ] = False
+    ] = True
     add_labels: Annotated[
         bool, Field(description="Should PyOBO be used to look up labels for SSSOM output?")
     ] = False

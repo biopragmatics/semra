@@ -270,6 +270,7 @@ class Input(BaseModel):
             description="should the raw mappings be filtered by the priority prefix list? if not set, will default to false.",
         ),
     ] = None
+    multiprocessing: bool = False
 
     @model_validator(mode="after")
     def validate_after(self) -> Self:
@@ -294,24 +295,31 @@ class Input(BaseModel):
                 self.prefix,
                 confidence=self.confidence,
                 force_process=refresh_source,
+                multiprocessing=self.multiprocessing,
                 **extras,
             )
         elif self.source == "biomappings":
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             if self.prefix in {None, "positive"}:
-                return from_sssom_pydantic(get_biomappings_positive_mappings())
+                return from_sssom_pydantic(
+                    get_biomappings_positive_mappings(), multiprocessing=self.multiprocessing
+                )
             elif self.prefix == "negative":
-                return from_sssom_pydantic(get_biomappings_negative_mappings())
+                return from_sssom_pydantic(
+                    get_biomappings_negative_mappings(), multiprocessing=self.multiprocessing
+                )
             elif self.prefix == "predicted":
-                return from_sssom_pydantic(get_biomappings_predicted_mappings())
+                return from_sssom_pydantic(
+                    get_biomappings_predicted_mappings(), multiprocessing=self.multiprocessing
+                )
             else:
                 raise ValueError(f"invalid prefix for biomappings: {self.prefix}")
         elif self.source == "gilda":
             if self.pre_filter_prefixes is None:
                 self.pre_filter_prefixes = True
             # TODO fold into custom source
-            return from_sssom_pydantic(get_gilda_mappings())
+            return from_sssom_pydantic(get_gilda_mappings(), multiprocessing=self.multiprocessing)
         elif self.source == "custom":
             func = SOURCE_RESOLVER.make(self.prefix, self.extras)
             func_name = normalize_custom_func_name(func)
@@ -320,6 +328,7 @@ class Input(BaseModel):
                 mapping_set=MappingSet(
                     id=f"https://w3id.org/biopragmatics/semra/custom/{func_name}.sssom.tsv"
                 ),
+                multiprocessing=self.multiprocessing,
             )
         elif self.source == "wikidata":
             if self.prefix is None:
@@ -331,12 +340,16 @@ class Input(BaseModel):
                     f"https://w3id.org/biopragmatics/semra/custom/wikidata-{self.prefix}.sssom.tsv"
                 )
             return from_sssom_pydantic(
-                mappings, mapping_set=MappingSet(id=mapping_set_id, license=CC0_URL)
+                mappings,
+                mapping_set=MappingSet(id=mapping_set_id, license=CC0_URL),
+                multiprocessing=self.multiprocessing,
             )
         elif self.source == "sssom":
             if self.prefix is None:
                 raise ValueError
-            return from_sssom(self.prefix, **(self.extras or {}))
+            return from_sssom(
+                self.prefix, multiprocessing=self.multiprocessing, **(self.extras or {})
+            )
         else:
             raise ValueError
 

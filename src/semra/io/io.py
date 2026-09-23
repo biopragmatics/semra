@@ -22,6 +22,7 @@ from pystow.utils import (
 )
 from sssom_pydantic import MappingSet, SemanticMapping
 from tqdm.autonotebook import tqdm
+from tqdm.contrib import tmap
 from tqdm.contrib.concurrent import process_map
 from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Unpack
@@ -59,28 +60,33 @@ X = TypeVar("X", bound=pydantic.BaseModel)
 def from_sssom_pydantic(
     mappings: Iterable[SemanticMapping],
     mapping_set: MappingSet | None = None,
+    *,
+    multiprocessing: bool = False,
+    chunksize: int | None = None,
 ) -> list[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
-    return list(from_sssom_pydantic_iter(mappings, mapping_set=mapping_set))
+    return list(
+        from_sssom_pydantic_iter(
+            mappings, mapping_set=mapping_set, multiprocessing=multiprocessing, chunksize=chunksize
+        )
+    )
 
 
 def from_sssom_pydantic_iter(
     mappings: Iterable[SemanticMapping],
     mapping_set: MappingSet | None = None,
+    *,
+    multiprocessing: bool = False,
     chunksize: int | None = None,
 ) -> Iterable[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
     func = partial(_safe_from_sssom_pydantic, mapping_set)
-    for mapping in process_map(
-        func,
-        mappings,
-        leave=False,
-        chunksize=chunksize or 20_000,
-        desc="ingesting from sssom-pydantic",
-        unit_scale=True,
-    ):
-        if mapping is not None:
-            yield mapping
+    kwargs = {"leave": False, "desc": "ingesting from sssom-pydantic", "unit_scale": True}
+    if multiprocessing:
+        kwargs["chunksize"] = chunksize or 20_000
+        yield from filter(None, process_map(func, mappings, **kwargs))
+    else:
+        yield from filter(None, tmap(func, mappings, **kwargs))
 
 
 def _safe_from_sssom_pydantic(
@@ -100,6 +106,7 @@ def from_pyobo(
     target_prefix: str | None = None,
     *,
     confidence: float | None = None,
+    multiprocessing: bool = False,
     **kwargs: Unpack[GetOntologyKwargs],
 ) -> list[Mapping]:
     """Get mappings from a given ontology via :mod:`pyobo`.
@@ -128,10 +135,16 @@ def from_pyobo(
     if target_prefix:
         target_prefix = bioregistry.normalize_prefix(target_prefix, strict=True)
         mappings = [m for m in mappings if m.object.prefix == target_prefix]
-    return from_sssom_pydantic(mappings, metadata)
+    return from_sssom_pydantic(mappings, metadata, multiprocessing=multiprocessing)
 
 
-def from_sssom(path: str | Path, confidence: float | None = None, **kwargs: Any) -> list[Mapping]:
+def from_sssom(
+    path: str | Path,
+    *,
+    confidence: float | None = None,
+    multiprocessing: bool = False,
+    **kwargs: Any,
+) -> list[Mapping]:
     """Get mappings from a path to a SSSOM TSV file.
 
     :param path: The local file path or URL to a SSSOM TSV file.
@@ -152,7 +165,7 @@ def from_sssom(path: str | Path, confidence: float | None = None, **kwargs: Any)
         raise NotImplementedError("setting registry confidence not implemented")
     with sssom_pydantic.read_iterable(path, **kwargs) as pack:
         mappings = (mapping for mapping in pack.mappings if isinstance(mapping, SemanticMapping))
-        return from_sssom_pydantic(mappings, pack.mapping_set)
+        return from_sssom_pydantic(mappings, pack.mapping_set, multiprocessing=multiprocessing)
 
 
 def to_sssom_pydantic(

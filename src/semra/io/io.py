@@ -271,7 +271,7 @@ def _write_sssom(
     metadata: sssom_pydantic.MappingSet,
     converter: curies.Converter | None = None,
     progress: bool = False,
-    calculate_hashes: bool = True,
+    calculate_hashes: bool = False,
     **kwargs: Any,
 ) -> None:
     sssom_pydantic.write(

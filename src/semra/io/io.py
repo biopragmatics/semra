@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import pickle
 from collections.abc import Generator, Iterable
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, overload
 
@@ -19,7 +20,9 @@ from pystow.utils import (
     stream_write_pydantic_jsonl,
     write_pydantic_jsonl,
 )
+from sssom_pydantic import MappingSet, SemanticMapping
 from tqdm.autonotebook import tqdm
+from tqdm.contrib.concurrent import process_map
 from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import Unpack
 
@@ -54,33 +57,41 @@ X = TypeVar("X", bound=pydantic.BaseModel)
 
 
 def from_sssom_pydantic(
-    mappings: Iterable[sssom_pydantic.SemanticMapping],
-    mapping_set: sssom_pydantic.MappingSet | None = None,
-    *,
-    strict: bool = False,
+    mappings: Iterable[SemanticMapping],
+    mapping_set: MappingSet | None = None,
 ) -> list[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
-    return list(from_sssom_pydantic_iter(mappings, mapping_set=mapping_set, strict=strict))
+    return list(from_sssom_pydantic_iter(mappings, mapping_set=mapping_set))
 
 
 def from_sssom_pydantic_iter(
-    mappings: Iterable[sssom_pydantic.SemanticMapping],
-    mapping_set: sssom_pydantic.MappingSet | None = None,
-    *,
-    strict: bool = False,
+    mappings: Iterable[SemanticMapping],
+    mapping_set: MappingSet | None = None,
+    chunksize: int | None = None,
 ) -> Iterable[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
-    for mapping in tqdm(
-        mappings, leave=False, desc="ingesting from sssom-pydantic", unit_scale=True
+    func = partial(_safe_from_sssom_pydantic, mapping_set)
+    for mapping in process_map(
+        func,
+        leave=False,
+        chunksize=chunksize or 20_000,
+        desc="ingesting from sssom-pydantic",
+        unit_scale=True,
     ):
-        try:
-            xx = Mapping.from_sssom_pydantic(mapping, mapping_set)
-        except pydantic.ValidationError as e:
-            logger.warning("failed to convert mapping: %s", e)
-            if strict:
-                raise
-        else:
-            yield xx
+        if mapping is not None:
+            yield mapping
+
+
+def _safe_from_sssom_pydantic(
+    mapping_set: MappingSet | None, sssom_mapping: SemanticMapping
+) -> Mapping | None:
+    try:
+        yv = Mapping.from_sssom_pydantic(sssom_mapping, mapping_set)
+    except pydantic.ValidationError as e:
+        logger.warning("failed to convert mapping: %s", e)
+        return None
+    else:
+        return yv
 
 
 def from_pyobo(
@@ -119,9 +130,7 @@ def from_pyobo(
     return from_sssom_pydantic(mappings, metadata)
 
 
-def from_sssom(
-    path: str | Path, confidence: float | None = None, *, strict: bool = False, **kwargs: Any
-) -> list[Mapping]:
+def from_sssom(path: str | Path, confidence: float | None = None, **kwargs: Any) -> list[Mapping]:
     """Get mappings from a path to a SSSOM TSV file.
 
     :param path: The local file path or URL to a SSSOM TSV file.
@@ -140,8 +149,9 @@ def from_sssom(
     """
     if confidence is not None:
         raise NotImplementedError("setting registry confidence not implemented")
-    mappings, _converter, metadata = sssom_pydantic.read(path, **kwargs)
-    return from_sssom_pydantic(mappings, metadata, strict=strict)
+    with sssom_pydantic.read_iterable(path, **kwargs) as pack:
+        mappings = (mapping for mapping in pack.mappings if isinstance(mapping, SemanticMapping))
+        return from_sssom_pydantic(mappings, pack.mapping_set)
 
 
 def to_sssom_pydantic(
@@ -160,9 +170,9 @@ def _get_subject_object(mapping: Mapping, add_labels: bool) -> tuple[Reference, 
     subject = mapping.subject
     obj = mapping.object
     with logging_redirect_tqdm():
-        if subject_name := get_name_by_reference(subject):
+        if subject.name is None and (subject_name := get_name_by_reference(subject)):
             subject = subject.with_name(subject_name)
-        if object_name := get_name_by_reference(obj):
+        if obj.name is None and (object_name := get_name_by_reference(obj)):
             obj = obj.with_name(object_name)
     return subject, obj
 

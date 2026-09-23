@@ -11,21 +11,21 @@ def main() -> None:
     from humanize import naturaldelta
     from tqdm import tqdm
 
-    from semra.io import from_sssom_pydantic
+    from semra.io import from_sssom_pydantic_iter
     from semra.sources import SOURCE_RESOLVER, normalize_custom_func_name
 
     for func in tqdm(list(SOURCE_RESOLVER), desc="Getting SeMRA sources", unit="source"):
         name = normalize_custom_func_name(func)
         tqdm.write(f"[{name}] getting mappings")
         start = time.time()
+        count = 0
         try:
-            mappings = from_sssom_pydantic(func())
+            for _ in from_sssom_pydantic_iter(func()):
+                count += 1
         except Exception as e:  # noqa:BLE001
             tqdm.write(click.style(f"[{name}] failed:\n{e}", fg="red"))
         else:
-            tqdm.write(
-                f"[{name}] got {len(mappings):,} mappings in {naturaldelta(time.time() - start)}"
-            )
+            tqdm.write(f"[{name}] got {count:,} mappings in {naturaldelta(time.time() - start)}")
 
 
 if __name__ == "__main__":

@@ -275,10 +275,7 @@ class ReasonedEvidence(
     ] = 1.0
 
     def _to_sssom_pydantic(
-        self,
-        triple: Triple,
-        subject: Reference | None = None,
-        object: Reference | None = None,
+        self, triple: Triple, subject: Reference | None = None, object: Reference | None = None
     ) -> sssom_pydantic.SemanticMapping:
         return sssom_pydantic.SemanticMapping(
             subject=subject or triple.subject,

@@ -106,6 +106,7 @@ from bioregistry.constants import FailureReturnType
 from curies.triples import Triple
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from sssom_pydantic import MappingSet, SemanticMapping
+from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX
 
 from semra.constants import (
     CC0_URL,
@@ -193,7 +194,10 @@ class EvidenceMixin(KeyedMixin[[Triple]], prefix=SEMRA_EVIDENCE_PREFIX):
 
     def get_identifier(self, triple: Triple) -> str:
         """Get a hex string for the MD5 hash of the pickled key() for this class."""
-        return sssom_pydantic.hash_mapping(self._to_sssom_pydantic(triple), CONVERTER)
+        mapping = self._to_sssom_pydantic(triple)
+        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
+            return self.mapping.record.identifier
+        return sssom_pydantic.hash_mapping(mapping, CONVERTER)
 
     @abstractmethod
     def _to_sssom_pydantic(
@@ -238,12 +242,26 @@ class SimpleEvidence(
             return self.mapping_set.confidence
         return None
 
+    def get_reference(self, *args: P.args, **kwargs: P.kwargs) -> Reference:
+        """Get a CURIE reference using this class's prefix and its hexadecimal representation."""
+        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
+            return self.mapping.record
+        return super().get_reference(*args, **kwargs)
+
+    def get_identifier(self, triple: Triple) -> str:
+        """Get a hex string for the MD5 hash of the pickled key() for this class."""
+        if self.mapping.record and self.mapping.record.prefix == MAPPING_HASH_CURIE_PREFIX:
+            return self.mapping.record.identifier
+        return super().get_identifier(triple)
+
     def _to_sssom_pydantic(
         self,
         mapping: Triple | Mapping,
         subject: Reference | None = None,
         object: Reference | None = None,
     ) -> sssom_pydantic.SemanticMapping:
+        if self.mapping.record is None:
+            return self.mapping.with_hash(CONVERTER)
         return self.mapping
 
 
@@ -269,9 +287,13 @@ class ReasonedEvidence(
     ] = 1.0
 
     def _to_sssom_pydantic(
-        self, triple: Triple, subject: Reference | None = None, object: Reference | None = None
+        self,
+        triple: Triple,
+        subject: Reference | None = None,
+        object: Reference | None = None,
+        calculate_hash: bool = False,
     ) -> sssom_pydantic.SemanticMapping:
-        return sssom_pydantic.SemanticMapping(
+        mapping = sssom_pydantic.SemanticMapping(
             subject=subject or triple.subject,
             predicate=triple.predicate,
             object=object or triple.object,
@@ -282,6 +304,9 @@ class ReasonedEvidence(
             source=SEMRA_SOURCE,
             derived_from=[mapping.get_reference() for mapping in self.mappings],
         )
+        if calculate_hash:
+            mapping = mapping.with_hash(CONVERTER)
+        return mapping
 
     def get_confidence(self) -> float | None:
         r"""Calculate confidence for the reasoned evidence.

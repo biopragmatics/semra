@@ -100,7 +100,7 @@ class TestIO(unittest.TestCase):
                 justification=MANUAL_MAPPING,
                 authors=[CHARLIE],
                 confidence=0.99,
-            ),
+            ).with_hash(CONVERTER),
         )
 
         # check that making an identical evidence gives the same hex digest
@@ -113,7 +113,7 @@ class TestIO(unittest.TestCase):
                 justification=MANUAL_MAPPING,
                 authors=[CHARLIE],
                 confidence=0.99,
-            ),
+            ).with_hash(CONVERTER),
         )
         self.assertEqual(m1_e1.get_identifier(t1), m1_e1_copy.get_identifier(t1))
 
@@ -126,7 +126,7 @@ class TestIO(unittest.TestCase):
                 justification=MANUAL_MAPPING,
                 authors=[BEN_REFERENCE],
                 confidence=0.94,
-            ),
+            ).with_hash(CONVERTER),
         )
         m1_e3 = SimpleEvidence(
             mapping_set=lexical_ms,
@@ -136,7 +136,7 @@ class TestIO(unittest.TestCase):
                 object=t1.object,
                 justification=LEXICAL_MAPPING,
                 confidence=0.8,
-            ),
+            ).with_hash(CONVERTER),
         )
 
         m1 = Mapping.from_triple(t1, evidence=[m1_e1, m1_e2, m1_e3])
@@ -149,7 +149,7 @@ class TestIO(unittest.TestCase):
                 object=t2.object,
                 justification=UNSPECIFIED_MAPPING,
                 confidence=0.90,
-            ),
+            ).with_hash(CONVERTER),
         )
         m2 = Mapping.from_triple(t2, evidence=[m2_e1])
 
@@ -298,6 +298,7 @@ class TestSSSOM(unittest.TestCase):
 
     def test_to_sssom_pydantic_reasoned(self) -> None:
         """Test converting a reasoned evidence to Pydantic."""
+        self.maxDiff = None
         self.assertIsNotNone(TEST_MAPPING_6.subject.name)
         self.assertIsNotNone(TEST_MAPPING_6.object.name)
         self.assertIsNotNone(TEST_SSSOM_MAPPING_6.subject.name)
@@ -330,10 +331,11 @@ class TestSSSOM(unittest.TestCase):
                     #  mesh: https://meshb.nlm.nih.gov/record/ui?ui=
                     #  semapv: https://w3id.org/semapv/vocab/
                     #  skos: http://www.w3.org/2004/02/skos/core#
+                    #  sssom.record: https://w3id.org/sssom/record/
                     #  wikidata: http://www.wikidata.org/entity/
                     #mapping_set_id: https://example.org/test.sssom.tsv
-                    subject_id	subject_label	predicate_id	object_id	object_label	mapping_justification	license	mapping_source	derived_from	comment
-                    mesh:C027957	tyramine O-sulfate	skos:exactMatch	cas:30223-92-8	Tyramine sulfate	semapv:MappingChaining	https://creativecommons.org/publicdomain/zero/1.0/	wikidata:Q127259663	mapping:ba04ff1967c311ddb2e8d1ee5eecff61d5e993f4128270464242abca4bb188b4|mapping:a0022401f47964288ecc1ab706d79b4d4abc10edf33d0a71953834a0b0b3c24c	mesh:C027957 chebi:133530 cas:30223-92-8
+                    record_id	subject_id	subject_label	predicate_id	object_id	object_label	mapping_justification	license	mapping_source	derived_from	comment
+                    sssom.record:637053E56F695012	mesh:C027957	tyramine O-sulfate	skos:exactMatch	cas:30223-92-8	Tyramine sulfate	semapv:MappingChaining	https://creativecommons.org/publicdomain/zero/1.0/	wikidata:Q127259663	mapping:ba04ff1967c311ddb2e8d1ee5eecff61d5e993f4128270464242abca4bb188b4|mapping:a0022401f47964288ecc1ab706d79b4d4abc10edf33d0a71953834a0b0b3c24c	mesh:C027957 chebi:133530 cas:30223-92-8
                 """),
                 path.read_text(),
             )

@@ -18,12 +18,11 @@ from semra.constants import Reference
 from semra.io import from_sssom, write_sssom
 from semra.pipeline import AssembleReturnType, Configuration, Input, MappingPack, get_raw_mappings
 from semra.sources import SOURCE_RESOLVER
-from semra.struct import Mapping, SimpleEvidence
+from semra.struct import CONVERTER, Mapping, SimpleEvidence
 from semra.vocabulary import CHARLIE, DB_XREF, EXACT_MATCH, MANUAL_MAPPING
 from tests.constants import (
     R1,
     R2,
-    TEST_CONVERTER,
     TEST_MAPPING_1,
     TEST_MAPPING_SET,
     TEST_SSSOM_MAPPING_1,
@@ -122,7 +121,7 @@ class TestPipeline(unittest.TestCase):
             TEST_MAPPINGS,
             path,
             metadata=TEST_MAPPING_SET,
-            converter=TEST_CONVERTER,
+            converter=CONVERTER,
         )
         self.assertIsNone(res, msg="streaming should not be activated")
 

@@ -414,8 +414,7 @@ class Mapping(
         # if there's a source, then we want to expand this to create the mapping
         #  set, just with the ID. otherwise, were reuse the mapping_set given
         if mapping.source is not None:
-            c = bioregistry.get_default_converter()
-            url = c.expand_reference(mapping.source, strict=True)
+            url = CONVERTER.expand_reference(mapping.source, strict=True)
             mapping_set = MappingSet(id=url, license=mapping.license)
         elif mapping.provider:
             mapping_set = MappingSet(id=mapping.provider, license=mapping.license)

@@ -906,7 +906,10 @@ def hydrate_subsets(
 
 
 def filter_subsets(
-    mappings: t.Iterable[Mapping], prefix_to_references: SubsetConfiguration
+    mappings: t.Iterable[Mapping],
+    prefix_to_references: SubsetConfiguration,
+    *,
+    progress: bool = False,
 ) -> list[Mapping]:
     """Filter mappings that don't appear in the given subsets.
 
@@ -937,7 +940,7 @@ def filter_subsets(
     """
     clean_prefix_to_identifiers = _clean_subset_configuration(prefix_to_references)
     rv = []
-    for mapping in mappings:
+    for mapping in semra_tqdm(mappings, desc="filtering subsets", progress=progress):
         if (
             mapping.subject.prefix in clean_prefix_to_identifiers
             and mapping.subject not in clean_prefix_to_identifiers[mapping.subject.prefix]

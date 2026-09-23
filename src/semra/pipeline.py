@@ -1336,23 +1336,45 @@ def process_raw_mappings(
     logging_tag: str | None = None,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
+    with echo_timed(logging_tag, "loading negative mappings"):
+        negatives = from_sssom_pydantic(get_biomappings_negative_mappings())
+
+    def _apply(
+        label: str,
+        func: Callable[Concatenate[list[Mapping], P], list[Mapping]],
+        mappings: list[Mapping],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> list[Mapping]:
+        s_log(logging_tag, label, fg="green")
+        start = time.time()
+        before = len(mappings)
+        mappings = func(mappings, *args, **kwargs)
+        after = len(mappings)
+        s_log(
+            logging_tag,
+            f"  done {label} in {humanize.naturaldelta(time.time() - start)} from {before:,} to {after:,} (Δ={after - before:,})",
+        )
+        return mappings
+
     if keep_prefix_set:
-        mappings = keep_prefixes(mappings, keep_prefix_set, progress=progress)
+        mappings = _apply(
+            "filtering to prefixes", keep_prefixes, mappings, keep_prefix_set, progress=progress
+        )
 
     if remove_prefix_set:
-        mappings = filter_prefixes(mappings, remove_prefix_set, progress=progress)
+        mappings = _apply(
+            "filtering out prefixes",
+            filter_prefixes,
+            mappings,
+            remove_prefix_set,
+            progress=progress,
+        )
 
     if subsets:
-        mappings = list(filter_subsets(mappings, subsets))
-
-    start = time.time()
-    negatives = from_sssom_pydantic(get_biomappings_negative_mappings())
-    logger.info(
-        f"Loaded {len(negatives):,} negative mappings in %s",
-        humanize.naturaldelta(time.time() - start),
-    )
-
-    _apply = partial(_lll, logging_tag)
+        mappings = _apply(
+            "filtering by subset", filter_subsets, mappings, subsets, progress=progress
+        )
 
     mappings = _apply(
         "removing negative mappings evidences",
@@ -1362,20 +1384,11 @@ def process_raw_mappings(
         progress=progress,
     )
 
-    # deduplicate
-    mappings = _apply("assembling evidences", assemble_evidences, mappings, progress=progress)
+    mappings = _apply("deduplicating evidences", assemble_evidences, mappings, progress=progress)
 
-    # only keep relevant prefixes
-    # mappings = filter_prefixes(mappings, PREFIXES)
-    # logger.debug(f"Filtered to {len(mappings):,} mappings")
-
-    # remove mapping between self, such as EFO-EFO
-    # TODO handle self-mappings better using "replaced by" relations
-    # logger.info("Removing self mappings (i.e., within a given semantic space)")
-    # before = len(mappings)
-    # start = time.time()
+    # TODO remove mapping between self, such as EFO-EFO, e.g.,
+    #  handle self-mappings better using "replaced by" relations
     # mappings = filter_self_matches(mappings)
-    # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
     if mutations:
         mappings = _apply(
@@ -1408,13 +1421,21 @@ def process_raw_mappings(
     )
 
     # filter out self mappings again, just in case
-    mappings = filter_self_matches(mappings, progress=progress)
+    mappings = _apply("filtering self matches", filter_self_matches, mappings, progress=progress)
 
     if post_keep_prefixes:
-        mappings = keep_prefixes(mappings, post_keep_prefixes, progress=progress)
+        mappings = _apply(
+            "filtering to prefixes", keep_prefixes, mappings, post_keep_prefixes, progress=progress
+        )
 
     if post_remove_prefixes:
-        mappings = filter_prefixes(mappings, post_remove_prefixes, progress=progress)
+        mappings = _apply(
+            "filtering out prefixes",
+            filter_prefixes,
+            mappings,
+            post_remove_prefixes,
+            progress=progress,
+        )
 
     return mappings
 
@@ -1422,23 +1443,3 @@ def process_raw_mappings(
 def _do_remove_imprecise(mappings: Iterable[Mapping]) -> list[Mapping]:
     """Remove imprecie mappings."""
     return [m for m in mappings if m.predicate not in IMPRECISE]
-
-
-def _lll(
-    logging_tag: str | None,
-    label: str,
-    func: Callable[Concatenate[list[Mapping], P], list[Mapping]],
-    mappings: list[Mapping],
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> list[Mapping]:
-    s_log(logging_tag, label, fg="green")
-    start = time.time()
-    before = len(mappings)
-    mappings = func(mappings, *args, **kwargs)
-    after = len(mappings)
-    s_log(
-        logging_tag,
-        f"  done {label} in {humanize.naturaldelta(time.time() - start)} from {before:,} to {after:,} (Δ={after - before:,})",
-    )
-    return mappings

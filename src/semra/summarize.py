@@ -16,6 +16,7 @@ from typing import cast
 import bioregistry
 import networkx as nx
 import pandas as pd
+from tqdm import tqdm
 
 from semra.api import (
     IdentifierIndex,
@@ -33,7 +34,7 @@ from semra.api import (
 from semra.pipeline import Configuration
 from semra.rules import SubsetConfiguration
 from semra.struct import Mapping, Statistics
-from semra.utils import LANDSCAPE_FOLDER, get_jinja_template
+from semra.utils import LANDSCAPE_FOLDER, echo_timed, get_jinja_template
 from semra.vocabulary import DB_XREF, EXACT_MATCH
 
 __all__ = [
@@ -80,10 +81,11 @@ def write_summary(
     summary = summarizer.get_source_summary()
     summary.summary_df.to_csv(configuration.source_summary_path, sep="\t")
 
-    overlap_results = summarizer.overlap_analysis(
-        minimum_count=minimum_count,
-        progress=progress,
-    )
+    with echo_timed(configuration.key, "running overlap analysis"):
+        overlap_results = summarizer.overlap_analysis(
+            minimum_count=minimum_count,
+            progress=progress,
+        )
     overlap_results.raw_counts_df.to_csv(configuration.raw_counts_path, sep="\t", index=True)
     overlap_results.processed_counts_df.to_csv(
         configuration.processed_counts_path, sep="\t", index=True
@@ -97,13 +99,16 @@ def write_summary(
 
     # note we're using the sliced counts dataframe index instead of the
     # original priority since we threw a couple prefixes away along the way
-    landscape_results = summarizer.landscape_analysis(overlap_results)
-    landscape_results.plot_upset()
-    plt.savefig(configuration.processed_landscape_upset_path)
+    with echo_timed(configuration.key, "running landscape analysis"):
+        landscape_results = summarizer.landscape_analysis(overlap_results)
 
-    landscape_results.plot_distribution()
-    plt.tight_layout()
-    plt.savefig(configuration.processed_landscape_histogram_path)
+    with echo_timed(configuration.key, "plotting overlap analysis"):
+        landscape_results.plot_upset()
+        plt.savefig(configuration.processed_landscape_upset_path)
+
+        landscape_results.plot_distribution()
+        plt.tight_layout()
+        plt.savefig(configuration.processed_landscape_histogram_path)
 
     template = get_jinja_template("config-summary.md")
     vv = (
@@ -189,14 +194,17 @@ class Summarizer:
         )
         if configuration.subsets:
             hydrated_subsets = configuration.get_hydrated_subsets(progress=progress)
-            self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)
-            self.processed_mappings = filter_subsets(self.processed_mappings, hydrated_subsets)
+            with echo_timed(configuration.key, "filtering raw mappings by subset"):
+                self.raw_mappings = filter_subsets(self.raw_mappings, hydrated_subsets)
+            with echo_timed(configuration.key, "filtering processed mappings by subset"):
+                self.processed_mappings = filter_subsets(self.processed_mappings, hydrated_subsets)
 
         # TODO skip indexing observed terms if there are already exact
         #  terms available
         # important to use raw mappings for getting observed terms
         # in case things are filtered out later
-        self.terms_observed = get_observed_terms(self.raw_mappings)
+        with echo_timed(configuration.key, "getting observed terms"):
+            self.terms_observed = get_observed_terms(self.raw_mappings)
 
         self.priority_mappings = (
             configuration.read_priority_mappings()
@@ -424,7 +432,7 @@ def get_summary_df(
     summary_rows = []
     if subsets is None:
         subsets = {}
-    for prefix in prefixes:
+    for prefix in tqdm(prefixes, leave=False, desc="creating summary dataframe"):
         exact, count = _count_terms(prefix, terms_exact, terms_observed)
         if not exact:
             status = "observed"

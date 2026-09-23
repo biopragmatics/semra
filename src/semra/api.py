@@ -1193,7 +1193,7 @@ def get_terms(
 
     prefix_to_identifiers: dict[str, set[str]] = {}
     for prefix in tqdm(prefixes, desc="Getting terms", unit_scale=True, leave=False):
-        with echo_timed(logging_tag, f"getting terms", f"for {prefix}"):
+        with echo_timed(logging_tag, "getting terms", f"for {prefix}"):
             identifiers = pyobo.get_ids(prefix, progress=progress)
             if subset := set(hydrated_subset_configuration.get(prefix) or []):
                 _e(f"  got {len(identifiers):,} terms to subset")

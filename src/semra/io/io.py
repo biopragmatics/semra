@@ -70,7 +70,9 @@ def from_sssom_pydantic_iter(
     strict: bool = False,
 ) -> Iterable[Mapping]:
     """Convert mappings from :mod:`sssom_pydantic`."""
-    for mapping in mappings:
+    for mapping in tqdm(
+        mappings, leave=False, desc="ingesting from sssom-pydantic", unit_scale=True
+    ):
         try:
             xx = Mapping.from_sssom_pydantic(mapping, mapping_set)
         except pydantic.ValidationError as e:

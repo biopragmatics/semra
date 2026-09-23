@@ -177,7 +177,9 @@ def s_log(logging_tag: str | None, text: str, *, fg: str | None = None) -> None:
 
 
 @contextlib.contextmanager
-def echo_timed(logging_tag: str | None, text: str, context: str | None = None, *, fg: str | None = "green") -> Generator[None]:
+def echo_timed(
+    logging_tag: str | None, text: str, context: str | None = None, *, fg: str | None = "green"
+) -> Generator[None]:
     """Echo the time."""
     s_log(logging_tag, text + (" " + context.lstrip() if context else ""), fg=fg)
     start = time.time()

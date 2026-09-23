@@ -173,7 +173,10 @@ class Summarizer:
         self.configuration = configuration
 
         self.terms_exact = get_terms(
-            configuration.priority, configuration.subsets, progress=progress
+            configuration.priority,
+            configuration.subsets,
+            progress=progress,
+            logging_tag=configuration.key,
         )
 
         self.raw_mappings = (

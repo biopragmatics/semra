@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import contextlib
+import time
+from collections.abc import Generator, Iterable
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar, cast
 
 import bioregistry
+import click
+import humanize
 import requests
 from pydantic import BeforeValidator
 from tqdm.auto import tqdm
@@ -162,3 +166,20 @@ def get_orcid_name(orcid: str) -> str | None:
     if (given_names := name.get("given-names")) and (family_name := name.get("family-name")):
         return f"{given_names['value']} {family_name['value']}"
     return None
+
+
+def s_log(logging_tag: str | None, text: str, *, fg: str | None = None) -> None:
+    """Log for SeMRA."""
+    text_ = click.style(text, fg=fg)
+    if logging_tag:
+        text_ = f"[{logging_tag}] " + text_
+    tqdm.write(text_)
+
+
+@contextlib.contextmanager
+def echo_timed(logging_tag: str | None, text: str, context: str | None = None, *, fg: str | None = "green") -> Generator[None]:
+    """Echo the time."""
+    s_log(logging_tag, text + (" " + context.lstrip() if context else ""), fg=fg)
+    start = time.time()
+    yield
+    s_log(logging_tag, f"  done {text} in {humanize.naturaldelta(time.time() - start)}")

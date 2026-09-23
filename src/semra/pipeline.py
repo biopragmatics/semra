@@ -133,7 +133,7 @@ import typing as t
 from collections.abc import Callable, Generator, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple, Self, overload
+from typing import Annotated, Any, Concatenate, Literal, NamedTuple, ParamSpec, Self, overload
 
 import bioregistry
 import click
@@ -182,7 +182,7 @@ from semra.sources.biopragmatics import (
 from semra.sources.gilda import get_gilda_mappings
 from semra.sources.wikidata import get_wikidata_mappings, get_wikidata_mappings_by_prefix
 from semra.struct import Mapping, Statistics
-from semra.utils import PrefixListValidator, get_jinja_template
+from semra.utils import PrefixListValidator, echo_timed, get_jinja_template, s_log
 
 if t.TYPE_CHECKING:
     import zenodo_client
@@ -199,6 +199,8 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
 
 HERE = Path(__file__).parent.resolve()
 
@@ -286,11 +288,13 @@ class Input(BaseModel):
         elif self.source == "pyobo":
             if self.prefix is None:
                 raise ValueError
+            extras = dict(self.extras or {})
+            extras.setdefault("progress", True)
             return from_pyobo(
                 self.prefix,
                 confidence=self.confidence,
                 force_process=refresh_source,
-                **(self.extras or {}),
+                **extras,
             )
         elif self.source == "biomappings":
             if self.pre_filter_prefixes is None:
@@ -424,6 +428,9 @@ class Configuration(BaseModel):
 
     write_raw_neo4j: Annotated[
         bool, Field(description="Should a neo4j directory be written for raw mappings?")
+    ] = False
+    write_processed_neo4j: Annotated[
+        bool, Field(description="Should a neo4j directory be written for processed mappings?")
     ] = False
     add_labels: Annotated[
         bool, Field(description="Should PyOBO be used to look up labels for SSSOM output?")
@@ -957,22 +964,19 @@ class Configuration(BaseModel):
             if write_summary:
                 from . import summarize
 
-                click.secho("summarizing mappings", fg="green")
-                start = time.time()
-                summarize.write_summary(
-                    self,
-                    progress=True,
-                    copy_to_landscape=copy_to_landscape,
-                    raw_mappings=pack.raw,
-                    processed_mappings=pack.processed,
-                    priority_mappings=pack.priority,
-                    refresh_raw_timedelta=timedelta if refresh_raw and not refresh_source else None,
-                    refresh_source_timedelta=timedelta if refresh_source else None,
-                )
-                click.secho(
-                    f"done summarizing mappings in {humanize.naturaldelta(time.time() - start)}",
-                    fg="green",
-                )
+                with echo_timed(self.key, "summarizing mappings"):
+                    summarize.write_summary(
+                        self,
+                        progress=True,
+                        copy_to_landscape=copy_to_landscape,
+                        raw_mappings=pack.raw,
+                        processed_mappings=pack.processed,
+                        priority_mappings=pack.priority,
+                        refresh_raw_timedelta=timedelta
+                        if refresh_raw and not refresh_source
+                        else None,
+                        refresh_source_timedelta=timedelta if refresh_source else None,
+                    )
 
             for hook in hooks or []:
                 hook(self, pack)
@@ -1070,8 +1074,7 @@ def assemble(
     if refresh_raw:
         refresh_processed = True
 
-    def _echo(s: str, *args: Any, **kwargs: Any) -> None:
-        click.echo(f"[{configuration.key}] " + click.style(s, *args, **kwargs))
+    _echo_timed = partial(echo_timed, configuration.key)
 
     @contextlib.contextmanager
     def _compress_after(name: str, label: str, target: Path) -> Generator[Path]:
@@ -1080,13 +1083,6 @@ def assemble(
             path = Path(directory).joinpath(name)
             yield path
             gzip_compress(path, target=target)
-
-    @contextlib.contextmanager
-    def _echo_timed(label: str, fg: str = "green") -> Generator[None]:
-        _echo(label, fg=fg)
-        start = time.time()
-        yield
-        _echo(f"done {label} in {humanize.naturaldelta(time.time() - start)}", fg=fg)
 
     if configuration.has_priority_path() and not refresh_raw and not refresh_processed:
         match return_type:
@@ -1151,7 +1147,7 @@ def assemble(
                 write_jsonl(raw_mappings, path, progress=progress)
 
             if configuration.write_raw_neo4j:
-                with _echo_timed("writing Neo4j (raw)"):
+                with _echo_timed("writing neo4j (raw)"):
                     write_neo4j(
                         raw_mappings,
                         configuration.raw_neo4j_path,
@@ -1172,6 +1168,7 @@ def assemble(
                 remove_imprecise=configuration.remove_imprecise,
                 subsets=configuration.get_hydrated_subsets(),
                 progress=progress,
+                logging_tag=configuration.key,
             )
 
     with _echo_timed("prioritizing mappings"):
@@ -1202,15 +1199,16 @@ def assemble(
     ) as path:
         write_jsonl(processed_mappings, path, progress=progress)
 
-    with _echo_timed("writing Neo4j (processed mappings)"):
-        write_neo4j(
-            processed_mappings,
-            configuration.processed_neo4j_path,
-            docker_name=configuration.processed_neo4j_name,
-            equivalence_classes=equivalence_classes,
-            add_labels=configuration.add_labels,
-            progress=progress,
-        )
+    if configuration.write_processed_neo4j:
+        with _echo_timed("writing Neo4j", "for processed mappings"):
+            write_neo4j(
+                processed_mappings,
+                configuration.processed_neo4j_path,
+                docker_name=configuration.processed_neo4j_name,
+                equivalence_classes=equivalence_classes,
+                add_labels=configuration.add_labels,
+                progress=progress,
+            )
 
     with _compress_after(
         "priority.jsonl", "prioritized JSONL", configuration.priority_jsonl_path
@@ -1290,9 +1288,6 @@ def get_raw_mappings(
     """Get raw mappings based on the inputs in a configuration."""
     n_inputs = len(configuration.inputs)
 
-    def _write(zz: int, txt: str, fg: str = "green") -> None:
-        tqdm.write(f"[{configuration.key}] {zz}/{n_inputs} " + click.style(txt, fg=fg))
-
     rv = []
     for i, inp in enumerate(
         tqdm(
@@ -1300,24 +1295,28 @@ def get_raw_mappings(
             desc=f"[{configuration.key}] getting raw mappings",
             unit="source",
             disable=not progress,
+            leave=False,
         ),
         start=1,
     ):
-        _write(
-            i, f"Loading mappings from {inp.source}" + (f" ({inp.prefix})" if inp.prefix else "")
-        )
-        start = time.time()
-        mappings = inp.load(refresh_source=refresh_source)
-        if mappings is None:
-            _write(i, f"incorrect configuration for {inp.source}", fg="red")
-            continue
-        if inp.pre_filter_prefixes:
-            mappings = list(keep_prefixes_both(mappings, configuration.priority))
-        _write(
-            i,
-            f"Loaded {len(mappings):,} mappings from {inp.source} in {humanize.naturaldelta(time.time() - start)}"
-            + (f" ({inp.prefix})" if inp.prefix else ""),
-        )
+        if inp.prefix:
+            txt = f"loading {inp.prefix}"
+            context = f" from {inp.source} ({i}/{n_inputs})"
+        else:
+            txt = f"loading {inp.source}"
+            context = f" ({i}/{n_inputs})"
+        with echo_timed(configuration.key, txt, context):
+            mappings = inp.load(refresh_source=refresh_source)
+            if mappings is None:
+                s_log(configuration.key, f"  incorrect configuration for {inp.source}", fg="red")
+                continue
+            if inp.pre_filter_prefixes:
+                s_log(configuration.key, "  filtering to priority")
+                mappings = list(keep_prefixes_both(mappings, configuration.priority))
+        if n_mappings := len(mappings):
+            s_log(configuration.key, f"  loaded {n_mappings:,} mappings")
+        else:
+            s_log(configuration.key, "  loaded no mappings", fg="yellow")
         rv.extend(mappings)
     return rv
 
@@ -1334,6 +1333,7 @@ def process_raw_mappings(
     *,
     remove_imprecise: bool = True,
     progress: bool = True,
+    logging_tag: str | None = None,
 ) -> list[Mapping]:
     """Run a full deduplication, reasoning, and inference pipeline over a set of mappings."""
     if keep_prefix_set:
@@ -1352,16 +1352,18 @@ def process_raw_mappings(
         humanize.naturaldelta(time.time() - start),
     )
 
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives, progress=progress)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
+    _apply = partial(_lll, logging_tag)
+
+    mappings = _apply(
+        "removing negative mappings evidences",
+        filter_mappings,
+        mappings,
+        negatives,
+        progress=progress,
+    )
 
     # deduplicate
-    before = len(mappings)
-    start = time.time()
-    mappings = assemble_evidences(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Assembled", elapsed=time.time() - start)
+    mappings = _apply("assembling evidences", assemble_evidences, mappings, progress=progress)
 
     # only keep relevant prefixes
     # mappings = filter_prefixes(mappings, PREFIXES)
@@ -1376,50 +1378,34 @@ def process_raw_mappings(
     # _log_diff(before, mappings, verb="Filtered source internal", elapsed=time.time() - start)
 
     if mutations:
-        logger.info("Applying mutations")
-        before = len(mappings)
-        start = time.time()
-        mappings = list(apply_mutations(mappings, mutations, progress=progress))
-        _log_diff(before, mappings, verb="Applied mutations", elapsed=time.time() - start)
+        mappings = _apply(
+            "applying mutations", apply_mutations, mappings, mutations, progress=progress
+        )
 
     if upgrade_prefixes and len(upgrade_prefixes) > 1:
-        logger.info("Inferring mapping upgrades")
         # 2. using the assumption that primary mappings from each of these
         # resources to each other are exact matches, rewrite the prefixes
-        before = len(mappings)
-        start = time.time()
-        mappings = infer_mutual_dbxref_mutations(
-            mappings, upgrade_prefixes, confidence=0.95, progress=progress
+        mappings = _apply(
+            "inferring mapping upgrades",
+            infer_mutual_dbxref_mutations,
+            mappings,
+            upgrade_prefixes,
+            confidence=0.95,
+            progress=progress,
         )
-        _log_diff(before, mappings, verb="Inferred upgrades", elapsed=time.time() - start)
 
     # remove database cross-references
     if remove_imprecise:
-        logger.info("Removing unqualified database xrefs")
-        before = len(mappings)
-        start = time.time()
-        mappings = [m for m in mappings if m.predicate not in IMPRECISE]
-        _log_diff(before, mappings, verb="Filtered non-precise", elapsed=time.time() - start)
+        mappings = _apply("removing imprecise", _do_remove_imprecise, mappings)
 
     # 3. Inference based on adding reverse relations then doing multichain hopping
-    logger.info("Inferring reverse mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = infer_reversible(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
-
-    logger.info("Inferring based on chains")
-    before = len(mappings)
-    time.time()
-    mappings = infer_chains(mappings, progress=progress)
-    _log_diff(before, mappings, verb="Inferred", elapsed=time.time() - start)
+    mappings = _apply("inferring reverse mappings", infer_reversible, mappings, progress=progress)
+    mappings = _apply("inferring based on chains", infer_chains, mappings, progress=progress)
 
     # 4/5. Filtering negative
-    logger.info("Filtering out negative mappings")
-    before = len(mappings)
-    start = time.time()
-    mappings = filter_mappings(mappings, negatives, progress=progress)
-    _log_diff(before, mappings, verb="Filtered negative mappings", elapsed=time.time() - start)
+    mappings = _apply(
+        "removing negative mappings", filter_mappings, mappings, negatives, progress=progress
+    )
 
     # filter out self mappings again, just in case
     mappings = filter_self_matches(mappings, progress=progress)
@@ -1433,9 +1419,26 @@ def process_raw_mappings(
     return mappings
 
 
-def _log_diff(before: int, mappings: list[Mapping], *, verb: str, elapsed: float) -> None:
-    logger.info(
-        f"{verb} from {before:,} to {len(mappings):,} mappings "
-        f"(Δ={len(mappings) - before:,}) in s.",
-        humanize.naturaldelta(elapsed),
+def _do_remove_imprecise(mappings: Iterable[Mapping]) -> list[Mapping]:
+    """Remove imprecie mappings."""
+    return [m for m in mappings if m.predicate not in IMPRECISE]
+
+
+def _lll(
+    logging_tag: str | None,
+    label: str,
+    func: Callable[Concatenate[list[Mapping], P], list[Mapping]],
+    mappings: list[Mapping],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> list[Mapping]:
+    s_log(logging_tag, label, fg="green")
+    start = time.time()
+    before = len(mappings)
+    mappings = func(mappings, *args, **kwargs)
+    after = len(mappings)
+    s_log(
+        logging_tag,
+        f"  done {label} in {humanize.naturaldelta(time.time() - start)} from {before:,} to {after:,} (Δ={after - before:,})",
     )
+    return mappings

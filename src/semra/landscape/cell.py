@@ -127,7 +127,7 @@ CELL_CONFIGURATION = Configuration(
     inputs=[
         Input(source="biomappings"),
         Input(source="gilda"),
-        Input(prefix="cellosaurus", source="pyobo", confidence=0.99),
+        Input(prefix="cellosaurus", source="pyobo", confidence=0.99, multiprocessing=True),
         Input(prefix="bto", source="pyobo", confidence=0.99),
         Input(prefix="cl", source="pyobo", confidence=0.99),
         Input(prefix="clo", source="custom", confidence=0.65),

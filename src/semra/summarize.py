@@ -70,15 +70,17 @@ def write_summary(
 
     paths = configuration._get_landscape_paths()
 
-    summarizer = Summarizer(
-        configuration,
-        raw_mappings=raw_mappings,
-        processed_mappings=processed_mappings,
-        priority_mappings=priority_mappings,
-        progress=progress,
-    )
+    with echo_timed(configuration.key, "building summarizer"):
+        summarizer = Summarizer(
+            configuration,
+            raw_mappings=raw_mappings,
+            processed_mappings=processed_mappings,
+            priority_mappings=priority_mappings,
+            progress=progress,
+        )
 
-    summary = summarizer.get_source_summary()
+    with echo_timed(configuration.key, "getting source summary"):
+        summary = summarizer.get_source_summary()
     summary.summary_df.to_csv(configuration.source_summary_path, sep="\t")
 
     with echo_timed(configuration.key, "running overlap analysis"):

@@ -225,7 +225,8 @@ def _get_metaanalysis_df() -> pd.DataFrame:
 
         statistics_path = directory.joinpath(STATS_FILE_NAME)
         if not statistics_path.is_file():
-            raise FileNotFoundError(f"missing statistics file: {statistics_path}")
+            click.secho(f"missing statistics file: {statistics_path}", fg="yellow")
+            continue
         statistics = Statistics.model_validate_json(statistics_path.read_text())
 
         row = {

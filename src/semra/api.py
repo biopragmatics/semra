@@ -1255,7 +1255,7 @@ def _count_terms(
     else:
         # TODO this might need to be a raise exception, since something is wrong
         msg = (
-            f"The prefix {prefix} was neither indexed in the exact term list nor"
+            f"The prefix {prefix} was neither indexed in the exact term list nor "
             f"the observed term list.\n\n\texact: {sorted(prefix_to_identifier_exact)}"
             f"\n\n\tobserved: {sorted(prefix_to_identifier_observed)}"
         )
@@ -1275,7 +1275,7 @@ def get_symmetric_counter(
     """Create a symmetric mapping counts counter from a directed index."""
     counter: PrefixPairCounter = Counter()
 
-    for left_prefix, right_prefix in index:
+    for left_prefix, right_prefix in tqdm(index, leave=False, desc="getting symmetric counts"):
         left_observed_terms = index[left_prefix, right_prefix]
         left_all_terms: t.Collection[str] = terms_exact.get(left_prefix, [])
         if left_all_terms:
@@ -1291,7 +1291,7 @@ def get_symmetric_counter(
                 len(left_observed_terms), len(right_observed_terms)
             )
 
-    for prefix in priority:
+    for prefix in tqdm(priority, leave=False, desc="getting self counts"):
         counter[prefix, prefix] = _count_terms(prefix, terms_exact, terms_observed).count
 
     return counter
